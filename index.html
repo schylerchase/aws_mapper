@@ -235,7 +235,7 @@
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v25</span></h1>
+    <h1>AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v26</span></h1>
     <p>Paste CLI JSON exports or upload folder</p>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -4604,7 +4604,7 @@ function _renderMapInner(){
       // Dashed vertical trunk spanning all subnets
       structG.append('path').attr('class','route-trunk route-structural').attr('d',fullPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
       // Solid L-bend connector from trunk to gateway
-      structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid);
+      structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
       // Solid patch at L-bend corner
       const bendPatch=`M${tx-3},${gp.y-3} L${tx+3},${gp.y-3} L${tx+3},${gp.y+3} L${tx-3},${gp.y+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',bendPatch).attr('stroke',col).attr('fill',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid);
@@ -4665,7 +4665,7 @@ function _renderMapInner(){
 
       // Solid L-connector from bottom of trunk down to bus Y, then horizontal to TGW X
       const connPath=`M${vc.tx},${trunkBot} L${vc.tx},${busY} L${gp.x},${busY}`;
-      structG.append('path').attr('class','route-trunk route-structural').attr('d',connPath).attr('stroke',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vpcId);
+      structG.append('path').attr('class','route-trunk route-structural').attr('d',connPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vpcId);
       // Solid patch at trunk-to-connector junction
       const tgwJunc=`M${vc.tx-3},${trunkBot-3} L${vc.tx+3},${trunkBot-3} L${vc.tx+3},${trunkBot+3} L${vc.tx-3},${trunkBot+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',tgwJunc).attr('stroke',col).attr('fill',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vpcId);
@@ -4890,7 +4890,7 @@ function _renderMapInner(){
     gG.append('circle').attr('cx',pos.x).attr('cy',pos.y).attr('r',GR).attr('fill','var(--bg-primary)').attr('stroke',col).attr('stroke-width',2);
     gG.append('text').attr('class','gw-label').attr('x',pos.x).attr('y',pos.y+1).attr('text-anchor','middle').attr('dominant-baseline','middle').attr('fill',col).text(gw.type);
     const nm=gwNames[gw.id];
-    if(nm&&nm!==gw.id)gG.append('text').attr('class','gw-name').attr('x',pos.x).attr('y',pos.y-GR-6).attr('text-anchor','middle').text(nm);
+    if(nm&&nm!==gw.id)gG.append('text').attr('class','gw-name').attr('x',pos.x).attr('y',pos.y-GR-26).attr('text-anchor','middle').text(nm);
     gG.append('text').attr('class','gw-id').attr('x',pos.x).attr('y',pos.y+GR+16).attr('text-anchor','middle').text(sid(gw.id));
     gG.on('mouseenter',function(){
       if(_hlLocked) return;
@@ -4962,7 +4962,6 @@ function _renderMapInner(){
             .attr('class','route-trunk route-structural')
             .attr('d',`M${gx},${topY} L${gx},${botY}`)
             .attr('stroke',col).attr('stroke-width',3)
-            .style('stroke-dasharray','none').style('animation','none')
             .attr('data-gid',group[i].gw.id).attr('data-net-vert','1');
           if(topY===iY) reachesBus=true;
         }
