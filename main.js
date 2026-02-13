@@ -5,6 +5,7 @@ const { spawn, execSync } = require('child_process');
 
 let mainWindow = null;
 let activeScan = null;
+const SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/;
 
 // ── Window ────────────────────────────────────────────────────────
 
@@ -82,8 +83,7 @@ function buildMenu() {
         { role: 'resetZoom' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
-        { type: 'separator' },
-        { role: 'toggleDevTools' }
+        ...(!app.isPackaged ? [{ type: 'separator' }, { role: 'toggleDevTools' }] : [])
       ]
     },
     {
@@ -151,7 +151,7 @@ ipcMain.handle('file:open-folder', async () => {
 
 function checkAwsCli() {
   try {
-    execSync('which aws', { encoding: 'utf8' });
+    execSync('/usr/bin/which aws', { encoding: 'utf8', env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' } });
     return true;
   } catch { return false; }
 }
@@ -164,6 +164,16 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
     return;
   }
 
+  // Validate inputs to prevent command injection
+  if (profile && !SAFE_INPUT.test(profile)) {
+    event.sender.send('aws:scan:error', 'Invalid profile name. Use only letters, numbers, hyphens, underscores.');
+    return;
+  }
+  if (region && !SAFE_INPUT.test(region)) {
+    event.sender.send('aws:scan:error', 'Invalid region name. Use only letters, numbers, hyphens, underscores.');
+    return;
+  }
+
   const scriptPath = path.join(__dirname, 'export-aws-data.sh');
 
   // Ensure script is executable
@@ -173,8 +183,7 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
   if (profile) args.push('-p', profile);
   if (region) args.push('-r', region);
 
-  const proc = spawn(scriptPath, args, {
-    shell: true,
+  const proc = spawn('/usr/bin/env', ['bash', scriptPath, ...args], {
     cwd: __dirname,
     env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' }
   });
