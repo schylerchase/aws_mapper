@@ -495,7 +495,6 @@ function generateDemo(){
       const rtId=nid('rtb');
       const routes=[{DestinationCidrBlock:vd.cidr,GatewayId:'local'}];
       if(isPub)routes.push({DestinationCidrBlock:'0.0.0.0/0',GatewayId:igwId});
-      else if(natIds.length)routes.push({DestinationCidrBlock:'0.0.0.0/0',NatGatewayId:natIds[0]});
       // cross-VPC via TGW
       routes.push({DestinationCidrBlock:'10.0.0.0/8',TransitGatewayId:'tgw-enterprise01'});
 
@@ -517,7 +516,17 @@ function generateDemo(){
         subnets.push({SubnetId:subId,VpcId:vpcId,CidrBlock:vd.cidr.replace(/\.0\.0\//,'.'+oct2+'.'+a+'/').replace(/\/16/,'/24'),
           AvailabilityZone:AZS[a],MapPublicIpOnLaunch:isPub,
           Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-'+AZS[a].slice(-2)}]});
-        assocs.push({SubnetId:subId,RouteTableAssociationId:nid('rtbassoc')});
+        if(!isPub && natIds.length){
+          const azRtId=nid('rtb');
+          rts.push({RouteTableId:azRtId,VpcId:vpcId,
+            Routes:[{DestinationCidrBlock:vd.cidr,GatewayId:'local'},
+              {DestinationCidrBlock:'0.0.0.0/0',NatGatewayId:natIds[Math.min(a,natIds.length-1)]},
+              {DestinationCidrBlock:'10.0.0.0/8',TransitGatewayId:'tgw-enterprise01'}],
+            Associations:[{SubnetId:subId,RouteTableAssociationId:nid('rtbassoc')}],
+            Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-'+AZS[a].slice(-2)+'-rt'}]});
+        }else{
+          assocs.push({SubnetId:subId,RouteTableAssociationId:nid('rtbassoc')});
+        }
         naclAssocs.push({SubnetId:subId});
 
         // assign NAT subnet
@@ -566,7 +575,7 @@ function generateDemo(){
         }
       }
 
-      rts.push({RouteTableId:rtId,VpcId:vpcId,Routes:routes,Associations:assocs,
+      if(isPub || !natIds.length) rts.push({RouteTableId:rtId,VpcId:vpcId,Routes:routes,Associations:assocs,
         Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-rt'}]});
       nacls.push({NetworkAclId:naclId,VpcId:vpcId,Associations:naclAssocs,Entries:naclEntries,
         Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-nacl'}]});
@@ -1173,14 +1182,14 @@ function openResourceList(type, pushNav){
             const ttl=rec.TTL?'TTL: '+rec.TTL:'';
             const tColor=rType==='A'||rType==='AAAA'?'#34d399':rType==='CNAME'?'#60a5fa':rType==='MX'?'#f59e0b':rType==='TXT'?'#a78bfa':rType==='NS'?'#94a3b8':rType==='SOA'?'#64748b':'#e2e8f0';
             det+='<div style="margin:3px 0;padding:3px 0;display:flex;gap:6px;align-items:baseline">';
-            det+='<span style="background:'+tColor+';color:#0f172a;font-size:7px;font-weight:700;padding:1px 4px;border-radius:2px;min-width:36px;text-align:center;flex-shrink:0">'+rType+'</span>';
-            det+='<span style="color:var(--text-primary);font-size:9px;min-width:120px">'+rName+'</span>';
-            det+='<span style="color:var(--text-muted);font-size:8px;word-break:break-all">'+rVal+(ttl?' <span style="color:#475569;font-size:7px">['+ttl+']</span>':'')+'</span>';
+            det+='<span style="background:'+tColor+';color:#0f172a;font-size:calc(7px * var(--txt-scale) * var(--dp-txt-scale));font-weight:700;padding:1px 4px;border-radius:2px;min-width:36px;text-align:center;flex-shrink:0">'+rType+'</span>';
+            det+='<span style="color:var(--text-primary);font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));min-width:120px">'+rName+'</span>';
+            det+='<span style="color:var(--text-muted);font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));word-break:break-all">'+rVal+(ttl?' <span style="color:#475569;font-size:calc(7px * var(--txt-scale) * var(--dp-txt-scale))">['+ttl+']</span>':'')+'</span>';
             det+='</div>';
           });
           det+='</div>';
         }else{
-          det+='<div style="margin-top:4px;color:#64748b;font-size:8px;font-style:italic">No record sets loaded. Paste output of:<br><code style="color:#0ea5e9;font-size:8px">aws route53 list-resource-record-sets --hosted-zone-id '+zid+'</code><br>into the "Record Sets" input field.</div>';
+          det+='<div style="margin-top:4px;color:#64748b;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));font-style:italic">No record sets loaded. Paste output of:<br><code style="color:#0ea5e9;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale))">aws route53 list-resource-record-sets --hosted-zone-id '+zid+'</code><br>into the "Record Sets" input field.</div>';
         }
         items.push(row(esc(z.Name),det,zColor,fvid?{t:'vpc',id:fvid}:null));
       });break;
@@ -1209,13 +1218,13 @@ function openResourceList(type, pushNav){
     default: return;
   }
 
-  const backHtml='<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:10px;font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span>';
+  const backHtml='<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span>';
   dpTitle.innerHTML=backHtml+title;
   dpSub.textContent=sub;
 
   // Build with search filter and expand/collapse toggle
-  let h='<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center"><input type="text" id="rlFilter" placeholder="Filter..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:IBM Plex Mono,monospace;font-size:10px;padding:5px 8px;box-sizing:border-box">';
-  h+='<span id="rlToggleAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;white-space:nowrap;padding:4px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>';
+  let h='<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center"><input type="text" id="rlFilter" placeholder="Filter..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:IBM Plex Mono,monospace;font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));padding:5px 8px;box-sizing:border-box">';
+  h+='<span id="rlToggleAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;white-space:nowrap;padding:4px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>';
   h+='<div id="rlItems">'+items.join('')+'</div>';
   dpBody.innerHTML=h;
   dp.classList.add('open');
@@ -1336,7 +1345,7 @@ function openSubnetPanel(sub,vpcId,lk){
     const savedType=_lastRlType;
     _navStack.push({fn:()=>openResourceList(savedType,false)});
   }
-  const backBtn=_navStack.length>0?'<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:10px;font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span>':'';
+  const backBtn=_navStack.length>0?'<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span>':'';
   dpTitle.innerHTML=backBtn+gn(sub,sub.SubnetId)+' <span class="dp-badge '+(isPub?'pub':'prv')+'">'+(isPub?'PUBLIC':'PRIVATE')+'</span>';
   dpSub.innerHTML='<span class="copyable" data-copy="'+sub.SubnetId+'">'+sub.SubnetId+'</span> | '+sub.CidrBlock+' | '+(sub.AvailabilityZone||'N/A');
   let h='';
@@ -1440,7 +1449,7 @@ function openSubnetPanel(sub,vpcId,lk){
       lb+='<span class="k">Type:</span> '+a.Type+' &nbsp;<span class="k">Scheme:</span> '+a.Scheme;
       if(a.DNSName)lb+='<br><span class="k">DNS:</span> '+a.DNSName;
       if(a.LoadBalancerArn){
-        lb+='<br><span class="k">ARN:</span> <span style="font-size:8px">'+a.LoadBalancerArn+'</span>';
+        lb+='<br><span class="k">ARN:</span> <span style="font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale))">'+a.LoadBalancerArn+'</span>';
         const albTgs=(lk.tgByAlb||{})[a.LoadBalancerArn]||[];
         if(albTgs.length){
           lb+='<br><span class="k">Target Groups:</span> '+albTgs.length;
@@ -1572,7 +1581,7 @@ function openSubnetPanel(sub,vpcId,lk){
     nb2+='</div>';
     h+=sec('NACL Visual (Inbound)',inbound.length+' rules',nb2,false);
   }
-  h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>'+h;
+  h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>'+h;
   dpBody.innerHTML=h;
   dp.classList.add('open');
   applyDpScale();
@@ -1614,7 +1623,7 @@ function openGatewayPanel(gwId,gwType,lk){
   function sec(title,count,bodyHtml,startOpen){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+title+'</span><span><span class="dp-sec-count">'+count+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
   }
-  dpTitle.innerHTML='<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:10px;font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span><span style="color:'+col+'">'+gwType+'</span>: '+esc(nm);
+  dpTitle.innerHTML='<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span><span style="color:'+col+'">'+gwType+'</span>: '+esc(nm);
   dpSub.innerHTML='<span class="copyable" data-copy="'+gwId+'">'+gwId+'</span>';
   let h='';
 
@@ -1782,7 +1791,7 @@ function openGatewayPanel(gwId,gwType,lk){
     h+=sec('Connected Subnets',connSubs.length,sb,false);
   }
 
-  h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>'+h;
+  h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>'+h;
   dpBody.innerHTML=h;
   dp.classList.add('open');
   applyDpScale();
@@ -1926,7 +1935,7 @@ function renderLandingZoneMap(ctx){
   const W=document.querySelector('.main').clientWidth,H=document.querySelector('.main').clientHeight;
   
   // Layout constants - increased padding for proper containment
-  const SH_BASE=46,SG=8,VP=28,VH=40,GR=18,CW=5.5;
+  const SH_BASE=46,SG=8,VP=28,VH=40,GR=18,CW=6.2;
   const LZ_RES_ICON=22,LZ_CHILD_H=10,LZ_RES_GAP=3,LZ_RES_COLS=2,LZ_RES_TOP=34,LZ_RES_BOT=10;
   const HUB_X=160,HUB_Y=100;
   const SPOKE_START_X=600,SPOKE_START_Y=60;
@@ -2201,9 +2210,9 @@ function renderLandingZoneMap(ctx){
     tgwG.append('circle').attr('cx',tgwX).attr('cy',tgwY).attr('r',28)
       .attr('fill','rgba(236,72,153,.1)').attr('stroke','var(--tgw-color)').attr('stroke-width',2);
     tgwG.append('text').attr('x',tgwX).attr('y',tgwY-4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','10px').attr('font-weight','600').attr('fill','var(--tgw-color)').text('TGW');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(10px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','var(--tgw-color)').text('TGW');
     tgwG.append('text').attr('x',tgwX).attr('y',tgwY+10).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--text-muted)').text('Transit');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('Transit');
     
     // TGW tooltip
     const tgwName=gwNames[tgwId]||'Transit Gateway';
@@ -2261,18 +2270,20 @@ function renderLandingZoneMap(ctx){
       vG.append('rect').attr('x',vl.x).attr('y',vl.y-20).attr('width',50).attr('height',18).attr('rx',3)
         .attr('fill','#7C3AED');
       vG.append('text').attr('x',vl.x+25).attr('y',vl.y-7).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('font-weight','600').attr('fill','#fff').text('HUB');
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','#fff').text('HUB');
     }
     
     // VPC name on first line
-    vG.append('text').attr('class','vpc-label').attr('x',vl.x+12).attr('y',vl.y+16).text(gn(vl.vpc,vl.vpc.VpcId));
+    const _lzVpcName=gn(vl.vpc,vl.vpc.VpcId);
+    vG.append('text').attr('class','vpc-label').attr('x',vl.x+12).attr('y',vl.y+16)
+      .attr('textLength',Math.min(_lzVpcName.length*8,vl.w*0.55)).attr('lengthAdjust','spacing').text(_lzVpcName);
     
     // CIDR and region on second line
     const ss=subByVpc[vl.vpc.VpcId]||[];
     const az=ss.find(s=>s.AvailabilityZone)?.AvailabilityZone||'';
     const region=az.replace(/[a-z]$/,'')||'';
     vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
-      .attr('font-size','8px').text(vl.vpc.CidrBlock+(region?' '+region:''));
+      .text(vl.vpc.CidrBlock+(region?' '+region:''));
     
     // VPCE badge - positioned at bottom left of VPC
     const vpcVpces=vpceByVpc[vl.vpc.VpcId]||[];
@@ -2281,7 +2292,7 @@ function renderLandingZoneMap(ctx){
       vG.append('rect').attr('x',vl.x+8).attr('y',vl.y+vl.h-bh-6).attr('width',bw).attr('height',bh).attr('rx',3)
         .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',.5);
       vG.append('text').attr('x',vl.x+8+bw/2).attr('y',vl.y+vl.h-bh/2-2).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
     }
     
     // VPC tooltip (on header area only)
@@ -2455,7 +2466,7 @@ function renderLandingZoneMap(ctx){
     sG.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+16).text(gn(sl.sub,sl.sub.SubnetId));
     sG.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+28).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?' '+sl.sub.AvailabilityZone.slice(-2):''));
     sG.append('text').attr('x',sl.x+sl.w-6).attr('y',sl.y+12).attr('text-anchor','end')
-      .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUB':'PRV');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUB':'PRV');
     
     // Resource icons inside subnet (tree-based with nesting)
     const lzTree=lzSubTrees[sl.sub.SubnetId]||[];
@@ -2465,7 +2476,7 @@ function renderLandingZoneMap(ctx){
       lzTree.forEach(r=>{counts[r.type]=(counts[r.type]||0)+1});
       const summary=Object.entries(counts).map(([t,c])=>c+' '+t).join(', ');
       sG.append('text').attr('x',sl.x+6).attr('y',sl.y+sl.h-5)
-        .attr('font-family','IBM Plex Mono').attr('font-size','5px').attr('fill','var(--text-muted)').attr('opacity',.5).text(summary);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(5px * var(--txt-scale,1))').attr('fill','var(--text-muted)').attr('opacity',.5).text(summary);
     } else if(lzTree.length>0){
       const iconW=Math.max(60,Math.floor((sl.w-12)/LZ_RES_COLS)-LZ_RES_GAP);
       const maxCh=Math.max(0,...lzTree.map(r=>(r.children||[]).length));
@@ -2491,17 +2502,17 @@ function renderLandingZoneMap(ctx){
         rG.append('rect').attr('x',rx).attr('y',ry).attr('width',20).attr('height',iconH)
           .attr('rx',2).attr('fill',res.col).attr('fill-opacity',.25);
         rG.append('text').attr('x',rx+10).attr('y',ry+11).attr('text-anchor','middle')
-          .attr('font-family','IBM Plex Mono').attr('font-size','5px').attr('font-weight','700')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(5px * var(--txt-scale,1))').attr('font-weight','700')
           .attr('fill',res.col).text(res.type);
         const nameClip='lzrc-'+sl.sub.SubnetId.replace(/[^a-zA-Z0-9]/g,'')+'-'+ri;
         rG.append('clipPath').attr('id',nameClip).append('rect')
           .attr('x',rx+22).attr('y',ry).attr('width',iconW-24).attr('height',iconH);
         rG.append('text').attr('x',rx+24).attr('y',ry+9).attr('clip-path',`url(#${nameClip})`)
-          .attr('font-family','IBM Plex Mono').attr('font-size','5.5px').attr('font-weight','600')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(5.5px * var(--txt-scale,1))').attr('font-weight','600')
           .attr('fill','var(--text-primary)').text(res.name);
         if(res.ip){
           rG.append('text').attr('x',rx+24).attr('y',ry+17).attr('clip-path',`url(#${nameClip})`)
-            .attr('font-family','IBM Plex Mono').attr('font-size','4.5px')
+            .attr('font-family','IBM Plex Mono').style('font-size','calc(4.5px * var(--txt-scale,1))')
             .attr('fill','var(--text-muted)').text(res.ip);
         }
         if(res.state){
@@ -2515,10 +2526,10 @@ function renderLandingZoneMap(ctx){
             rG.append('rect').attr('x',cx2).attr('y',cy2).attr('width',cw).attr('height',ch2)
               .attr('rx',2).attr('fill',ch.bg).attr('stroke',ch.col).attr('stroke-width',.4);
             rG.append('text').attr('x',cx2+2).attr('y',cy2+ch2/2+2)
-              .attr('font-family','IBM Plex Mono').attr('font-size','4px').attr('font-weight','600')
+              .attr('font-family','IBM Plex Mono').style('font-size','calc(4px * var(--txt-scale,1))').attr('font-weight','600')
               .attr('fill',ch.col).text(ch.type);
             rG.append('text').attr('x',cx2+17).attr('y',cy2+ch2/2+2).attr('clip-path',`url(#${nameClip})`)
-              .attr('font-family','IBM Plex Mono').attr('font-size','4px')
+              .attr('font-family','IBM Plex Mono').style('font-size','calc(4px * var(--txt-scale,1))')
               .attr('fill','rgba(255,255,255,.5)').text(ch.name+(ch.detail?' '+ch.detail:''));
           });
         }
@@ -2527,7 +2538,7 @@ function renderLandingZoneMap(ctx){
       });
     } else {
       sG.append('text').attr('x',sl.x+sl.w/2).attr('y',sl.y+sl.h/2+4).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--text-muted)').attr('opacity',.4).text('No resources');
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('fill','var(--text-muted)').attr('opacity',.4).text('No resources');
     }
     
     // Subnet tooltip, highlight, and click
@@ -2593,9 +2604,9 @@ function renderLandingZoneMap(ctx){
       .attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.3);
     // Text
     iG.append('text').attr('x',iX).attr('y',iY+4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','11px').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(11px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
     iG.append('text').attr('x',iX).attr('y',iY+48).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-muted)').text('Internet');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('Internet');
     iG.style('cursor','pointer');
     iG.on('mouseenter',function(){
       if(_lzLocked) return;
@@ -2625,12 +2636,12 @@ function renderLandingZoneMap(ctx){
       .attr('fill',gw.type==='IGW'?'rgba(16,185,129,.15)':'rgba(251,146,60,.15)')
       .attr('stroke',col).attr('stroke-width',2);
     gG.append('text').attr('x',gx).attr('y',gwY+4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','9px').attr('font-weight','600').attr('fill',col).text(gw.type);
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(9px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(gw.type);
     const gwNm=gwNames[gw.id]||'';
     if(gwNm)gG.append('text').attr('x',gx).attr('y',gwY-GR-6).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--text-muted)').text(gwNm);
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(gwNm);
     gG.append('text').attr('x',gx).attr('y',gwY+GR+14).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--text-muted)').text(sid(gw.id));
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(sid(gw.id));
     
     // Gateway tooltip
     const gwName=gwNames[gw.id]||sid(gw.id);
@@ -2746,12 +2757,12 @@ function renderLandingZoneMap(ctx){
       gG.append('circle').attr('cx',sgX).attr('cy',sgY).attr('r',16)
         .attr('fill',fillCol).attr('stroke',col).attr('stroke-width',2);
       gG.append('text').attr('x',sgX).attr('y',sgY+4).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('font-weight','600').attr('fill',col).text(gw.type);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(gw.type);
       const sgNm=gwNames[gw.id]||'';
       if(sgNm)gG.append('text').attr('x',sgX).attr('y',sgY-20).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--text-secondary)').text(sgNm);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-secondary)').text(sgNm);
       gG.append('text').attr('x',sgX).attr('y',sgY+22).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--text-muted)').text(sid(gw.id));
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(sid(gw.id));
       
       // Connection line from spoke to gateway
       const psg=lzRouteG.append('path')
@@ -2873,7 +2884,7 @@ function renderLandingZoneMap(ctx){
     eG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)
       .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',1);
     eG.append('text').attr('x',gx).attr('y',ny+12).attr('text-anchor','middle').attr('font-family','IBM Plex Mono')
-      .attr('font-size','8px').attr('font-weight','600').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
+      .style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
     eG.on('mouseenter',function(){
       let h='<div class="tt-title">VPC Endpoints ('+vpcVpces.length+')</div>';
       h+='<div class="tt-sub">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
@@ -2912,7 +2923,7 @@ function renderLandingZoneMap(ctx){
       dG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)
         .attr('fill','rgba(14,165,233,.15)').attr('stroke','#0ea5e9').attr('stroke-width',1);
       dG.append('text').attr('x',gx).attr('y',ny+12).attr('text-anchor','middle').attr('font-family','IBM Plex Mono')
-        .attr('font-size','8px').attr('font-weight','600').attr('fill','#0ea5e9').text(pz.length+' DNS');
+        .style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','#0ea5e9').text(pz.length+' DNS');
       dG.on('mouseenter',function(){
         let h='<div class="tt-title">Private Hosted Zones ('+pz.length+')</div>';
         h+='<div class="tt-sub">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
@@ -2974,9 +2985,9 @@ function renderLandingZoneMap(ctx){
     dnsG.append('rect').attr('x',40).attr('y',dnsY).attr('width',dnsBoxW).attr('height',dnsBoxH).attr('rx',8)
       .attr('fill','rgba(14,165,233,.06)').attr('stroke','#0ea5e9').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     dnsG.append('text').attr('x',60).attr('y',dnsY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#0ea5e9').text('Route 53 Hosted Zones');
+      .style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','#0ea5e9').text('Route 53 Hosted Zones');
     dnsG.append('text').attr('x',60).attr('y',dnsY+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(pubZones.length+' public, '+privZones.length+' private');
+      .style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(pubZones.length+' public, '+privZones.length+' private');
 
     // Records expand/collapse toggle button
     const lzTogX=40+dnsBoxW-80;
@@ -2985,7 +2996,7 @@ function renderLandingZoneMap(ctx){
     lzTogG.append('rect').attr('x',lzTogX).attr('y',lzTogY).attr('width',70).attr('height',20).attr('rx',4)
       .attr('fill','rgba(14,165,233,.15)').attr('stroke','#0ea5e9').attr('stroke-width',0.8);
     lzTogG.append('text').attr('x',lzTogX+35).attr('y',lzTogY+14).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('font-weight','600')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600')
       .attr('fill','#0ea5e9').text(lzDnsRecExp?'\u25B2 Collapse':'\u25BC Expand');
     lzTogG.on('click',function(event){
       event.stopPropagation();
@@ -3011,19 +3022,19 @@ function renderLandingZoneMap(ctx){
       zG.append('circle').attr('cx',zx+12).attr('cy',zy+13).attr('r',6)
         .attr('fill',isPub?'#10b981':'#0ea5e9');
       zG.append('text').attr('x',zx+12).attr('y',zy+16.5).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','700')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','700')
         .attr('fill','#fff').text(isPub?'P':'R');
 
       // Zone name (full in records-expanded, truncated in compact)
       const dispName=lzDnsRecExp?z.Name:(z.Name.length>35?z.Name.substring(0,33)+'..':z.Name);
       zG.append('text').attr('x',zx+24).attr('y',zy+15).attr('font-family','IBM Plex Mono')
-        .attr('font-size','10px').attr('font-weight','600').attr('fill',isPub?'#10b981':'#0ea5e9')
+        .style('font-size','calc(10px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',isPub?'#10b981':'#0ea5e9')
         .text(dispName);
 
       // Compact: record count only
       if(!lzDnsRecExp){
         zG.append('text').attr('x',zx+zw).attr('y',zy+15).attr('text-anchor','end')
-          .attr('font-family','IBM Plex Mono').attr('font-size','9px').attr('fill','var(--text-muted)')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(9px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
           .text(z.ResourceRecordSetCount+' rec');
       }
 
@@ -3031,12 +3042,12 @@ function renderLandingZoneMap(ctx){
       if(lzDnsRecExp){
         let my=zy+18;
         zG.append('text').attr('x',zx+24).attr('y',my+14).attr('font-family','IBM Plex Mono')
-          .attr('font-size','8px').attr('fill','var(--text-muted)')
+          .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
           .text('Zone ID: '+zid+'  |  '+z.ResourceRecordSetCount+' records  |  '+(isPub?'Public':'Private'));
         my+=14;
         if(lay.assocVpcs){
           zG.append('text').attr('x',zx+24).attr('y',my+14).attr('font-family','IBM Plex Mono')
-            .attr('font-size','8px').attr('fill','var(--text-muted)')
+            .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
             .text('VPCs: '+lay.assocVpcs);
           my+=14;
         }
@@ -3051,20 +3062,20 @@ function renderLandingZoneMap(ctx){
             const rVal=rec.AliasTarget?'ALIAS \u2192 '+(rec.AliasTarget.DNSName||'').replace(/\.$/,''):
               (rec.ResourceRecords||[]).map(rr=>rr.Value).join(', ');
             zG.append('text').attr('x',zx+10).attr('y',my+10).attr('font-family','IBM Plex Mono')
-              .attr('font-size','7px').attr('font-weight','600').attr('fill',isPub?'#059669':'#0284c7')
+              .style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',isPub?'#059669':'#0284c7')
               .text(rType);
             zG.append('text').attr('x',zx+50).attr('y',my+10).attr('font-family','IBM Plex Mono')
-              .attr('font-size','8px').attr('fill','var(--text-primary)')
+              .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-primary)')
               .text(rName.length>50?rName.substring(0,48)+'..':rName);
             zG.append('text').attr('x',zx+350).attr('y',my+10).attr('font-family','IBM Plex Mono')
-              .attr('font-size','7px').attr('fill','var(--text-muted)')
+              .style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
               .text(rVal.length>80?rVal.substring(0,78)+'..':rVal);
             my+=recRowH;
           });
         }else{
           my+=6;
           zG.append('text').attr('x',zx+24).attr('y',my+10).attr('font-family','IBM Plex Mono')
-            .attr('font-size','8px').attr('font-style','italic').attr('fill','var(--text-muted)')
+            .style('font-size','calc(8px * var(--txt-scale,1))').attr('font-style','italic').attr('fill','var(--text-muted)')
             .text('Click zone for details \u2022 Load record sets via "Record Sets" input');
         }
       }
@@ -3106,9 +3117,9 @@ function renderLandingZoneMap(ctx){
     s3G.append('rect').attr('x',40).attr('y',s3Y).attr('width',s3BoxW).attr('height',s3BoxH).attr('rx',8)
       .attr('fill','rgba(234,88,12,.06)').attr('stroke','#ea580c').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     s3G.append('text').attr('x',60).attr('y',s3Y+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#ea580c').text('S3 Buckets');
+      .style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','#ea580c').text('S3 Buckets');
     s3G.append('text').attr('x',60).attr('y',s3Y+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(s3bk.length+' buckets');
+      .style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(s3bk.length+' buckets');
 
     s3bk.forEach((bk,bi)=>{
       const col=bi%s3Cols;
@@ -3122,7 +3133,7 @@ function renderLandingZoneMap(ctx){
       const maxChars=Math.floor((s3ColW-20)/6);
       const dispName=bk.Name.length>maxChars?bk.Name.substring(0,maxChars-2)+'..':bk.Name;
       bG.append('text').attr('x',bx+6).attr('y',by+16).attr('font-family','IBM Plex Mono')
-        .attr('font-size','10px').attr('font-weight','500').attr('fill','#ea580c').text(dispName);
+        .style('font-size','calc(10px * var(--txt-scale,1))').attr('font-weight','500').attr('fill','#ea580c').text(dispName);
 
       bG.on('mouseenter',function(){
         let h='<div class="tt-title">S3 Bucket</div>';
@@ -3151,9 +3162,9 @@ function renderLandingZoneMap(ctx){
     cfG.append('rect').attr('x',40).attr('y',cfY).attr('width',cfBoxW).attr('height',cfBoxH).attr('rx',8)
       .attr('fill','rgba(139,92,246,.06)').attr('stroke','#8b5cf6').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     cfG.append('text').attr('x',60).attr('y',cfY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#8b5cf6').text('CloudFront Distributions');
+      .style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','#8b5cf6').text('CloudFront Distributions');
     cfG.append('text').attr('x',60).attr('y',cfY+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(cfDistributions.length+' distributions');
+      .style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(cfDistributions.length+' distributions');
 
     cfDistributions.forEach((d,di)=>{
       const col=di%cfCols;
@@ -3166,10 +3177,10 @@ function renderLandingZoneMap(ctx){
       cG.append('rect').attr('x',cx).attr('y',cy).attr('width',cfColW-10).attr('height',cfRowH).attr('rx',3)
         .attr('fill','rgba(139,92,246,.12)').attr('stroke','#8b5cf6').attr('stroke-width',0.8);
       cG.append('text').attr('x',cx+6).attr('y',cy+12).attr('font-family','IBM Plex Mono')
-        .attr('font-size','9px').attr('font-weight','600').attr('fill','#8b5cf6').text(d.DomainName||d.Id);
+        .style('font-size','calc(9px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','#8b5cf6').text(d.DomainName||d.Id);
       if(aliases.length){
         cG.append('text').attr('x',cx+6).attr('y',cy+23).attr('font-family','IBM Plex Mono')
-          .attr('font-size','8px').attr('fill','var(--text-muted)').text(aliases.join(', '));
+          .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(aliases.join(', '));
       }
 
       cG.on('mouseenter',function(){
@@ -3196,7 +3207,7 @@ function renderLandingZoneMap(ctx){
   // Legend
   const legX=20,legY=lzSectionY;
   const legG=ndL.append('g').attr('class','legend');
-  legG.append('text').attr('x',legX).attr('y',legY).attr('font-family','IBM Plex Mono').attr('font-size','9px').attr('font-weight','600').attr('fill','var(--text-secondary)').text('LANDING ZONE LAYOUT');
+  legG.append('text').attr('x',legX).attr('y',legY).attr('font-family','IBM Plex Mono').style('font-size','calc(9px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','var(--text-secondary)').text('LANDING ZONE LAYOUT');
   const items=[
     {c:'#7C3AED',t:'Hub VPC'},{c:'var(--vpc-stroke)',t:'Spoke VPC'},
     {c:'var(--tgw-color)',t:'Transit GW'},{c:'var(--igw-color)',t:'Internet GW'},
@@ -3205,7 +3216,7 @@ function renderLandingZoneMap(ctx){
   items.forEach((it,i)=>{
     const ix=legX+i*100;
     legG.append('rect').attr('x',ix).attr('y',legY+10).attr('width',12).attr('height',12).attr('rx',2).attr('fill',it.c).attr('opacity',.8);
-    legG.append('text').attr('x',ix+16).attr('y',legY+20).attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-muted)').text(it.t);
+    legG.append('text').attr('x',ix+16).attr('y',legY+20).attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(it.t);
   });
   
   // Stats bar
@@ -3288,7 +3299,7 @@ function renderExecutiveOverview(ctx){
     connG.append('circle').attr('cx',mx).attr('cy',my-15).attr('r',10)
       .attr('fill','var(--bg-card)').attr('stroke','var(--pcx-color)').attr('stroke-width',1);
     connG.append('text').attr('x',mx).attr('y',my-11).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--pcx-color)').text('PCX');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('fill','var(--pcx-color)').text('PCX');
   });
   
   // TGW connections (shared gateways connect to all VPCs that route through them)
@@ -3315,7 +3326,7 @@ function renderExecutiveOverview(ctx){
     connG.append('circle').attr('cx',hubX).attr('cy',hubY).attr('r',22)
       .attr('fill','var(--bg-card)').attr('stroke','var(--tgw-color)').attr('stroke-width',2);
     connG.append('text').attr('x',hubX).attr('y',hubY+3).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','700')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','700')
       .attr('fill','var(--tgw-color)').text('TGW');
     
     // Spokes to VPCs
@@ -3346,23 +3357,23 @@ function renderExecutiveOverview(ctx){
     
     // VPC name
     cG.append('text').attr('x',cx+12).attr('y',cy+20)
-      .attr('font-family','IBM Plex Mono').attr('font-size','11px').attr('font-weight','700')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(11px * var(--txt-scale,1))').attr('font-weight','700')
       .attr('fill','var(--text-primary)').text(gn(vs.vpc,vs.vpc.VpcId));
     
     // Region tag
     if(vs.region){
       cG.append('text').attr('x',cx+CARD_W-10).attr('y',cy+20).attr('text-anchor','end')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--text-muted)').text(vs.region);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(vs.region);
     }
     
     // CIDR
     cG.append('text').attr('x',cx+12).attr('y',cy+48)
-      .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-muted)')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
       .text(vs.vpc.CidrBlock||'N/A');
     
     // Subnet count
     cG.append('text').attr('x',cx+CARD_W-10).attr('y',cy+48).attr('text-anchor','end')
-      .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-secondary)')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-secondary)')
       .text(vs.subCount+' subnet'+(vs.subCount!==1?'s':''));
     
     // Resource bars
@@ -3387,14 +3398,14 @@ function renderExecutiveOverview(ctx){
       barG.append('rect').attr('x',cx).attr('y',by-1).attr('width',CARD_W).attr('height',15)
         .attr('fill','transparent');
       barG.append('text').attr('x',cx+12).attr('y',by+9)
-        .attr('font-family','IBM Plex Mono').attr('font-size','6.5px').attr('fill',rt.col).text(rt.label);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6.5px * var(--txt-scale,1))').attr('fill',rt.col).text(rt.label);
       barG.append('rect').attr('x',cx+52).attr('y',by+1).attr('width',barMaxW).attr('height',9)
         .attr('rx',2).attr('fill','rgba(255,255,255,.03)');
       const bw=Math.max(4,(rt.count/maxCount)*barMaxW);
       barG.append('rect').attr('x',cx+52).attr('y',by+1).attr('width',bw).attr('height',9)
         .attr('rx',2).attr('fill',rt.col).attr('fill-opacity',.3);
       barG.append('text').attr('x',cx+54+bw).attr('y',by+9)
-        .attr('font-family','IBM Plex Mono').attr('font-size','6.5px').attr('font-weight','600')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6.5px * var(--txt-scale,1))').attr('font-weight','600')
         .attr('fill',rt.col).text(rt.count);
       barG.on('click',function(event){event.stopPropagation();openResourceList(rt.rlType)});
       barG.on('mouseenter',function(){d3.select(this).selectAll('rect').filter(function(d,i){return i===2}).attr('fill-opacity',.6)})
@@ -3407,7 +3418,7 @@ function renderExecutiveOverview(ctx){
     if(vs.gwCount){
       const gwG2=cG.append('g').style('cursor','pointer');
       gwG2.append('text').attr('x',gwX).attr('y',gwY)
-        .attr('font-family','IBM Plex Mono').attr('font-size','6.5px').attr('fill','var(--text-muted)')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6.5px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
         .text(vs.gwCount+' gateway'+(vs.gwCount!==1?'s':''));
       gwG2.on('click',function(event){event.stopPropagation();openResourceList('Gateways')});
       gwX+=vs.gwCount.toString().length*6+50;
@@ -3415,7 +3426,7 @@ function renderExecutiveOverview(ctx){
     if(vs.vpceCount){
       const vpceG2=cG.append('g').style('cursor','pointer');
       vpceG2.append('text').attr('x',gwX).attr('y',gwY)
-        .attr('font-family','IBM Plex Mono').attr('font-size','6.5px').attr('fill','var(--text-muted)')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6.5px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
         .text(vs.vpceCount+' endpoint'+(vs.vpceCount!==1?'s':''));
       vpceG2.on('click',function(event){event.stopPropagation();openResourceList('Endpoints')});
     }
@@ -3426,7 +3437,7 @@ function renderExecutiveOverview(ctx){
       cG.append('rect').attr('x',cx+CARD_W-tw-8).attr('y',gwY-10).attr('width',tw).attr('height',14)
         .attr('rx',3).attr('fill','rgba(99,102,241,.15)').attr('stroke','rgba(99,102,241,.4)').attr('stroke-width',.5);
       cG.append('text').attr('x',cx+CARD_W-tw/2-8).attr('y',gwY+1).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','700')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','700')
         .attr('fill','#818cf8').text(vs.total+' total');
     }
     
@@ -3450,7 +3461,7 @@ function renderExecutiveOverview(ctx){
   // Global stats header with clickable chips
   const hdrG=g.append('g');
   hdrG.append('text').attr('x',startX).attr('y',40)
-    .attr('font-family','IBM Plex Mono').attr('font-size','14px').attr('font-weight','700')
+    .attr('font-family','IBM Plex Mono').style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700')
     .attr('fill','var(--text-primary)').text('Executive Overview');
   
   const hdrStats=[
@@ -3474,10 +3485,10 @@ function renderExecutiveOverview(ctx){
     chipG.append('rect').attr('x',hsx).attr('y',50).attr('width',chipW).attr('height',16)
       .attr('rx',3).attr('fill','rgba(255,255,255,.04)').attr('stroke',s.c).attr('stroke-width',.5);
     chipG.append('text').attr('x',hsx+4).attr('y',61)
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','700')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','700')
       .attr('fill',s.c).text(s.v);
     chipG.append('text').attr('x',hsx+4+String(s.v).length*6+2).attr('y',61)
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))')
       .attr('fill','var(--text-muted)').text(s.l);
     chipG.on('click',function(){openResourceList(s.t)});
     chipG.on('mouseenter',function(){d3.select(this).select('rect').attr('fill','rgba(255,255,255,.08)')})
@@ -3492,7 +3503,7 @@ function renderExecutiveOverview(ctx){
   if(s3bk.length||zones.length||cfDistributions.length||peerings.length||vpns.length||snapshots.length||wafAcls.length){
     const shG=g.append('g');
     shG.append('text').attr('x',startX).attr('y',sharedY)
-      .attr('font-family','IBM Plex Mono').attr('font-size','10px').attr('font-weight','700')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(10px * var(--txt-scale,1))').attr('font-weight','700')
       .attr('fill','var(--text-secondary)').text('Global Services');
     
     let sx=startX;
@@ -3503,10 +3514,10 @@ function renderExecutiveOverview(ctx){
       scG.append('rect').attr('x',sx).attr('y',sharedY+10).attr('width',w).attr('height',h)
         .attr('rx',4).attr('fill','rgba(30,41,59,.6)').attr('stroke',col).attr('stroke-width',.8);
       scG.append('text').attr('x',sx+w/2).attr('y',sharedY+26).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','14px').attr('font-weight','700')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700')
         .attr('fill',col).text(count);
       scG.append('text').attr('x',sx+w/2).attr('y',sharedY+40).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--text-muted)').text(label);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(label);
       if(rlType)scG.on('click',function(){openResourceList(rlType)});
       scG.on('mouseenter',function(){d3.select(this).select('rect').attr('fill','rgba(30,41,59,.95)')})
         .on('mouseleave',function(){d3.select(this).select('rect').attr('fill','rgba(30,41,59,.6)')});
@@ -3737,7 +3748,7 @@ function _renderMapInner(){
   // GRID LAYOUT (original)
 
   // layout constants
-  const SH_BASE=52,SG=12,VP=30,VH=40,GR=20,MSW=240,CW=5.8;
+  const SH_BASE=52,SG=12,VP=30,VH=40,GR=20,MSW=240,CW=6.5;
   const RES_ICON=26,RES_CHILD_H=11,RES_GAP=4,RES_COLS=2,RES_TOP=36,RES_BOT=12;
   
   // Tree context for buildResTree
@@ -3769,13 +3780,13 @@ function _renderMapInner(){
       const nameW=gn(s,s.SubnetId).length*CW+100;
       if(_detailLevel>0){
         const resCols=Math.min((subTrees[s.SubnetId]||[]).length, RES_COLS);
-        const resW=resCols*(RES_ICON+RES_GAP+70)+40;
+        const resW=resCols*(RES_ICON+RES_GAP+80)+50;
         mx=Math.max(mx,nameW,resW);
       } else {
         mx=Math.max(mx,nameW);
       }
     });
-    vSW[v.VpcId]=Math.min(mx,500);
+    vSW[v.VpcId]=Math.min(mx,600);
   });
 
   const getVpcRegion=(v)=>{
@@ -4410,7 +4421,7 @@ function _renderMapInner(){
     pg.append('text')
       .attr('x', midX).attr('y', y + 4)
       .attr('text-anchor', 'middle').attr('font-family', 'IBM Plex Mono')
-      .attr('font-size', '9px').attr('fill', '#fb923c').text(pn);
+      .style('font-size','calc(9px * var(--txt-scale,1))').attr('fill', '#fb923c').text(pn);
   });
 
   // VPN marker
@@ -4418,7 +4429,7 @@ function _renderMapInner(){
     if(vpn.State!=='available')return;
     const vgwId=vpn.VpnGatewayId;if(!vgwId||!gwP.has(vgwId))return;
     const pos=gwP.get(vgwId);
-    ndL.append('text').attr('x',pos.x).attr('y',pos.y-GR-18).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','#f97316').text('VPN: '+gn(vpn,'VPN'));
+    ndL.append('text').attr('x',pos.x).attr('y',pos.y-GR-18).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','#f97316').text('VPN: '+gn(vpn,'VPN'));
   });
 
   // route trunks
@@ -4624,7 +4635,7 @@ function _renderMapInner(){
       const lt=uniqueConns[0].dst+' > '+gi.type,lw=lt.length*5.4+16;
       const lg=labelL.append('g').attr('class','route-label-g');
       lg.append('rect').attr('x',lx-lw/2).attr('y',ly-8).attr('width',lw).attr('height',16).attr('rx',3).attr('fill','rgba(10,14,23,.92)').attr('stroke',colH).attr('stroke-width',.5);
-      lg.append('text').attr('x',lx).attr('y',ly+3).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('font-weight','500').attr('fill',colH).text(lt);
+      lg.append('text').attr('x',lx).attr('y',ly+3).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','500').attr('fill',colH).text(lt);
       allLb.push({gid,vid,shared:sh,lx,lw,g:lg});
     }
   });
@@ -4748,12 +4759,14 @@ function _renderMapInner(){
   vL.forEach(vl=>{
     const vG=ndL.append('g').attr('class','vpc-group').attr('data-vpc-id',vl.vpc.VpcId);
     vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',vl.h).attr('fill','rgba(59,130,246,.03)').attr('stroke','var(--vpc-stroke)').attr('stroke-width',1.5);
-    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+26).text(gn(vl.vpc,vl.vpc.VpcId));
+    const _vpcName=gn(vl.vpc,vl.vpc.VpcId);
+    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+26)
+      .attr('textLength',Math.min(_vpcName.length*8,vl.w*0.55)).attr('lengthAdjust','spacing').text(_vpcName);
     const regionTag=vpcRegionMap[vl.vpc.VpcId]||'';
     vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:''));
     // show indicator for VPCs with no subnets
     if(vl.subs.length===0){
-      vG.append('text').attr('x',vl.x+vl.w/2).attr('y',vl.y+vl.h/2+10).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').attr('font-size','10px').attr('fill','var(--text-muted)').text('No subnets');
+      vG.append('text').attr('x',vl.x+vl.w/2).attr('y',vl.y+vl.h/2+10).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('No subnets');
     }
   });
 
@@ -4767,7 +4780,7 @@ function _renderMapInner(){
     const tG2=sG.append('g').attr('clip-path',`url(#${cid})`);
     tG2.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+18).text(gn(sl.sub,sl.sub.SubnetId));
     tG2.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+30).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?'  '+sl.sub.AvailabilityZone.slice(-2):''));
-    sG.append('text').attr('x',sl.x+sl.w-8).attr('y',sl.y+14).attr('text-anchor','end').attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUBLIC':'PRIVATE');
+    sG.append('text').attr('x',sl.x+sl.w-8).attr('y',sl.y+14).attr('text-anchor','end').attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUBLIC':'PRIVATE');
 
     // resource icons inside subnet (tree-based with nesting)
     const tree=subTrees[sl.sub.SubnetId]||[];
@@ -4778,7 +4791,7 @@ function _renderMapInner(){
       tree.forEach(r=>{counts[r.type]=(counts[r.type]||0)+1});
       const summary=Object.entries(counts).map(([t,c])=>c+' '+t).join(', ');
       sG.append('text').attr('x',sl.x+8).attr('y',sl.y+sl.h-6)
-        .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--text-muted)').attr('opacity',.5).text(summary);
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('fill','var(--text-muted)').attr('opacity',.5).text(summary);
     } else if(tree.length>0){
       const iconW=Math.max(70,Math.floor((sl.w-16)/RES_COLS)-RES_GAP);
       const maxCh=Math.max(0,...tree.map(r=>(r.children||[]).length));
@@ -4808,7 +4821,7 @@ function _renderMapInner(){
         rG.append('rect').attr('x',rx).attr('y',ry).attr('width',24).attr('height',iconH)
           .attr('rx',3).attr('fill',res.col).attr('fill-opacity',.3);
         rG.append('text').attr('x',rx+12).attr('y',ry+13).attr('text-anchor','middle')
-          .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('font-weight','700')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('font-weight','700')
           .attr('fill',res.col).text(res.type);
         // clip for text overflow
         const nameClip='rc-'+sl.sub.SubnetId.replace(/[^a-zA-Z0-9]/g,'')+'-'+ri;
@@ -4816,12 +4829,12 @@ function _renderMapInner(){
           .attr('x',rx+26).attr('y',ry).attr('width',iconW-28).attr('height',iconH);
         // name
         rG.append('text').attr('x',rx+28).attr('y',ry+10).attr('clip-path',`url(#${nameClip})`)
-          .attr('font-family','IBM Plex Mono').attr('font-size','6.5px').attr('font-weight','600')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(6.5px * var(--txt-scale,1))').attr('font-weight','600')
           .attr('fill','var(--text-primary)').text(res.name);
         // IP
         if(res.ip){
           rG.append('text').attr('x',rx+28).attr('y',ry+20).attr('clip-path',`url(#${nameClip})`)
-            .attr('font-family','IBM Plex Mono').attr('font-size','5.5px')
+            .attr('font-family','IBM Plex Mono').style('font-size','calc(5.5px * var(--txt-scale,1))')
             .attr('fill','var(--text-muted)').text(res.ip);
         }
         // state dot
@@ -4837,10 +4850,10 @@ function _renderMapInner(){
             rG.append('rect').attr('x',cx2).attr('y',cy2).attr('width',cw).attr('height',ch2)
               .attr('rx',2).attr('fill',ch.bg).attr('stroke',ch.col).attr('stroke-width',.4);
             rG.append('text').attr('x',cx2+2).attr('y',cy2+ch2/2+2)
-              .attr('font-family','IBM Plex Mono').attr('font-size','4.5px').attr('font-weight','600')
+              .attr('font-family','IBM Plex Mono').style('font-size','calc(4.5px * var(--txt-scale,1))').attr('font-weight','600')
               .attr('fill',ch.col).text(ch.type);
             rG.append('text').attr('x',cx2+19).attr('y',cy2+ch2/2+2).attr('clip-path',`url(#${nameClip})`)
-              .attr('font-family','IBM Plex Mono').attr('font-size','4.5px')
+              .attr('font-family','IBM Plex Mono').style('font-size','calc(4.5px * var(--txt-scale,1))')
               .attr('fill','rgba(255,255,255,.5)').text(ch.name+(ch.detail?' '+ch.detail:''));
           });
         }
@@ -4850,7 +4863,7 @@ function _renderMapInner(){
     } else {
       // empty subnet indicator
       sG.append('text').attr('x',sl.x+sl.w/2).attr('y',sl.y+sl.h/2+4).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--text-muted)').attr('opacity',.4).text('No resources');
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-muted)').attr('opacity',.4).text('No resources');
     }
 
     // click to open detail panel, hover for highlight only
@@ -4916,12 +4929,12 @@ function _renderMapInner(){
       .attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.25);
     // Text inside circle
     iG.append('text').attr('x',iX).attr('y',iY+4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','13px').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(13px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
     // Text below circle
     iG.append('text').attr('x',iX).attr('y',iY+50).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-muted)').text('Internet');
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('Internet');
     iG.append('text').attr('x',iX).attr('y',iY+62).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--igw-color)').text(iGwList.length+' Gateway'+(iGwList.length>1?'s':''));
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--igw-color)').text(iGwList.length+' Gateway'+(iGwList.length>1?'s':''));
     
     // Draw NET connections: L-shaped paths from bus-bar to each IGW.
     // Each IGW gets its own L-bend: horizontal from NET node at bus-bar Y,
@@ -4980,7 +4993,7 @@ function _renderMapInner(){
     eG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)
       .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',1);
     eG.append('text').attr('x',gx).attr('y',ny+12).attr('text-anchor','middle').attr('font-family','IBM Plex Mono')
-      .attr('font-size','8px').attr('font-weight','600').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
+      .style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
     // tooltip on hover
     eG.on('mouseenter',function(){
       let h='<div class="tt-title">VPC Endpoints ('+vpcVpces.length+')</div>';
@@ -5029,7 +5042,7 @@ function _renderMapInner(){
       dG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)
         .attr('fill','rgba(14,165,233,.15)').attr('stroke','#0ea5e9').attr('stroke-width',1);
       dG.append('text').attr('x',gx).attr('y',ny+12).attr('text-anchor','middle').attr('font-family','IBM Plex Mono')
-        .attr('font-size','8px').attr('font-weight','600').attr('fill','#0ea5e9').text(pz.length+' DNS');
+        .style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','#0ea5e9').text(pz.length+' DNS');
       dG.on('mouseenter',function(){
         let h='<div class="tt-title">Private Hosted Zones ('+pz.length+')</div>';
         h+='<div class="tt-sub">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
@@ -5093,9 +5106,9 @@ function _renderMapInner(){
 
     // Section title
     dnsG.append('text').attr('x',80).attr('y',dnsY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#0ea5e9').text('Route 53 Hosted Zones');
+      .style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','#0ea5e9').text('Route 53 Hosted Zones');
     dnsG.append('text').attr('x',80).attr('y',dnsY+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(pubZones.length+' public, '+privZones.length+' private');
+      .style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(pubZones.length+' public, '+privZones.length+' private');
 
     // Records expand/collapse toggle button
     const togX=60+dnsBoxW-80;
@@ -5104,7 +5117,7 @@ function _renderMapInner(){
     togG.append('rect').attr('x',togX).attr('y',togY).attr('width',70).attr('height',20).attr('rx',4)
       .attr('fill','rgba(14,165,233,.15)').attr('stroke','#0ea5e9').attr('stroke-width',0.8);
     togG.append('text').attr('x',togX+35).attr('y',togY+14).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('font-weight','600')
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600')
       .attr('fill','#0ea5e9').text(dnsRecExp?'\u25B2 Collapse':'\u25BC Expand');
     togG.on('click',function(event){
       event.stopPropagation();
@@ -5132,19 +5145,19 @@ function _renderMapInner(){
       zG.append('circle').attr('cx',zx+12).attr('cy',zy+13).attr('r',6)
         .attr('fill',isPub?'#10b981':'#0ea5e9');
       zG.append('text').attr('x',zx+12).attr('y',zy+16.5).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','700')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','700')
         .attr('fill','#fff').text(isPub?'P':'R');
 
       // Zone name (full in expanded, truncated in compact)
       const dispName=dnsRecExp?z.Name:(z.Name.length>35?z.Name.substring(0,33)+'..':z.Name);
       zG.append('text').attr('x',zx+24).attr('y',zy+15).attr('font-family','IBM Plex Mono')
-        .attr('font-size','10px').attr('font-weight','600').attr('fill',isPub?'#10b981':'#0ea5e9')
+        .style('font-size','calc(10px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',isPub?'#10b981':'#0ea5e9')
         .text(dispName);
 
       // Compact: record count only
       if(!dnsRecExp){
         zG.append('text').attr('x',zx+zw).attr('y',zy+15).attr('text-anchor','end')
-          .attr('font-family','IBM Plex Mono').attr('font-size','9px').attr('fill','var(--text-muted)')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(9px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
           .text(z.ResourceRecordSetCount+' rec');
       }
 
@@ -5153,13 +5166,13 @@ function _renderMapInner(){
         let my=zy+18;
         // Metadata: Zone ID
         zG.append('text').attr('x',zx+24).attr('y',my+14).attr('font-family','IBM Plex Mono')
-          .attr('font-size','8px').attr('fill','var(--text-muted)')
+          .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
           .text('Zone ID: '+zid+'  |  '+z.ResourceRecordSetCount+' records  |  '+(isPub?'Public':'Private'));
         my+=14;
         // Metadata: Associated VPCs (if private)
         if(lay.assocVpcs){
           zG.append('text').attr('x',zx+24).attr('y',my+14).attr('font-family','IBM Plex Mono')
-            .attr('font-size','8px').attr('fill','var(--text-muted)')
+            .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
             .text('VPCs: '+lay.assocVpcs);
           my+=14;
         }
@@ -5176,20 +5189,20 @@ function _renderMapInner(){
             const rVal=rec.AliasTarget?'ALIAS \u2192 '+(rec.AliasTarget.DNSName||'').replace(/\.$/,''):
               (rec.ResourceRecords||[]).map(rr=>rr.Value).join(', ');
             zG.append('text').attr('x',zx+10).attr('y',my+10).attr('font-family','IBM Plex Mono')
-              .attr('font-size','7px').attr('font-weight','600').attr('fill',isPub?'#059669':'#0284c7')
+              .style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',isPub?'#059669':'#0284c7')
               .text(rType);
             zG.append('text').attr('x',zx+50).attr('y',my+10).attr('font-family','IBM Plex Mono')
-              .attr('font-size','8px').attr('fill','var(--text-primary)')
+              .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-primary)')
               .text(rName.length>50?rName.substring(0,48)+'..':rName);
             zG.append('text').attr('x',zx+350).attr('y',my+10).attr('font-family','IBM Plex Mono')
-              .attr('font-size','7px').attr('fill','var(--text-muted)')
+              .style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--text-muted)')
               .text(rVal.length>80?rVal.substring(0,78)+'..':rVal);
             my+=recRowH;
           });
         }else{
           my+=6;
           zG.append('text').attr('x',zx+24).attr('y',my+10).attr('font-family','IBM Plex Mono')
-            .attr('font-size','8px').attr('font-style','italic').attr('fill','var(--text-muted)')
+            .style('font-size','calc(8px * var(--txt-scale,1))').attr('font-style','italic').attr('fill','var(--text-muted)')
             .text('Click zone for details \u2022 Load record sets via "Record Sets" input');
         }
       }
@@ -5235,9 +5248,9 @@ function _renderMapInner(){
     s3G.append('rect').attr('x',60).attr('y',s3Y).attr('width',s3BoxW).attr('height',s3BoxH).attr('rx',8)
       .attr('fill','rgba(234,88,12,.04)').attr('stroke','#ea580c').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     s3G.append('text').attr('x',80).attr('y',s3Y+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#ea580c').text('S3 Buckets');
+      .style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','#ea580c').text('S3 Buckets');
     s3G.append('text').attr('x',80).attr('y',s3Y+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(s3bk.length+' buckets');
+      .style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(s3bk.length+' buckets');
     
     s3bk.forEach((bk,bi)=>{
       const col=bi%s3Cols;
@@ -5252,7 +5265,7 @@ function _renderMapInner(){
       const maxChars=Math.floor((s3ColW-20)/6);
       const dispName=bk.Name.length>maxChars?bk.Name.substring(0,maxChars-2)+'..':bk.Name;
       bG.append('text').attr('x',bx+6).attr('y',by+16).attr('font-family','IBM Plex Mono')
-        .attr('font-size','10px').attr('font-weight','500').attr('fill','#ea580c').text(dispName);
+        .style('font-size','calc(10px * var(--txt-scale,1))').attr('font-weight','500').attr('fill','#ea580c').text(dispName);
       
       bG.on('mouseenter',function(){
         let h='<div class="tt-title">S3 Bucket</div>';
@@ -5281,9 +5294,9 @@ function _renderMapInner(){
     cfG.append('rect').attr('x',60).attr('y',cfY).attr('width',cfBoxW).attr('height',cfBoxH).attr('rx',8)
       .attr('fill','rgba(139,92,246,.06)').attr('stroke','#8b5cf6').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     cfG.append('text').attr('x',80).attr('y',cfY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#8b5cf6').text('CloudFront Distributions');
+      .style('font-size','calc(14px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','#8b5cf6').text('CloudFront Distributions');
     cfG.append('text').attr('x',80).attr('y',cfY+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(cfDistributions.length+' distributions');
+      .style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(cfDistributions.length+' distributions');
 
     cfDistributions.forEach((d,di)=>{
       const col=di%cfCols;
@@ -5296,10 +5309,10 @@ function _renderMapInner(){
       cG.append('rect').attr('x',cx).attr('y',cy).attr('width',cfColW-10).attr('height',cfRowH).attr('rx',3)
         .attr('fill','rgba(139,92,246,.12)').attr('stroke','#8b5cf6').attr('stroke-width',0.8);
       cG.append('text').attr('x',cx+6).attr('y',cy+12).attr('font-family','IBM Plex Mono')
-        .attr('font-size','9px').attr('font-weight','600').attr('fill','#8b5cf6').text(d.DomainName||d.Id);
+        .style('font-size','calc(9px * var(--txt-scale,1))').attr('font-weight','600').attr('fill','#8b5cf6').text(d.DomainName||d.Id);
       if(aliases.length){
         cG.append('text').attr('x',cx+6).attr('y',cy+23).attr('font-family','IBM Plex Mono')
-          .attr('font-size','8px').attr('fill','var(--text-muted)').text(aliases.join(', '));
+          .style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text(aliases.join(', '));
       }
 
       cG.on('mouseenter',function(){
