@@ -1,6 +1,6 @@
 {
   "name": "aws-network-mapper",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AWS Network Topology Mapper - Desktop Application",
   "author": "schylerchase",
   "main": "main.js",
@@ -23,14 +23,23 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "identity": null
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Development"
     },
     "publish": {
@@ -40,10 +49,10 @@
     }
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron": "^35.7.5",
+    "electron-builder": "^26.7.0"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7"
+    "electron-updater": "^6.7.3"
   }
 }
