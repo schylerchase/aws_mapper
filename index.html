@@ -317,7 +317,7 @@
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v27</span></h1>
+    <h1>AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v28</span></h1>
     <p>Paste CLI JSON exports or upload folder</p>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -348,7 +348,7 @@
   </div>
   <div class="loading-overlay" id="loadingOverlay"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted)">Rendering map...</div></div>
   <div class="copy-toast" id="copyToast">Copied!</div>
-  <div class="empty-state" id="emptyState"><div class="icon">&#9700;</div><h2>No data loaded</h2><p>Paste AWS CLI JSON exports and click Render Map</p></div>
+  <div class="empty-state" id="emptyState"><div class="icon">&#9700;</div><h2 id="emptyTitle">No data loaded</h2><p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p><button class="design-btn" id="emptyDesignBtn" style="display:none;margin-top:12px;padding:8px 20px;font-size:11px">Create VPC from Scratch</button></div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
   <div class="legend" id="legend">
@@ -503,8 +503,41 @@ const inputSections=[
   ]},
 ];
 
+// Account detection from AWS resource data
+function detectAccountId(resource){
+  if(!resource)return null;
+  // 1. Check OwnerId field (VPCs, SGs, Snapshots)
+  if(resource.OwnerId&&/^\d{12}$/.test(resource.OwnerId))return resource.OwnerId;
+  // 2. Parse ARN
+  const arnFields=['Arn','FunctionArn','LoadBalancerArn','TargetGroupArn','DBInstanceArn','ServiceArn','CacheClusterArn','HostedZoneId'];
+  for(const f of arnFields){
+    const arn=resource[f];
+    if(arn&&typeof arn==='string'){const m=arn.match(/arn:aws[^:]*:[^:]+:[^:]*:(\d{12}):/);if(m)return m[1]}
+  }
+  // 3. Check nested structures
+  if(resource.RequesterVpcInfo?.OwnerId)return resource.RequesterVpcInfo.OwnerId;
+  return null;
+}
+
+// Account colors for multi-account visual differentiation
+const _accountColors=['#60a5fa','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16'];
+let _accountColorMap={};
+function getAccountColor(accountId){
+  if(!accountId||accountId==='default')return null;
+  if(!_accountColorMap[accountId]){
+    const idx=Object.keys(_accountColorMap).length%_accountColors.length;
+    _accountColorMap[accountId]=_accountColors[idx];
+  }
+  return _accountColorMap[accountId];
+}
+
 // build sidebar
 const sb=document.getElementById('sidebarBody');
+// Account label input at top of sidebar
+const acctDiv=document.createElement('div');
+acctDiv.style.cssText='padding:4px 8px;margin-bottom:4px';
+acctDiv.innerHTML='<div style="display:flex;align-items:center;gap:6px"><label style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0">Account</label><input id="accountLabel" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:IBM Plex Mono,monospace;font-size:9px;padding:3px 6px" placeholder="Account ID or alias (optional)"></div>';
+sb.appendChild(acctDiv);
 inputSections.forEach(sec=>{
   const h=document.createElement('div');h.className='sec-hdr'+(sec.open?'':' collapsed');
   h.innerHTML=`<span>${sec.t}</span><span class="arr">&#9660;</span>`;
@@ -1130,6 +1163,7 @@ let _designMode=false;
 let _designChanges=[];
 let _designBaseline=null;
 let _designDebounce=null;
+let _lastDesignValidation=null;
 function _snapshotTextareas(){const snap={};document.querySelectorAll('.ji').forEach(el=>{snap[el.id]=el.value});return snap}
 function _restoreTextareas(snap){Object.entries(snap).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val})}
 function enterDesignMode(){
@@ -1155,6 +1189,13 @@ function exitDesignMode(){
 function addDesignChange(change){
   change.id='chg_'+Date.now()+'_'+Math.random().toString(36).substr(2,4);
   change.timestamp=new Date().toISOString();
+  // Validate against current state
+  const vResult=validateDesignChange(change,_rlCtx);
+  change._validation=vResult;
+  if(!vResult.valid){
+    // Show errors but still allow user to see them in change log (marked as invalid)
+    change._invalid=true;
+  }
   _designChanges.push(change);
   renderChangeLog();
   // Debounced live mutation (300ms)
@@ -1171,13 +1212,19 @@ function undoLastChange(){
 function applyDesignChanges(){
   if(!_designBaseline)return;
   _restoreTextareas(_designBaseline);
-  // Apply each change sequentially
+  // Apply each change sequentially (skip invalid ones)
   _designChanges.forEach(ch=>{
+    if(ch._invalid)return;
     const apply=_designApplyFns[ch.action];
     if(apply)apply(ch);
   });
   // Re-render
   renderMap();
+  // Post-render: run full-state validation
+  if(_rlCtx){
+    const stateResult=validateDesignState(_designChanges,_rlCtx);
+    _lastDesignValidation=stateResult;
+  }
   // Post-render: add design overlay classes (delayed for RAF)
   setTimeout(()=>{
     _designChanges.forEach(ch=>{
@@ -1199,6 +1246,29 @@ function applyDesignChanges(){
 
 // Design change apply functions: mutate textarea JSON
 const _designApplyFns={
+  add_vpc(ch){
+    const raw=safeParse(gv('in_vpcs'));const vpcs=raw?ext(raw,['Vpcs']):[];
+    const id=ch.params.VpcId||('vpc-design-'+Date.now());
+    const vpc={VpcId:id,CidrBlock:ch.params.CidrBlock,State:'available',IsDefault:false,OwnerId:ch.params.AccountId||'design',Tags:[{Key:'Name',Value:ch.params.Name||'New VPC'}]};
+    vpcs.push(vpc);
+    document.getElementById('in_vpcs').value=JSON.stringify({Vpcs:vpcs});
+    ch._addedIds=[id];
+    // Create default route table with local route
+    const rtRaw=safeParse(gv('in_rts'));const rts=rtRaw?ext(rtRaw,['RouteTables']):[];
+    const rtId='rtb-design-'+Date.now();
+    rts.push({RouteTableId:rtId,VpcId:id,Associations:[{Main:true,RouteTableId:rtId}],Routes:[{DestinationCidrBlock:ch.params.CidrBlock,GatewayId:'local',State:'active',Origin:'CreateRouteTable'}],Tags:[{Key:'Name',Value:(ch.params.Name||'vpc')+'-main-rt'}]});
+    document.getElementById('in_rts').value=JSON.stringify({RouteTables:rts});
+    // Create default NACL (allow all)
+    const naclRaw=safeParse(gv('in_nacls'));const nacls=naclRaw?ext(naclRaw,['NetworkAcls']):[];
+    const naclId='acl-design-'+Date.now();
+    nacls.push({NetworkAclId:naclId,VpcId:id,IsDefault:true,Entries:[{RuleNumber:100,Protocol:'-1',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0'},{RuleNumber:100,Protocol:'-1',RuleAction:'allow',Egress:true,CidrBlock:'0.0.0.0/0'},{RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:false,CidrBlock:'0.0.0.0/0'},{RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:true,CidrBlock:'0.0.0.0/0'}],Tags:[{Key:'Name',Value:(ch.params.Name||'vpc')+'-default-nacl'}]});
+    document.getElementById('in_nacls').value=JSON.stringify({NetworkAcls:nacls});
+    // Create default SG
+    const sgRaw=safeParse(gv('in_sgs'));const sgs=sgRaw?ext(sgRaw,['SecurityGroups']):[];
+    const sgId='sg-design-'+Date.now();
+    sgs.push({GroupId:sgId,GroupName:'default',VpcId:id,Description:'default VPC security group',IpPermissions:[{IpProtocol:'-1',IpRanges:[],UserIdGroupPairs:[{GroupId:sgId}]}],IpPermissionsEgress:[{IpProtocol:'-1',IpRanges:[{CidrIp:'0.0.0.0/0'}]}],Tags:[{Key:'Name',Value:'default'}]});
+    document.getElementById('in_sgs').value=JSON.stringify({SecurityGroups:sgs});
+  },
   add_subnet(ch){
     const raw=safeParse(gv('in_subnets'));
     const subs=raw?ext(raw,['Subnets']):[];
@@ -1348,13 +1418,250 @@ const _designApplyFns={
   }
 };
 
-// Detect AZs from loaded subnet data (fallback to us-east-1)
+// Region → AZ mapping (common regions)
+const _regionAZs={
+  'us-east-1':['us-east-1a','us-east-1b','us-east-1c','us-east-1d','us-east-1e','us-east-1f'],
+  'us-east-2':['us-east-2a','us-east-2b','us-east-2c'],
+  'us-west-1':['us-west-1a','us-west-1b'],
+  'us-west-2':['us-west-2a','us-west-2b','us-west-2c','us-west-2d'],
+  'eu-west-1':['eu-west-1a','eu-west-1b','eu-west-1c'],
+  'eu-west-2':['eu-west-2a','eu-west-2b','eu-west-2c'],
+  'eu-central-1':['eu-central-1a','eu-central-1b','eu-central-1c'],
+  'ap-southeast-1':['ap-southeast-1a','ap-southeast-1b','ap-southeast-1c'],
+  'ap-southeast-2':['ap-southeast-2a','ap-southeast-2b','ap-southeast-2c'],
+  'ap-northeast-1':['ap-northeast-1a','ap-northeast-1b','ap-northeast-1c','ap-northeast-1d'],
+  'ca-central-1':['ca-central-1a','ca-central-1b','ca-central-1d'],
+  'sa-east-1':['sa-east-1a','sa-east-1b','sa-east-1c'],
+};
+let _designRegion='us-east-1';
+
+// AWS Constraints Registry (sourced from official AWS docs)
+const _awsConstraints={
+  vpc:{
+    cidrPrefixMin:16,cidrPrefixMax:28,maxCidrsPerVpc:5,maxPerRegion:5,
+    reservedCidrs:['172.17.0.0/16'],
+    rfc1918:['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16']
+  },
+  subnet:{cidrPrefixMin:16,cidrPrefixMax:28,reservedIps:5,maxPerVpc:200},
+  igw:{maxPerVpc:1},
+  nat:{maxPerAz:5,requiresPublicSubnet:true},
+  routeTable:{maxPerVpc:200,maxRoutesPerTable:500,reservedDestinations:['169.254.168.0/22'],localRouteImmutable:true},
+  securityGroup:{maxPerVpc:500,maxInboundRules:60,maxOutboundRules:60,maxPerEni:5,hardLimitRulesPerEni:1000},
+  nacl:{maxPerVpc:200,maxRulesPerDirection:20,ruleNumberMin:1,ruleNumberMax:32766},
+  peering:{maxActivePerVpc:50,noOverlappingCidrs:true,onePeerPerVpcPair:true}
+};
+
+// Validation Engine: validate a design change against AWS constraints
+function validateDesignChange(change,ctx){
+  const errors=[],warnings=[];
+  const vpcs=ctx?ctx.vpcs||[]:ext(safeParse(gv('in_vpcs')),['Vpcs']);
+  const subnets=ctx?ctx.subnets||[]:ext(safeParse(gv('in_subnets')),['Subnets']);
+  const igws=ctx?ctx.igws||[]:ext(safeParse(gv('in_igws')),['InternetGateways']);
+  const nats=ctx?ctx.nats||[]:ext(safeParse(gv('in_nats')),['NatGateways']);
+  const sgs=ctx?ctx.sgs||[]:ext(safeParse(gv('in_sgs')),['SecurityGroups']);
+  const rts=ctx?ctx.rts||[]:ext(safeParse(gv('in_rts')),['RouteTables']);
+  const pubSubs=ctx?ctx.pubSubs||new Set():new Set();
+
+  if(change.action==='add_vpc'){
+    const p=change.params;
+    const cidr=parseCIDR(p.CidrBlock);
+    if(!cidr){errors.push('Invalid CIDR: '+p.CidrBlock);return{valid:false,errors,warnings}}
+    const prefix=parseInt(p.CidrBlock.split('/')[1],10);
+    if(prefix<_awsConstraints.vpc.cidrPrefixMin||prefix>_awsConstraints.vpc.cidrPrefixMax)
+      errors.push('VPC CIDR must be /16 to /28, got /'+prefix);
+    const isRfc1918=_awsConstraints.vpc.rfc1918.some(r=>cidrContains(r,p.CidrBlock));
+    if(!isRfc1918)warnings.push('CIDR '+p.CidrBlock+' is not RFC 1918 — private subnets may have issues');
+    if(_awsConstraints.vpc.reservedCidrs.some(r=>cidrOverlap(p.CidrBlock,r)))
+      warnings.push('172.17.0.0/16 conflicts with Docker/SageMaker internal ranges');
+    vpcs.forEach(v=>{if(cidrOverlap(p.CidrBlock,v.CidrBlock))errors.push('Overlaps existing VPC '+gn(v,v.VpcId)+' ('+v.CidrBlock+')')});
+    if(vpcs.length>=_awsConstraints.vpc.maxPerRegion)warnings.push('Exceeds default quota of '+_awsConstraints.vpc.maxPerRegion+' VPCs per region (adjustable)');
+  }
+
+  if(change.action==='add_subnet'){
+    const p=change.params;
+    const cidr=parseCIDR(p.CidrBlock);
+    if(!cidr){errors.push('Invalid CIDR: '+p.CidrBlock);return{valid:false,errors,warnings}}
+    const prefix=parseInt(p.CidrBlock.split('/')[1],10);
+    if(prefix<_awsConstraints.subnet.cidrPrefixMin||prefix>_awsConstraints.subnet.cidrPrefixMax)
+      errors.push('Subnet CIDR must be /16 to /28, got /'+prefix);
+    const vpc=vpcs.find(v=>v.VpcId===p.VpcId);
+    if(!vpc){errors.push('VPC '+p.VpcId+' not found');return{valid:false,errors,warnings}}
+    if(!cidrContains(vpc.CidrBlock,p.CidrBlock))errors.push('Subnet CIDR '+p.CidrBlock+' is not within VPC CIDR '+vpc.CidrBlock);
+    const vpcSubs=subnets.filter(s=>s.VpcId===p.VpcId);
+    vpcSubs.forEach(s=>{if(cidrOverlap(p.CidrBlock,s.CidrBlock))errors.push('Overlaps subnet '+gn(s,s.SubnetId)+' ('+s.CidrBlock+')')});
+    if(vpcSubs.length>=_awsConstraints.subnet.maxPerVpc)warnings.push('Exceeds default quota of '+_awsConstraints.subnet.maxPerVpc+' subnets per VPC');
+    const usable=Math.pow(2,32-prefix)-_awsConstraints.subnet.reservedIps;
+    warnings.push(usable+' usable IPs ('+_awsConstraints.subnet.reservedIps+' reserved by AWS)');
+    // HA check: is there a subnet in another AZ for this VPC?
+    const otherAZSubs=vpcSubs.filter(s=>s.AvailabilityZone&&s.AvailabilityZone!==p.AZ);
+    if(vpcSubs.length>0&&otherAZSubs.length===0)warnings.push('All subnets in same AZ — consider multi-AZ for high availability');
+  }
+
+  if(change.action==='split_subnet'){
+    const prefix=parseInt((change.target.CidrBlock||'').split('/')[1],10);
+    if(prefix>=_awsConstraints.subnet.cidrPrefixMax)errors.push('Cannot split /'+prefix+' subnet (minimum is /'+_awsConstraints.subnet.cidrPrefixMax+')');
+    else{
+      const newPrefix=prefix+1;
+      const usable=Math.pow(2,32-newPrefix)-_awsConstraints.subnet.reservedIps;
+      warnings.push('Each half: /'+newPrefix+' = '+usable+' usable IPs');
+      if(usable<16)warnings.push('Very small subnets — limited IP capacity');
+    }
+    const insts=ctx?(ctx.instBySub||{})[change.target.SubnetId]||[]:[];
+    if(insts.length)warnings.push(insts.length+' instance(s) will require IP-based migration');
+  }
+
+  if(change.action==='add_gateway'){
+    const p=change.params;
+    if(p.GatewayType==='IGW'){
+      const vpcIgws=igws.filter(g=>(g.Attachments||[]).some(a=>a.VpcId===p.VpcId));
+      if(vpcIgws.length>=_awsConstraints.igw.maxPerVpc)
+        errors.push('VPC already has an Internet Gateway (hard limit: 1 per VPC)');
+    }
+    if(p.GatewayType==='NAT'){
+      if(p.SubnetId&&!pubSubs.has(p.SubnetId))
+        errors.push('NAT Gateway must be placed in a public subnet (one with 0.0.0.0/0 → IGW route)');
+      const subnetAZ=(subnets.find(s=>s.SubnetId===p.SubnetId)||{}).AvailabilityZone;
+      if(subnetAZ){
+        const azNats=nats.filter(n=>n.State!=='deleted'&&(subnets.find(s=>s.SubnetId===n.SubnetId)||{}).AvailabilityZone===subnetAZ);
+        if(azNats.length>=_awsConstraints.nat.maxPerAz)errors.push('Exceeds limit of '+_awsConstraints.nat.maxPerAz+' NAT Gateways in '+subnetAZ);
+        else if(azNats.length>0)warnings.push(subnetAZ+' already has '+azNats.length+' NAT GW(s) — AWS recommends 1 per AZ');
+      }
+    }
+  }
+
+  if(change.action==='add_route'){
+    const p=change.params;const t=change.target;
+    const dest=p.DestinationCidrBlock;
+    if(!parseCIDR(dest)&&dest!=='0.0.0.0/0')errors.push('Invalid destination CIDR: '+dest);
+    if(_awsConstraints.routeTable.reservedDestinations.some(r=>cidrContains(r,dest)||cidrContains(dest,r)))
+      errors.push('Cannot add routes to 169.254.168.0/22 (reserved for AWS services)');
+    const rt=rts.find(r=>r.RouteTableId===t.RouteTableId);
+    if(rt){
+      if((rt.Routes||[]).some(r=>r.DestinationCidrBlock===dest))
+        errors.push('Route table already has a route for '+dest);
+      if((rt.Routes||[]).length>=_awsConstraints.routeTable.maxRoutesPerTable)
+        warnings.push('Exceeds default quota of '+_awsConstraints.routeTable.maxRoutesPerTable+' routes per table');
+    }
+    if(dest==='0.0.0.0/0'&&p.TargetId&&p.TargetId.startsWith('igw-'))
+      warnings.push('This will make associated subnets public');
+  }
+
+  if(change.action==='add_security_group'){
+    const p=change.params;
+    const vpcSgs=sgs.filter(s=>s.VpcId===p.VpcId);
+    if(vpcSgs.length>=_awsConstraints.securityGroup.maxPerVpc)
+      warnings.push('Exceeds default quota of '+_awsConstraints.securityGroup.maxPerVpc+' SGs per VPC');
+    if((p.IngressRules||[]).length>_awsConstraints.securityGroup.maxInboundRules)
+      errors.push('Exceeds limit of '+_awsConstraints.securityGroup.maxInboundRules+' inbound rules per SG');
+    (p.IngressRules||[]).forEach(r=>{
+      if(r.CidrIp==='0.0.0.0/0'&&r.FromPort!==80&&r.FromPort!==443&&r.Protocol!=='-1')
+        warnings.push('Rule allows 0.0.0.0/0 on port '+r.FromPort+' — consider restricting source CIDR');
+    });
+  }
+
+  if(change.action==='add_resource'){
+    const p=change.params;
+    if(p.SubnetId){
+      const sub=subnets.find(s=>s.SubnetId===p.SubnetId);
+      if(sub){
+        const prefix=parseInt(sub.CidrBlock.split('/')[1],10);
+        const usable=Math.pow(2,32-prefix)-_awsConstraints.subnet.reservedIps;
+        const currentInst=(ctx?(ctx.instBySub||{})[p.SubnetId]||[]:ext(safeParse(gv('in_ec2')),['Reservations']).flatMap(r=>r.Instances||[]).filter(i=>i.SubnetId===p.SubnetId)).length;
+        const remaining=usable-currentInst;
+        if(remaining<=0)warnings.push('Subnet '+gn(sub,sub.SubnetId)+' has no remaining IP capacity ('+usable+' usable, '+currentInst+' used)');
+        else if(remaining<5)warnings.push('Subnet '+gn(sub,sub.SubnetId)+' has only '+remaining+' IPs remaining');
+      }
+    }
+  }
+
+  if(change.action==='remove_resource'){
+    const t=change.target;
+    if(t.ResourceType==='IGW'){
+      // Check if any subnets route through this IGW
+      const affectedRts=rts.filter(rt=>(rt.Routes||[]).some(r=>r.GatewayId===t.ResourceId));
+      if(affectedRts.length)warnings.push(affectedRts.length+' route table(s) reference this IGW — subnets will lose internet access');
+    }
+    if(t.ResourceType==='NAT'){
+      const affectedRts=rts.filter(rt=>(rt.Routes||[]).some(r=>r.NatGatewayId===t.ResourceId));
+      if(affectedRts.length)warnings.push(affectedRts.length+' route table(s) route through this NAT — private subnets will lose outbound access');
+    }
+    if(t.ResourceType==='Subnet'){
+      const sub=subnets.find(s=>s.SubnetId===t.ResourceId);
+      if(sub){
+        const insts=(ctx?(ctx.instBySub||{})[t.ResourceId]||[]:ext(safeParse(gv('in_ec2')),['Reservations']).flatMap(r=>r.Instances||[]).filter(i=>i.SubnetId===t.ResourceId));
+        if(insts.length)warnings.push(insts.length+' instance(s) in this subnet will be terminated');
+        // Check NATs in this subnet
+        const subNats=nats.filter(n=>n.SubnetId===t.ResourceId);
+        if(subNats.length)warnings.push(subNats.length+' NAT Gateway(s) in this subnet will be deleted');
+      }
+    }
+  }
+
+  return{valid:errors.length===0,errors,warnings};
+}
+
+// Full-state cross-change validation
+function validateDesignState(changes,ctx){
+  const errors=[],warnings=[],stats={subnetsAdded:0,gatewaysAdded:0,resourcesAdded:0,removed:0,routes:0,sgs:0};
+  changes.forEach(ch=>{
+    if(ch.action==='add_subnet')stats.subnetsAdded++;
+    if(ch.action==='add_gateway')stats.gatewaysAdded++;
+    if(ch.action==='add_resource')stats.resourcesAdded++;
+    if(ch.action==='remove_resource')stats.removed++;
+    if(ch.action==='add_route')stats.routes++;
+    if(ch.action==='add_security_group')stats.sgs++;
+  });
+  // Cross-check: IGW count per VPC
+  if(ctx){
+    const igwCounts={};
+    (ctx.igws||[]).forEach(g=>{(g.Attachments||[]).forEach(a=>{igwCounts[a.VpcId]=(igwCounts[a.VpcId]||0)+1})});
+    Object.entries(igwCounts).forEach(([vid,count])=>{
+      if(count>1){const v=(ctx.vpcs||[]).find(x=>x.VpcId===vid);errors.push('VPC '+(v?gn(v,vid):vid)+' has '+count+' IGWs (hard limit: 1)');}
+    });
+    // Cross-check: subnet overlaps within each VPC
+    const subsByVpc={};
+    (ctx.subnets||[]).forEach(s=>{(subsByVpc[s.VpcId]=subsByVpc[s.VpcId]||[]).push(s)});
+    Object.entries(subsByVpc).forEach(([vid,subs])=>{
+      for(let i=0;i<subs.length;i++){for(let j=i+1;j<subs.length;j++){
+        if(cidrOverlap(subs[i].CidrBlock,subs[j].CidrBlock))
+          errors.push('Subnets '+gn(subs[i],subs[i].SubnetId)+' and '+gn(subs[j],subs[j].SubnetId)+' have overlapping CIDRs');
+      }}
+    });
+    // HA analysis: single-AZ VPCs
+    Object.entries(subsByVpc).forEach(([vid,subs])=>{
+      const azs=new Set(subs.map(s=>s.AvailabilityZone).filter(Boolean));
+      if(subs.length>1&&azs.size===1){const v=(ctx.vpcs||[]).find(x=>x.VpcId===vid);warnings.push('VPC '+(v?gn(v,vid):vid)+' — all '+subs.length+' subnets in single AZ ('+[...azs][0]+') — no HA');}
+    });
+    // NAT in private subnet check
+    (ctx.nats||[]).forEach(n=>{
+      if(n.SubnetId&&ctx.pubSubs&&!ctx.pubSubs.has(n.SubnetId))
+        warnings.push('NAT Gateway '+gn(n,n.NatGatewayId)+' is in a private subnet — will not function');
+    });
+    // Peering CIDR overlap check
+    const peerPairs=[];
+    (ctx.peerings||[]).forEach(p=>{
+      const rv=p.RequesterVpcInfo,av=p.AccepterVpcInfo;
+      if(rv&&av&&rv.CidrBlock&&av.CidrBlock){
+        if(cidrOverlap(rv.CidrBlock,av.CidrBlock))
+          errors.push('VPC Peering '+gn(p,p.VpcPeeringConnectionId)+' — CIDRs overlap: '+rv.CidrBlock+' / '+av.CidrBlock);
+        const pair=[rv.VpcId,av.VpcId].sort().join(':');
+        if(peerPairs.includes(pair))warnings.push('Duplicate peering between '+rv.VpcId+' and '+av.VpcId);
+        peerPairs.push(pair);
+      }
+    });
+  }
+  return{valid:errors.length===0,errors,warnings,stats};
+}
+
+// Detect AZs from loaded subnet data, then design region, then fallback
 function _detectAZs(){
   const raw=safeParse(gv('in_subnets'));
   const subs=raw?ext(raw,['Subnets']):[];
   const azSet=new Set();
   subs.forEach(s=>{if(s.AvailabilityZone)azSet.add(s.AvailabilityZone)});
   if(azSet.size>0)return Array.from(azSet).sort();
+  // Use design region
+  if(_regionAZs[_designRegion])return _regionAZs[_designRegion];
   return['us-east-1a','us-east-1b','us-east-1c'];
 }
 
@@ -1501,6 +1808,40 @@ function showDesignForm(formType,context){
       addDesignChange({action:'add_security_group',target:{VpcId:context.vpc.VpcId},params:{VpcId:context.vpc.VpcId,Name:document.getElementById('df_sgname').value||'new-sg',Description:document.getElementById('df_sgdesc').value||'',IngressRules:rules}});
       dp.classList.remove('open');
     });
+  } else if(formType==='add_vpc'){
+    dpTitle.textContent='Create VPC';dpSub.textContent='Design a new Virtual Private Cloud';
+    const regions=Object.keys(_regionAZs);
+    h='<div class="design-form"><label>VPC Name</label><input id="df_vpcname" placeholder="e.g. production-vpc">';
+    h+='<label>CIDR Block</label><input id="df_vpccidr" placeholder="e.g. 10.0.0.0/16">';
+    h+='<div class="form-hint" id="df_hint">RFC 1918: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16</div>';
+    h+='<div class="form-error" id="df_err" style="display:none"></div>';
+    h+='<div id="df_vpc_warnings" style="display:none"></div>';
+    h+='<div style="display:flex;gap:8px;margin:6px 0"><button type="button" class="btn-cancel" style="flex:none;padding:2px 8px;font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1))" onclick="document.getElementById(\'df_vpccidr\').value=\'10.0.0.0/16\';document.getElementById(\'df_vpccidr\').dispatchEvent(new Event(\'input\'))">10.0/16</button><button type="button" class="btn-cancel" style="flex:none;padding:2px 8px;font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1))" onclick="document.getElementById(\'df_vpccidr\').value=\'172.16.0.0/16\';document.getElementById(\'df_vpccidr\').dispatchEvent(new Event(\'input\'))">172.16/16</button><button type="button" class="btn-cancel" style="flex:none;padding:2px 8px;font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1))" onclick="document.getElementById(\'df_vpccidr\').value=\'192.168.0.0/16\';document.getElementById(\'df_vpccidr\').dispatchEvent(new Event(\'input\'))">192.168/16</button></div>';
+    h+='<label>Region</label><select id="df_vpcregion">'+regions.map(r=>'<option value="'+r+'"'+(r===_designRegion?' selected':'')+'>'+r+' ('+(_regionAZs[r]||[]).length+' AZs)</option>').join('')+'</select>';
+    h+='<div id="df_vpc_ips" style="font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted);margin:4px 0;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:3px;display:none"></div>';
+    h+='<div class="form-actions"><button class="btn-confirm" id="df_ok" disabled>Create VPC</button><button class="btn-cancel" onclick="document.getElementById(\'detailPanel\').classList.remove(\'open\')">Cancel</button></div></div>';
+    dpBody.innerHTML=h;dp.classList.add('open');
+    const cidrInput=document.getElementById('df_vpccidr');const errEl=document.getElementById('df_err');const okBtn=document.getElementById('df_ok');
+    const warnEl=document.getElementById('df_vpc_warnings');const ipsEl=document.getElementById('df_vpc_ips');
+    cidrInput.addEventListener('input',()=>{
+      const val=cidrInput.value.trim();
+      if(!val){errEl.style.display='none';warnEl.style.display='none';ipsEl.style.display='none';okBtn.disabled=true;cidrInput.classList.remove('invalid');return}
+      const result=validateDesignChange({action:'add_vpc',params:{CidrBlock:val}},_rlCtx);
+      if(!result.valid){errEl.textContent=result.errors[0];errEl.style.display='block';okBtn.disabled=true;cidrInput.classList.add('invalid');warnEl.style.display='none'}
+      else{errEl.style.display='none';okBtn.disabled=false;cidrInput.classList.remove('invalid')}
+      if(result.warnings.length){warnEl.innerHTML=result.warnings.map(w=>'<div class="form-hint" style="color:var(--accent-orange)">'+w+'</div>').join('');warnEl.style.display='block'}
+      else{warnEl.style.display='none'}
+      // IP calculator
+      const p=parseCIDR(val);
+      if(p){const prefix=parseInt(val.split('/')[1],10);const total=Math.pow(2,32-prefix);ipsEl.innerHTML='<b>'+total.toLocaleString()+'</b> total IPs | <b>'+(total-5).toLocaleString()+'</b> usable per subnet (AWS reserves 5)';ipsEl.style.display='block'}
+      else{ipsEl.style.display='none'}
+    });
+    document.getElementById('df_vpcregion').addEventListener('change',function(){_designRegion=this.value});
+    okBtn.addEventListener('click',()=>{
+      _designRegion=document.getElementById('df_vpcregion').value;
+      addDesignChange({action:'add_vpc',target:{},params:{CidrBlock:cidrInput.value.trim(),Name:document.getElementById('df_vpcname').value||'New VPC',Region:_designRegion}});
+      dp.classList.remove('open');
+    });
   }
 }
 
@@ -1535,12 +1876,29 @@ function renderChangeLog(){
   const cl=document.getElementById('changeLog');
   if(!_designChanges.length){cl.style.display='none';return}
   cl.style.display='block';
-  let h='<div class="change-log-header"><span>Changes ('+_designChanges.length+')</span><div><button onclick="undoLastChange()">Undo</button> <button onclick="_designChanges=[];renderChangeLog();applyDesignChanges()">Clear All</button></div></div>';
+  const invalids=_designChanges.filter(c=>c._invalid).length;
+  const warns=_designChanges.filter(c=>c._validation&&c._validation.warnings.length&&!c._invalid).length;
+  let headerExtra='';
+  if(invalids)headerExtra+=' <span style="color:#dc2626;font-size:8px">'+invalids+' blocked</span>';
+  let h='<div class="change-log-header"><span>Changes ('+_designChanges.length+')'+headerExtra+'</span><div><button onclick="undoLastChange()">Undo</button> <button onclick="_designChanges=[];renderChangeLog();applyDesignChanges()">Clear All</button></div></div>';
   _designChanges.forEach((ch)=>{
     const desc=_changeDesc(ch);
     const chId=ch.id;
-    h+='<div class="change-log-item"><span class="cl-desc">'+desc+'</span><button class="cl-undo" onclick="_designChanges=_designChanges.filter(c=>c.id!==\''+chId+'\');renderChangeLog();applyDesignChanges()">x</button></div>';
+    let icon='<span style="color:var(--accent-green);margin-right:4px" title="Valid">&#10003;</span>';
+    if(ch._invalid)icon='<span style="color:#dc2626;margin-right:4px" title="'+((ch._validation||{}).errors||[]).join('; ')+'">&#10007;</span>';
+    else if(ch._validation&&ch._validation.warnings.length)icon='<span style="color:var(--accent-orange);margin-right:4px" title="'+ch._validation.warnings.join('; ')+'">&#9888;</span>';
+    h+='<div class="change-log-item" style="'+(ch._invalid?'opacity:.5;text-decoration:line-through':'')+'"><span class="cl-desc">'+icon+desc+'</span><button class="cl-undo" onclick="_designChanges=_designChanges.filter(c=>c.id!==\''+chId+'\');renderChangeLog();applyDesignChanges()">x</button></div>';
   });
+  // Full-state validation summary
+  if(_lastDesignValidation){
+    const sv=_lastDesignValidation;
+    if(sv.errors.length||sv.warnings.length){
+      h+='<div style="padding:4px 10px;border-top:1px solid var(--border);font-size:8px">';
+      if(sv.errors.length)h+='<div style="color:#dc2626;margin-bottom:2px"><b>State Errors:</b> '+sv.errors.join('; ')+'</div>';
+      sv.warnings.forEach(w=>{h+='<div style="color:var(--accent-orange)">'+w+'</div>'});
+      h+='</div>';
+    }
+  }
   cl.innerHTML=h;
   // Update badge
   const btn=document.getElementById('designToggle');
@@ -1550,7 +1908,8 @@ function renderChangeLog(){
 function _changeDesc(ch){
   const action=ch.action;
   let badge='',label='';
-  if(action==='add_subnet'){badge='<span class="cl-action-badge add">+subnet</span>';label=ch.params.Name||ch.params.CidrBlock||'new'}
+  if(action==='add_vpc'){badge='<span class="cl-action-badge add">+vpc</span>';label=(ch.params.Name||'New VPC')+' ('+ch.params.CidrBlock+')'}
+  else if(action==='add_subnet'){badge='<span class="cl-action-badge add">+subnet</span>';label=ch.params.Name||ch.params.CidrBlock||'new'}
   else if(action==='split_subnet'){badge='<span class="cl-action-badge split">split</span>';label=ch.target.SubnetId||'subnet'}
   else if(action==='add_gateway'){badge='<span class="cl-action-badge add">+'+(ch.params.GatewayType||'gw').toLowerCase()+'</span>';label=ch.params.Name||'new'}
   else if(action==='add_route'){badge='<span class="cl-action-badge modify">+route</span>';label=(ch.params.DestinationCidrBlock||'?')+' → '+sid(ch.params.TargetId||'')}
@@ -1563,14 +1922,28 @@ function _changeDesc(ch){
 
 // Export design plan as JSON
 function exportDesignPlan(planName){
-  const plan={version:'1.0',plan_name:planName||'Design Plan',created:new Date().toISOString(),changes:_designChanges.map(ch=>({id:ch.id,action:ch.action,target:ch.target,params:ch.params,timestamp:ch.timestamp})),
-    aws_cli:_designChanges.map(ch=>_generateCLI(ch)).filter(Boolean).flat(),
-    warnings:_generateWarnings()};
+  // Run full validation on export
+  const stateValidation=_rlCtx?validateDesignState(_designChanges,_rlCtx):{valid:true,errors:[],warnings:[],stats:{}};
+  const perChangeValidation=_designChanges.map(ch=>({id:ch.id,action:ch.action,validation:ch._validation||{valid:true,errors:[],warnings:[]}}));
+  const cliCmds=[];
+  _designChanges.filter(ch=>!ch._invalid).forEach(ch=>{
+    const cmds=_generateCLI(ch);
+    if(!cmds||!cmds.length)return;
+    // Annotate with warnings
+    if(ch._validation&&ch._validation.warnings.length)cliCmds.push('# WARNING: '+ch._validation.warnings.join('; '));
+    cliCmds.push(...cmds);
+  });
+  const plan={version:'2.0',plan_name:planName||'Design Plan',created:new Date().toISOString(),region:_designRegion,
+    validation:{status:stateValidation.valid?'valid':'errors',errors:stateValidation.errors,warnings:stateValidation.warnings,stats:stateValidation.stats,per_change:perChangeValidation},
+    changes:_designChanges.filter(ch=>!ch._invalid).map(ch=>({id:ch.id,action:ch.action,target:ch.target,params:ch.params,timestamp:ch.timestamp})),
+    blocked_changes:_designChanges.filter(ch=>ch._invalid).map(ch=>({id:ch.id,action:ch.action,target:ch.target,params:ch.params,errors:(ch._validation||{}).errors||[]})),
+    aws_cli:cliCmds,warnings:_generateWarnings()};
   const blob=new Blob([JSON.stringify(plan,null,2)],{type:'application/json'});
   downloadBlob(blob,(planName||'design-plan')+'.json');
 }
 function _generateCLI(ch){
   const cmds=[];
+  if(ch.action==='add_vpc'){cmds.push(`aws ec2 create-vpc --cidr-block ${ch.params.CidrBlock}${ch.params.Name?' --tag-specifications \'ResourceType=vpc,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`);cmds.push('# Default route table, NACL, and SG are created automatically by AWS')}
   if(ch.action==='add_subnet')cmds.push(`aws ec2 create-subnet --vpc-id ${ch.params.VpcId} --cidr-block ${ch.params.CidrBlock} --availability-zone ${ch.params.AZ}${ch.params.Name?' --tag-specifications \'ResourceType=subnet,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`);
   if(ch.action==='split_subnet'){
     cmds.push('# Split subnet: delete original, create two new');
@@ -1628,7 +2001,13 @@ function importDesignPlan(json){
     const plan=typeof json==='string'?JSON.parse(json):json;
     if(!plan.changes||!Array.isArray(plan.changes)){alert('Invalid plan format');return}
     if(!_designMode)enterDesignMode();
-    plan.changes.forEach(ch=>addDesignChange(ch));
+    if(plan.region)_designRegion=plan.region;
+    let imported=0,blocked=0;
+    plan.changes.forEach(ch=>{
+      addDesignChange(ch);
+      if(ch._invalid)blocked++;else imported++;
+    });
+    if(blocked>0)alert('Imported '+imported+' changes, '+blocked+' blocked by validation errors. Check the change log for details.');
   }catch(e){alert('Failed to import plan: '+e.message)}
 }
 
@@ -1850,11 +2229,27 @@ function openResourceList(type, pushNav){
 
   switch(type){
     case 'VPCs':{
-      const d=ctx.vpcs||[];title='VPCs';sub=d.length+' total';
-      d.forEach(v=>{
-        const sc=(ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).length;
-        items.push(row(gn(v,v.VpcId),'ID: '+v.VpcId+' | CIDR: '+(v.CidrBlock||'?')+' | '+sc+' subnets','#7C3AED',{t:'vpc',id:v.VpcId}));
-      });break;
+      const d=ctx.vpcs||[];
+      const accounts=new Set(d.map(v=>v._accountId).filter(a=>a&&a!=='default'));
+      title='VPCs';sub=d.length+' total'+(accounts.size>1?' | '+accounts.size+' accounts':'');
+      // Group by account if multi-account
+      if(accounts.size>1){
+        const grouped={};d.forEach(v=>{const a=v._accountId||'default';(grouped[a]=grouped[a]||[]).push(v)});
+        Object.entries(grouped).forEach(([acct,vpcList])=>{
+          const acCol=getAccountColor(acct);
+          items.push('<div style="font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));font-weight:600;color:'+(acCol||'var(--text-secondary)')+';padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:6px;text-transform:uppercase;letter-spacing:.5px">Account: '+acct+'</div>');
+          vpcList.forEach(v=>{
+            const sc=(ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).length;
+            items.push(row(gn(v,v.VpcId),'ID: '+v.VpcId+' | CIDR: '+(v.CidrBlock||'?')+' | '+sc+' subnets','#7C3AED',{t:'vpc',id:v.VpcId}));
+          });
+        });
+      } else {
+        d.forEach(v=>{
+          const sc=(ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).length;
+          items.push(row(gn(v,v.VpcId),'ID: '+v.VpcId+' | CIDR: '+(v.CidrBlock||'?')+' | '+sc+' subnets','#7C3AED',{t:'vpc',id:v.VpcId}));
+        });
+      }
+      break;
     }
     case 'Subnets':case 'Public':case 'Private':{
       let d=ctx.subnets||[];
@@ -2078,9 +2473,13 @@ function openResourceList(type, pushNav){
   dpBody.innerHTML=h;
   dp.classList.add('open');
   // Inject design toolbar for VPC resource list
-  if(_designMode&&(type==='VPCs')&&ctx.vpcs&&ctx.vpcs.length){
+  if(_designMode&&(type==='VPCs')){
     const tb=document.createElement('div');tb.className='design-toolbar';
-    tb.innerHTML=ctx.vpcs.map(v=>'<button onclick="showDesignForm(\'add_subnet\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ Subnet ('+gn(v,v.VpcId)+')</button><button onclick="showDesignForm(\'add_gateway\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ GW ('+gn(v,v.VpcId)+')</button><button onclick="showDesignForm(\'add_security_group\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ SG ('+gn(v,v.VpcId)+')</button>').join('');
+    let tbHtml='<button onclick="showDesignForm(\'add_vpc\',{})">+ VPC</button>';
+    if(ctx.vpcs&&ctx.vpcs.length){
+      tbHtml+=ctx.vpcs.map(v=>'<button onclick="showDesignForm(\'add_subnet\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ Sub ('+gn(v,v.VpcId)+')</button><button onclick="showDesignForm(\'add_gateway\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ GW ('+gn(v,v.VpcId)+')</button><button onclick="showDesignForm(\'add_security_group\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ SG ('+gn(v,v.VpcId)+')</button>').join('');
+    }
+    tb.innerHTML=tbHtml;
     dpBody.insertBefore(tb,dpBody.firstChild);
   }
   applyDpScale();
@@ -2202,10 +2601,27 @@ function openSubnetPanel(sub,vpcId,lk){
   }
   const backBtn=_navStack.length>0?'<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span>':'';
   dpTitle.innerHTML=backBtn+gn(sub,sub.SubnetId)+' <span class="dp-badge '+(isPub?'pub':'prv')+'">'+(isPub?'PUBLIC':'PRIVATE')+'</span>';
-  dpSub.innerHTML='<span class="copyable" data-copy="'+sub.SubnetId+'">'+sub.SubnetId+'</span> | '+sub.CidrBlock+' | '+(sub.AvailabilityZone||'N/A');
+  // IP capacity calculation
+  const subPrefix=parseInt((sub.CidrBlock||'').split('/')[1],10);
+  const totalIps=isNaN(subPrefix)?0:Math.pow(2,32-subPrefix);
+  const usableIps=Math.max(0,totalIps-5);
+  const eniCount=(lk.eniBySub[sub.SubnetId]||[]).length;
+  const usedIps=eniCount;
+  const ipCapHtml=usableIps>0?(' | <span style="color:'+(usedIps>=usableIps?'#dc2626':usedIps>usableIps*0.8?'var(--accent-orange)':'var(--accent-green)')+'">'+usedIps+'/'+usableIps+' IPs used</span>'):'';
+  dpSub.innerHTML='<span class="copyable" data-copy="'+sub.SubnetId+'">'+sub.SubnetId+'</span> | '+sub.CidrBlock+' | '+(sub.AvailabilityZone||'N/A')+ipCapHtml;
   let h='';
   function sec(title,count,bodyHtml,startOpen){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+title+'</span><span><span class="dp-sec-count">'+count+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
+  }
+  // IP capacity visual bar
+  if(usableIps>0){
+    const pct=Math.min(100,Math.round(usedIps/usableIps*100));
+    const barCol=pct>=90?'#dc2626':pct>=70?'var(--accent-orange)':'var(--accent-green)';
+    h+='<div style="margin-bottom:8px;padding:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:4px">';
+    h+='<div style="display:flex;justify-content:space-between;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));margin-bottom:3px"><span style="color:var(--text-muted)">IP Capacity</span><span style="color:'+barCol+'">'+pct+'% ('+usedIps+' of '+usableIps+' usable)</span></div>';
+    h+='<div style="height:4px;background:var(--bg-tertiary);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barCol+';border-radius:2px;transition:width .3s"></div></div>';
+    h+='<div style="font-size:calc(7px * var(--txt-scale) * var(--dp-txt-scale));color:var(--text-muted);margin-top:2px">'+totalIps+' total - 5 AWS reserved = '+usableIps+' usable</div>';
+    h+='</div>';
   }
   const si=lk.instBySub[sub.SubnetId]||[];
   const se=lk.eniBySub[sub.SubnetId]||[];
@@ -3139,9 +3555,14 @@ function renderLandingZoneMap(ctx){
     const ss=subByVpc[vl.vpc.VpcId]||[];
     const az=ss.find(s=>s.AvailabilityZone)?.AvailabilityZone||'';
     const region=az.replace(/[a-z]$/,'')||'';
+    const lzAcctTag=_multiAccount&&vl.vpc._accountId&&vl.vpc._accountId!=='default'?(' ['+vl.vpc._accountId+']'):'';
     vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
-      .text(vl.vpc.CidrBlock+(region?' '+region:''));
-    
+      .text(vl.vpc.CidrBlock+(region?' '+region:'')+lzAcctTag);
+    if(_multiAccount&&vl.vpc._accountId!=='default'){
+      const lzAcCol=getAccountColor(vl.vpc._accountId);
+      if(lzAcCol)vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',3).attr('height',vl.h).attr('fill',lzAcCol).attr('rx',1.5);
+    }
+
     // VPCE badge - positioned at bottom left of VPC
     const vpcVpces=vpceByVpc[vl.vpc.VpcId]||[];
     if(vpcVpces.length){
@@ -4462,7 +4883,41 @@ function _renderMapInner(){
   const cfRaw=safeParse(gv('in_cf'));
   if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[];}
 
-  if(!vpcs.length&&!subnets.length){document.getElementById('emptyState').style.display='flex';svg.style('display','none');return}
+  // Multi-account: tag all resources with account ID
+  const userAccount=(document.getElementById('accountLabel')||{}).value||'';
+  function tagAccount(resource){
+    if(!resource)return resource;
+    resource._accountId=detectAccountId(resource)||userAccount||'default';
+    return resource;
+  }
+  vpcs.forEach(tagAccount);subnets.forEach(tagAccount);igws.forEach(tagAccount);nats.forEach(tagAccount);
+  sgs.forEach(tagAccount);instances.forEach(tagAccount);albs.forEach(tagAccount);rdsInstances.forEach(tagAccount);
+  ecsServices.forEach(tagAccount);lambdaFns.forEach(tagAccount);peerings.forEach(tagAccount);
+  // Deduplicate: if same VpcId from same account, keep last pasted
+  const seenVpcs=new Map();const vpcDupes=[];
+  vpcs.forEach(v=>{const key=v._accountId+':'+v.VpcId;if(seenVpcs.has(key))vpcDupes.push(v.VpcId);seenVpcs.set(key,v)});
+  if(vpcDupes.length)console.warn('Duplicate VPCs detected (kept latest):',vpcDupes);
+  vpcs=[...seenVpcs.values()];
+  // Collect unique accounts for rendering
+  const _accounts=new Set();vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
+  const _multiAccount=_accounts.size>1;
+
+  if(!vpcs.length&&!subnets.length){
+    if(_designMode){
+      // Show design-aware empty state
+      document.getElementById('emptyState').style.display='flex';
+      document.getElementById('emptyTitle').textContent='Design Mode';
+      document.getElementById('emptyDesc').textContent='No infrastructure loaded — create your first VPC to start designing';
+      const eBtn=document.getElementById('emptyDesignBtn');
+      eBtn.style.display='inline-block';
+      eBtn.onclick=function(){showDesignForm('add_vpc',{})};
+      svg.style('display','none');return;
+    }
+    document.getElementById('emptyTitle').textContent='No data loaded';
+    document.getElementById('emptyDesc').textContent='Paste AWS CLI JSON exports and click Render Map';
+    document.getElementById('emptyDesignBtn').style.display='none';
+    document.getElementById('emptyState').style.display='flex';svg.style('display','none');return;
+  }
 
   // lookups
   const subByVpc={};subnets.forEach(s=>(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s));
@@ -5622,7 +6077,13 @@ function _renderMapInner(){
     vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+26)
       .attr('textLength',Math.min(_vpcName.length*8,vl.w*0.55)).attr('lengthAdjust','spacing').text(_vpcName);
     const regionTag=vpcRegionMap[vl.vpc.VpcId]||'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:''));
+    const acctTag=_multiAccount&&vl.vpc._accountId&&vl.vpc._accountId!=='default'?(' ['+vl.vpc._accountId+']'):'';
+    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:'')+(acctTag?acctTag:''));
+    // Account color stripe for multi-account
+    if(_multiAccount&&vl.vpc._accountId!=='default'){
+      const acCol=getAccountColor(vl.vpc._accountId);
+      if(acCol)vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',4).attr('height',vl.h).attr('fill',acCol).attr('rx',2);
+    }
     // show indicator for VPCs with no subnets
     if(vl.subs.length===0){
       vG.append('text').attr('x',vl.x+vl.w/2).attr('y',vl.y+vl.h/2+10).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(10px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('No subnets');
@@ -6194,13 +6655,34 @@ function _renderMapInner(){
   }
 
   // stats bar
-  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap};
+  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
   });
   // Compliance chip (grid layout)
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings)}catch(ce){console.warn('Compliance check error:',ce)}
+  // Design validation chip (when in design mode)
+  if(_designMode&&_lastDesignValidation){
+    const sv=_lastDesignValidation;
+    const dvC=document.createElement('div');
+    dvC.className='compliance-chip '+(sv.errors.length?'critical':sv.warnings.length?'warn':'clean');
+    dvC.innerHTML='<b>'+(sv.errors.length+sv.warnings.length)+'</b> Design';
+    dvC.title=sv.errors.concat(sv.warnings).join('\n');
+    dvC.addEventListener('click',()=>{
+      const cl=document.getElementById('changeLog');
+      cl.style.display=cl.style.display==='block'?'none':'block';
+    });
+    sb2.appendChild(dvC);
+  }
+  // Multi-account chip
+  if(_multiAccount){
+    const acC=document.createElement('div');
+    acC.className='stat-chip';
+    acC.innerHTML='<b>'+_accounts.size+'</b> Accounts';
+    acC.style.cssText='border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.08)';
+    sb2.appendChild(acC);
+  }
   document.getElementById('legend').style.display='flex';
   document.getElementById('exportBar').style.display='flex';
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
@@ -7014,7 +7496,7 @@ const AWS_ICONS={
   'pcx':'data:image/png;base64,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',
   'sub_prv':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAKKADAAQAAAABAAAAKAAAAAB65masAAACd0lEQVRYCWNkWLKMYSAA00BYCrJz1GK6hfyABTULqV7UEeCv0NZyEBMX5WB/+/Pn4Vevu65dP/vuHanmMDMEBROph4mRsVxba5qZ6ZpHj7uuXSs7f3Hn8+dAvVPNTARYWYEu+EekQWBljMTn41ItzQAZmdDDR559/45shSg7+zIbqxNv3tZevIQsjp9NbBxr8vMVa2qEHzmKZivQ9Nc/f0YeOZakrGQiLITfMmRZYi0G2jrxxs0n374ha4az3/z82XblarmWFlyEIINYi+3ExI6+foPHuCOvX9uKieJRgCZFrMXiHByXP3xA04zMvfrhowg7OyOyEF42sRYzMzL++ocv2f75/x9oETDl47UOIUmsxQgdVGKNPIvxFSBvQ4OF2NjIC9r3v34Jr14LinYcAF9ZDbSVcelyHBoJCP+JigAmtL/gFIdV6ciLY3xBjTWIgIIafHy9xoaGgoLXPn4qPXf+/Pv3mCoJZmeSg1qQjW23s+PGx0+Nt++cf/fedicHKU5OTIsJipBssZeUFLDQnnXnzvPv35c+eLDu8eMQOVmC1mAqINliDmbmH3//wg368fcfOzMznEs8g2SLtz576i0tBfQ3MLfYi4nFKCqsf/yEePvgKklOXC++/wg4eHiamclGB7s7nz/HHD0GJOHGEc8g2cdAo4++fq2/dTsw3eps2bbr+QviLUNWSY7FyPpxsfEUlhAttLIYl4Pg4uRb3HT5yj/cRTHBAoTkxAV3MtBiOBuTMXiDGp+PP/z6BazdMH1DjMiXP3/wRATQBHwNAWA8Ed94Q3MN0Fb8oY3Px0CdeGpyNJtI5ZKfqkm1CU39qMVoAUI7LgAoX8MiWl1UgAAAAABJRU5ErkJggg==',
   'sub_pub':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAKKADAAQAAAABAAAAKAAAAAB65masAAACe0lEQVRYCWOsWijGMBCAaSAsBdk5ajHdQn7AgpqFVC+KC2jY6+QpSlhxc4h8+/nuwcsTh69Offr2IqnmkGAxIyOTnXaOlVbaoStTjt2Y9frjHWFeJXkxsxjHRWfvLNt3sfff/z/EW89IfD621c7WkvNcfjDl07cXyBZwcwiH28549PrsngsdyOL42cTGsSi/qo125oqDaWi2Ak3/+uPtikPpxiqR0sIG+C1DliXWYhvtrGPXZ3/89gxZM5wNjOyDlyfa6eTARQgyiLVYUczi4atTeIx7+OqkgrgFHgVoUsRazMMp+vL9dTTNyNyXH25ysQsxMjAiC+JhE2sxIyPz33+/8BgESdLAlI9HDbIUseqQ9VCFPfIsxleA1ITf5GQXIC9gv//60LpC4z/Df1za8RWZQFurF4nj0olfvDn2GTCh/f//F5eykRfH+IIaVygBy21PkwYpId1XH27tONv47N1lTJUESxKSg5qTTSDRddX1xzumbnE9e3d5vMtyPi4JTIsJipBssZqM86NXp0/fWvz5+8uL99ZefbhVW96XoDWYCki2mJWJ/fffH3CD/vz9ycLEBucSzyDZ4ptP92jIuKpLuwBzi6K4lYFSyLVH24i3D66S5MT1+furJfvj/cw7Y5wWvv10f/WRrLef78ONI55Bso+BRgMr5smbHRkYGCdtsr/97ADxliGrJMdiZP242HgKS4gWWlmMy0FwcfIt3n+x9///f3CD0BgECxCSExfcgn2XeuFsTMbgDWp8Pv7x6yOwdsP0DTEiv35/xRMRQBPwNQSA8UR84w3NNUBb8Yc2Ph8DdeKpydFsIpVLfqom1SY09aMWowUI7bgAIgfJCsZyc3UAAAAASUVORK5CYII=',
-  'tgw':'data:image/png;base64,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',
+  'tgw':'data:image/png;base64,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',
   'vgw':'data:image/png;base64,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',
   'vpc':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAKKADAAQAAAABAAAAKAAAAAB65masAAADwUlEQVRYCe2WWWyNURDHf7dqaXWhqipCqRJ7W1vqwU6CoqGCByG22MKDByH2EBKpChERhNhjjV3tgibW0Apa0qrGvhSt202r5iit+33nfr3JVX1g8j2cM9v/mzlzzowtLqaEqiCPqgBVmP+B/1rm/71Ue7qY29p1aRFFSATBLagmRjY+ZJJxj4cXyfngog8HNZsr9zgymm6jSLtJxl1epPA1X7kIDqNZR1r34tou7p9zcOrKpuKIuwyjVXf2zuXjSweHz5KQL/kcQ+dQw4s7xxykFW4qKC5JbORgDi8zopb5zXrO4eV0HU79ptT0pkEYfvXLhFaLCiLuHMPNQ9g/WrnIfsv1A8TMU3HnvMe7Dm/TORVPQa6VlRWwzUZoF86st7IvlckZ12vM7SN8eo3Ng/7T6DuFU2usDK1S7RtIXvbPUrLyAUWFnN+oUIVKvnFpC0064BdkZWQFXDuA/C9Wxs5kXwt4/oDWPale05mKkybhWYMe4xi+kFepTi21AjkdqTLJdspV2vVl6jba9tEqojljQY1dTO5nts/iS5bezMyt5UO7fkQMxKMa34q5e5Kds/ELZMRSVWvvMowWGuDwARTmcXyVUdXZPiiUyEGERZF+ixNxvH6iXrdOQ4kayYNLXNhE9juNqQa4TW8ubNSoalmxSwhoRFICW6erSpRLLP8tD9zJ1fjWIyJaVXj6bRLWGa01wHUb8j7TqKfdy4k2DSc+VlVySDgRg2jUBi8f8u2quCTbV3dw4yAzdmqANVUtd0OO2UWSgU1Qx8TRczxP77B5MsXFbJmi1r0nMWoFRQV6T5qIXz2mYUvSbukNNFwbQc2JH1YuEbDks+qAZ+4pZxpWmohTr6m6kDRWKmmAH14mL4chc9SrW3mkSbWAHV2hgp64AfsndaHNJOe6b76Z7cixHNj1wMVFJO4hcS9S4d7+ju7+0E4P/NN5iWrDhv7/O25pSB6a4yrXkodM0mMmSyOzuoFTgj0LnwAK7Hj5GmSqRHKz8W+gf7ncAwa5e43bq3EsfKARWN7ttBvqYXmZYhTJ3l3g1ETVGxJ303GIakSSWOXUUz2c0p1kMhFpyhUNsEtTpsbuF0s64OiVPLpMZvKPG+ivilFu4+c3qmHIr8gwKiObmSyLy6xu4kjhJKxVbTQwhP0LkNlBJnCZvApz6TVBMQ8sMtn8YLgbcanX6rXoMVbN2FJlglonWGU76TTX9yM3U0t/BrjMtYxp0hll+LIeTEXf3VSXQZYuJFz5XCF3q9oVDK3Of2BtWiqDWWWp/g6ffx+cr3WDNAAAAABJRU5ErkJggg==',
   'vpce':'data:image/png;base64,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',
