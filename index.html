@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'">
 <title>AWS Network Topology Map</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" integrity="sha512-M7nHCiNUOwFt6Us3r8alutZLm9qMt4s9951uo8jqO4UwJ1hziseL6O3ndFyigx6+LREfZqnhHxYjKRJ8ZQ69DQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
   :root {
@@ -930,7 +931,7 @@ const _isElectron=!!(typeof window!=='undefined'&&window.electronAPI);
 // Preferences persistence
 const PREFS_KEY='awsNetMapPrefs';
 function loadPrefs(){try{const r=localStorage.getItem(PREFS_KEY);return r?JSON.parse(r):{}}catch(e){return {}}}
-function savePrefs(p){const c=loadPrefs();Object.assign(c,p);try{localStorage.setItem(PREFS_KEY,JSON.stringify(c))}catch(e){}}
+function savePrefs(p){const c=loadPrefs();for(const k of Object.keys(p)){if(k==='__proto__'||k==='constructor'||k==='prototype')continue;c[k]=p[k]}try{localStorage.setItem(PREFS_KEY,JSON.stringify(c))}catch(e){}}
 const _prefs=loadPrefs();
 
 // Global text size scaling - works on sidebar, canvas, and detail panel
@@ -1056,7 +1057,8 @@ document.querySelectorAll('.ji').forEach(el=>{el.addEventListener('input',functi
 
 function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim())}catch(e){const b=[];let d=0,s=-1;for(let i=0;i<t.length;i++){if(t[i]==='{'){if(d===0)s=i;d++}if(t[i]==='}'){d--;if(d===0&&s>=0){b.push(t.substring(s,i+1));s=-1}}}return b.length?b.map(x=>JSON.parse(x)):null}}
 function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
-function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return t?t.Value:f}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
 function clsGw(id){const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','eigw-':'EIGW','lgw-':'LGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
 function isShared(t){return t==='TGW'||t==='PCX'}
@@ -2823,7 +2825,7 @@ function showDesignForm(formType,context){
     const updateExtra=()=>{
       if(gwType.value==='NAT'){
         const pubSubs=_rlCtx?(_rlCtx.subnets||[]).filter(s=>s.VpcId===context.vpc.VpcId&&_rlCtx.pubSubs.has(s.SubnetId)):[];
-        extra.innerHTML='<label>Subnet (public)</label><select id="df_gwsub">'+pubSubs.map(s=>'<option value="'+s.SubnetId+'">'+gn(s,s.SubnetId)+'</option>').join('')+'</select>';
+        extra.innerHTML='<label>Subnet (public)</label><select id="df_gwsub">'+pubSubs.map(s=>'<option value="'+esc(s.SubnetId)+'">'+gn(s,s.SubnetId)+'</option>').join('')+'</select>';
       } else if(gwType.value==='VPCE'){extra.innerHTML='<label>Service</label><input id="df_gwsvc" placeholder="com.amazonaws.region.s3">'} else {extra.innerHTML=''}
     };
     gwType.addEventListener('change',updateExtra);updateExtra();
@@ -3640,8 +3642,7 @@ function openResourceList(type, pushNav){
   const dpSub=document.getElementById('dpSub');
   const dpBody=document.getElementById('dpBody');
 
-  function esc(s){return String(s||'').replace(/</g,'&lt;')}
-  function vpcName(id){const v=(ctx.vpcs||[]).find(v=>v.VpcId===id);return v?gn(v,id):id||'--'}
+  function vpcName(id){const v=(ctx.vpcs||[]).find(v=>v.VpcId===id);return v?gn(v,id):esc(id)||'--'}
   function subName(id){const s=(ctx.subnets||[]).find(s=>s.SubnetId===id);return s?gn(s,id):id||'--'}
 
   // row builder: action = {t:'vpc'|'sub', id:'...'} or null
@@ -4120,7 +4121,7 @@ function openSubnetPanel(sub,vpcId,lk){
   const eniCount=(lk.eniBySub[sub.SubnetId]||[]).length;
   const usedIps=eniCount;
   const ipCapHtml=usableIps>0?(' | <span style="color:'+(usedIps>=usableIps?'#dc2626':usedIps>usableIps*0.8?'var(--accent-orange)':'var(--accent-green)')+'">'+usedIps+'/'+usableIps+' IPs used</span>'):'';
-  dpSub.innerHTML='<span class="copyable" data-copy="'+sub.SubnetId+'">'+sub.SubnetId+'</span> | '+sub.CidrBlock+' | '+(sub.AvailabilityZone||'N/A')+ipCapHtml;
+  dpSub.innerHTML='<span class="copyable" data-copy="'+esc(sub.SubnetId)+'">'+esc(sub.SubnetId)+'</span> | '+esc(sub.CidrBlock)+' | '+esc(sub.AvailabilityZone||'N/A')+ipCapHtml;
   let h='';
   function sec(title,count,bodyHtml,startOpen){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+title+'</span><span><span class="dp-sec-count">'+count+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
@@ -4406,8 +4407,7 @@ function openGatewayPanel(gwId,gwType,lk){
   const dpTitle=document.getElementById('dpTitle');
   const dpSub=document.getElementById('dpSub');
   const dpBody=document.getElementById('dpBody');
-  function esc(s){return String(s||'').replace(/</g,'&lt;')}
-  const nm=lk.gwNames[gwId]||gwId;
+  const nm=esc(lk.gwNames[gwId]||gwId);
   const col=gcv(gwType);
   function sec(title,count,bodyHtml,startOpen){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+title+'</span><span><span class="dp-sec-count">'+count+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
@@ -4632,20 +4632,20 @@ function openGatewayPanel(gwId,gwType,lk){
 
 // Shared resource tree builder - creates hierarchical resource list with children
 function resTooltipHtml(res,subId,subRT){
-  let h='<div class="tt-title" style="color:'+res.col+'">'+res.type+': '+res.name+'</div>';
-  if(res.rid) h+='<div class="tt-sub">'+res.rid+'</div>';
+  let h='<div class="tt-title" style="color:'+res.col+'">'+esc(res.type)+': '+esc(res.name)+'</div>';
+  if(res.rid) h+='<div class="tt-sub">'+esc(res.rid)+'</div>';
   h+='<div class="tt-sec">';
-  if(res.ip) h+='<div class="tt-r">IP: <span class="i">'+res.ip+'</span></div>';
-  if(res.state) h+='<div class="tt-r">State: <span class="'+(res.state==='running'?'a':'d')+'">'+res.state+'</span></div>';
-  if(res.itype) h+='<div class="tt-r">Type: <span class="i">'+res.itype+'</span></div>';
-  if(res.lbType) h+='<div class="tt-r">LB Type: <span class="i">'+res.lbType+'</span></div>';
-  if(res.sgIds) h+='<div class="tt-r">SGs: <span class="s">'+res.sgIds+'</span></div>';
-  if(res.extra) h+='<div class="tt-r"><span class="i">'+res.extra+'</span></div>';
+  if(res.ip) h+='<div class="tt-r">IP: <span class="i">'+esc(res.ip)+'</span></div>';
+  if(res.state) h+='<div class="tt-r">State: <span class="'+(res.state==='running'?'a':'d')+'">'+esc(res.state)+'</span></div>';
+  if(res.itype) h+='<div class="tt-r">Type: <span class="i">'+esc(res.itype)+'</span></div>';
+  if(res.lbType) h+='<div class="tt-r">LB Type: <span class="i">'+esc(res.lbType)+'</span></div>';
+  if(res.sgIds) h+='<div class="tt-r">SGs: <span class="s">'+esc(res.sgIds)+'</span></div>';
+  if(res.extra) h+='<div class="tt-r"><span class="i">'+esc(res.extra)+'</span></div>';
   h+='</div>';
   if((res.children||[]).length){
     h+='<div class="tt-sec"><div class="tt-sh">Nested ('+res.children.length+')</div>';
     res.children.forEach(ch=>{
-      h+='<div class="tt-r"><span style="color:'+ch.col+'">'+ch.type+'</span> '+ch.name+(ch.detail?' <span class="i">'+ch.detail+'</span>':'')+'</div>';
+      h+='<div class="tt-r"><span style="color:'+ch.col+'">'+esc(ch.type)+'</span> '+esc(ch.name)+(ch.detail?' <span class="i">'+esc(ch.detail)+'</span>':'')+'</div>';
     });
     h+='</div>';
   }
@@ -4653,8 +4653,8 @@ function resTooltipHtml(res,subId,subRT){
   if(rt){
     h+='<div class="tt-sec"><div class="tt-sh">Route Table</div>';
     (rt.Routes||[]).slice(0,6).forEach(r=>{
-      const dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
-      const tgt=r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||'local';
+      const dest=esc(r.DestinationCidrBlock||r.DestinationPrefixListId||'?');
+      const tgt=esc(r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||'local');
       h+='<div class="tt-r">'+dest+' <span class="p">-></span> <span class="p">'+tgt+'</span></div>';
     });
     if((rt.Routes||[]).length>6) h+='<div class="tt-r">+'+(rt.Routes.length-6)+' more</div>';
