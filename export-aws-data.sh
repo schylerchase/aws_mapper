@@ -36,10 +36,20 @@ while getopts "p:r:o:h" opt; do
   esac
 done
 
-# Build common AWS CLI flags
-AWS_FLAGS=""
-[ -n "$PROFILE" ] && AWS_FLAGS="$AWS_FLAGS --profile $PROFILE"
-[ -n "$REGION" ] && AWS_FLAGS="$AWS_FLAGS --region $REGION"
+# Validate inputs — only allow safe characters
+if [[ -n "$PROFILE" && ! "$PROFILE" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "ERROR: Invalid profile name. Use only letters, numbers, hyphens, underscores." >&2
+  exit 1
+fi
+if [[ -n "$REGION" && ! "$REGION" =~ ^[a-zA-Z0-9-]+$ ]]; then
+  echo "ERROR: Invalid region name. Use only letters, numbers, hyphens." >&2
+  exit 1
+fi
+
+# Build common AWS CLI flags as an array (safe from injection)
+AWS_FLAGS=()
+[ -n "$PROFILE" ] && AWS_FLAGS+=(--profile "$PROFILE")
+[ -n "$REGION" ] && AWS_FLAGS+=(--region "$REGION")
 
 # Determine output directory
 if [ -z "$OUTDIR" ]; then
@@ -63,10 +73,9 @@ run() {
   local label="$1"
   local filename="$2"
   shift 2
-  local cmd="$*"
 
   printf "  %-35s" "$label..."
-  if output=$(eval "aws $AWS_FLAGS $cmd" 2>&1); then
+  if output=$(aws "${AWS_FLAGS[@]}" "$@" 2>&1); then
     echo "$output" > "$OUTDIR/$filename"
     local size
     size=$(wc -c < "$OUTDIR/$filename" | tr -d ' ')
@@ -77,69 +86,71 @@ run() {
 }
 
 echo "── Network ─────────────────────────────────────────────"
-run "VPCs"                    "vpcs.json"                    "ec2 describe-vpcs"
-run "Subnets"                 "subnets.json"                 "ec2 describe-subnets"
-run "Route Tables"            "route-tables.json"            "ec2 describe-route-tables"
-run "Security Groups"         "security-groups.json"         "ec2 describe-security-groups"
-run "Network ACLs"            "network-acls.json"            "ec2 describe-network-acls"
-run "ENIs"                    "network-interfaces.json"      "ec2 describe-network-interfaces"
+run "VPCs"                    "vpcs.json"                    ec2 describe-vpcs
+run "Subnets"                 "subnets.json"                 ec2 describe-subnets
+run "Route Tables"            "route-tables.json"            ec2 describe-route-tables
+run "Security Groups"         "security-groups.json"         ec2 describe-security-groups
+run "Network ACLs"            "network-acls.json"            ec2 describe-network-acls
+run "ENIs"                    "network-interfaces.json"      ec2 describe-network-interfaces
 
 echo ""
 echo "── Gateways ──────────────────────────────────────────────"
-run "Internet Gateways"       "internet-gateways.json"       "ec2 describe-internet-gateways"
-run "NAT Gateways"            "nat-gateways.json"            "ec2 describe-nat-gateways"
-run "VPC Endpoints"           "vpc-endpoints.json"           "ec2 describe-vpc-endpoints"
+run "Internet Gateways"       "internet-gateways.json"       ec2 describe-internet-gateways
+run "NAT Gateways"            "nat-gateways.json"            ec2 describe-nat-gateways
+run "VPC Endpoints"           "vpc-endpoints.json"           ec2 describe-vpc-endpoints
 
 echo ""
 echo "── Compute ───────────────────────────────────────────────"
-run "EC2 Instances"           "ec2-instances.json"           "ec2 describe-instances"
-run "RDS Instances"           "rds-instances.json"           "rds describe-db-instances"
-run "Lambda Functions"        "lambda-functions.json"        "lambda list-functions"
-run "ElastiCache Clusters"    "elasticache-clusters.json"    "elasticache describe-cache-clusters --show-cache-node-info"
-run "Redshift Clusters"       "redshift-clusters.json"       "redshift describe-clusters"
+run "EC2 Instances"           "ec2-instances.json"           ec2 describe-instances
+run "RDS Instances"           "rds-instances.json"           rds describe-db-instances
+run "Lambda Functions"        "lambda-functions.json"        lambda list-functions
+run "ElastiCache Clusters"    "elasticache-clusters.json"    elasticache describe-cache-clusters --show-cache-node-info
+run "Redshift Clusters"       "redshift-clusters.json"       redshift describe-clusters
 
 echo ""
 echo "── Load Balancing ────────────────────────────────────────"
-run "ALBs / NLBs"             "load-balancers.json"          "elbv2 describe-load-balancers"
-run "Target Groups"           "target-groups.json"           "elbv2 describe-target-groups"
+run "ALBs / NLBs"             "load-balancers.json"          elbv2 describe-load-balancers
+run "Target Groups"           "target-groups.json"           elbv2 describe-target-groups
 
 echo ""
 echo "── Connectivity ──────────────────────────────────────────"
-run "VPC Peering"             "vpc-peering.json"             "ec2 describe-vpc-peering-connections"
-run "VPN Connections"         "vpn-connections.json"         "ec2 describe-vpn-connections"
-run "TGW Attachments"         "tgw-attachments.json"         "ec2 describe-transit-gateway-attachments"
+run "VPC Peering"             "vpc-peering.json"             ec2 describe-vpc-peering-connections
+run "VPN Connections"         "vpn-connections.json"         ec2 describe-vpn-connections
+run "TGW Attachments"         "tgw-attachments.json"         ec2 describe-transit-gateway-attachments
 
 echo ""
 echo "── Storage ───────────────────────────────────────────────"
-run "EBS Volumes"             "volumes.json"                 "ec2 describe-volumes"
-run "EBS Snapshots"           "snapshots.json"               "ec2 describe-snapshots --owner-ids self"
-run "S3 Buckets"              "s3-buckets.json"              "s3api list-buckets"
+run "EBS Volumes"             "volumes.json"                 ec2 describe-volumes
+run "EBS Snapshots"           "snapshots.json"               ec2 describe-snapshots --owner-ids self
+run "S3 Buckets"              "s3-buckets.json"              s3api list-buckets
 
 echo ""
 echo "── DNS ───────────────────────────────────────────────────"
-run "Route 53 Hosted Zones"   "hosted-zones.json"            "route53 list-hosted-zones"
+run "Route 53 Hosted Zones"   "hosted-zones.json"            route53 list-hosted-zones
 
-# Export record sets for each hosted zone
+# Export record sets for each hosted zone (pass file path via sys.argv, not string interpolation)
 if [ -f "$OUTDIR/hosted-zones.json" ]; then
   ZONE_IDS=$(python3 -c "
-import json
-d=json.load(open('$OUTDIR/hosted-zones.json'))
+import json, sys
+d=json.load(open(sys.argv[1]))
 for z in d.get('HostedZones',[]):
   print(z['Id'].replace('/hostedzone/',''))
-" 2>/dev/null || true)
+" "$OUTDIR/hosted-zones.json" 2>/dev/null || true)
 
   if [ -n "$ZONE_IDS" ]; then
     echo '{"RecordSets":[]}' > "$OUTDIR/r53-records.json"
     for zid in $ZONE_IDS; do
+      # Validate zone ID format
+      if [[ ! "$zid" =~ ^[A-Z0-9]+$ ]]; then continue; fi
       printf "  %-35s" "  Records ($zid)..."
-      if eval "aws $AWS_FLAGS route53 list-resource-record-sets --hosted-zone-id $zid" > "$OUTDIR/_tmp_rr.json" 2>/dev/null; then
+      if aws "${AWS_FLAGS[@]}" route53 list-resource-record-sets --hosted-zone-id "$zid" > "$OUTDIR/_tmp_rr.json" 2>/dev/null; then
         python3 -c "
-import json
-a=json.load(open('$OUTDIR/r53-records.json'))
-b=json.load(open('$OUTDIR/_tmp_rr.json'))
+import json, sys
+a=json.load(open(sys.argv[1]))
+b=json.load(open(sys.argv[2]))
 a['RecordSets'].extend(b.get('ResourceRecordSets',[]))
-json.dump(a,open('$OUTDIR/r53-records.json','w'))
-" 2>/dev/null
+json.dump(a,open(sys.argv[1],'w'))
+" "$OUTDIR/r53-records.json" "$OUTDIR/_tmp_rr.json" 2>/dev/null
         echo "OK"
       else
         echo "SKIP"
@@ -151,31 +162,34 @@ fi
 
 echo ""
 echo "── Security ──────────────────────────────────────────────"
-run "WAF WebACLs"             "waf-web-acls.json"            "wafv2 list-web-acls --scope REGIONAL"
-run "CloudFront Distributions" "cloudfront.json"             "cloudfront list-distributions"
+run "WAF WebACLs"             "waf-web-acls.json"            wafv2 list-web-acls --scope REGIONAL
+run "CloudFront Distributions" "cloudfront.json"             cloudfront list-distributions
 
 echo ""
 echo "── IAM ───────────────────────────────────────────────────"
-run "IAM Authorization"       "iam.json"                     "iam get-account-authorization-details"
+run "IAM Authorization"       "iam.json"                     iam get-account-authorization-details
 
 echo ""
 echo "── ECS (multi-step) ──────────────────────────────────────"
 # ECS requires listing clusters, then services per cluster, then describing each
 printf "  %-35s" "ECS Services..."
-if clusters=$(eval "aws $AWS_FLAGS ecs list-clusters --query 'clusterArns[]' --output text" 2>&1) && [ -n "$clusters" ] && [ "$clusters" != "None" ]; then
+if clusters=$(aws "${AWS_FLAGS[@]}" ecs list-clusters --query 'clusterArns[]' --output text 2>&1) && [ -n "$clusters" ] && [ "$clusters" != "None" ]; then
   echo '{"services":[]}' > "$OUTDIR/ecs-services.json"
   for cluster in $clusters; do
-    svc_arns=$(eval "aws $AWS_FLAGS ecs list-services --cluster $cluster --query 'serviceArns[]' --output text" 2>/dev/null || true)
+    # Validate ARN format
+    if [[ ! "$cluster" =~ ^arn:aws ]]; then continue; fi
+    svc_arns=$(aws "${AWS_FLAGS[@]}" ecs list-services --cluster "$cluster" --query 'serviceArns[]' --output text 2>/dev/null || true)
     if [ -n "$svc_arns" ] && [ "$svc_arns" != "None" ]; then
       for svc_arn in $svc_arns; do
-        if eval "aws $AWS_FLAGS ecs describe-services --cluster $cluster --services $svc_arn" > "$OUTDIR/_tmp_ecs.json" 2>/dev/null; then
+        if [[ ! "$svc_arn" =~ ^arn:aws ]]; then continue; fi
+        if aws "${AWS_FLAGS[@]}" ecs describe-services --cluster "$cluster" --services "$svc_arn" > "$OUTDIR/_tmp_ecs.json" 2>/dev/null; then
           python3 -c "
-import json
-a=json.load(open('$OUTDIR/ecs-services.json'))
-b=json.load(open('$OUTDIR/_tmp_ecs.json'))
+import json, sys
+a=json.load(open(sys.argv[1]))
+b=json.load(open(sys.argv[2]))
 a['services'].extend(b.get('services',[]))
-json.dump(a,open('$OUTDIR/ecs-services.json','w'))
-" 2>/dev/null
+json.dump(a,open(sys.argv[1],'w'))
+" "$OUTDIR/ecs-services.json" "$OUTDIR/_tmp_ecs.json" 2>/dev/null
         fi
       done
     fi
