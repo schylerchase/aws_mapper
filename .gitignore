@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.dmg
+*.zip
+*.exe
+*.AppImage
+*.deb
+*.snap
+.DS_Store
+aws-export-*/
