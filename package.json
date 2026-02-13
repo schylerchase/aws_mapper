@@ -1,0 +1,49 @@
+{
+  "name": "aws-network-mapper",
+  "version": "1.0.0",
+  "description": "AWS Network Topology Mapper - Desktop Application",
+  "author": "schylerchase",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.awsmapper.app",
+    "productName": "AWS Network Mapper",
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js",
+      "export-aws-data.sh",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"],
+      "identity": null
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Development"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "schylerchase",
+      "repo": "aws_mapper"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  }
+}
