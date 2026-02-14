@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AWS Network Topology Map</title>
+<title>Azure Network Topology Map</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -15,10 +15,10 @@
     --accent-blue:#3b82f6;--accent-cyan:#06b6d4;--accent-green:#10b981;
     --accent-purple:#8b5cf6;--accent-orange:#f59e0b;--accent-red:#ef4444;
     --accent-pink:#ec4899;
-    --vpc-stroke:#3b82f6;--subnet-public:#06b6d4;--subnet-private:#8b5cf6;
-    --igw-color:#10b981;--nat-color:#f59e0b;--tgw-color:#ec4899;
-    --vgw-color:#ef4444;--vpce-color:#a78bfa;--pcx-color:#fb923c;
-    --alb-color:#38bdf8;--vpn-color:#f97316;
+    --vnet-stroke:#3b82f6;--subnet-public:#06b6d4;--subnet-private:#8b5cf6;
+    --pip-color:#10b981;--nat-color:#f59e0b;--vwan-color:#ec4899;
+    --vpngw-color:#ef4444;--pe-color:#a78bfa;--peer-color:#fb923c;
+    --appgw-color:#38bdf8;--vpn-color:#f97316;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);height:100vh;overflow:hidden;display:flex}
@@ -91,9 +91,9 @@
   .tt-sh{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:2px}
   .tt-r{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.6;padding-left:8px}
   .tt-r .a{color:var(--accent-green)}.tt-r .d{color:var(--accent-red)}.tt-r .p{color:var(--accent-orange)}.tt-r .i{color:var(--accent-cyan)}
-  .vpc-group rect{stroke-dasharray:6 3;rx:8;ry:8}
-  .vpc-label{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;fill:var(--vpc-stroke);text-transform:uppercase;letter-spacing:.5px}
-  .vpc-cidr{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--text-muted)}
+  .vnet-group rect{stroke-dasharray:6 3;rx:8;ry:8}
+  .vnet-label{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;fill:var(--vnet-stroke);text-transform:uppercase;letter-spacing:.5px}
+  .vnet-cidr{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--text-muted)}
   .subnet-node rect{rx:5;ry:5;cursor:pointer}
   .subnet-label{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;fill:#fff;pointer-events:none}
   .subnet-cidr{font-family:'IBM Plex Mono',monospace;font-size:9px;fill:rgba(255,255,255,.7);pointer-events:none}
@@ -227,8 +227,8 @@
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v25</span></h1>
-    <p>Paste CLI JSON exports or upload folder</p>
+    <h1>Azure Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v1</span></h1>
+    <p>Paste Azure CLI JSON exports or upload folder</p>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
       <button class="gtc-btn" id="gTxtDown">-</button>
@@ -251,21 +251,21 @@
 <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#x25C0;</button>
 <div class="main">
   <div class="grid-bg"></div>
-  <div class="empty-state" id="emptyState"><div class="icon">&#9700;</div><h2>No data loaded</h2><p>Paste AWS CLI JSON exports and click Render Map</p></div>
+  <div class="empty-state" id="emptyState"><div class="icon">&#9700;</div><h2>No data loaded</h2><p>Paste Azure CLI JSON exports and click Render Map</p></div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
   <div class="legend" id="legend">
     <div class="legend-title" onclick="this.parentElement.classList.toggle('collapsed')">Legend <span class="lg-arr">&#9660;</span></div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--subnet-public)"></div>Public Subnet</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--subnet-private)"></div>Private Subnet</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--igw-color)"></div>Internet GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--nat-color)"></div>NAT GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--vgw-color)"></div>Virtual Private GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--tgw-color)"></div>Transit GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--vpce-color)"></div>VPC Endpoint</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--pcx-color)"></div>Peering / VPN</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--alb-color)"></div>Load Balancer</div>
-    <div class="legend-item"><div class="legend-swatch" style="border:1.5px dashed var(--vpc-stroke);background:transparent"></div>VPC Boundary</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--pip-color)"></div>Public IP / Internet</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--nat-color)"></div>NAT Gateway</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--vpngw-color)"></div>VPN Gateway</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--vwan-color)"></div>Virtual WAN Hub</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--pe-color)"></div>Private Endpoint</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--peer-color)"></div>Peering / VPN</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--appgw-color)"></div>Load Balancer</div>
+    <div class="legend-item"><div class="legend-swatch" style="border:1.5px dashed var(--vnet-stroke);background:transparent"></div>VNet Boundary</div>
     <div class="legend-hint">Click subnets for full details | Hover to trace routes</div>
   </div>
   <div class="zoom-controls">
@@ -286,7 +286,7 @@
         <option value="landingzone">Landing Zone (hub-spoke)</option>
         <option value="executive">Executive Overview</option>
       </select>
-      <input type="text" id="hubVpcName" placeholder="Hub VPC name (auto)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:9px;padding:4px 6px;width:120px;display:none" title="Specify hub VPC name or leave blank for auto-detect">
+      <input type="text" id="hubVpcName" placeholder="Hub VNet name (auto)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:9px;padding:4px 6px;width:120px;display:none" title="Specify hub VNet name or leave blank for auto-detect">
     </div>
     <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
     <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>
@@ -321,8 +321,8 @@ function applyGlobalTxtScale(){
   document.querySelectorAll('.stat-chip').forEach(el=>el.style.fontSize=(9*gTxtScale)+'px');
   document.querySelectorAll('.export-btn').forEach(el=>el.style.fontSize=(9*gTxtScale)+'px');
   // canvas SVG text
-  document.querySelectorAll('.vpc-label').forEach(el=>el.style.fontSize=(12*gTxtScale)+'px');
-  document.querySelectorAll('.vpc-cidr').forEach(el=>el.style.fontSize=(9*gTxtScale)+'px');
+  document.querySelectorAll('.vnet-label').forEach(el=>el.style.fontSize=(12*gTxtScale)+'px');
+  document.querySelectorAll('.vnet-cidr').forEach(el=>el.style.fontSize=(9*gTxtScale)+'px');
   document.querySelectorAll('.subnet-label').forEach(el=>el.style.fontSize=(9*gTxtScale)+'px');
   document.querySelectorAll('.gw-label').forEach(el=>el.style.fontSize=(9*gTxtScale)+'px');
   document.querySelectorAll('.internet-label').forEach(el=>el.style.fontSize=(11*gTxtScale)+'px');
@@ -349,49 +349,48 @@ document.getElementById('sidebarToggle').addEventListener('click',()=>{
 
 const inputSections=[
   {t:'Network',open:true,inputs:[
-    {id:'in_vpcs',l:'VPCs',c:'describe-vpcs'},
-    {id:'in_subnets',l:'Subnets',c:'describe-subnets'},
-    {id:'in_rts',l:'Route Tables',c:'describe-route-tables'},
-    {id:'in_sgs',l:'Security Groups',c:'describe-security-groups'},
-    {id:'in_nacls',l:'Network ACLs',c:'describe-network-acls'},
-    {id:'in_enis',l:'ENIs',c:'describe-network-interfaces'},
+    {id:'in_vnets',l:'VNets',c:'az network vnet list'},
+    {id:'in_subnets',l:'Subnets',c:'az network vnet subnet list'},
+    {id:'in_rts',l:'Route Tables',c:'az network route-table list'},
+    {id:'in_nsgs',l:'NSGs',c:'az network nsg list'},
+    {id:'in_nics',l:'NICs',c:'az network nic list'},
+    {id:'in_pips',l:'Public IPs',c:'az network public-ip list'},
   ]},
   {t:'Gateways',open:true,inputs:[
-    {id:'in_igws',l:'Internet GWs',c:'describe-internet-gateways'},
-    {id:'in_nats',l:'NAT GWs',c:'describe-nat-gateways'},
-    {id:'in_vpces',l:'VPC Endpoints',c:'describe-vpc-endpoints'},
+    {id:'in_nats',l:'NAT Gateways',c:'az network nat gateway list'},
+    {id:'in_pes',l:'Private Endpoints',c:'az network private-endpoint list'},
   ]},
   {t:'Compute',open:false,inputs:[
-    {id:'in_ec2',l:'EC2 Instances',c:'describe-instances'},
-    {id:'in_rds',l:'RDS Instances',c:'rds describe-db-instances'},
-    {id:'in_ecs',l:'ECS Services',c:'ecs describe-services (see export script)'},
-    {id:'in_lambda',l:'Lambda (VPC)',c:'lambda list-functions'},
-    {id:'in_elasticache',l:'ElastiCache',c:'elasticache describe-cache-clusters --show-cache-node-info'},
-    {id:'in_redshift',l:'Redshift',c:'redshift describe-clusters'},
+    {id:'in_vms',l:'Virtual Machines',c:'az vm list --show-details'},
+    {id:'in_sql',l:'SQL Servers',c:'az sql server list'},
+    {id:'in_aci',l:'Container Instances',c:'az container list'},
+    {id:'in_func',l:'Functions (VNet)',c:'az functionapp list'},
+    {id:'in_redis',l:'Azure Cache for Redis',c:'az redis list'},
+    {id:'in_synapse',l:'Synapse Analytics',c:'az synapse workspace list'},
   ]},
   {t:'Load Balancers',open:false,inputs:[
-    {id:'in_albs',l:'ALBs / NLBs',c:'elbv2 describe-load-balancers'},
-    {id:'in_tgs',l:'Target Groups',c:'elbv2 describe-target-groups'},
+    {id:'in_appgws',l:'App Gateways',c:'az network application-gateway list'},
+    {id:'in_lbs',l:'Load Balancers',c:'az network lb list'},
   ]},
   {t:'Connectivity',open:false,inputs:[
-    {id:'in_peer',l:'VPC Peering',c:'describe-vpc-peering-connections'},
-    {id:'in_vpn',l:'VPN Connections',c:'describe-vpn-connections'},
-    {id:'in_tgwatt',l:'TGW Attachments',c:'describe-transit-gateway-attachments'},
+    {id:'in_peer',l:'VNet Peering',c:'az network vnet peering list'},
+    {id:'in_vpn',l:'VPN Connections',c:'az network vpn-connection list'},
+    {id:'in_vhubconn',l:'Virtual Hub Connections',c:'az network vhub connection list'},
   ]},
   {t:'Edge',open:false,inputs:[
-    {id:'in_cf',l:'CloudFront',c:'cloudfront list-distributions'},
+    {id:'in_fd',l:'Front Door',c:'az network front-door list'},
   ]},
   {t:'Storage',open:false,inputs:[
-    {id:'in_vols',l:'Volumes',c:'describe-volumes'},
-    {id:'in_snaps',l:'Snapshots',c:'describe-snapshots --owner-ids self'},
-    {id:'in_s3',l:'S3 Buckets',c:'s3api list-buckets'},
+    {id:'in_disks',l:'Managed Disks',c:'az disk list'},
+    {id:'in_snaps',l:'Snapshots',c:'az snapshot list'},
+    {id:'in_storage',l:'Storage Accounts',c:'az storage account list'},
   ]},
   {t:'DNS',open:false,inputs:[
-    {id:'in_r53',l:'Hosted Zones',c:'route53 list-hosted-zones'},
-    {id:'in_r53records',l:'Record Sets',c:'route53 list-resource-record-sets --hosted-zone-id &lt;zone-id&gt;'},
+    {id:'in_dns',l:'DNS Zones',c:'az network dns zone list'},
+    {id:'in_dnsrecs',l:'DNS Records',c:'az network dns record-set list-all -z &lt;zone&gt;'},
   ]},
   {t:'Security',open:false,inputs:[
-    {id:'in_waf',l:'WAF WebACLs',c:'wafv2 list-web-acls --scope REGIONAL'},
+    {id:'in_waf',l:'WAF Policies',c:'az network application-gateway waf-policy list'},
   ]},
 ];
 
@@ -408,16 +407,18 @@ inputSections.forEach(sec=>{
 document.querySelectorAll('.ji').forEach(el=>{el.addEventListener('input',function(){if(!this.value.trim()){this.className='ji';return}try{JSON.parse(this.value);this.className='ji valid'}catch(e){this.className='ji invalid'}})});
 
 function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim())}catch(e){const b=[];let d=0,s=-1;for(let i=0;i<t.length;i++){if(t[i]==='{'){if(d===0)s=i;d++}if(t[i]==='}'){d--;if(d===0&&s>=0){b.push(t.substring(s,i+1));s=-1}}}return b.length?b.map(x=>JSON.parse(x)):null}}
-function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
-function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return t?t.Value:f}
-function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
-function clsGw(id){const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','eigw-':'EIGW','lgw-':'LGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
+function ext(r,keys){if(!r)return[];if(Array.isArray(r))return r;const a=[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res.length?res:(r.value?[r]:[])}
+function gn(i,f){if(i.tags&&i.tags.Name)return i.tags.Name;if(i.tags&&i.tags.name)return i.tags.name;if(i.name)return i.name;const t=(i.Tags||[]).find(x=>x.Key==='Name');return t?t.Value:f}
+function sid(id){if(!id)return'';if(id.includes('/'))return id.split('/').pop().substring(0,16);return id.replace(/^[a-z]+-/,'').substring(0,10)}
+function parseAzureId(id){if(!id||!id.startsWith('/'))return null;const m=id.match(/\/subscriptions\/([^/]+)\/resourceGroups\/([^/]+)\/providers\/([^/]+)\/([^/]+)\/([^/]+)(?:\/([^/]+)\/([^/]+))?/i);if(!m)return null;return{subscriptionId:m[1],resourceGroup:m[2],provider:m[3],resourceType:m[4],resourceName:m[5],childType:m[6]||null,childName:m[7]||null}}
+function getVNetIdFromSubnet(sub){if(sub.id){const p=parseAzureId(sub.id);if(p&&p.resourceType==='virtualNetworks')return'/subscriptions/'+p.subscriptionId+'/resourceGroups/'+p.resourceGroup+'/providers/'+p.provider+'/'+p.resourceType+'/'+p.resourceName}if(sub.vnetId)return sub.vnetId;return sub.VpcId||''}
+function clsGw(id){if(!id)return'GW';if(id.includes('publicIPAddresses')||id.startsWith('pip-'))return'IGW';if(id.includes('natGateways')||id.startsWith('nat-'))return'NAT';if(id.includes('virtualNetworkGateways')||id.startsWith('vpngw-'))return'VGW';if(id.includes('privateEndpoints')||id.startsWith('pe-'))return'VPCE';if(id.includes('virtualNetworkPeerings')||id.startsWith('peer-'))return'PCX';if(id.includes('virtualHubs'))return'TGW';const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','tgw-':'TGW','eigw-':'IGW','lgw-':'IGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
 function isShared(t){return t==='TGW'||t==='PCX'}
-function gcv(t){return{IGW:'var(--igw-color)',NAT:'var(--nat-color)',TGW:'var(--tgw-color)',VGW:'var(--vgw-color)',VPCE:'var(--vpce-color)',PCX:'var(--pcx-color)',EIGW:'var(--igw-color)'}[t]||'var(--text-muted)'}
+function gcv(t){return{IGW:'var(--pip-color)',NAT:'var(--nat-color)',TGW:'var(--vwan-color)',VGW:'var(--vpngw-color)',VPCE:'var(--pe-color)',PCX:'var(--peer-color)',EIGW:'var(--pip-color)'}[t]||'var(--text-muted)'}
 function gch(t){return{IGW:'#10b981',NAT:'#f59e0b',TGW:'#ec4899',VGW:'#ef4444',VPCE:'#a78bfa',PCX:'#fb923c',EIGW:'#10b981'}[t]||'#4a5e80'}
 function gv(id){return(document.getElementById(id)||{}).value||''}
 
-// large-scale demo generator -- enterprise AWS environment
+// large-scale demo generator -- enterprise Azure environment
 function generateDemo(){
   const AZS=['us-east-1a','us-east-1b','us-east-1c'];
   const INST_TYPES=['t3.micro','t3.small','t3.medium','t3.large','m5.large','m5.xlarge','m5.2xlarge','r5.large','r5.xlarge','r5.2xlarge','c5.large','c5.xlarge'];
@@ -686,29 +687,29 @@ function generateDemo(){
   if(internetFacingAlbs.length>0){
     wafAcls.push({
       Name:'prod-web-acl',Id:'waf-001',
-      ARN:'arn:aws:wafv2:us-east-1:123456789:regional/webacl/prod-web-acl/abc1',
+      ARN:'/subscriptions/00000000/resourceGroups/rg-prod/providers/Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/prod-web-acl',
       Description:'Production WAF - OWASP rules',
       DefaultAction:{Allow:{}},
-      Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1},{Name:'AWSManagedRulesSQLiRuleSet',Priority:2},{Name:'RateLimit-1000',Priority:3}],
+      Rules:[{Name:'OWASP-CRS-CommonRuleSet',Priority:1},{Name:'OWASP-CRS-SQLiRuleSet',Priority:2},{Name:'RateLimit-1000',Priority:3}],
       ResourceArns:internetFacingAlbs.slice(0,2).map(a=>a.LoadBalancerArn)
     });
   }
   if(internetFacingAlbs.length>2){
     wafAcls.push({
       Name:'staging-web-acl',Id:'waf-002',
-      ARN:'arn:aws:wafv2:us-east-1:123456789:regional/webacl/staging-web-acl/abc2',
+      ARN:'/subscriptions/00000000/resourceGroups/rg-staging/providers/Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/staging-web-acl',
       Description:'Staging WAF - basic protection',
       DefaultAction:{Allow:{}},
-      Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1}],
+      Rules:[{Name:'OWASP-CRS-CommonRuleSet',Priority:1}],
       ResourceArns:internetFacingAlbs.slice(2,4).map(a=>a.LoadBalancerArn)
     });
   }
   wafAcls.push({
     Name:'pci-web-acl',Id:'waf-003',
-    ARN:'arn:aws:wafv2:us-east-1:123456789:regional/webacl/pci-web-acl/abc3',
+    ARN:'/subscriptions/00000000/resourceGroups/rg-pci/providers/Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/pci-web-acl',
     Description:'PCI DSS compliant WAF',
     DefaultAction:{Block:{}},
-    Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1},{Name:'AWSManagedRulesSQLiRuleSet',Priority:2},{Name:'AWSManagedRulesKnownBadInputsRuleSet',Priority:3},{Name:'AWSManagedRulesLinuxRuleSet',Priority:4}],
+    Rules:[{Name:'OWASP-CRS-CommonRuleSet',Priority:1},{Name:'OWASP-CRS-SQLiRuleSet',Priority:2},{Name:'OWASP-CRS-KnownBadInputsRuleSet',Priority:3},{Name:'OWASP-CRS-LinuxRuleSet',Priority:4}],
     ResourceArns:[]
   });
 
@@ -866,20 +867,27 @@ function generateDemo(){
     });
   }
 
+  // Generate Public IPs for instances with public access (replaces IGWs)
+  const publicIps=[];
+  ec2Instances.filter((_,i)=>i%5===0).forEach((inst,pi)=>{
+    publicIps.push({id:'pip-'+inst.InstanceId,name:'pip-'+gn(inst,inst.InstanceId),publicIPAddress:'20.'+Math.floor(Math.random()*255)+'.'+Math.floor(Math.random()*255)+'.'+Math.floor(Math.random()*254+1),
+      publicIPAllocationMethod:'Static',sku:{name:'Standard'},Tags:[{Key:'Name',Value:'pip-'+gn(inst,inst.InstanceId)}]});
+  });
+
   return {
-    vpcs:{Vpcs:vpcs},subnets:{Subnets:subnets},rts:{RouteTables:rts},
-    sgs:{SecurityGroups:sgs},nacls:{NetworkAcls:nacls},
-    igws:{InternetGateways:igwsList},nats:{NatGateways:natsList},
-    ec2:{Reservations:[{Instances:ec2Instances}]},
-    albs:{LoadBalancers:albsList},vpces:{VpcEndpoints:vpceList},
-    peer:{VpcPeeringConnections:peerings},vpn:{VpnConnections:vpnConns},
-    vols:{Volumes:volsList},snaps:{Snapshots:snapsList},
-    s3:{Buckets:s3Buckets},r53:{HostedZones:zones},r53records:{ResourceRecordSets:r53records},tgs:{TargetGroups:tgsList},
-    enis:{NetworkInterfaces:enisList},waf:{WebACLs:wafAcls},
-    rds:{DBInstances:rdsInstances},ecs:{services:ecsServices},
-    lambda:{Functions:lambdaFunctions},elasticache:{CacheClusters:ecacheClusters},
-    redshift:{Clusters:redshiftClusters},tgwatt:{TransitGatewayAttachments:tgwAttachments},
-    cf:{DistributionList:{Items:cfDistributions}}
+    vnets:vpcs,subnets:subnets,rts:rts,
+    nsgs:sgs,nics:enisList,pips:publicIps,
+    nats:natsList,pes:vpceList,
+    vms:ec2Instances,
+    appgws:albsList.filter(a=>a.Type==='application'),lbs:albsList.filter(a=>a.Type==='network'),
+    peer:peerings,vpn:vpnConns,
+    disks:volsList,snaps:snapsList,
+    storage:s3Buckets,dns:zones,dnsrecs:r53records,
+    waf:wafAcls,
+    sql:rdsInstances,aci:ecsServices,
+    func:lambdaFunctions,redis:ecacheClusters,
+    synapse:redshiftClusters,vhubconn:tgwAttachments,
+    fd:cfDistributions
   };
 }
 const demo=generateDemo();
@@ -953,7 +961,7 @@ function openResourceList(type, pushNav){
 
   switch(type){
     case 'VPCs':{
-      const d=ctx.vpcs||[];title='VPCs';sub=d.length+' total';
+      const d=ctx.vpcs||[];title='VNets';sub=d.length+' total';
       d.forEach(v=>{
         const sc=(ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).length;
         items.push(row(gn(v,v.VpcId),'ID: '+v.VpcId+' | CIDR: '+(v.CidrBlock||'?')+' | '+sc+' subnets','#7C3AED',{t:'vpc',id:v.VpcId}));
@@ -986,7 +994,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'NACLs':{
-      const d=ctx.nacls||[];title='Network ACLs';sub=d.length+' total';
+      const d=ctx.nacls||[];title='NSGs (Subnet-level)';sub=d.length+' total';
       d.forEach(n=>{
         const rc=(n.Entries||[]).length;
         items.push(row(gn(n,n.NetworkAclId),'ID: '+n.NetworkAclId+' | VPC: '+vpcName(n.VpcId)+' | '+rc+' rules','#8b5cf6',{t:'vpc',id:n.VpcId}));
@@ -1000,7 +1008,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'EC2':{
-      const d=ctx.instances||[];title='EC2 Instances';sub=d.length+' total';
+      const d=ctx.instances||[];title='Virtual Machines';sub=d.length+' total';
       d.forEach(i=>{
         const pip=(i.NetworkInterfaces||[]).flatMap(n=>[n.PrivateIpAddress]).filter(Boolean).join(', ');
         const sid=i.SubnetId||findSubForInst(i.InstanceId);
@@ -1008,7 +1016,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'ENIs':{
-      const d=ctx.enis||[];title='ENIs';sub=d.length+' total';
+      const d=ctx.enis||[];title='NICs';sub=d.length+' total';
       d.forEach(e=>{
         items.push(row(gn(e,e.NetworkInterfaceId),'Type: '+(e.InterfaceType||'?')+' | Status: '+(e.Status||'?')+' | IP: '+(e.PrivateIpAddress||'?')+' | Subnet: '+subName(e.SubnetId),'#3b82f6',e.SubnetId?{t:'sub',id:e.SubnetId}:null));
       });break;
@@ -1028,7 +1036,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'TGs':{
-      const d=ctx.tgs||[];title='Target Groups';sub=d.length+' total';
+      const d=ctx.tgs||[];title='Backend Pools';sub=d.length+' total';
       d.forEach(tg=>{
         const tc=(tg.Targets||[]).length;
         const vid=tg.VpcId;
@@ -1036,7 +1044,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'RDS':{
-      const d=ctx.rdsInstances||[];title='RDS Instances';sub=d.length+' total';
+      const d=ctx.rdsInstances||[];title='SQL Databases';sub=d.length+' total';
       d.forEach(db=>{
         let det='Engine: '+db.Engine+' | Class: '+db.DBInstanceClass+' | Status: '+db.DBInstanceStatus;
         if(db.MultiAZ)det+=' | Multi-AZ';
@@ -1047,7 +1055,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'ECS':{
-      const d=ctx.ecsServices||[];title='ECS Services';sub=d.length+' total';
+      const d=ctx.ecsServices||[];title='Container Instances';sub=d.length+' total';
       d.forEach(svc=>{
         const cluster=(svc.clusterArn||'').split('/').pop();
         const sid=findSubForEcs(svc.serviceName);
@@ -1055,27 +1063,27 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'Lambda':{
-      const d=ctx.lambdaFns||[];title='Lambda Functions (VPC)';sub=d.length+' total';
+      const d=ctx.lambdaFns||[];title='Azure Functions (VNet)';sub=d.length+' total';
       d.forEach(fn=>{
         const sid=findSubForLambda(fn.FunctionName);
         items.push(row(esc(fn.FunctionName),'Runtime: '+fn.Runtime+' | Mem: '+fn.MemorySize+'MB | Timeout: '+fn.Timeout+'s | VPC: '+vpcName(fn.VpcConfig?.VpcId),'#a855f7',sid?{t:'sub',id:sid}:{t:'vpc',id:fn.VpcConfig?.VpcId}));
       });break;
     }
     case 'Cache':{
-      const d=ctx.ecacheClusters||[];title='ElastiCache Clusters';sub=d.length+' total';
+      const d=ctx.ecacheClusters||[];title='Azure Cache for Redis';sub=d.length+' total';
       d.forEach(c=>{
         const ep=(c.CacheNodes||[]).length>0?c.CacheNodes[0].Endpoint?.Address:'--';
         items.push(row(esc(c.CacheClusterId),'Engine: '+c.Engine+' | Type: '+c.CacheNodeType+' | Nodes: '+c.NumCacheNodes+' | VPC: '+vpcName(c.VpcId)+(ep?'<br>Endpoint: '+ep:''),'#ef4444',c.VpcId?{t:'vpc',id:c.VpcId}:null));
       });break;
     }
     case 'Redshift':{
-      const d=ctx.redshiftClusters||[];title='Redshift Clusters';sub=d.length+' total';
+      const d=ctx.redshiftClusters||[];title='Synapse Workspaces';sub=d.length+' total';
       d.forEach(c=>{
         items.push(row(esc(c.ClusterIdentifier),'Type: '+c.NodeType+' | Nodes: '+c.NumberOfNodes+' | Status: '+c.ClusterStatus+' | VPC: '+vpcName(c.VpcId)+(c.Endpoint?'<br>Endpoint: '+c.Endpoint.Address+':'+c.Endpoint.Port:''),'#dc2626',c.VpcId?{t:'vpc',id:c.VpcId}:null));
       });break;
     }
     case 'Peering':{
-      const d=ctx.peerings||[];title='VPC Peering';sub=d.length+' total';
+      const d=ctx.peerings||[];title='VNet Peering';sub=d.length+' total';
       d.forEach(p=>{
         const req=p.RequesterVpcInfo||{};const acc=p.AccepterVpcInfo||{};
         items.push(row(gn(p,p.VpcPeeringConnectionId),'Status: '+(p.Status?.Code||'?')+' | Requester: '+vpcName(req.VpcId)+' ('+((req.CidrBlock)||'?')+') | Accepter: '+vpcName(acc.VpcId)+' ('+(acc.CidrBlock||'?')+')','#fb923c',req.VpcId?{t:'vpc',id:req.VpcId}:null));
@@ -1088,33 +1096,33 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'Endpoints':{
-      const d=ctx.vpces||[];title='VPC Endpoints';sub=d.length+' total';
+      const d=ctx.vpces||[];title='Private Endpoints';sub=d.length+' total';
       d.forEach(e=>{
         items.push(row(gn(e,e.VpcEndpointId),'Service: '+(e.ServiceName||'?').split('.').pop()+' | Type: '+(e.VpcEndpointType||'?')+' | VPC: '+vpcName(e.VpcId),'#a78bfa',e.VpcId?{t:'vpc',id:e.VpcId}:null));
       });break;
     }
     case 'Volumes':{
-      const d=ctx.volumes||[];title='EBS Volumes';sub=d.length+' total';
+      const d=ctx.volumes||[];title='Managed Disks';sub=d.length+' total';
       d.forEach(v=>{
         const att=(v.Attachments||[]).map(a=>a.InstanceId).filter(Boolean).join(', ')||'detached';
         items.push(row(gn(v,v.VolumeId),'Size: '+v.Size+'GB | Type: '+(v.VolumeType||'?')+' | State: '+(v.State||'?')+' | AZ: '+(v.AvailabilityZone||'?')+' | Attached: '+att,'#64748b'));
       });break;
     }
     case 'Snapshots':{
-      const d=ctx.snapshots||[];title='EBS Snapshots';sub=d.length+' total';
+      const d=ctx.snapshots||[];title='Snapshots';sub=d.length+' total';
       d.forEach(s=>{
         items.push(row(gn(s,s.SnapshotId),'Volume: '+(s.VolumeId||'?')+' | Size: '+(s.VolumeSize||'?')+'GB | State: '+(s.State||'?')+' | Started: '+((s.StartTime||'').split('T')[0]||'?'),'#94a3b8'));
       });break;
     }
     case 'S3':{
-      const d=ctx.s3bk||[];title='S3 Buckets';sub=d.length+' total';
+      const d=ctx.s3bk||[];title='Storage Accounts';sub=d.length+' total';
       d.forEach(b=>{
         items.push(row(esc(b.Name),'Created: '+((b.CreationDate||'').split('T')[0]||'?'),'#ea580c'));
       });break;
     }
     case 'R53':{
       const d=ctx.zones||[];const rbz=ctx.recsByZone||{};
-      title='Route 53 Hosted Zones';sub=d.length+' total';
+      title='Azure DNS Zones';sub=d.length+' total';
       d.forEach(z=>{
         const priv=z.Config?.PrivateZone;
         const zid=(z.Id||'').replace('/hostedzone/','');
@@ -1141,13 +1149,13 @@ function openResourceList(type, pushNav){
           });
           det+='</div>';
         }else{
-          det+='<div style="margin-top:4px;color:#64748b;font-size:8px;font-style:italic">No record sets loaded. Paste output of:<br><code style="color:#0ea5e9;font-size:8px">aws route53 list-resource-record-sets --hosted-zone-id '+zid+'</code><br>into the "Record Sets" input field.</div>';
+          det+='<div style="margin-top:4px;color:#64748b;font-size:8px;font-style:italic">No record sets loaded. Paste output of:<br><code style="color:#0ea5e9;font-size:8px">az network dns record-set list -g &lt;rg&gt; -z '+zid+'</code><br>into the "Record Sets" input field.</div>';
         }
         items.push(row(esc(z.Name),det,zColor,fvid?{t:'vpc',id:fvid}:null));
       });break;
     }
     case 'WAF':{
-      const d=ctx.wafAcls||[];title='WAF WebACLs';sub=d.length+' total';
+      const d=ctx.wafAcls||[];title='WAF Policies';sub=d.length+' total';
       d.forEach(w=>{
         const rc=(w.Rules||[]).length;const res=(w.ResourceArns||[]).length;
         let det='Rules: '+rc+' | Resources: '+res;
@@ -1157,7 +1165,7 @@ function openResourceList(type, pushNav){
       });break;
     }
     case 'CF':{
-      const d=ctx.cfDistributions||[];title='CloudFront Distributions';sub=d.length+' total';
+      const d=ctx.cfDistributions||[];title='Front Door Profiles';sub=d.length+' total';
       d.forEach(cf=>{
         const aliases=(cf.Aliases?.Items||[]).join(', ');
         const origins=(cf.Origins?.Items||[]).map(o=>o.DomainName).join(', ');
@@ -1232,7 +1240,7 @@ function openResourceList(type, pushNav){
         e.stopPropagation();
         const t=navBtn.dataset.navT,nid=navBtn.dataset.navId;
         if(!t||!nid)return;
-        const sel=t==='vpc'?'[data-vpc-id="'+nid+'"]':'[data-subnet-id="'+nid+'"]';
+        const sel=t==='vpc'?'[data-vnet-id="'+nid+'"]':'[data-subnet-id="'+nid+'"]';
         const layoutSel=document.getElementById('layoutMode');
         const curLayout=layoutSel?.value||'grid';
         // switch to grid if on executive
@@ -1253,7 +1261,7 @@ function openResourceList(type, pushNav){
       // regular row click
       const r=e.target.closest('.dp-row[data-act]');if(!r)return;
       const act=r.dataset.act,id=r.dataset.id;if(!act||!id)return;
-      const sel=act==='vpc'?'[data-vpc-id="'+id+'"]':'[data-subnet-id="'+id+'"]';
+      const sel=act==='vpc'?'[data-vnet-id="'+id+'"]':'[data-subnet-id="'+id+'"]';
       zoomToNode(sel);
       setTimeout(()=>{
         flashNode(sel);
@@ -1276,15 +1284,12 @@ let _navStack=[]; // navigation stack for detail panel back button
 function routeTgtHtml(tgtId){
   if(!tgtId||tgtId==='local')return '<span class="p">local</span>';
   const nm=gwNames[tgtId];
-  const label=nm?(nm+' ('+tgtId+')'):(tgtId);
+  const shortId=tgtId.includes('/')?tgtId.split('/').pop():tgtId;
+  const label=nm?(nm+' ('+shortId+')'):(shortId);
   const gwType=clsGw(tgtId);
-  if(tgtId.startsWith('nat-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="NAT" style="cursor:pointer;color:var(--nat-color)">'+label+'</span>';
-  if(tgtId.startsWith('tgw-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="TGW" style="cursor:pointer;color:var(--tgw-color)">'+label+'</span>';
-  if(tgtId.startsWith('igw-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="IGW" style="cursor:pointer;color:var(--igw-color)">'+label+'</span>';
-  if(tgtId.startsWith('vgw-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="VGW" style="cursor:pointer;color:var(--vgw-color)">'+label+'</span>';
-  if(tgtId.startsWith('vpce-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="VPCE" style="cursor:pointer;color:var(--vpce-color)">'+label+'</span>';
-  if(tgtId.startsWith('pcx-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="PCX" style="cursor:pointer;color:var(--pcx-color)">'+label+'</span>';
-  return '<span class="p">'+tgtId+'</span>';
+  const col=gcv(gwType);
+  if(gwType!=='GW')return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="'+gwType+'" style="cursor:pointer;color:'+col+'">'+label+'</span>';
+  return '<span class="p">'+label+'</span>';
 }
 function openSubnetPanel(sub,vpcId,lk){
   const dp=document.getElementById('detailPanel');
@@ -1374,7 +1379,7 @@ function openSubnetPanel(sub,vpcId,lk){
       }
       eb+='</div>';
     });
-    h+=sec('EC2 Instances',si.length,eb,true);
+    h+=sec('Virtual Machines',si.length,eb,true);
   }
   // ENIs
   if(se.length){
@@ -1390,7 +1395,7 @@ function openSubnetPanel(sub,vpcId,lk){
       if(eSgs.length)enb+='<br><span class="k">SGs:</span> '+eSgs.map(g=>g.GroupName||g.GroupId).join(', ');
       enb+='</div>';
     });
-    h+=sec('ENIs',se.length,enb,false);
+    h+=sec('NICs',se.length,enb,false);
   }
   // Load Balancers
   if(sa.length){
@@ -1451,7 +1456,7 @@ function openSubnetPanel(sub,vpcId,lk){
       rb+='<br><span class="k">Storage:</span> '+db.AllocatedStorage+'GB'+(db.StorageEncrypted?' (encrypted)':'');
       rb+='</div>';
     });
-    h+=sec('RDS Instances',sr.length,rb,false);
+    h+=sec('SQL Databases',sr.length,rb,false);
   }
   // ECS Services
   const secs=(lk.ecsBySub||{})[sub.SubnetId]||[];
@@ -1467,7 +1472,7 @@ function openSubnetPanel(sub,vpcId,lk){
       if(svc.memory)eb+=' &nbsp;<span class="k">Mem:</span> '+svc.memory+'MB';
       eb+='</div>';
     });
-    h+=sec('ECS Services',secs.length,eb,false);
+    h+=sec('Container Instances',secs.length,eb,false);
   }
   // Lambda Functions
   const slm=(lk.lambdaBySub||{})[sub.SubnetId]||[];
@@ -1479,7 +1484,7 @@ function openSubnetPanel(sub,vpcId,lk){
       lmb+='<span class="k">Runtime:</span> '+fn.Runtime+' &nbsp;<span class="k">Mem:</span> '+fn.MemorySize+'MB &nbsp;<span class="k">Timeout:</span> '+fn.Timeout+'s';
       lmb+='</div>';
     });
-    h+=sec('Lambda (VPC)',slm.length,lmb,false);
+    h+=sec('Functions (VNet)',slm.length,lmb,false);
   }
   // Security Groups
   const vSgs=lk.sgByVpc[vpcId]||[];
@@ -1515,7 +1520,7 @@ function openSubnetPanel(sub,vpcId,lk){
     if(subSgs.length&&vSgs.length>subSgs.length){
       sgb+='<div class="dp-row"><span class="k">+ '+(vSgs.length-subSgs.length)+' more SGs in VPC (not attached to this subnet)</span></div>';
     }
-    h+=sec('Firewall Rules (Security Groups)',displaySgs.length,sgb,false);
+    h+=sec('NSG Rules (Network Security Groups)',displaySgs.length,sgb,false);
   }
   // NACL visual
   const nc2=lk.subNacl[sub.SubnetId];
@@ -1531,7 +1536,7 @@ function openSubnetPanel(sub,vpcId,lk){
       nb2+='<div class="fw-rule-bar"><div class="fw-arrow '+cls+'"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div><span class="fw-proto">'+proto+'</span><span class="fw-port '+cls+'">#'+e.RuleNumber+' '+port+'</span><span class="fw-src">'+(e.CidrBlock||'any')+'</span></div>';
     });
     nb2+='</div>';
-    h+=sec('NACL Visual (Inbound)',inbound.length+' rules',nb2,false);
+    h+=sec('Subnet NSG Visual (Inbound)',inbound.length+' rules',nb2,false);
   }
   h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span></div>'+h;
   dpBody.innerHTML=h;
@@ -1824,7 +1829,7 @@ function buildResTree(subId, ctx){
       const ie=(enis||[]).filter(e=>e.Attachment&&e.Attachment.InstanceId===inst.InstanceId);
       ie.forEach(e=>attachedEnis.add(e.NetworkInterfaceId));
     }
-    res.push({type:'EC2',name:inst.Tags?.find(t=>t.Key==='Name')?.Value||inst.InstanceId?.slice(-8),state:inst.State?.Name,ip:inst.PrivateIpAddress||'',col:'#10b981',bg:'rgba(16,185,129,.12)',children:ch,
+    res.push({type:'VM',name:inst.Tags?.find(t=>t.Key==='Name')?.Value||inst.InstanceId?.slice(-8),state:inst.State?.Name,ip:inst.PrivateIpAddress||'',col:'#10b981',bg:'rgba(16,185,129,.12)',children:ch,
       rid:inst.InstanceId,itype:inst.InstanceType||'',sgIds:(inst.SecurityGroups||[]).map(s=>s.GroupName||s.GroupId).join(', ')});
   });
   // ALB with TGs + WAF + CF
@@ -1835,17 +1840,17 @@ function buildResTree(subId, ctx){
       ((wafByAlb||{})[lb.LoadBalancerArn]||[]).forEach(w=>ch.push({type:'WAF',name:w.Name||'WAF',detail:(w.Rules||[]).length+' rules',col:'#eab308',bg:'rgba(234,179,8,.08)'}));
       (((cfByAlb||{})[lb.LoadBalancerArn])||[]).forEach(cf=>ch.push({type:'CF',name:cf.DomainName||'CF',detail:'',col:'#8b5cf6',bg:'rgba(139,92,246,.08)'}));
     }
-    res.push({type:'ALB',name:lb.LoadBalancerName||'ALB',ip:lb.Scheme||'',col:'#38bdf8',bg:'rgba(56,189,248,.12)',children:ch,
+    res.push({type:'LB',name:lb.LoadBalancerName||'LB',ip:lb.Scheme||'',col:'#38bdf8',bg:'rgba(56,189,248,.12)',children:ch,
       rid:lb.LoadBalancerArn?.split('/').pop()||'',lbType:lb.Type||'application',sgIds:(lb.SecurityGroups||[]).join(', ')});
   });
   // RDS
-  (rdsBySub[subId]||[]).forEach(db=>res.push({type:'RDS',name:db.DBInstanceIdentifier||'RDS',ip:db.Engine||'',col:'#3b82f6',bg:'rgba(59,130,246,.12)',children:[],
+  (rdsBySub[subId]||[]).forEach(db=>res.push({type:'SQL',name:db.DBInstanceIdentifier||'SQL',ip:db.Engine||'',col:'#3b82f6',bg:'rgba(59,130,246,.12)',children:[],
     rid:db.DBInstanceIdentifier,itype:db.DBInstanceClass||'',extra:db.EngineVersion||''}));
   // ECS
-  (ecsBySub[subId]||[]).forEach(svc=>res.push({type:'ECS',name:svc.serviceName||'ECS',ip:svc.launchType||'',col:'#f97316',bg:'rgba(249,115,22,.12)',children:[],
+  (ecsBySub[subId]||[]).forEach(svc=>res.push({type:'ACI',name:svc.serviceName||'ACI',ip:svc.launchType||'',col:'#f97316',bg:'rgba(249,115,22,.12)',children:[],
     rid:svc.serviceName,extra:'Tasks: '+(svc.runningCount||0)+'/'+(svc.desiredCount||0)}));
   // Lambda
-  (lambdaBySub[subId]||[]).forEach(fn=>res.push({type:'FN',name:fn.FunctionName||'Lambda',ip:fn.Runtime||'',col:'#a855f7',bg:'rgba(168,85,247,.12)',children:[],
+  (lambdaBySub[subId]||[]).forEach(fn=>res.push({type:'FN',name:fn.FunctionName||'Function',ip:fn.Runtime||'',col:'#a855f7',bg:'rgba(168,85,247,.12)',children:[],
     rid:fn.FunctionName,extra:fn.MemorySize?fn.MemorySize+'MB':''}));
   // Unattached ENIs
   (eniBySub[subId]||[]).forEach(e=>{
@@ -1879,7 +1884,7 @@ function renderLandingZoneMap(ctx){
     rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb}=ctx;
 
   // Parse record sets for DNS expanded view
-  const lzAllRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets']);
+  const lzAllRecSets=ext(safeParse(gv('in_dnsrecs')),['ResourceRecordSets','value']);
   const lzRecsByZone={};
   lzAllRecSets.forEach(r=>{if(r.HostedZoneId)(lzRecsByZone[r.HostedZoneId]=lzRecsByZone[r.HostedZoneId]||[]).push(r)});
 
@@ -2061,11 +2066,11 @@ function renderLandingZoneMap(ctx){
     const p=lzRouteG.append('path')
       .attr('class','route-trunk animated')
       .attr('d',path)
-      .attr('stroke','var(--tgw-color)');
+      .attr('stroke','var(--vwan-color)');
     lzAllPaths.push({p,vids:[hubVpc.VpcId],shared:true});
     // hub gets its own route entry
     if(!lzVpcRoutes.has(hubVpc.VpcId))lzVpcRoutes.set(hubVpc.VpcId,[]);
-    lzVpcRoutes.get(hubVpc.VpcId).push({d:path,stroke:'var(--tgw-color)'});
+    lzVpcRoutes.get(hubVpc.VpcId).push({d:path,stroke:'var(--vwan-color)'});
   }
   
   // Draw connections from TGW to spokes - route ABOVE all VPCs but below NET routing
@@ -2091,7 +2096,7 @@ function renderLandingZoneMap(ctx){
     const p0=lzRouteG.append('path')
       .attr('class','route-trunk animated')
       .attr('d',trunkD)
-      .attr('stroke','var(--tgw-color)');
+      .attr('stroke','var(--vwan-color)');
     lzAllPaths.push({p:p0,vids:allSpokeVids,shared:true});
     
     let prevBusX=tgwX+28;
@@ -2104,11 +2109,11 @@ function renderLandingZoneMap(ctx){
       
       // Horizontal segment to column bus
       const horizD=`M${prevBusX},${routeY} L${localBusX},${routeY}`;
-      horizSegs.push({d:horizD,stroke:'var(--tgw-color)'});
+      horizSegs.push({d:horizD,stroke:'var(--vwan-color)'});
       const p1=lzRouteG.append('path')
         .attr('class','route-trunk animated')
         .attr('d',horizD)
-        .attr('stroke','var(--tgw-color)');
+        .attr('stroke','var(--vwan-color)');
       const laterVids=sortedCols.slice(colIdx).flatMap(([,cs])=>cs.map(s=>s.vpc.VpcId));
       lzAllPaths.push({p:p1,vids:laterVids,shared:true});
       prevBusX=localBusX;
@@ -2126,7 +2131,7 @@ function renderLandingZoneMap(ctx){
       const p2=lzRouteG.append('path')
         .attr('class','route-trunk animated')
         .attr('d',vertFullD)
-        .attr('stroke','var(--tgw-color)');
+        .attr('stroke','var(--vwan-color)');
       lzAllPaths.push({p:p2,vids:colVids,shared:true});
       
       // Snapshot current horizontal segments for this column
@@ -2142,14 +2147,14 @@ function renderLandingZoneMap(ctx){
         const p4=lzRouteG.append('path')
           .attr('class','route-trunk animated')
           .attr('d',branchD)
-          .attr('stroke','var(--tgw-color)');
+          .attr('stroke','var(--vwan-color)');
         lzAllPaths.push({p:p4,vids:[spoke.vpc.VpcId]});
         
         // Per-VPC clipped route: trunk + all horiz segs to this col + clipped vertical + branch
         const vid=spoke.vpc.VpcId;
         if(!lzVpcRoutes.has(vid))lzVpcRoutes.set(vid,[]);
         const routes=lzVpcRoutes.get(vid);
-        const cl='var(--tgw-color)';
+        const cl='var(--vwan-color)';
         routes.push({d:trunkD,stroke:cl});
         horizForThisCol.forEach(h=>routes.push(h));
         routes.push({d:`M${localBusX},${routeY} L${localBusX},${connY}`,stroke:cl});
@@ -2162,14 +2167,14 @@ function renderLandingZoneMap(ctx){
   if(tgwId){
     const tgwG=ndL.append('g').attr('class','lz-tgw-node').style('cursor','pointer');
     tgwG.append('circle').attr('cx',tgwX).attr('cy',tgwY).attr('r',28)
-      .attr('fill','rgba(236,72,153,.1)').attr('stroke','var(--tgw-color)').attr('stroke-width',2);
+      .attr('fill','rgba(236,72,153,.1)').attr('stroke','var(--vwan-color)').attr('stroke-width',2);
     tgwG.append('text').attr('x',tgwX).attr('y',tgwY-4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','10px').attr('font-weight','600').attr('fill','var(--tgw-color)').text('TGW');
+      .attr('font-family','IBM Plex Mono').attr('font-size','10px').attr('font-weight','600').attr('fill','var(--vwan-color)').text('TGW');
     tgwG.append('text').attr('x',tgwX).attr('y',tgwY+10).attr('text-anchor','middle')
       .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--text-muted)').text('Transit');
     
     // TGW tooltip
-    const tgwName=gwNames[tgwId]||'Transit Gateway';
+    const tgwName=gwNames[tgwId]||'Virtual WAN Hub';
     tgwG.on('mouseenter',function(){
       if(_lzLocked) return;
       lzHlResetNodes();
@@ -2177,7 +2182,7 @@ function renderLandingZoneMap(ctx){
       lzRouteG.style('opacity','0.06');
       g.classed('hl-active',true);
       // show all nodes
-      ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
+      ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
       const olStyle={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
       lzAllPaths.forEach(e=>{try{
         const d=e.p.attr('d'),stroke=e.p.attr('stroke');
@@ -2202,7 +2207,7 @@ function renderLandingZoneMap(ctx){
       if(_lzLocked&&_lzKey==='tgw'){lzForceClr();return}
       lzForceClr();
       lzOlL.selectAll('*').remove();lzRouteG.style('opacity','0.06');g.classed('hl-active',true);
-      ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
+      ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
       const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
       lzAllPaths.forEach(e=>{try{const d=e.p.attr('d'),s=e.p.attr('stroke');if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',s);Object.entries(olS).forEach(([k,v])=>p.style(k,v))}}catch(ex){}});
       _lzLocked=true;_lzKey='tgw';lzShowLock(true);
@@ -2213,9 +2218,9 @@ function renderLandingZoneMap(ctx){
   
   // Draw VPC boxes with tooltips
   vL.forEach(vl=>{
-    const vG=ndL.append('g').attr('class','vpc-group').attr('data-vpc-id',vl.vpc.VpcId).style('cursor','pointer');
+    const vG=ndL.append('g').attr('class','vnet-group').attr('data-vnet-id',vl.vpc.VpcId).style('cursor','pointer');
     // Hub gets special styling
-    const strokeColor=vl.isHub?'#7C3AED':'var(--vpc-stroke)';
+    const strokeColor=vl.isHub?'#7C3AED':'var(--vnet-stroke)';
     const strokeWidth=vl.isHub?2.5:1.5;
     const fillColor=vl.isHub?'rgba(124,58,237,.04)':'rgba(59,130,246,.03)';
     
@@ -2231,13 +2236,13 @@ function renderLandingZoneMap(ctx){
     }
     
     // VPC name on first line
-    vG.append('text').attr('class','vpc-label').attr('x',vl.x+12).attr('y',vl.y+16).text(gn(vl.vpc,vl.vpc.VpcId));
+    vG.append('text').attr('class','vnet-label').attr('x',vl.x+12).attr('y',vl.y+16).text(gn(vl.vpc,vl.vpc.VpcId));
     
     // CIDR and region on second line
     const ss=subByVpc[vl.vpc.VpcId]||[];
     const az=ss.find(s=>s.AvailabilityZone)?.AvailabilityZone||'';
     const region=az.replace(/[a-z]$/,'')||'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
+    vG.append('text').attr('class','vnet-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
       .attr('font-size','8px').text(vl.vpc.CidrBlock+(region?' '+region:''));
     
     // VPCE badge - positioned at bottom left of VPC
@@ -2245,9 +2250,9 @@ function renderLandingZoneMap(ctx){
     if(vpcVpces.length){
       const bw=65,bh=16;
       vG.append('rect').attr('x',vl.x+8).attr('y',vl.y+vl.h-bh-6).attr('width',bw).attr('height',bh).attr('rx',3)
-        .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',.5);
+        .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--pe-color)').attr('stroke-width',.5);
       vG.append('text').attr('x',vl.x+8+bw/2).attr('y',vl.y+vl.h-bh/2-2).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
+        .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--pe-color)').text(vpcVpces.length+' VPCE');
     }
     
     // VPC tooltip (on header area only)
@@ -2257,7 +2262,7 @@ function renderLandingZoneMap(ctx){
       if(!_lzLocked) lzHlVpc(vl.vpc.VpcId);
       const vpcGws=pvGws[vl.vpc.VpcId]||[];
       let h='<div class="tt-title">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
-      h+='<div class="tt-sub">'+(vl.isHub?'Hub VPC':'Spoke VPC')+'</div>';
+      h+='<div class="tt-sub">'+(vl.isHub?'Hub VNet':'Spoke VNet')+'</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
       h+='<div class="tt-r">CIDR: <span class="i">'+vl.vpc.CidrBlock+'</span></div>';
       h+='<div class="tt-r">Region: <span class="i">'+(region||'N/A')+'</span></div>';
@@ -2305,7 +2310,7 @@ function renderLandingZoneMap(ctx){
     ndL.selectAll('.lz-gw-node').classed('lz-hl',false);
     ndL.selectAll('.lz-tgw-node').classed('lz-hl',false);
     ndL.selectAll('.internet-node').classed('lz-hl',false);
-    ndL.selectAll('.vpc-group').each(function(){
+    ndL.selectAll('.vnet-group').each(function(){
       d3.select(this).select('rect').style('stroke-width',null).style('filter',null);
     });
   }
@@ -2317,7 +2322,7 @@ function renderLandingZoneMap(ctx){
     // Show TGW (connects all VPCs)
     ndL.selectAll('.lz-tgw-node').classed('lz-hl',true);
     // Glow this VPC box
-    ndL.selectAll('.vpc-group[data-vpc-id="'+vid+'"]').each(function(){
+    ndL.selectAll('.vnet-group[data-vnet-id="'+vid+'"]').each(function(){
       d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');
     });
     // Show this VPC's gateways
@@ -2382,7 +2387,7 @@ function renderLandingZoneMap(ctx){
         lzOlL.selectAll('*').remove();
         lzRouteG.style('opacity','0.06');
         g.classed('hl-active',true);
-        ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
+        ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
         const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
         lzAllPaths.forEach(x=>{
           const pd=x.p.attr('d'),ps=x.p.attr('stroke');
@@ -2399,7 +2404,7 @@ function renderLandingZoneMap(ctx){
       lzForceClr();
       if(hitKey==='tgw'){
         lzOlL.selectAll('*').remove();lzRouteG.style('opacity','0.06');g.classed('hl-active',true);
-        ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
+        ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
         const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
         lzAllPaths.forEach(x=>{const pd=x.p.attr('d'),ps=x.p.attr('stroke');const pp=lzOlL.append('path').attr('d',pd).style('stroke',ps);Object.entries(olS).forEach(([k,v])=>pp.style(k,v))});
       } else {
@@ -2515,7 +2520,7 @@ function renderLandingZoneMap(ctx){
       h+='<div class="tt-r">ID: <span class="i">'+sl.sub.SubnetId+'</span></div>';
       h+='</div>';
       if(subSi.length){
-        h+='<div class="tt-sec"><div class="tt-sh">EC2 Instances ('+subSi.length+')</div>';
+        h+='<div class="tt-sec"><div class="tt-sh">Virtual Machines ('+subSi.length+')</div>';
         subSi.slice(0,5).forEach(inst=>{
           const nm=inst.Tags?.find(t=>t.Key==='Name')?.Value||inst.InstanceId;
           h+='<div class="tt-r"><span class="i">'+nm+'</span> '+inst.InstanceType+' ['+inst.State?.Name+']</div>';
@@ -2557,18 +2562,18 @@ function renderLandingZoneMap(ctx){
     const iG=ndL.append('g').attr('class','internet-node');
     // Outer glow
     iG.append('circle').attr('cx',iX).attr('cy',iY).attr('r',38)
-      .attr('fill','none').attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.2);
+      .attr('fill','none').attr('stroke','var(--pip-color)').attr('stroke-width',1).attr('opacity',.2);
     // Main circle
     iG.append('circle').attr('cx',iX).attr('cy',iY).attr('r',32)
-      .attr('fill','rgba(16,185,129,.08)').attr('stroke','var(--igw-color)').attr('stroke-width',2);
+      .attr('fill','rgba(16,185,129,.08)').attr('stroke','var(--pip-color)').attr('stroke-width',2);
     // Globe icon effect
     iG.append('ellipse').attr('cx',iX).attr('cy',iY).attr('rx',20).attr('ry',32)
-      .attr('fill','none').attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.3);
+      .attr('fill','none').attr('stroke','var(--pip-color)').attr('stroke-width',1).attr('opacity',.3);
     iG.append('line').attr('x1',iX-32).attr('y1',iY).attr('x2',iX+32).attr('y2',iY)
-      .attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.3);
+      .attr('stroke','var(--pip-color)').attr('stroke-width',1).attr('opacity',.3);
     // Text
     iG.append('text').attr('x',iX).attr('y',iY+4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','11px').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
+      .attr('font-family','IBM Plex Mono').attr('font-size','11px').attr('font-weight','700').attr('fill','var(--pip-color)').text('NET');
     iG.append('text').attr('x',iX).attr('y',iY+48).attr('text-anchor','middle')
       .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-muted)').text('Internet');
     iG.style('cursor','pointer');
@@ -2593,7 +2598,7 @@ function renderLandingZoneMap(ctx){
   hubGws.forEach((gw,i)=>{
     const gx=hubLayout.x-70;
     const gG=ndL.append('g').attr('class','lz-gw-node').attr('data-vpc',hubVpc.VpcId).attr('data-gwtype',gw.type).style('cursor','pointer');
-    const col=gw.type==='IGW'?'var(--igw-color)':'var(--nat-color)';
+    const col=gw.type==='IGW'?'var(--pip-color)':'var(--nat-color)';
     
     // Gateway circle
     gG.append('circle').attr('cx',gx).attr('cy',gwY).attr('r',GR)
@@ -2672,18 +2677,18 @@ function renderLandingZoneMap(ctx){
     lzStructG.append('path')
       .attr('class','route-trunk animated')
       .attr('d',netDownPath)
-      .attr('stroke','var(--igw-color)');
+      .attr('stroke','var(--pip-color)');
     
     // Vertical trunk from top down to last gateway level
     const trunkPath=`M${trunkX},${trunkTopY} L${trunkX},${lastGwY}`;
     lzStructG.append('path')
       .attr('class','route-trunk animated')
       .attr('d',trunkPath)
-      .attr('stroke','var(--igw-color)');
+      .attr('stroke','var(--pip-color)');
     
     // Horizontal branches to each gateway
     igwNatGws.forEach((gw,i)=>{
-      const col=gw.type==='IGW'?'var(--igw-color)':'var(--nat-color)';
+      const col=gw.type==='IGW'?'var(--pip-color)':'var(--nat-color)';
       const branchY=firstGwY+i*55;
       const branchPath=`M${trunkX},${branchY} L${hubGx-GR},${branchY}`;
       lzStructG.append('path')
@@ -2695,8 +2700,8 @@ function renderLandingZoneMap(ctx){
       lzVpcRoutes.get(hubVpc.VpcId).push({d:branchPath,stroke:col});
     });
     // Add NET-to-trunk paths to hub VPC routes so they light up on highlight
-    lzVpcRoutes.get(hubVpc.VpcId).push({d:netDownPath,stroke:'var(--igw-color)'});
-    lzVpcRoutes.get(hubVpc.VpcId).push({d:trunkPath,stroke:'var(--igw-color)'});
+    lzVpcRoutes.get(hubVpc.VpcId).push({d:netDownPath,stroke:'var(--pip-color)'});
+    lzVpcRoutes.get(hubVpc.VpcId).push({d:trunkPath,stroke:'var(--pip-color)'});
   }
   
   // Draw gateways for spoke VPCs (on right side of each spoke)
@@ -2717,7 +2722,7 @@ function renderLandingZoneMap(ctx){
     
     spokeGws.forEach((gw,i)=>{
       const gG=ndL.append('g').attr('class','lz-gw-node').attr('data-vpc',spoke.vpc.VpcId).attr('data-gwtype',gw.type).style('cursor','pointer');
-      const col=gw.type==='IGW'?'var(--igw-color)':gw.type==='NAT'?'var(--nat-color)':gw.type==='VGW'?'var(--vgw-color)':'var(--text-muted)';
+      const col=gw.type==='IGW'?'var(--pip-color)':gw.type==='NAT'?'var(--nat-color)':gw.type==='VGW'?'var(--vpngw-color)':'var(--text-muted)';
       const fillCol=gw.type==='IGW'?'rgba(16,185,129,.25)':gw.type==='NAT'?'rgba(251,146,60,.25)':gw.type==='VGW'?'rgba(239,68,68,.25)':'rgba(100,100,100,.25)';
       
       // Gateway circle - increased size and visibility
@@ -2779,7 +2784,7 @@ function renderLandingZoneMap(ctx){
     const sgX=spoke.x+spoke.w+80; // Match actual drawing position
     spokeGws.forEach((gw,i)=>{
       if(gw.type==='IGW'||gw.type==='NAT'){
-        spokeInetGws.push({gw,sgX,sgY,vid:spoke.vpc.VpcId,col:gw.type==='IGW'?'var(--igw-color)':'var(--nat-color)'});
+        spokeInetGws.push({gw,sgX,sgY,vid:spoke.vpc.VpcId,col:gw.type==='IGW'?'var(--pip-color)':'var(--nat-color)'});
       }
       sgY+=50;
     });
@@ -2818,14 +2823,14 @@ function renderLandingZoneMap(ctx){
     lzStructG.append('path')
       .attr('class','route-trunk animated')
       .attr('d',trunkVert)
-      .attr('stroke','var(--igw-color)');
+      .attr('stroke','var(--pip-color)');
 
     // Horizontal connector from trunk to NET circle right edge
     const netConn=`M${spokeTrunkX},${iY} L${iX+32},${iY}`;
     lzStructG.append('path')
       .attr('class','route-trunk animated')
       .attr('d',netConn)
-      .attr('stroke','var(--igw-color)');
+      .attr('stroke','var(--pip-color)');
 
     // Add shared trunk + connector to lzVpcRoutes for each VPC with IGW/NAT
     // so they light up during highlights. Trim trunk to each VPC's route level range.
@@ -2838,8 +2843,8 @@ function renderLandingZoneMap(ctx){
       // Trunk from this VPC's top route level down to NET Y
       const vpcTrunk=`M${spokeTrunkX},${vpcTopRL} L${spokeTrunkX},${iY}`;
       if(!lzVpcRoutes.has(vid))lzVpcRoutes.set(vid,[]);
-      lzVpcRoutes.get(vid).push({d:vpcTrunk,stroke:'var(--igw-color)'});
-      lzVpcRoutes.get(vid).push({d:netConn,stroke:'var(--igw-color)'});
+      lzVpcRoutes.get(vid).push({d:vpcTrunk,stroke:'var(--pip-color)'});
+      lzVpcRoutes.get(vid).push({d:netConn,stroke:'var(--pip-color)'});
     });
   }
   
@@ -2852,9 +2857,9 @@ function renderLandingZoneMap(ctx){
     const ny=vl.y+vl.h-nh-8;
     const eG=ndL.append('g').attr('class','vpce-summary').style('cursor','pointer');
     eG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)
-      .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',1);
+      .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--pe-color)').attr('stroke-width',1);
     eG.append('text').attr('x',gx).attr('y',ny+12).attr('text-anchor','middle').attr('font-family','IBM Plex Mono')
-      .attr('font-size','8px').attr('font-weight','600').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
+      .attr('font-size','8px').attr('font-weight','600').attr('fill','var(--pe-color)').text(vpcVpces.length+' VPCE');
     eG.on('mouseenter',function(){
       let h='<div class="tt-title">VPC Endpoints ('+vpcVpces.length+')</div>';
       h+='<div class="tt-sub">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
@@ -2955,7 +2960,7 @@ function renderLandingZoneMap(ctx){
     dnsG.append('rect').attr('x',40).attr('y',dnsY).attr('width',dnsBoxW).attr('height',dnsBoxH).attr('rx',8)
       .attr('fill','rgba(14,165,233,.06)').attr('stroke','#0ea5e9').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     dnsG.append('text').attr('x',60).attr('y',dnsY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#0ea5e9').text('Route 53 Hosted Zones');
+      .attr('font-size','14px').attr('font-weight','700').attr('fill','#0ea5e9').text('Azure DNS Zones');
     dnsG.append('text').attr('x',60).attr('y',dnsY+36).attr('font-family','IBM Plex Mono')
       .attr('font-size','10px').attr('fill','var(--text-muted)').text(pubZones.length+' public, '+privZones.length+' private');
 
@@ -3087,9 +3092,9 @@ function renderLandingZoneMap(ctx){
     s3G.append('rect').attr('x',40).attr('y',s3Y).attr('width',s3BoxW).attr('height',s3BoxH).attr('rx',8)
       .attr('fill','rgba(234,88,12,.06)').attr('stroke','#ea580c').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     s3G.append('text').attr('x',60).attr('y',s3Y+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#ea580c').text('S3 Buckets');
+      .attr('font-size','14px').attr('font-weight','700').attr('fill','#ea580c').text('Storage Accounts');
     s3G.append('text').attr('x',60).attr('y',s3Y+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(s3bk.length+' buckets');
+      .attr('font-size','10px').attr('fill','var(--text-muted)').text(s3bk.length+' accounts');
 
     s3bk.forEach((bk,bi)=>{
       const col=bi%s3Cols;
@@ -3132,9 +3137,9 @@ function renderLandingZoneMap(ctx){
     cfG.append('rect').attr('x',40).attr('y',cfY).attr('width',cfBoxW).attr('height',cfBoxH).attr('rx',8)
       .attr('fill','rgba(139,92,246,.06)').attr('stroke','#8b5cf6').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     cfG.append('text').attr('x',60).attr('y',cfY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#8b5cf6').text('CloudFront Distributions');
+      .attr('font-size','14px').attr('font-weight','700').attr('fill','#8b5cf6').text('Front Door Profiles');
     cfG.append('text').attr('x',60).attr('y',cfY+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(cfDistributions.length+' distributions');
+      .attr('font-size','10px').attr('fill','var(--text-muted)').text(cfDistributions.length+' profiles');
 
     cfDistributions.forEach((d,di)=>{
       const col=di%cfCols;
@@ -3154,7 +3159,7 @@ function renderLandingZoneMap(ctx){
       }
 
       cG.on('mouseenter',function(){
-        let h='<div class="tt-title">CloudFront Distribution</div>';
+        let h='<div class="tt-title">Front Door Profile</div>';
         h+='<div class="tt-sub">'+(d.DomainName||d.Id)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">ID</span> '+d.Id+'</div>';
@@ -3179,8 +3184,8 @@ function renderLandingZoneMap(ctx){
   const legG=ndL.append('g').attr('class','legend');
   legG.append('text').attr('x',legX).attr('y',legY).attr('font-family','IBM Plex Mono').attr('font-size','9px').attr('font-weight','600').attr('fill','var(--text-secondary)').text('LANDING ZONE LAYOUT');
   const items=[
-    {c:'#7C3AED',t:'Hub VPC'},{c:'var(--vpc-stroke)',t:'Spoke VPC'},
-    {c:'var(--tgw-color)',t:'Transit GW'},{c:'var(--igw-color)',t:'Internet GW'},
+    {c:'#7C3AED',t:'Hub VNet'},{c:'var(--vnet-stroke)',t:'Spoke VNet'},
+    {c:'var(--vwan-color)',t:'Virtual WAN'},{c:'var(--pip-color)',t:'Public IP'},
     {c:'var(--nat-color)',t:'NAT GW'},{c:'var(--subnet-public)',t:'Public'},{c:'var(--subnet-private)',t:'Private'}
   ];
   items.forEach((it,i)=>{
@@ -3192,8 +3197,8 @@ function renderLandingZoneMap(ctx){
   // Stats bar
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb:cfByAlb||{},rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:lzRecsByZone};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
-  [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
-    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
+  [{l:'VNets',v:vpcs.length,t:'VPCs'},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NSGs',v:sgs.length,t:'SGs'},{l:'VMs',v:instances.length,t:'EC2'},{l:'NICs',v:enis.length,t:'ENIs'},{l:'LBs',v:albs.length,t:'ALBs'},{l:'SQL',v:rdsInstances.length,t:'RDS'},{l:'ACI',v:ecsServices.length,t:'ECS'},{l:'Func',v:lambdaFns.length,t:'Lambda'},{l:'Redis',v:ecacheClusters.length,t:'Cache'},{l:'Synapse',v:redshiftClusters.length,t:'Redshift'},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'PEs',v:vpces.length,t:'Endpoints'},{l:'Disks',v:volumes.length,t:'Volumes'},{l:'Snapshots',v:snapshots.length},{l:'Storage',v:s3bk.length,t:'S3'},{l:'DNS',v:zones.length,t:'R53'},{l:'WAF',v:wafAcls.length},{l:'FrontDoor',v:cfDistributions.length,t:'CF'}].forEach(s=>{
+    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.t||s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.t||s.l));sb2.appendChild(c)}
   });
   document.getElementById('legend').style.display='flex';
   document.getElementById('exportBar').style.display='flex';
@@ -3266,12 +3271,12 @@ function renderExecutiveOverview(ctx){
     if(!pa||!pr)return;
     const mx=(pa.cx+pr.cx)/2,my=(pa.cy+pr.cy)/2;
     connG.append('path').attr('d',`M${pa.cx},${pa.cy} Q${mx},${my-30} ${pr.cx},${pr.cy}`)
-      .attr('fill','none').attr('stroke','var(--pcx-color)').attr('stroke-width',2)
+      .attr('fill','none').attr('stroke','var(--peer-color)').attr('stroke-width',2)
       .attr('stroke-dasharray','8 4').attr('opacity',.6);
     connG.append('circle').attr('cx',mx).attr('cy',my-15).attr('r',10)
-      .attr('fill','var(--bg-card)').attr('stroke','var(--pcx-color)').attr('stroke-width',1);
+      .attr('fill','var(--bg-card)').attr('stroke','var(--peer-color)').attr('stroke-width',1);
     connG.append('text').attr('x',mx).attr('y',my-11).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--pcx-color)').text('PCX');
+      .attr('font-family','IBM Plex Mono').attr('font-size','6px').attr('fill','var(--peer-color)').text('PCX');
   });
   
   // TGW connections (shared gateways connect to all VPCs that route through them)
@@ -3296,16 +3301,16 @@ function renderExecutiveOverview(ctx){
     
     // TGW node
     connG.append('circle').attr('cx',hubX).attr('cy',hubY).attr('r',22)
-      .attr('fill','var(--bg-card)').attr('stroke','var(--tgw-color)').attr('stroke-width',2);
+      .attr('fill','var(--bg-card)').attr('stroke','var(--vwan-color)').attr('stroke-width',2);
     connG.append('text').attr('x',hubX).attr('y',hubY+3).attr('text-anchor','middle')
       .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('font-weight','700')
-      .attr('fill','var(--tgw-color)').text('TGW');
+      .attr('fill','var(--vwan-color)').text('VWAN');
     
     // Spokes to VPCs
     vids.forEach(vid=>{
       const p=vpcPositions.get(vid);if(!p)return;
       connG.append('line').attr('x1',hubX).attr('y1',hubY).attr('x2',p.cx).attr('y2',p.cy)
-        .attr('stroke','var(--tgw-color)').attr('stroke-width',1.5).attr('stroke-dasharray','6 3').attr('opacity',.4);
+        .attr('stroke','var(--vwan-color)').attr('stroke-width',1.5).attr('stroke-dasharray','6 3').attr('opacity',.4);
     });
   });
   
@@ -3319,7 +3324,7 @@ function renderExecutiveOverview(ctx){
     
     // Card background
     cG.append('rect').attr('x',cx).attr('y',cy).attr('width',CARD_W).attr('height',CARD_H)
-      .attr('rx',6).attr('fill','rgba(30,41,59,.85)').attr('stroke','var(--vpc-stroke)').attr('stroke-width',1.5);
+      .attr('rx',6).attr('fill','rgba(30,41,59,.85)').attr('stroke','var(--vnet-stroke)').attr('stroke-width',1.5);
     
     // Header bar
     cG.append('rect').attr('x',cx).attr('y',cy).attr('width',CARD_W).attr('height',32)
@@ -3351,14 +3356,14 @@ function renderExecutiveOverview(ctx){
     // Resource bars
     const barY=cy+62;
     const resTypes=[
-      {label:'EC2',count:vs.ec2,col:'#10b981',rlType:'EC2'},
-      {label:'ALB',count:vs.alb,col:'#38bdf8',rlType:'ALBs'},
-      {label:'RDS',count:vs.rds,col:'#3b82f6',rlType:'RDS'},
-      {label:'ECS',count:vs.ecs,col:'#f97316',rlType:'ECS'},
-      {label:'Lambda',count:vs.fn,col:'#a855f7',rlType:'Lambda'},
-      {label:'ENI',count:vs.eniC,col:'#64748b',rlType:'ENIs'},
-      {label:'VOL',count:vs.volC,col:'#f59e0b',rlType:'Volumes'},
-      {label:'SG',count:vs.sgC,col:'#eab308',rlType:'SGs'}
+      {label:'VM',count:vs.ec2,col:'#10b981',rlType:'EC2'},
+      {label:'LB',count:vs.alb,col:'#38bdf8',rlType:'ALBs'},
+      {label:'SQL',count:vs.rds,col:'#3b82f6',rlType:'RDS'},
+      {label:'ACI',count:vs.ecs,col:'#f97316',rlType:'ECS'},
+      {label:'Func',count:vs.fn,col:'#a855f7',rlType:'Lambda'},
+      {label:'NIC',count:vs.eniC,col:'#64748b',rlType:'ENIs'},
+      {label:'Disk',count:vs.volC,col:'#f59e0b',rlType:'Volumes'},
+      {label:'NSG',count:vs.sgC,col:'#eab308',rlType:'SGs'}
     ].filter(r=>r.count>0);
     
     const maxCount=Math.max(1,...resTypes.map(r=>r.count));
@@ -3440,18 +3445,18 @@ function renderExecutiveOverview(ctx){
     .attr('fill','var(--text-primary)').text('Executive Overview');
   
   const hdrStats=[
-    {l:'VPCs',v:vpcs.length,t:'VPCs',c:'#7C3AED'},
+    {l:'VNets',v:vpcs.length,t:'VPCs',c:'#7C3AED'},
     {l:'Subnets',v:subnets.length,t:'Subnets',c:'#06b6d4'},
-    {l:'EC2',v:instances.length,t:'EC2',c:'#10b981'},
-    {l:'ALB',v:albs.length,t:'ALBs',c:'#38bdf8'},
-    {l:'RDS',v:rdsInstances.length,t:'RDS',c:'#3b82f6'},
-    {l:'ECS',v:ecsServices.length,t:'ECS',c:'#f97316'},
-    {l:'Lambda',v:lambdaFns.length,t:'Lambda',c:'#a855f7'},
-    {l:'ENI',v:enis.length,t:'ENIs',c:'#64748b'},
-    {l:'SG',v:sgs.length,t:'SGs',c:'#eab308'},
-    {l:'VOL',v:volumes.length,t:'Volumes',c:'#f59e0b'},
-    {l:'S3',v:s3bk.length,t:'S3',c:'#ea580c'},
-    {l:'R53',v:zones.length,t:'R53',c:'#06b6d4'}
+    {l:'VMs',v:instances.length,t:'EC2',c:'#10b981'},
+    {l:'LB',v:albs.length,t:'ALBs',c:'#38bdf8'},
+    {l:'SQL',v:rdsInstances.length,t:'RDS',c:'#3b82f6'},
+    {l:'ACI',v:ecsServices.length,t:'ECS',c:'#f97316'},
+    {l:'Func',v:lambdaFns.length,t:'Lambda',c:'#a855f7'},
+    {l:'NIC',v:enis.length,t:'ENIs',c:'#64748b'},
+    {l:'NSG',v:sgs.length,t:'SGs',c:'#eab308'},
+    {l:'Disk',v:volumes.length,t:'Volumes',c:'#f59e0b'},
+    {l:'Storage',v:s3bk.length,t:'S3',c:'#ea580c'},
+    {l:'DNS',v:zones.length,t:'R53',c:'#06b6d4'}
   ].filter(s=>s.v>0);
   let hsx=startX;
   hdrStats.forEach(s=>{
@@ -3498,10 +3503,10 @@ function renderExecutiveOverview(ctx){
         .on('mouseleave',function(){d3.select(this).select('rect').attr('fill','rgba(30,41,59,.6)')});
       sx+=w+12;
     }
-    sharedCard('S3 Buckets',s3bk.length,'#f59e0b','S3');
-    sharedCard('R53 Zones',zones.length,'#06b6d4','R53');
-    sharedCard('CloudFront',cfDistributions.length,'#8b5cf6','CF');
-    sharedCard('TGW',shGws.filter(g2=>g2.type==='TGW').length,'var(--tgw-color)','Gateways');
+    sharedCard('Storage Accts',s3bk.length,'#f59e0b','S3');
+    sharedCard('DNS Zones',zones.length,'#06b6d4','R53');
+    sharedCard('Front Door',cfDistributions.length,'#8b5cf6','CF');
+    sharedCard('VWAN',shGws.filter(g2=>g2.type==='TGW').length,'var(--vwan-color)','Gateways');
     sharedCard('VPN',vpns?.length||0,'#ef4444','VPNs');
     sharedCard('Peering',peerings.length,'#fb923c','Peering');
     sharedCard('Snapshots',snapshots.length,'#94a3b8','Snapshots');
@@ -3529,49 +3534,50 @@ function renderMap(){
     .append('feFuncA').attr('type','table').attr('tableValues','0 1 1 1');
   document.getElementById('emptyState').style.display='none';
 
-  // parse all 18 inputs
-  let vpcs=ext(safeParse(gv('in_vpcs')),['Vpcs']);
-  let subnets=ext(safeParse(gv('in_subnets')),['Subnets']);
-  let rts=ext(safeParse(gv('in_rts')),['RouteTables']);
-  let sgs=ext(safeParse(gv('in_sgs')),['SecurityGroups']);
-  let nacls=ext(safeParse(gv('in_nacls')),['NetworkAcls']);
-  let enis=ext(safeParse(gv('in_enis')),['NetworkInterfaces']);
-  let igws=ext(safeParse(gv('in_igws')),['InternetGateways']);
-  let nats=ext(safeParse(gv('in_nats')),['NatGateways']);
-  let vpces=ext(safeParse(gv('in_vpces')),['VpcEndpoints']);
-  let instances=[];
-  const eRaw=safeParse(gv('in_ec2'));
-  if(eRaw){
-    const reservations=ext(eRaw,['Reservations']);
-    if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
-    else{
-      // fallback: {Instances:[...]} or bare array of instances
-      const flat=ext(eRaw,['Instances']);
-      if(flat.length)instances=flat;
-      else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}
+  // parse all inputs (Azure CLI returns flat arrays)
+  let vpcs=ext(safeParse(gv('in_vnets')),['Vpcs','value']);
+  let subnets=ext(safeParse(gv('in_subnets')),['Subnets','value']);
+  let rts=ext(safeParse(gv('in_rts')),['RouteTables','value']);
+  let sgs=ext(safeParse(gv('in_nsgs')),['SecurityGroups','value']);
+  let nacls=[]; // Azure NSGs serve both SG and NACL roles
+  let enis=ext(safeParse(gv('in_nics')),['NetworkInterfaces','value']);
+  let igws=ext(safeParse(gv('in_pips')),['value']); // Public IPs replace IGWs
+  let nats=ext(safeParse(gv('in_nats')),['NatGateways','value']);
+  let vpces=ext(safeParse(gv('in_pes')),['VpcEndpoints','value']);
+  let instances=ext(safeParse(gv('in_vms')),['value']);
+  if(!instances.length){
+    const eRaw=safeParse(gv('in_vms'));
+    if(eRaw){
+      const reservations=ext(eRaw,['Reservations']);
+      if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
+      else{const flat=ext(eRaw,['Instances']);if(flat.length)instances=flat;else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}}
     }
   }
-  let albs=ext(safeParse(gv('in_albs')),['LoadBalancers']);
-  let tgs=ext(safeParse(gv('in_tgs')),['TargetGroups']);
-  let peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections']);
-  let vpns=ext(safeParse(gv('in_vpn')),['VpnConnections']);
-  let volumes=ext(safeParse(gv('in_vols')),['Volumes']);
-  let snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
-  let s3raw=safeParse(gv('in_s3'));let s3bk=s3raw?ext(s3raw,['Buckets']):[];
-  let zones=ext(safeParse(gv('in_r53')),['HostedZones']);
-  const allRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets']);
+  let albsAppGw=ext(safeParse(gv('in_appgws')),['value']);
+  let albsLb=ext(safeParse(gv('in_lbs')),['value']);
+  let albs=[...albsAppGw,...albsLb];
+  let tgs=[]; // Azure backend pools are inline in LB/AppGW
+  let peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections','value']);
+  let vpns=ext(safeParse(gv('in_vpn')),['VpnConnections','value']);
+  let volumes=ext(safeParse(gv('in_disks')),['Volumes','value']);
+  let snapshots=ext(safeParse(gv('in_snaps')),['Snapshots','value']);
+  let s3raw=safeParse(gv('in_storage'));let s3bk=s3raw?ext(s3raw,['Buckets','value']):[];
+  let zones=ext(safeParse(gv('in_dns')),['HostedZones','value']);
+  const allRecSets=ext(safeParse(gv('in_dnsrecs')),['ResourceRecordSets','value']);
   const recsByZoneMap={};
   allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZoneMap[r.HostedZoneId]=recsByZoneMap[r.HostedZoneId]||[]).push(r)});
-  let wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
-  let rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
-  let ecsServices=ext(safeParse(gv('in_ecs')),['services']);
-  let lambdaFns=(ext(safeParse(gv('in_lambda')),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
-  let ecacheClusters=ext(safeParse(gv('in_elasticache')),['CacheClusters']);
-  let redshiftClusters=ext(safeParse(gv('in_redshift')),['Clusters']);
-  let tgwAttachments=ext(safeParse(gv('in_tgwatt')),['TransitGatewayAttachments']);
-  let cfDistributions=[];
-  const cfRaw=safeParse(gv('in_cf'));
-  if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[];}
+  let wafAcls=ext(safeParse(gv('in_waf')),['WebACLs','value']);
+  let rdsInstances=ext(safeParse(gv('in_sql')),['DBInstances','value']);
+  let ecsServices=ext(safeParse(gv('in_aci')),['services','value']);
+  let lambdaFns=(ext(safeParse(gv('in_func')),['Functions','value'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
+  let ecacheClusters=ext(safeParse(gv('in_redis')),['CacheClusters','value']);
+  let redshiftClusters=ext(safeParse(gv('in_synapse')),['Clusters','value']);
+  let tgwAttachments=ext(safeParse(gv('in_vhubconn')),['TransitGatewayAttachments','value']);
+  let cfDistributions=ext(safeParse(gv('in_fd')),['value']);
+  if(!cfDistributions.length){
+    const cfRaw=safeParse(gv('in_fd'));
+    if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[];}
+  }
 
   if(!vpcs.length&&!subnets.length){document.getElementById('emptyState').style.display='flex';svg.style('display','none');return}
 
@@ -3581,12 +3587,12 @@ function renderMap(){
 
   // gateway name enrichment from dedicated JSON
   gwNames={};
-  igws.forEach(g=>{gwNames[g.InternetGatewayId]=gn(g,g.InternetGatewayId)});
-  nats.forEach(g=>{gwNames[g.NatGatewayId]=gn(g,g.NatGatewayId)});
-  vpces.forEach(g=>{gwNames[g.VpcEndpointId]=gn(g,g.VpcEndpointId)});
-  vpns.forEach(g=>{if(g.VpnGatewayId) gwNames[g.VpnGatewayId]=gn(g,g.VpnGatewayId)});
-  peerings.forEach(g=>{gwNames[g.VpcPeeringConnectionId]=gn(g,g.VpcPeeringConnectionId)});
-  tgwAttachments.forEach(g=>{if(g.TransitGatewayId&&!gwNames[g.TransitGatewayId]) gwNames[g.TransitGatewayId]=gn(g,g.TransitGatewayId)});
+  igws.forEach(g=>{const gid=g.InternetGatewayId||g.id||g.name;if(gid)gwNames[gid]=gn(g,gid)});
+  nats.forEach(g=>{const gid=g.NatGatewayId||g.id||g.name;if(gid)gwNames[gid]=gn(g,gid)});
+  vpces.forEach(g=>{const gid=g.VpcEndpointId||g.id||g.name;if(gid)gwNames[gid]=gn(g,gid)});
+  vpns.forEach(g=>{const gid=g.VpnGatewayId||g.id;if(gid)gwNames[gid]=gn(g,gid)});
+  peerings.forEach(g=>{const gid=g.VpcPeeringConnectionId||g.id||g.name;if(gid)gwNames[gid]=gn(g,gid)});
+  tgwAttachments.forEach(g=>{const gid=g.TransitGatewayId||g.id;if(gid&&!gwNames[gid])gwNames[gid]=gn(g,gid)});
 
   // Build Main route table fallback per VPC
   const mainRT={};
@@ -3607,9 +3613,9 @@ function renderMap(){
   });
 
   // also pull gateways from dedicated JSON even if not in route tables
-  igws.forEach(g=>{if(!gwSet.has(g.InternetGatewayId)){const v=(g.Attachments||[])[0];gwSet.set(g.InternetGatewayId,{type:'IGW',id:g.InternetGatewayId,vpcId:v?v.VpcId:'unk'})}});
-  nats.forEach(g=>{if(!gwSet.has(g.NatGatewayId))gwSet.set(g.NatGatewayId,{type:'NAT',id:g.NatGatewayId,vpcId:g.VpcId||'unk'})});
-  vpces.forEach(g=>{if(!gwSet.has(g.VpcEndpointId)){const t=g.VpcEndpointType==='Gateway'?'VPCE':'VPCE';gwSet.set(g.VpcEndpointId,{type:'VPCE',id:g.VpcEndpointId,vpcId:g.VpcId||'unk'})}});
+  igws.forEach(g=>{const gid=g.InternetGatewayId||g.id||g.name;if(gid&&!gwSet.has(gid)){const v=(g.Attachments||[])[0];gwSet.set(gid,{type:'IGW',id:gid,vpcId:v?v.VpcId:'unk'})}});
+  nats.forEach(g=>{const gid=g.NatGatewayId||g.id||g.name;if(gid&&!gwSet.has(gid))gwSet.set(gid,{type:'NAT',id:gid,vpcId:g.VpcId||'unk'})});
+  vpces.forEach(g=>{const gid=g.VpcEndpointId||g.id||g.name;if(gid&&!gwSet.has(gid))gwSet.set(gid,{type:'VPCE',id:gid,vpcId:g.VpcId||'unk'})});
 
   // Assign Main route table to subnets without explicit associations
   subnets.forEach(s=>{
@@ -4013,7 +4019,7 @@ function renderMap(){
     routeG.style('opacity','0.03');structG.style('opacity','0.03');
     g.classed('hl-active',true);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
-    ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
+    ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
     ndL.selectAll('.gw-node[data-gwid="'+gid+'"]').classed('gw-hl',true);
 
     // Find all VPCs connected to this gateway and highlight them
@@ -4021,7 +4027,7 @@ function renderMap(){
     structG.node().querySelectorAll('[data-gid="'+gid+'"][data-vid]').forEach(el=>{
       gwVids.add(el.getAttribute('data-vid'));
     });
-    gwVids.forEach(vid=>ndL.selectAll('.vpc-group[data-vpc-id="'+vid+'"]').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');}));
+    gwVids.forEach(vid=>ndL.selectAll('.vnet-group[data-vnet-id="'+vid+'"]').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');}));
 
     // Clone ALL structural paths for this gateway into overlay
     let hasNet=false;
@@ -4102,8 +4108,8 @@ function renderMap(){
     olL.selectAll('*').remove();
     routeG.style('opacity','0.03');structG.style('opacity','0.03');
     g.classed('hl-active',true);
-    ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
-    if(subVid) ndL.selectAll('.vpc-group[data-vpc-id="'+subVid+'"]').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
+    ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
+    if(subVid) ndL.selectAll('.vnet-group[data-vnet-id="'+subVid+'"]').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
 
     if(mg.size===0){
       allLb.forEach(l=>l.g.classed('visible',false));
@@ -4292,14 +4298,14 @@ function renderMap(){
     olL.selectAll('*').remove();routeG.style('opacity',null);structG.style('opacity',null);allLb.forEach(l=>l.g.classed('visible',false));g.classed('hl-active',false);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
     ndL.selectAll('.internet-node').style('opacity',null);
-    ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
+    ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
   }
   function forceClr(){
     _hlLocked=false;_hlKey=null;_hlType=null;showLockInd(false);
     olL.selectAll('*').remove();routeG.style('opacity',null);structG.style('opacity',null);allLb.forEach(l=>l.g.classed('visible',false));g.classed('hl-active',false);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
     ndL.selectAll('.internet-node').style('opacity',null);
-    ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
+    ndL.selectAll('.vnet-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
   }
   // Expose gateway highlight globally for panel link navigation
   window._hlGwGlobal=function(gid){
@@ -4380,7 +4386,7 @@ function renderMap(){
     peeringG.append('path')
       .attr('class', 'peering-line animated')
       .attr('d', d)
-      .attr('stroke', 'var(--pcx-color)');
+      .attr('stroke', 'var(--peer-color)');
     
     // Label at midpoint of horizontal segment
     const midX = (leftExitX + rightExitX) / 2;
@@ -4729,11 +4735,11 @@ function renderMap(){
   // VPC boxes
   const tt=document.getElementById('tooltip');
   vL.forEach(vl=>{
-    const vG=ndL.append('g').attr('class','vpc-group').attr('data-vpc-id',vl.vpc.VpcId);
-    vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',vl.h).attr('fill','rgba(59,130,246,.03)').attr('stroke','var(--vpc-stroke)').attr('stroke-width',1.5);
-    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+26).text(gn(vl.vpc,vl.vpc.VpcId));
+    const vG=ndL.append('g').attr('class','vnet-group').attr('data-vnet-id',vl.vpc.VpcId);
+    vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',vl.h).attr('fill','rgba(59,130,246,.03)').attr('stroke','var(--vnet-stroke)').attr('stroke-width',1.5);
+    vG.append('text').attr('class','vnet-label').attr('x',vl.x+14).attr('y',vl.y+26).text(gn(vl.vpc,vl.vpc.VpcId));
     const regionTag=vpcRegionMap[vl.vpc.VpcId]||'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:''));
+    vG.append('text').attr('class','vnet-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:''));
     // show indicator for VPCs with no subnets
     if(vl.subs.length===0){
       vG.append('text').attr('x',vl.x+vl.w/2).attr('y',vl.y+vl.h/2+10).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').attr('font-size','10px').attr('fill','var(--text-muted)').text('No subnets');
@@ -4891,23 +4897,23 @@ function renderMap(){
     const iG=ndL.append('g').attr('class','internet-node');
     // Outer glow
     iG.append('circle').attr('cx',iX).attr('cy',iY).attr('r',42)
-      .attr('fill','none').attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.15);
+      .attr('fill','none').attr('stroke','var(--pip-color)').attr('stroke-width',1).attr('opacity',.15);
     // Main circle
     iG.append('circle').attr('cx',iX).attr('cy',iY).attr('r',36)
-      .attr('fill','rgba(16,185,129,.06)').attr('stroke','var(--igw-color)').attr('stroke-width',2);
+      .attr('fill','rgba(16,185,129,.06)').attr('stroke','var(--pip-color)').attr('stroke-width',2);
     // Globe effect
     iG.append('ellipse').attr('cx',iX).attr('cy',iY).attr('rx',22).attr('ry',36)
-      .attr('fill','none').attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.25);
+      .attr('fill','none').attr('stroke','var(--pip-color)').attr('stroke-width',1).attr('opacity',.25);
     iG.append('line').attr('x1',iX-36).attr('y1',iY).attr('x2',iX+36).attr('y2',iY)
-      .attr('stroke','var(--igw-color)').attr('stroke-width',1).attr('opacity',.25);
+      .attr('stroke','var(--pip-color)').attr('stroke-width',1).attr('opacity',.25);
     // Text inside circle
     iG.append('text').attr('x',iX).attr('y',iY+4).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','13px').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
+      .attr('font-family','IBM Plex Mono').attr('font-size','13px').attr('font-weight','700').attr('fill','var(--pip-color)').text('NET');
     // Text below circle
     iG.append('text').attr('x',iX).attr('y',iY+50).attr('text-anchor','middle')
       .attr('font-family','IBM Plex Mono').attr('font-size','8px').attr('fill','var(--text-muted)').text('Internet');
     iG.append('text').attr('x',iX).attr('y',iY+62).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--igw-color)').text(iGwList.length+' Gateway'+(iGwList.length>1?'s':''));
+      .attr('font-family','IBM Plex Mono').attr('font-size','7px').attr('fill','var(--pip-color)').text(iGwList.length+' Gateway'+(iGwList.length>1?'s':''));
     
     // Draw NET connections: L-shaped paths from bus-bar to each IGW.
     // Each IGW gets its own L-bend: horizontal from NET node at bus-bar Y,
@@ -4929,7 +4935,7 @@ function renderMap(){
       for(let i=0;i<group.length;i++){
         const topY=i===0?iY:(group[i-1].y-GR-4);
         const botY=group[i].y-GR-4;
-        const col='var(--igw-color)';
+        const col='var(--pip-color)';
         if(Math.abs(botY-topY)>2){
           structG.append('path')
             .attr('class','route-trunk route-structural')
@@ -4949,7 +4955,7 @@ function renderMap(){
       structG.append('path')
         .attr('class','route-trunk route-structural')
         .attr('d',`M${iX+38},${iY} L${rightmostNetX},${iY}`)
-        .attr('stroke','var(--igw-color)').attr('stroke-width',3)
+        .attr('stroke','var(--pip-color)').attr('stroke-width',3)
         .attr('data-net-line','1');
     }
   }
@@ -4964,9 +4970,9 @@ function renderMap(){
     const ny=vl.y+vl.h-nh-8;
     const eG=ndL.append('g').attr('class','vpce-summary').style('cursor','pointer');
     eG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)
-      .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',1);
+      .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--pe-color)').attr('stroke-width',1);
     eG.append('text').attr('x',gx).attr('y',ny+12).attr('text-anchor','middle').attr('font-family','IBM Plex Mono')
-      .attr('font-size','8px').attr('font-weight','600').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
+      .attr('font-size','8px').attr('font-weight','600').attr('fill','var(--pe-color)').text(vpcVpces.length+' VPCE');
     // tooltip on hover
     eG.on('mouseenter',function(){
       let h='<div class="tt-title">VPC Endpoints ('+vpcVpces.length+')</div>';
@@ -5079,7 +5085,7 @@ function renderMap(){
 
     // Section title
     dnsG.append('text').attr('x',80).attr('y',dnsY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#0ea5e9').text('Route 53 Hosted Zones');
+      .attr('font-size','14px').attr('font-weight','700').attr('fill','#0ea5e9').text('Azure DNS Zones');
     dnsG.append('text').attr('x',80).attr('y',dnsY+36).attr('font-family','IBM Plex Mono')
       .attr('font-size','10px').attr('fill','var(--text-muted)').text(pubZones.length+' public, '+privZones.length+' private');
 
@@ -5221,9 +5227,9 @@ function renderMap(){
     s3G.append('rect').attr('x',60).attr('y',s3Y).attr('width',s3BoxW).attr('height',s3BoxH).attr('rx',8)
       .attr('fill','rgba(234,88,12,.04)').attr('stroke','#ea580c').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     s3G.append('text').attr('x',80).attr('y',s3Y+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#ea580c').text('S3 Buckets');
+      .attr('font-size','14px').attr('font-weight','700').attr('fill','#ea580c').text('Storage Accounts');
     s3G.append('text').attr('x',80).attr('y',s3Y+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(s3bk.length+' buckets');
+      .attr('font-size','10px').attr('fill','var(--text-muted)').text(s3bk.length+' accounts');
     
     s3bk.forEach((bk,bi)=>{
       const col=bi%s3Cols;
@@ -5267,9 +5273,9 @@ function renderMap(){
     cfG.append('rect').attr('x',60).attr('y',cfY).attr('width',cfBoxW).attr('height',cfBoxH).attr('rx',8)
       .attr('fill','rgba(139,92,246,.06)').attr('stroke','#8b5cf6').attr('stroke-width',1.5).attr('stroke-dasharray','6 3');
     cfG.append('text').attr('x',80).attr('y',cfY+22).attr('font-family','IBM Plex Mono')
-      .attr('font-size','14px').attr('font-weight','700').attr('fill','#8b5cf6').text('CloudFront Distributions');
+      .attr('font-size','14px').attr('font-weight','700').attr('fill','#8b5cf6').text('Front Door Profiles');
     cfG.append('text').attr('x',80).attr('y',cfY+36).attr('font-family','IBM Plex Mono')
-      .attr('font-size','10px').attr('fill','var(--text-muted)').text(cfDistributions.length+' distributions');
+      .attr('font-size','10px').attr('fill','var(--text-muted)').text(cfDistributions.length+' profiles');
 
     cfDistributions.forEach((d,di)=>{
       const col=di%cfCols;
@@ -5289,7 +5295,7 @@ function renderMap(){
       }
 
       cG.on('mouseenter',function(){
-        let h='<div class="tt-title">CloudFront Distribution</div>';
+        let h='<div class="tt-title">Front Door Profile</div>';
         h+='<div class="tt-sub">'+(d.DomainName||d.Id)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">ID</span> '+d.Id+'</div>';
@@ -5311,8 +5317,8 @@ function renderMap(){
   // stats bar
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
-  [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
-    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
+  [{l:'VNets',v:vpcs.length,t:'VPCs'},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NSGs',v:sgs.length,t:'SGs'},{l:'VMs',v:instances.length,t:'EC2'},{l:'NICs',v:enis.length,t:'ENIs'},{l:'LBs',v:albs.length,t:'ALBs'},{l:'SQL',v:rdsInstances.length,t:'RDS'},{l:'ACI',v:ecsServices.length,t:'ECS'},{l:'Func',v:lambdaFns.length,t:'Lambda'},{l:'Redis',v:ecacheClusters.length,t:'Cache'},{l:'Synapse',v:redshiftClusters.length,t:'Redshift'},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'PEs',v:vpces.length,t:'Endpoints'},{l:'Disks',v:volumes.length,t:'Volumes'},{l:'Snapshots',v:snapshots.length},{l:'Storage',v:s3bk.length,t:'S3'},{l:'DNS',v:zones.length,t:'R53'},{l:'WAF',v:wafAcls.length},{l:'FrontDoor',v:cfDistributions.length,t:'CF'}].forEach(s=>{
+    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.t||s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.t||s.l));sb2.appendChild(c)}
   });
   document.getElementById('legend').style.display='flex';
   document.getElementById('exportBar').style.display='flex';
@@ -5367,33 +5373,32 @@ document.getElementById('dpSizeReset').addEventListener('click',()=>{dpScale=1.0
 
 // filename-to-input mapping
 const fileMap=[
-  {id:'in_vpcs',patterns:['vpc','vpcs']},
+  {id:'in_vnets',patterns:['vnet','vnets','virtual-network','virtualnetwork','vpc','vpcs']},
   {id:'in_subnets',patterns:['subnet','subnets']},
   {id:'in_rts',patterns:['route-table','route_table','routetable','rt']},
-  {id:'in_sgs',patterns:['security-group','security_group','securitygroup','sg']},
-  {id:'in_nacls',patterns:['nacl','network-acl','network_acl','networkacl']},
-  {id:'in_enis',patterns:['eni','network-interface','network_interface','networkinterface']},
-  {id:'in_igws',patterns:['igw','internet-gateway','internet_gateway','internetgateway']},
+  {id:'in_nsgs',patterns:['nsg','nsgs','network-security-group','security-group','security_group','securitygroup','sg']},
+  {id:'in_nics',patterns:['nic','nics','network-interface','network_interface','networkinterface','eni']},
+  {id:'in_pips',patterns:['pip','pips','public-ip','publicip','public_ip','igw','internet-gateway']},
   {id:'in_nats',patterns:['nat-gw','nat_gw','natgw','nat-gateway','nat_gateway','natgateway']},
-  {id:'in_vpces',patterns:['vpc-endpoint','vpc_endpoint','vpcendpoint','vpce']},
-  {id:'in_ec2',patterns:['instance','instances','ec2']},
-  {id:'in_albs',patterns:['alb','nlb','elb','load-balancer','load_balancer','loadbalancer']},
-  {id:'in_tgs',patterns:['target-group','target_group','targetgroup','tg']},
-  {id:'in_peer',patterns:['peering','vpc-peering','peer']},
+  {id:'in_pes',patterns:['private-endpoint','privateendpoint','pe','vpc-endpoint','vpcendpoint','vpce']},
+  {id:'in_vms',patterns:['vm','vms','virtual-machine','virtualmachine','instance','instances','ec2']},
+  {id:'in_appgws',patterns:['appgw','application-gateway','applicationgateway','alb']},
+  {id:'in_lbs',patterns:['lb','lbs','load-balancer','load_balancer','loadbalancer','nlb','elb']},
+  {id:'in_peer',patterns:['peering','vnet-peering','peer','vpc-peering']},
   {id:'in_vpn',patterns:['vpn','vpn-connection','vpn_connection']},
-  {id:'in_vols',patterns:['volume','volumes','vol']},
+  {id:'in_disks',patterns:['disk','disks','managed-disk','volume','volumes','vol']},
   {id:'in_snaps',patterns:['snapshot','snapshots','snap']},
-  {id:'in_s3',patterns:['s3-bucket','s3_bucket','s3bucket','s3']},
-  {id:'in_r53',patterns:['hosted-zone','hosted_zone','hostedzone','r53','route53']},
-  {id:'in_r53records',patterns:['record-set','recordset','resource-record','resourcerecord','r53record','r53-record']},
-  {id:'in_waf',patterns:['waf','web-acl','webacl','web_acl']},
-  {id:'in_rds',patterns:['rds','db-instance','dbinstance','db_instance']},
-  {id:'in_ecs',patterns:['ecs','ecs-service','ecs_service','ecsservice']},
-  {id:'in_lambda',patterns:['lambda','function','lambda-function']},
-  {id:'in_elasticache',patterns:['elasticache','cache-cluster','cachecluster','redis','memcached']},
-  {id:'in_redshift',patterns:['redshift','redshift-cluster']},
-  {id:'in_tgwatt',patterns:['transit-gateway-attachment','tgw-attachment','tgw_attachment','tgwattachment']},
-  {id:'in_cf',patterns:['cloudfront','cf-distribution','distribution']},
+  {id:'in_storage',patterns:['storage','storage-account','storageaccount','s3-bucket','s3_bucket','s3']},
+  {id:'in_dns',patterns:['dns-zone','dnszone','dns','hosted-zone','hostedzone','r53','route53']},
+  {id:'in_dnsrecs',patterns:['dns-record','dnsrecord','record-set','recordset','r53record']},
+  {id:'in_waf',patterns:['waf','waf-policy','wafpolicy','web-acl','webacl']},
+  {id:'in_sql',patterns:['sql','sql-server','sqlserver','rds','db-instance','dbinstance']},
+  {id:'in_aci',patterns:['aci','container-instance','containerinstance','container-group','ecs']},
+  {id:'in_func',patterns:['function','functionapp','func','azure-function','lambda']},
+  {id:'in_redis',patterns:['redis','azure-cache','elasticache','cache-cluster','cachecluster']},
+  {id:'in_synapse',patterns:['synapse','synapse-workspace','redshift']},
+  {id:'in_vhubconn',patterns:['vhub-connection','hub-connection','hubconnection','transit-gateway-attachment','tgw-attachment']},
+  {id:'in_fd',patterns:['front-door','frontdoor','fd','cloudfront','distribution']},
 ];
 
 function matchFile(fname, content){
@@ -5411,41 +5416,53 @@ function matchFile(fname, content){
     candidates.sort((a,b)=>b.len-a.len);
     const best=candidates[0].id;
     // content-override: verify filename match doesn't contradict content
-    if(content&&best==='in_ec2'){
+    if(content&&best==='in_vms'){
       const snip=content.slice(0,500);
-      if(snip.includes('"DBInstances"')&&!snip.includes('"Reservations"'))return 'in_rds';
-      if(snip.includes('"CacheClusters"'))return 'in_elasticache';
+      if(snip.includes('"DBInstances"')&&!snip.includes('"Reservations"'))return 'in_sql';
+      if(snip.includes('"CacheClusters"'))return 'in_redis';
     }
     return best;
   }
-  // content-based fallback — detect by JSON keys
+  // content-based fallback — detect by JSON keys (Azure + AWS compat)
   if(content){
-    const snip=content.slice(0,500);
-    if(snip.includes('"Reservations"'))return 'in_ec2';
-    if(snip.includes('"DBInstances"'))return 'in_rds';
-    if(snip.includes('"Vpcs"'))return 'in_vpcs';
+    const snip=content.slice(0,800);
+    // Azure CLI flat array detection
+    if(snip.includes('"addressSpace"')&&snip.includes('"addressPrefixes"'))return 'in_vnets';
+    if(snip.includes('"securityRules"')&&snip.includes('"networkSecurityGroup"'))return 'in_nsgs';
+    if(snip.includes('"ipConfigurations"')&&snip.includes('"networkInterface"'))return 'in_nics';
+    if(snip.includes('"publicIPAllocationMethod"'))return 'in_pips';
+    if(snip.includes('"privateEndpoint"')&&snip.includes('"privateLinkServiceConnections"'))return 'in_pes';
+    if(snip.includes('"vmId"')||snip.includes('"hardwareProfile"'))return 'in_vms';
+    if(snip.includes('"applicationGateway"')&&snip.includes('"backendAddressPools"'))return 'in_appgws';
+    if(snip.includes('"frontendIPConfigurations"')&&snip.includes('"loadBalancingRules"'))return 'in_lbs';
+    if(snip.includes('"fullyQualifiedDomainName"')&&snip.includes('"sqlServer"'))return 'in_sql';
+    if(snip.includes('"hostName"')&&snip.includes('"redisConfiguration"'))return 'in_redis';
+    if(snip.includes('"synapse"')||snip.includes('"managedVirtualNetwork"'))return 'in_synapse';
+    if(snip.includes('"frontDoor"')||snip.includes('"frontendEndpoints"'))return 'in_fd';
+    // AWS wrapper key compat
+    if(snip.includes('"Reservations"'))return 'in_vms';
+    if(snip.includes('"DBInstances"'))return 'in_sql';
+    if(snip.includes('"Vpcs"'))return 'in_vnets';
     if(snip.includes('"Subnets"'))return 'in_subnets';
     if(snip.includes('"RouteTables"'))return 'in_rts';
-    if(snip.includes('"SecurityGroups"'))return 'in_sgs';
-    if(snip.includes('"NetworkAcls"'))return 'in_nacls';
-    if(snip.includes('"NetworkInterfaces"'))return 'in_enis';
-    if(snip.includes('"InternetGateways"'))return 'in_igws';
+    if(snip.includes('"SecurityGroups"'))return 'in_nsgs';
+    if(snip.includes('"NetworkAcls"'))return 'in_nsgs';
+    if(snip.includes('"NetworkInterfaces"'))return 'in_nics';
+    if(snip.includes('"InternetGateways"'))return 'in_pips';
     if(snip.includes('"NatGateways"'))return 'in_nats';
-    if(snip.includes('"VpcEndpoints"'))return 'in_vpces';
-    if(snip.includes('"LoadBalancers"'))return 'in_albs';
-    if(snip.includes('"TargetGroups"'))return 'in_tgs';
+    if(snip.includes('"VpcEndpoints"'))return 'in_pes';
+    if(snip.includes('"LoadBalancers"'))return 'in_lbs';
     if(snip.includes('"VpcPeeringConnections"'))return 'in_peer';
     if(snip.includes('"VpnConnections"'))return 'in_vpn';
-    if(snip.includes('"Volumes"'))return 'in_vols';
+    if(snip.includes('"Volumes"'))return 'in_disks';
     if(snip.includes('"Snapshots"'))return 'in_snaps';
-    if(snip.includes('"Buckets"'))return 'in_s3';
-    if(snip.includes('"HostedZones"'))return 'in_r53';
-    if(snip.includes('"ResourceRecordSets"'))return 'in_r53records';
+    if(snip.includes('"Buckets"'))return 'in_storage';
+    if(snip.includes('"HostedZones"'))return 'in_dns';
+    if(snip.includes('"ResourceRecordSets"'))return 'in_dnsrecs';
     if(snip.includes('"WebACLs"'))return 'in_waf';
-    if(snip.includes('"TransitGatewayAttachments"'))return 'in_tgwatt';
-    if(snip.includes('"DistributionList"'))return 'in_cf';
-    if(snip.includes('"CacheClusters"'))return 'in_elasticache';
-    if(snip.includes('"Clusters"')&&snip.includes('"Redshift"'))return 'in_redshift';
+    if(snip.includes('"TransitGatewayAttachments"'))return 'in_vhubconn';
+    if(snip.includes('"DistributionList"'))return 'in_fd';
+    if(snip.includes('"CacheClusters"'))return 'in_redis';
   }
   return null;
 }
@@ -5480,7 +5497,7 @@ document.getElementById('fileInput').addEventListener('change',async function(){
 });
 document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none'});
 document.getElementById('loadDemo').addEventListener('click',()=>{
-  const m={in_vpcs:'vpcs',in_subnets:'subnets',in_rts:'rts',in_sgs:'sgs',in_nacls:'nacls',in_igws:'igws',in_nats:'nats',in_ec2:'ec2',in_albs:'albs',in_peer:'peer',in_vpn:'vpn',in_vpces:'vpces',in_vols:'vols',in_s3:'s3',in_r53:'r53',in_r53records:'r53records',in_tgs:'tgs',in_snaps:'snaps',in_enis:'enis',in_waf:'waf',in_rds:'rds',in_ecs:'ecs',in_lambda:'lambda',in_elasticache:'elasticache',in_redshift:'redshift',in_tgwatt:'tgwatt',in_cf:'cf'};
+  const m={in_vnets:'vnets',in_subnets:'subnets',in_rts:'rts',in_nsgs:'nsgs',in_nics:'nics',in_pips:'pips',in_nats:'nats',in_pes:'pes',in_vms:'vms',in_appgws:'appgws',in_lbs:'lbs',in_peer:'peer',in_vpn:'vpn',in_disks:'disks',in_snaps:'snaps',in_storage:'storage',in_dns:'dns',in_dnsrecs:'dnsrecs',in_waf:'waf',in_sql:'sql',in_aci:'aci',in_func:'func',in_redis:'redis',in_synapse:'synapse',in_vhubconn:'vhubconn',in_fd:'fd'};
   Object.entries(m).forEach(([id,k])=>{if(demo[k])document.getElementById(id).value=JSON.stringify(demo[k],null,2)});
   document.querySelectorAll('.ji').forEach(el=>{if(el.value.trim())el.className='ji valid'});
   document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{h.click()});
@@ -5539,7 +5556,7 @@ document.getElementById('expPng').addEventListener('click',()=>{
     const ctx=canvas.getContext('2d');
     ctx.fillStyle='#0a0e17';ctx.fillRect(0,0,w,h);
     ctx.drawImage(img,0,0,w,h);
-    canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'aws-network-map.png')},'image/png');
+    canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'azure-network-map.png')},'image/png');
   };
   img.onerror=()=>{alert('PNG render failed - try SVG export instead')};
   img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgStr)));
@@ -5548,25 +5565,27 @@ document.getElementById('expPng').addEventListener('click',()=>{
 // VSDX (Visio) Export - best Lucidchart import path
 document.getElementById('expVsdx').addEventListener('click',()=>{
   if(typeof JSZip==='undefined'){alert('JSZip not loaded');return}
-  const vpcs=ext(safeParse(gv('in_vpcs')),['Vpcs']);
-  const subnets=ext(safeParse(gv('in_subnets')),['Subnets']);
-  const rts=ext(safeParse(gv('in_rts')),['RouteTables']);
-  const igws=ext(safeParse(gv('in_igws')),['InternetGateways']);
-  const nats=ext(safeParse(gv('in_nats')),['NatGateways']);
-  const vpceList=ext(safeParse(gv('in_vpces')),['VpcEndpoints']);
-  const peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections']);
-  let instances=[];
-  const eRaw=safeParse(gv('in_ec2'));
-  if(eRaw){
-    const reservations=ext(eRaw,['Reservations']);
-    if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
-    else{const flat=ext(eRaw,['Instances']);if(flat.length)instances=flat;else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}}
+  const vpcs=ext(safeParse(gv('in_vnets')),['Vpcs','value']);
+  const subnets=ext(safeParse(gv('in_subnets')),['Subnets','value']);
+  const rts=ext(safeParse(gv('in_rts')),['RouteTables','value']);
+  const igws=ext(safeParse(gv('in_pips')),['value']);
+  const nats=ext(safeParse(gv('in_nats')),['NatGateways','value']);
+  const vpceList=ext(safeParse(gv('in_pes')),['VpcEndpoints','value']);
+  const peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections','value']);
+  let instances=ext(safeParse(gv('in_vms')),['value']);
+  if(!instances.length){
+    const eRaw=safeParse(gv('in_vms'));
+    if(eRaw){
+      const reservations=ext(eRaw,['Reservations']);
+      if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
+      else{const flat=ext(eRaw,['Instances']);if(flat.length)instances=flat;else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}}
+    }
   }
-  const enis=ext(safeParse(gv('in_enis')),['NetworkInterfaces']);
-  const sgs=ext(safeParse(gv('in_sgs')),['SecurityGroups']);
-  const nacls=ext(safeParse(gv('in_nacls')),['NetworkAcls']);
-  const albs=ext(safeParse(gv('in_albs')),['LoadBalancers']);
-  const volumes=ext(safeParse(gv('in_vols')),['Volumes']);
+  const enis=ext(safeParse(gv('in_nics')),['NetworkInterfaces','value']);
+  const sgs=ext(safeParse(gv('in_nsgs')),['SecurityGroups','value']);
+  const nacls=[];
+  const albs=[...ext(safeParse(gv('in_appgws')),['value']),...ext(safeParse(gv('in_lbs')),['value'])];
+  const volumes=ext(safeParse(gv('in_disks')),['Volumes','value']);
   if(!vpcs.length){alert('Render map first');return}
 
   const subByVpc={};subnets.forEach(s=>(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s));
@@ -5640,12 +5659,12 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
 
   // --- gateway type styles (for legend and cross-VPC lines) ---
   const gwStyles={
-    'IGW':  {color:'#059669',pattern:1,label:'Internet Gateway',fill:'#ECFDF5',border:'#059669'},
+    'IGW':  {color:'#059669',pattern:1,label:'Public IP / Internet',fill:'#ECFDF5',border:'#059669'},
     'NAT':  {color:'#D97706',pattern:2,label:'NAT Gateway',fill:'#FFFBEB',border:'#D97706'},
-    'TGW':  {color:'#2563EB',pattern:1,label:'Transit Gateway',fill:'#EFF6FF',border:'#2563EB'},
-    'VGW':  {color:'#7C3AED',pattern:4,label:'Virtual Private GW',fill:'#F5F3FF',border:'#7C3AED'},
-    'PCX':  {color:'#EA580C',pattern:2,label:'VPC Peering',fill:'#FFF7ED',border:'#EA580C'},
-    'VPCE': {color:'#0891B2',pattern:3,label:'VPC Endpoint',fill:'#ECFEFF',border:'#0891B2'},
+    'TGW':  {color:'#2563EB',pattern:1,label:'Virtual WAN Hub',fill:'#EFF6FF',border:'#2563EB'},
+    'VGW':  {color:'#7C3AED',pattern:4,label:'VPN Gateway',fill:'#F5F3FF',border:'#7C3AED'},
+    'PCX':  {color:'#EA580C',pattern:2,label:'VNet Peering',fill:'#FFF7ED',border:'#EA580C'},
+    'VPCE': {color:'#0891B2',pattern:3,label:'Private Endpoint',fill:'#ECFEFF',border:'#0891B2'},
     'GW':   {color:'#6B7280',pattern:1,label:'Gateway',fill:'#F9FAFB',border:'#6B7280'}
   };
 
@@ -5695,9 +5714,9 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
     lines.push((isPub?'[PUBLIC] ':'[PRIVATE] ')+gn(s,s.SubnetId));
     lines.push(s.CidrBlock+'  |  '+(s.AvailabilityZone||''));
     const parts=[];
-    if(si.length)parts.push(si.length+' EC2');
-    if(se.length)parts.push(se.length+' ENI');
-    if(sa.length)parts.push(sa.length+' ALB');
+    if(si.length)parts.push(si.length+' VM');
+    if(se.length)parts.push(se.length+' NIC');
+    if(sa.length)parts.push(sa.length+' LB');
     if(parts.length)lines.push(parts.join(' | '));
     const rt=subRT[s.SubnetId];
     if(rt){
@@ -5784,10 +5803,10 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
     const vSgs=sgByVpc[vpc.VpcId]||[];
     const totalEC2=ss.reduce((a,s)=>(instBySub[s.SubnetId]||[]).length+a,0);
     let vpcLabel=gn(vpc,vpc.VpcId)+'\n'+vpc.CidrBlock;
-    vpcLabel+='\n'+ss.length+' subnets | '+totalEC2+' EC2 | '+vSgs.length+' SGs';
+    vpcLabel+='\n'+ss.length+' subnets | '+totalEC2+' VMs | '+vSgs.length+' NSGs';
 
     const vpcProps=[];
-    vpcProps.push({label:'VPC ID',val:vpc.VpcId});
+    vpcProps.push({label:'VNet ID',val:vpc.VpcId});
     vpcProps.push({label:'CIDR',val:vpc.CidrBlock});
     if(vSgs.length){
       vpcProps.push({label:'Security Groups',val:String(vSgs.length)});
@@ -6040,7 +6059,7 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
 
   const pagesXml=`<?xml version="1.0" encoding="utf-8"?>
 <Pages xmlns="http://schemas.microsoft.com/office/visio/2012/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <Page ID="0" Name="AWS Network Map" NameU="AWS Network Map">
+  <Page ID="0" Name="Azure Network Map" NameU="Azure Network Map">
     <PageSheet>
       <Cell N="PageWidth" V="${pgW}"/>
       <Cell N="PageHeight" V="${pgH}"/>
@@ -6053,8 +6072,8 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
   const docXml=`<?xml version="1.0" encoding="utf-8"?>
 <VisioDocument xmlns="http://schemas.microsoft.com/office/visio/2012/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <DocumentProperties>
-    <Creator>AWS Network Map Tool</Creator>
-    <Description>AWS Network Infrastructure Diagram</Description>
+    <Creator>Azure Network Map Tool</Creator>
+    <Description>Azure Network Infrastructure Diagram</Description>
   </DocumentProperties>
 </VisioDocument>`;
 
@@ -6090,14 +6109,14 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
   zip.folder('visio/pages/_rels').file('pages.xml.rels',pagesRels);
 
   zip.generateAsync({type:'blob',mimeType:'application/vnd.ms-visio.drawing'}).then(blob=>{
-    downloadBlob(blob,'aws-network-map.vsdx');
+    downloadBlob(blob,'azure-network-map.vsdx');
   });
 });
 
 
 // Lucid Standard Import (.lucid) Export
-// --- Lucid Standard Import Export (with AWS-style icons) ---
-// AWS architecture icon PNGs (base64)
+// --- Lucid Standard Import Export (with architecture icons) ---
+// Architecture icon PNGs (base64)
 const AWS_ICONS={
   'alb':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAMKADAAQAAAABAAAAMAAAAADbN2wMAAAHZElEQVRoBe1aXWxURRQ+s9uWmgIPhEaof0QTQ1SUgIEHEbU8YMC2i6HoG7yYKBAJ/QEfREF50P4ZEsQXE/tkMCWyC4LwACLBBKIYf8KLEaQmtiYYEjDEQrs7ft/dmeHu3Xu3d21rIWHCdH7OOTPfmTn3zMxZRO6kyV0BNR7Ta9Gqq0kWiZaVCSUPaZE6jMs8G5lzDDCjMpDTcj6h5XDLQTmjRIF1bGlMCnSn9DIAasYgjYBBsOWkQaA/AIX7WtPqWDmCft7/pEBPSi8C8E4MtNQNpuUC1joDUN+hHACwgZGsDE6dInpoROrAX4cdqgNtocpJCuWDTlbkJOS2tGfUGV9frGpZCnyQ0nOyIh0A0szRtZZLSsnuhMj+loz6OdaMhqmnSc/LiazCGBsxRq3p3pdU0r45rS7GHSu2Ap0Nul4lpA8Dz0C+hol7AKBz6wH1d9zJwvjeb9TTsADtUKIF9Brkyzonze0H1fEw/mBfLAW6mvR6CO5CrkBOJ5OyfvPnajA42FjaHSv0rESlfIQxUsgjyJvaMmrPaGOOqkBnSnfDV3B16E92tqblrfHwHmHA6M26U/IOTPRN0rWSnva0ag3jtX0lFTAr/yGYh8C4rjWjPrOCtgTPF6ivtO1ySny4h/HhFsl2N+mXQOvFWNXIG0rtBMwvPNHmQaHZYOHDwRvJIgCmf9QC464IY+JCcU5D22WwhLESW3HyvI2Ws6DMoNm0pdW2Yq58D3YAiyWCVQodayxyXSn9rjGny/BOC8O8U+gOZPM+nt4mTZuPAjHR/WbuNOaZYTAVTVmkQGeTXgyu1cjXcsPy2kR9sEVIQjo4NzEQC/Jqg62As0gB2EEHOejntxxWfxZwT0KDGIiFU1tsfhgFCvBuA+JSCFziIeVnnMw6sRATsRmMDg4PJpfMxUx4PdiaKe+E5YfvBopRgU3HTjzt4Sx2Q2AHTuk1KN3lzyngHSL5W6VgW/bHHh3WBl4FQL+VIVM2KzFhJ3bAjhqA9VX7bToT6mkQfryzAedCmRczHv8XkftDMrq8FEbrh1lQNlbyMPHGC4wGqyfndiCnZAU+EtEJoduKneD/N0Qx+86IOVE85fQTG681xAq505R1O8CXlDdY/gDzqrfcH4PNYQVAtwMwZD4B6av4/IudsMpvwBSeLyXQ2ahPhNHhLI5gB98Lo4X2ERuAOqxgcgqg7inAl1SocHTnTgBJRpOxJkqeiaAvQX9sBYgNi8WUX2xUihSorihbAQ88rr7PeUPH/ANb/gqsJRUPDkVs/9zwekMVCPKX1ca9/UQ5AjC9ctgjef07QNN5mA9wlL9ESWxv1lVTr8sLeF5OJ4/ZUsEJuS6XkyH46kNRz0zzfFyZSEi1X84bJydXq4bl0OtfqutRcxtsJDszL1LAix6UUGDaDXkF5rLbArCTof0JbJ1urQt97bbfX8KG8ZqTNr8s5TweEIarZCPqfECFJmIDG1OxAiAMeJvK0EeppGUmb1VwBT8C7Q+ONQc3rGQJlKh1fYEKxGayC+U3WIRfHVnLE6jPh3+PlPV4DTZitbJuB6Ddea4g/j0J4qeWIarkoQK7327pXY16Ler0KqMnJR/jkdRrGbsb9dtQaL5tR5Z41NCHEqvluXmQIdzndWppssRbrfQCYgDF0KTFhgXPJ+8y1yR/oDUbWj0evA/heXcM2tdbfpYQ/j07LIsTFXIEDZqBS6RdT8gCdkzJyfdYuPsdkRWYYLJSXsyOyCm0CsOSSo5jh5b5+U0g7Cf0DbZm5J6iyxw7MMkBCsGTrCoQbtZ3BcGTTlDJKpzCAfCWVqllXrXIY0XgyQAZKN+AWiH4vHD99mc1RG8mi4kYLXhSnQl5DQRaWUKTjXR5rAfSEB/v5gF/IkDrL0HjmF/76Bf9svj2Mj7akJ/GOrEQE+vwZB5G1pkKFDBR4pP0JCA4V3j1Ehd78hKxGO92MhjJdl7IwgPSLbDf0xBoQbhvD9+k02tF5W54HJX4Fnq9mpa5VsaUM0vQeB+a66N77tTKY3UX+GiVtp8lQ47EwjqxsfSngh0gwYS496Faw1glP+57RQj/CnISo6z1ssgstBn+oz8fRq4J0pJZvGNH5C/yId3to09FexiA7Flwn4/G+9GVR2pJ18rES2vQty8s/F60A2AUhrjxRKxHNcVYZVuf2gYv8DTALiTdpZz0t+5Xp7oa9FMqKY+6flZAazmozrEKP18PY32AdZt0Vs4hAv1tR0ovB+KCwxMXvbNr+lQWu8LAVgoyDGw5k7ZjsHRu1N/JugmnH0W1Akwvh8VFgzLj2Tbx0b0YcwQP+eVR4fYiE7IgjMAmtrHVvRzQ0ia69AV3OdWmKPAkRipAIlzbHqDvRrUaSuzlltIuSZuIxLHzcwhXvhoz9XgYSkwWCwzu7gU/cDDcN95Ruwn7gcMqf1v/xGSVMGH3TrRXsw/++/b5kc8qwZJRYtgeg8BLXX/Iz6z2fX3L/MzqwJrKbftDd1AReg+G+xgxw2XL/18N7AHFF9SE/FeDIJY77f97Bf4Fv1vzKjbpTWYAAAAASUVORK5CYII=',
   'ec2':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAMKADAAQAAAABAAAAMAAAAADbN2wMAAABO0lEQVRoBe1U2w3CMAwMiA3YCqZhEqahWzEDNB9nWdE16UcTx5WRUNw4re9hJ6X4OVLg+0q//C8h994v6+nnq37wGAcBa9fcO3CpKbgO52fNP2pnBuSW+zs9t+q0HLAGn3FXMdy2mOn9VYGqU/rskTG7ssvvtxwoz0/3LA7sYWuFnmFDV5zHATDSKjPmOj8qZthQ270DQQBWWq1xC1kpj7riAJv0uIUgU8c1bqGO4u76tMzALP3OUDNsmFn3LSQOgJFWgDHX+VExw4ba7h0IArDSapUZmKXfmRAMG+bCfQuJA2CkFWDMdX5UzLChtnsHggCstFplBmbpdyYEw4a5cN9C4gAYaQUYc50fFTNsqH0eB8CIrbM4wbC1HFjYS4P3jsOQnWBu9N6vCdZyoPbuFLkgYG2DewesBYz6fzqMaA3IXYFbAAAAAElFTkSuQmCC',
@@ -6307,7 +6326,7 @@ function buildLandingZoneLayout(ctx){
     text:NOTEXT,
     style:{stroke:{color:'#7C3AED',width:4,style:'dashed'},fill:{type:'color',color:'#F5F3FF'}},
     magnetize:true,
-    customData:[{key:'VPC ID',value:hubVpc.VpcId},{key:'Name',value:gn(hubVpc,hubVpc.VpcId)},{key:'Role',value:'Hub / Connectivity'},{key:'CIDR',value:hubVpc.CidrBlock}]
+    customData:[{key:'VNet ID',value:hubVpc.VpcId},{key:'Name',value:gn(hubVpc,hubVpc.VpcId)},{key:'Role',value:'Hub / Connectivity'},{key:'CIDR',value:hubVpc.CidrBlock}]
   });
   addIcon('VPC',HUB_X+6,HUB_Y+4);
   
@@ -6432,7 +6451,7 @@ function buildLandingZoneLayout(ctx){
       text:NOTEXT,
       style:{stroke:{color:COL.vpcStroke,width:2,style:'dashed'},fill:{type:'color',color:COL.vpcFill}},
       magnetize:true,
-      customData:[{key:'VPC ID',value:vpc.VpcId},{key:'Name',value:gn(vpc,vpc.VpcId)},{key:'Role',value:'Spoke / Workload'},{key:'CIDR',value:vpc.CidrBlock}]
+      customData:[{key:'VNet ID',value:vpc.VpcId},{key:'Name',value:gn(vpc,vpc.VpcId)},{key:'Role',value:'Spoke / Workload'},{key:'CIDR',value:vpc.CidrBlock}]
     });
     addIcon('VPC',spokeX+6,spokeY+4);
     
@@ -6549,7 +6568,7 @@ function buildLandingZoneLayout(ctx){
       boundingBox:{x:EXT_X+30,y:extY+220,w:extW-60,h:60},
       text:NOTEXT,
       style:{stroke:{color:'#EC4899',width:2},fill:{type:'color',color:'#FDF2F8'}},
-      customData:[{key:'Type',value:'Transit Gateway'},{key:'TGW IDs',value:tgwGws.map(g=>g.id).join(', ')}]
+      customData:[{key:'Type',value:'Virtual WAN Hub'},{key:'TGW IDs',value:tgwGws.map(g=>g.id).join(', ')}]
     });
     addIcon('TGW',EXT_X+38,extY+232);
     shapes.push({
@@ -6666,10 +6685,10 @@ function buildLandingZoneLayout(ctx){
   
   // Legend items
   const legendItems=[
-    {color:'#7C3AED',label:'Hub VPC',y:40},
-    {color:'#3B82F6',label:'Spoke VPC',y:65},
-    {color:'#10B981',label:'Internet Gateway',y:90},
-    {color:'#EC4899',label:'Transit Gateway',y:115}
+    {color:'#7C3AED',label:'Hub VNet',y:40},
+    {color:'#3B82F6',label:'Spoke VNet',y:65},
+    {color:'#10B981',label:'Public IP / Internet',y:90},
+    {color:'#EC4899',label:'Virtual WAN Hub',y:115}
   ];
   legendItems.forEach(item=>{
     shapes.push({
@@ -6728,7 +6747,7 @@ function buildLandingZoneLayout(ctx){
     shapes.push({
       id:'dns_title',type:'rectangle',
       boundingBox:{x:dnsX+10,y:dnsY+8,w:dnsW-20,h:30},
-      text:'<p style="font-size:12pt;font-weight:bold;color:#0ea5e9;text-align:left">Route 53 Hosted Zones ('+pubZ.length+' public, '+privZ.length+' private)</p>',
+      text:'<p style="font-size:12pt;font-weight:bold;color:#0ea5e9;text-align:left">Azure DNS Zones ('+pubZ.length+' public, '+privZ.length+' private)</p>',
       style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'color',color:'#FFFFFF00'}}
     });
 
@@ -6869,10 +6888,10 @@ function buildLandingZoneLayout(ctx){
     shapes.push({
       id:'s3_lz_title',type:'rectangle',
       boundingBox:{x:HUB_X+10,y:s3Y+8,w:s3W-20,h:30},
-      text:'<p style="font-size:12pt;font-weight:bold;color:#EA580C;text-align:left">S3 Buckets ('+s3bk.length+')</p>',
+      text:'<p style="font-size:12pt;font-weight:bold;color:#EA580C;text-align:left">Storage Accounts ('+s3bk.length+')</p>',
       style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'color',color:'#FFFFFF00'}}
     });
-    
+
     s3bk.forEach((bk,bi)=>{
       const col=bi%s3Cols;
       const row=Math.floor(bi/s3Cols);
@@ -6925,7 +6944,7 @@ function buildLandingZoneLayout(ctx){
   }
   
   // Build final export - format must match buildLucidExport
-  const doc={version:1,pages:[{id:'page1',title:'AWS-Landing-Zone',shapes,lines}]};
+  const doc={version:1,pages:[{id:'page1',title:'Azure-Landing-Zone',shapes,lines}]};
   
   console.log('Landing Zone layout complete:', shapes.length, 'shapes,', lines.length, 'lines');
   return {doc,iconSet};
@@ -6937,37 +6956,39 @@ function buildLandingZoneLayout(ctx){
 }
 
 function buildLucidExport(){
-  const vpcs=ext(safeParse(gv('in_vpcs')),['Vpcs']);
-  const subnets=ext(safeParse(gv('in_subnets')),['Subnets']);
-  const rts=ext(safeParse(gv('in_rts')),['RouteTables']);
-  const sgs=ext(safeParse(gv('in_sgs')),['SecurityGroups']);
-  const nacls=ext(safeParse(gv('in_nacls')),['NetworkAcls']);
-  const igws=ext(safeParse(gv('in_igws')),['InternetGateways']);
-  const nats=ext(safeParse(gv('in_nats')),['NatGateways']);
-  const vpceList=ext(safeParse(gv('in_vpces')),['VpcEndpoints']);
-  const peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections']);
-  const volumes=ext(safeParse(gv('in_vols')),['Volumes']);
-  const snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
-  const s3raw=safeParse(gv('in_s3'));const s3bk=s3raw?ext(s3raw,['Buckets']):[];
-  const zones=ext(safeParse(gv('in_r53')),['HostedZones']);
-  const allRecordSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets']);
+  const vpcs=ext(safeParse(gv('in_vnets')),['Vpcs','value']);
+  const subnets=ext(safeParse(gv('in_subnets')),['Subnets','value']);
+  const rts=ext(safeParse(gv('in_rts')),['RouteTables','value']);
+  const sgs=ext(safeParse(gv('in_nsgs')),['SecurityGroups','value']);
+  const nacls=[];
+  const igws=ext(safeParse(gv('in_pips')),['value']);
+  const nats=ext(safeParse(gv('in_nats')),['NatGateways','value']);
+  const vpceList=ext(safeParse(gv('in_pes')),['VpcEndpoints','value']);
+  const peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections','value']);
+  const volumes=ext(safeParse(gv('in_disks')),['Volumes','value']);
+  const snapshots=ext(safeParse(gv('in_snaps')),['Snapshots','value']);
+  const s3raw=safeParse(gv('in_storage'));const s3bk=s3raw?ext(s3raw,['Buckets','value']):[];
+  const zones=ext(safeParse(gv('in_dns')),['HostedZones','value']);
+  const allRecordSets=ext(safeParse(gv('in_dnsrecs')),['ResourceRecordSets','value']);
   const recsByZone={};
   allRecordSets.forEach(r=>{if(r.HostedZoneId)(recsByZone[r.HostedZoneId]=recsByZone[r.HostedZoneId]||[]).push(r)});
-  let instances=[];
-  const eRaw=safeParse(gv('in_ec2'));
-  if(eRaw){
-    const reservations=ext(eRaw,['Reservations']);
-    if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
-    else{const flat=ext(eRaw,['Instances']);if(flat.length)instances=flat;else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}}
+  let instances=ext(safeParse(gv('in_vms')),['value']);
+  if(!instances.length){
+    const eRaw=safeParse(gv('in_vms'));
+    if(eRaw){
+      const reservations=ext(eRaw,['Reservations']);
+      if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
+      else{const flat=ext(eRaw,['Instances']);if(flat.length)instances=flat;else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}}
+    }
   }
-  const albs=ext(safeParse(gv('in_albs')),['LoadBalancers']);
-  const tgs=ext(safeParse(gv('in_tgs')),['TargetGroups']);
-  const enis=ext(safeParse(gv('in_enis')),['NetworkInterfaces']);
-  const wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
-  const rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
-  const ecsServices=ext(safeParse(gv('in_ecs')),['services']);
-  const lambdaFns=(ext(safeParse(gv('in_lambda')),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
-  const cfDistributions=ext(safeParse(gv('in_cf')),['DistributionList','Items']);
+  const albs=[...ext(safeParse(gv('in_appgws')),['value']),...ext(safeParse(gv('in_lbs')),['value'])];
+  const tgs=[];
+  const enis=ext(safeParse(gv('in_nics')),['NetworkInterfaces','value']);
+  const wafAcls=ext(safeParse(gv('in_waf')),['WebACLs','value']);
+  const rdsInstances=ext(safeParse(gv('in_sql')),['DBInstances','value']);
+  const ecsServices=ext(safeParse(gv('in_aci')),['services','value']);
+  const lambdaFns=(ext(safeParse(gv('in_func')),['Functions','value'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
+  const cfDistributions=ext(safeParse(gv('in_fd')),['value']);
   if(!vpcs.length){alert('Render map first');return null}
 
   // Build lookups
@@ -7013,7 +7034,7 @@ function buildLucidExport(){
   const SP=24;
   const EC2W=260,EC2H=34,EC2G=16;
 
-  // Official AWS Architecture Group Icon colors
+  // Architecture Group Icon colors
   const COL={
     vpcFill:'#FFFFFF',vpcStroke:'#8C4FFF',vpcFont:'#8C4FFF',
     pubFill:'#FFFFFF',pubStroke:'#7AA116',pubFont:'#7AA116',
@@ -7045,8 +7066,8 @@ function buildLucidExport(){
     if(r.TransitGatewayId)gwSet2L.set(r.TransitGatewayId,{type:'TGW',id:r.TransitGatewayId,vpcId:'shared'});
     if(r.VpcPeeringConnectionId)gwSet2L.set(r.VpcPeeringConnectionId,{type:'PCX',id:r.VpcPeeringConnectionId,vpcId:'shared'});
   })});
-  igws.forEach(g=>{if(!gwSet2L.has(g.InternetGatewayId)){const v=(g.Attachments||[])[0];gwSet2L.set(g.InternetGatewayId,{type:'IGW',id:g.InternetGatewayId,vpcId:v?v.VpcId:'unk'})}});
-  nats.forEach(g=>{if(!gwSet2L.has(g.NatGatewayId))gwSet2L.set(g.NatGatewayId,{type:'NAT',id:g.NatGatewayId,vpcId:g.VpcId||'unk'})});
+  igws.forEach(g=>{const gid=g.InternetGatewayId||g.id||g.name;if(gid&&!gwSet2L.has(gid)){const v=(g.Attachments||[])[0];gwSet2L.set(gid,{type:'IGW',id:gid,vpcId:v?v.VpcId:'unk'})}});
+  nats.forEach(g=>{const gid=g.NatGatewayId||g.id||g.name;if(gid&&!gwSet2L.has(gid))gwSet2L.set(gid,{type:'NAT',id:gid,vpcId:g.VpcId||'unk'})});
 
   // group by VPC vs shared
   const gwByVpc={};const sharedGws=[];
@@ -7235,16 +7256,16 @@ function buildLucidExport(){
       style:{stroke:{color:COL.vpcStroke,width:3,style:'dashed'},fill:{type:'color',color:COL.vpcFill}},
       magnetize:true,
       customData:[
-        {key:'VPC ID',value:vpc.VpcId},
+        {key:'VNet ID',value:vpc.VpcId},
         {key:'Name',value:gn(vpc,vpc.VpcId)},
         {key:'CIDR',value:vpc.CidrBlock||''},
         {key:'Region',value:region},
         {key:'Subnets',value:String(ss.length)},
         {key:'Security Groups',value:String(vpcSgs.length)},
         {key:'Route Tables',value:String(vpcRts.length)},
-        {key:'EC2 Instances',value:String(vpcInsts.length)},
-        {key:'ENIs',value:String(vpcEnis.length)},
-        {key:'VPC Endpoints',value:String(vpcVpces.length)}
+        {key:'Virtual Machines',value:String(vpcInsts.length)},
+        {key:'NICs',value:String(vpcEnis.length)},
+        {key:'Private Endpoints',value:String(vpcVpces.length)}
       ]
     });
     // store VPC position for line routing
@@ -7292,7 +7313,7 @@ function buildLucidExport(){
           // Build gateway-specific customData
           let gwCustomData=[
             {key:'Gateway ID',value:gw.id},
-            {key:'Type',value:gw.type==='IGW'?'Internet Gateway':gw.type==='NAT'?'NAT Gateway':gw.type==='VGW'?'Virtual Private Gateway':gw.type},
+            {key:'Type',value:gw.type==='IGW'?'Public IP / Internet':gw.type==='NAT'?'NAT Gateway':gw.type==='VGW'?'VPN Gateway':gw.type},
             {key:'Name',value:nm}
           ];
           
@@ -7458,8 +7479,8 @@ function buildLucidExport(){
           {key:'NACL',value:naclName+(nacl?' ('+nacl.NetworkAclId+')':'')},
           {key:'Route Table',value:rtName+(rt?' ('+rt.RouteTableId+')':'')},
           {key:'Routes',value:routes||'local only'},
-          {key:'EC2 Instances',value:String(insts.length)},
-          {key:'ENIs',value:String(subEnis.length)},
+          {key:'Virtual Machines',value:String(insts.length)},
+          {key:'NICs',value:String(subEnis.length)},
           {key:'Load Balancers',value:String(subAlbs.length)}
         ]
       });
@@ -7589,7 +7610,7 @@ function buildLucidExport(){
         style:{stroke:{color:gc,width:2},fill:{type:'color',color:gf}},
         customData:[
           {key:'Gateway ID',value:gw.id},
-          {key:'Type',value:gw.type==='IGW'?'Internet Gateway':gw.type==='NAT'?'NAT Gateway':'Virtual Private Gateway'},
+          {key:'Type',value:gw.type==='IGW'?'Public IP / Internet':gw.type==='NAT'?'NAT Gateway':'VPN Gateway'},
           {key:'Name',value:nm},
           {key:'VPC',value:vi.vpc.VpcId}
         ]
@@ -7707,7 +7728,7 @@ function buildLucidExport(){
     
     let gwCustomData=[
       {key:'Gateway ID',value:gw.id},
-      {key:'Type',value:gw.type==='TGW'?'Transit Gateway':gw.type==='PCX'?'VPC Peering':'Gateway'},
+      {key:'Type',value:gw.type==='TGW'?'Virtual WAN Hub':gw.type==='PCX'?'VNet Peering':'Gateway'},
       {key:'Name',value:nm},
       {key:'Connected VPCs',value:String(connectedVpcs.size)}
     ];
@@ -7936,7 +7957,7 @@ function buildLucidExport(){
     shapes.push({
       id:'dns_sec_title',type:'rectangle',
       boundingBox:{x:dnsX+10,y:dnsY+8,w:dnsW-20,h:30},
-      text:'<p style="font-size:12pt;font-weight:bold;color:#0ea5e9;text-align:left">Route 53 Hosted Zones ('+pubZ.length+' public, '+privZ.length+' private)</p>',
+      text:'<p style="font-size:12pt;font-weight:bold;color:#0ea5e9;text-align:left">Azure DNS Zones ('+pubZ.length+' public, '+privZ.length+' private)</p>',
       style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'color',color:'#FFFFFF00'}}
     });
 
@@ -8074,10 +8095,10 @@ function buildLucidExport(){
     shapes.push({
       id:'s3_sec_title',type:'rectangle',
       boundingBox:{x:s3X+10,y:s3Y+8,w:s3W-20,h:30},
-      text:'<p style="font-size:12pt;font-weight:bold;color:#EA580C;text-align:left">S3 Buckets ('+s3bk.length+')</p>',
+      text:'<p style="font-size:12pt;font-weight:bold;color:#EA580C;text-align:left">Storage Accounts ('+s3bk.length+')</p>',
       style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'color',color:'#FFFFFF00'}}
     });
-    
+
     s3bk.forEach((bk,bi)=>{
       const col=bi%s3Cols;
       const row=Math.floor(bi/s3Cols);
@@ -8142,11 +8163,11 @@ function buildLucidExport(){
   shapes.push({
     id:'legend_pcx_label',type:'rectangle',
     boundingBox:{x:legendX+62,y:legendY+66,w:150,h:20},
-    text:'<p style="font-size:9pt;color:#232F3E;text-align:left">VPC Peering</p>',
+    text:'<p style="font-size:9pt;color:#232F3E;text-align:left">VNet Peering</p>',
     style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'color',color:'#FFFFFF'}}
   });
 
-  const doc={version:1,pages:[{id:'page1',title:'AWS-Network-Map',shapes,lines}]};
+  const doc={version:1,pages:[{id:'page1',title:'Azure-Network-Map',shapes,lines}]};
   return{doc,iconSet};
 }
 
@@ -8177,7 +8198,7 @@ document.getElementById('expLucidDl').addEventListener('click',async()=>{
   try{
     const blob=await buildLucidZip();
     const mode=document.getElementById('layoutMode').value;
-    const fname=mode==='landingzone'?'AWS-Landing-Zone.lucid':'AWS-Network-Map.lucid';
+    const fname=mode==='landingzone'?'Azure-Landing-Zone.lucid':'Azure-Network-Map.lucid';
     if(blob)downloadBlob(blob,fname);
     else alert('Export returned empty. Load data first.');
   }catch(e){alert('Lucid export error: '+e.message);console.error(e)}
