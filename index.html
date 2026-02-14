@@ -585,10 +585,10 @@
     .sidebar:not(.collapsed){transform:translateX(0)}
     .sidebar.collapsed{width:100vw;min-width:100vw;overflow:hidden;transform:translateX(-100%)}
 
-    /* Sidebar toggle: hamburger in top-left */
-    .sidebar-toggle{position:fixed;top:10px;left:10px;z-index:101;width:40px;height:40px;font-size:18px;border-radius:8px;background:rgba(17,24,39,.95);backdrop-filter:blur(8px);border:1px solid var(--border)}
-    .sidebar.collapsed~.sidebar-toggle{left:10px}
-    .sidebar:not(.collapsed)~.sidebar-toggle{left:calc(100vw - 50px);z-index:101}
+    /* Sidebar toggle: compact hamburger top-left */
+    .sidebar-toggle{position:fixed;top:8px;left:8px;z-index:101;width:34px;height:34px;font-size:16px;border-radius:6px;background:rgba(17,24,39,.95);backdrop-filter:blur(8px);border:1px solid var(--border)}
+    .sidebar.collapsed~.sidebar-toggle{left:8px}
+    .sidebar:not(.collapsed)~.sidebar-toggle{left:calc(100vw - 42px);z-index:101}
 
     /* Sidebar actions: bigger touch targets */
     .sidebar-actions{padding:12px;gap:10px}
@@ -605,17 +605,14 @@
     .dp-close{width:36px;height:36px;font-size:18px}
     .dp-sec-hdr{padding:12px 16px}
 
-    /* Stats bar: move below hamburger, horizontal scroll */
-    .stats-bar{top:58px;padding:0 12px;gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;scrollbar-width:none;-ms-overflow-style:none}
-    .stats-bar::-webkit-scrollbar{display:none}
-    .main:has(.detail-panel.open) .stats-bar{padding-right:12px}
-    .stat-chip{white-space:nowrap;flex-shrink:0;padding:5px 10px;font-size:calc(10px * var(--txt-scale))}
+    /* Stats bar: hide on mobile, show as a floating row only when tapped */
+    .stats-bar{display:none !important}
 
-    /* Export bar: top-right, beside hamburger row */
-    .export-bar{top:10px;right:10px}
-    .main:has(.detail-panel.open) .export-bar{right:10px}
-    .export-btn{padding:10px 14px;font-size:calc(12px * var(--txt-scale))}
-    .eb-toggle{padding:6px 12px;font-size:10px}
+    /* Export bar: small toggle top-right */
+    .export-bar{top:8px;right:8px}
+    .main:has(.detail-panel.open) .export-bar{right:8px}
+    .export-btn{padding:8px 12px;font-size:calc(11px * var(--txt-scale))}
+    .eb-toggle{padding:5px 10px;font-size:9px}
 
     /* Hide layout selector row in export bar on mobile */
     .export-bar>div:has(#layoutMode){display:none}
@@ -623,19 +620,21 @@
     /* Layout select in export bar: stack vertically */
     .export-bar>div[style*="layout"]{flex-direction:column;gap:4px}
 
-    /* Zoom controls: bigger touch targets, right side */
-    .zoom-controls{bottom:14px;right:14px}
-    .zoom-btn{width:44px;height:44px;font-size:20px;border-radius:8px}
-    .zoom-btn.wide{padding:0 12px;font-size:10px;height:34px}
-    .design-btn{padding:8px 12px;font-size:10px}
-    /* Hide expand/collapse and design help on mobile — too cluttered */
+    /* Zoom controls: compact, right side */
+    .zoom-controls{bottom:12px;right:10px}
+    .zoom-btn{width:36px;height:36px;font-size:17px;border-radius:6px}
+    .zoom-btn.wide{display:none}
+    .design-btn{padding:6px 10px;font-size:9px}
+    /* Hide expand/collapse and design help on mobile */
     #detailBtns{display:none}
     .design-help{display:none !important}
 
-    /* Legend: keep at bottom-left, start collapsed on mobile */
-    .legend{bottom:12px;left:10px;max-width:170px;font-size:9px}
-    .legend-item{font-size:9px}
+    /* Legend: bottom-left, always start collapsed, compact */
+    .legend{bottom:10px;left:10px;max-width:160px;font-size:8px;padding:6px 10px}
+    .legend-item{font-size:8px;gap:5px}
+    .legend-swatch{width:8px;height:8px}
     .legend .legend-hint{display:none}
+    .legend-title{font-size:8px}
 
     /* Notes panel: full-width */
     .notes-panel{width:100vw;height:70vh;top:auto;bottom:0;border-radius:16px 16px 0 0}
@@ -697,29 +696,25 @@
     /* Design banner */
     .design-banner{font-size:9px;padding:4px 10px;gap:8px;flex-wrap:wrap}
     .design-banner .db-shortcuts{display:none}
-    .main:has(.design-banner.visible) .stats-bar{top:94px}
-    .main:has(.design-banner.visible) .export-bar{top:46px}
+    .main:has(.design-banner.visible) .export-bar{top:42px}
   }
 
   /* --- SMALL PHONE: iPhone SE, narrow Android (max-width 430px) --- */
   @media (max-width:430px){
-    /* Stats bar: smaller chips */
-    .stat-chip{padding:4px 8px;font-size:calc(9px * var(--txt-scale))}
-
-    /* Export buttons stack */
+    /* Export buttons: hide descriptions */
     .export-btn span{display:none}
 
-    /* Zoom controls: slightly smaller on tiny screens */
-    .zoom-controls{bottom:12px;right:12px}
-    .zoom-btn{width:40px;height:40px;font-size:18px}
-
-    /* Legend: compact */
-    .legend{padding:8px 10px;max-width:160px}
-    .legend-swatch{width:8px;height:8px}
+    /* Zoom controls: even smaller */
+    .zoom-controls{bottom:10px;right:8px}
+    .zoom-btn{width:32px;height:32px;font-size:15px}
 
     /* Detail panel: taller on small phones */
-    .detail-panel{height:80vh}
-    .notes-panel{height:80vh}
+    .detail-panel{height:85vh}
+    .notes-panel{height:85vh}
+
+    /* Legend: extra compact */
+    .legend{padding:5px 8px;max-width:140px}
+    .legend-swatch{width:7px;height:7px}
 
     /* Compliance dashboard: tighter */
     .comp-dash-hdr{padding:8px 10px}
@@ -750,7 +745,7 @@
   @media (hover:none) and (pointer:coarse){
     /* Larger tap targets for touch */
     .sidebar-toggle{width:40px;height:40px;font-size:20px}
-    .zoom-btn{min-width:44px;min-height:44px}
+    .zoom-btn{min-width:36px;min-height:36px}
     .dp-close{min-width:36px;min-height:36px}
     .gtc-btn{width:32px;height:32px;font-size:16px}
     .sec-hdr{padding:10px 14px}
@@ -781,20 +776,18 @@
   @media (max-width:768px) and (max-height:500px) and (orientation:landscape){
     .detail-panel{height:100vh;border-radius:0}
     .notes-panel{height:100vh;border-radius:0}
-    .stats-bar{top:8px;padding-left:56px}
-    .zoom-controls{bottom:8px;right:8px}
-    .zoom-btn{width:36px;height:36px;font-size:16px}
-    .legend{bottom:8px;left:8px;max-width:150px}
-    .timeline-bar{bottom:44px;height:44px}
+    .zoom-controls{bottom:6px;right:6px}
+    .zoom-btn{width:30px;height:30px;font-size:14px}
+    .legend{bottom:6px;left:6px;max-width:130px}
+    .timeline-bar{bottom:40px;height:40px}
   }
 
   /* --- SAFE AREA INSETS for notched phones (iPhone X+) --- */
   @supports (padding: env(safe-area-inset-top)){
     @media (max-width:768px){
       .sidebar-header{padding-top:calc(14px + env(safe-area-inset-top))}
-      .sidebar-toggle{top:calc(10px + env(safe-area-inset-top))}
-      .stats-bar{top:calc(58px + env(safe-area-inset-top))}
-      .export-bar{top:calc(10px + env(safe-area-inset-top))}
+      .sidebar-toggle{top:calc(8px + env(safe-area-inset-top))}
+      .export-bar{top:calc(8px + env(safe-area-inset-top))}
       .zoom-controls{bottom:calc(14px + env(safe-area-inset-bottom))}
       .legend{bottom:calc(12px + env(safe-area-inset-bottom))}
       .detail-panel{padding-bottom:env(safe-area-inset-bottom)}
