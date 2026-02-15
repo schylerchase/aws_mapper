@@ -639,8 +639,9 @@
     /* Notes panel: full-width */
     .notes-panel{width:100vw;height:70vh;top:auto;bottom:0;border-radius:16px 16px 0 0}
 
-    /* Account panel: full-width */
-    .account-panel{width:100vw}
+    /* Account panel: full-width, hide fully off-screen when closed */
+    .account-panel{width:100vw;right:-100vw}
+    .account-panel.open{right:0}
 
     /* Dependency overlay */
     .dep-body{padding:12px}
@@ -689,6 +690,11 @@
     /* History / diff / flow banners */
     .history-banner,.diff-banner,.flow-banner,.account-merge-banner{font-size:10px;gap:8px;padding:0 8px;height:36px}
     .history-banner button,.diff-banner button,.flow-banner button,.account-merge-banner button{font-size:9px;padding:2px 8px}
+
+    /* Bottom toolbar: scrollable on mobile (! needed to override inline styles) */
+    #bottomToolbar{left:0 !important;right:0 !important;transform:none !important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 6px !important;gap:5px !important;scrollbar-width:none}
+    #bottomToolbar::-webkit-scrollbar{display:none}
+    #bottomToolbar button{flex-shrink:0;font-size:10px;height:28px;padding:0 10px}
 
     /* Locked indicator */
     .hl-locked-indicator{font-size:8px;padding:4px 10px;bottom:70px}
@@ -795,6 +801,7 @@
       .sidebar-actions{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
       .timeline-bar{bottom:calc(70px + env(safe-area-inset-bottom))}
       .hl-locked-indicator{bottom:calc(70px + env(safe-area-inset-bottom))}
+      #bottomToolbar{bottom:calc(12px + env(safe-area-inset-bottom)) !important}
     }
   }
 </style>
@@ -960,7 +967,7 @@
       </div>
     </div>
   </div>
-  <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:flex;gap:6px;align-items:center">
+  <div id="bottomToolbar" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:flex;gap:6px;align-items:center">
     <button id="saveProjectBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-green);color:var(--accent-green);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Save project to file (Ctrl+S)">Save</button>
     <button id="loadProjectBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-orange);color:var(--accent-orange);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Load project from file">Open</button>
     <div style="width:1px;height:18px;background:var(--border);opacity:.5"></div>
