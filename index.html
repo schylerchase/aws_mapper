@@ -639,8 +639,8 @@
     /* Layout select in export bar: stack vertically */
     .export-bar>div[style*="layout"]{flex-direction:column;gap:4px}
 
-    /* Zoom controls: positioned above Safari toolbar area */
-    .zoom-controls{bottom:50px;right:10px}
+    /* Zoom controls: positioned above bottomToolbar (12px bottom + ~34px tall + 10px gap) */
+    .zoom-controls{bottom:56px;right:10px}
     .zoom-btn{width:36px;height:36px;font-size:17px;border-radius:6px}
     .zoom-btn.wide{display:none}
     .design-btn{padding:6px 10px;font-size:9px}
@@ -649,7 +649,7 @@
     .design-help{display:none !important}
 
     /* Legend: positioned above Safari toolbar area */
-    .legend{bottom:50px;left:10px;max-width:160px;font-size:8px;padding:6px 10px}
+    .legend{bottom:56px;left:10px;max-width:160px;font-size:8px;padding:6px 10px}
     .legend-item{font-size:8px;gap:5px}
     .legend-swatch{width:8px;height:8px}
     .legend .legend-hint{display:none}
@@ -812,8 +812,8 @@
       .sidebar-header{padding-top:calc(14px + env(safe-area-inset-top))}
       .sidebar-toggle{top:calc(8px + env(safe-area-inset-top))}
       .export-bar{top:calc(8px + env(safe-area-inset-top))}
-      .zoom-controls{bottom:calc(50px + env(safe-area-inset-bottom))}
-      .legend{bottom:calc(50px + env(safe-area-inset-bottom))}
+      .zoom-controls{bottom:calc(90px + env(safe-area-inset-bottom))}
+      .legend{bottom:calc(90px + env(safe-area-inset-bottom))}
       .detail-panel{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
       .notes-panel{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
       .sidebar-actions{padding-bottom:calc(34px + env(safe-area-inset-bottom))}
