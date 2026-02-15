@@ -800,9 +800,9 @@
   @media (max-width:768px) and (max-height:500px) and (orientation:landscape){
     .detail-panel{height:100vh;height:100svh;border-radius:0}
     .notes-panel{height:100vh;height:100svh;border-radius:0}
-    .zoom-controls{bottom:50px;right:6px}
+    .zoom-controls{bottom:8px;right:6px}
     .zoom-btn{width:30px;height:30px;font-size:14px}
-    .legend{bottom:50px;left:6px;max-width:130px}
+    .legend{bottom:8px;left:6px;max-width:130px}
     .timeline-bar{bottom:40px;height:40px}
   }
 
@@ -1332,9 +1332,8 @@ const acctDiv=document.createElement('div');
 acctDiv.style.cssText='padding:4px 8px;margin-bottom:4px';
 acctDiv.innerHTML='<div style="display:flex;align-items:center;gap:6px"><label style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0">Account</label><input id="accountLabel" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:IBM Plex Mono,monospace;font-size:9px;padding:3px 6px" placeholder="Account ID or alias (optional)"></div>';
 sb.appendChild(acctDiv);
-const _isMobile=window.matchMedia('(max-width:768px)').matches;
 inputSections.forEach(sec=>{
-  const openByDefault=_isMobile?false:sec.open;
+  const openByDefault=_isMobile()?false:sec.open;
   const h=document.createElement('div');h.className='sec-hdr'+(openByDefault?'':' collapsed');
   h.innerHTML=`<span>${sec.t}</span><span class="arr">&#9660;</span>`;
   const b=document.createElement('div');b.className='sec-body'+(openByDefault?'':' hidden');
@@ -16034,9 +16033,13 @@ window._runAllEdgeCaseTests = function(){
 };
 
 /* Prevent iOS Safari from intercepting pinch/zoom gestures on the map */
-document.addEventListener('gesturestart',function(e){e.preventDefault()},{passive:false});
-document.addEventListener('gesturechange',function(e){e.preventDefault()},{passive:false});
-document.addEventListener('gestureend',function(e){e.preventDefault()},{passive:false});
+(function(){
+  var m=document.querySelector('.main');
+  if(!m)return;
+  m.addEventListener('gesturestart',function(e){e.preventDefault()},{passive:false});
+  m.addEventListener('gesturechange',function(e){e.preventDefault()},{passive:false});
+  m.addEventListener('gestureend',function(e){e.preventDefault()},{passive:false});
+})();
 
 </script>
 </body>
