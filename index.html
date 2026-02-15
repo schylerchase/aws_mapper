@@ -13701,11 +13701,12 @@ document.getElementById('expLucidDl').addEventListener('click',async()=>{
 
 
 // Layout mode selector
-if(_prefs.layoutMode){document.getElementById('layoutMode').value=_prefs.layoutMode;const hi=document.getElementById('hubVpcName');if(hi)hi.style.display=_prefs.layoutMode==='landingzone'?'block':'none';document.getElementById('detailBtns').style.display=_prefs.layoutMode==='executive'?'none':'flex'}
+if(_prefs.layoutMode){document.getElementById('layoutMode').value=_prefs.layoutMode;const hi=document.getElementById('hubVpcName');if(hi)hi.style.display=_prefs.layoutMode==='landingzone'?'block':'none';document.getElementById('detailBtns').style.display=_prefs.layoutMode==='executive'?'none':'flex';document.getElementById('flowBtn').style.display=_prefs.layoutMode==='executive'?'none':''}
 document.getElementById('layoutMode').addEventListener('change',function(){
   const hubInput=document.getElementById('hubVpcName');
   hubInput.style.display=this.value==='landingzone'?'block':'none';
   document.getElementById('detailBtns').style.display=this.value==='executive'?'none':'flex';
+  document.getElementById('flowBtn').style.display=this.value==='executive'?'none':'';
   savePrefs({layoutMode:this.value});
   const svg=d3.select('#mapSvg');
   if(svg.node()&&svg.style('display')!=='none'){
