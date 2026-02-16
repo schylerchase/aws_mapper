@@ -9840,6 +9840,7 @@ function traceFlow(source, target, config, ctx){
 
 function enterFlowMode(presetSource){
   if(!_rlCtx){alert('Load a map first');return}
+  if(document.getElementById('layoutMode').value==='executive') return;
   if(_flowMode) return;
   _flowMode=true;
   _flowSelecting=presetSource?'target':'source';
