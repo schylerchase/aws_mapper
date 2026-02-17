@@ -1,8 +1,12 @@
 {
   "name": "aws-network-mapper",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AWS Network Topology Mapper - Desktop Application",
-  "author": "schylerchase",
+  "author": {
+    "name": "schylerchase",
+    "email": "schylerchase@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/schylerchase/aws_mapper",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -18,10 +22,7 @@
       "index.html",
       "main.js",
       "preload.js",
-      "export-aws-data.sh",
-      "assets/**/*",
-      "logo.jpg",
-      "logo.png"
+      "export-aws-data.sh"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
