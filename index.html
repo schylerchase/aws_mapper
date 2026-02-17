@@ -1504,7 +1504,11 @@
       </div>
     </div>
     <div class="rpt-footer">
-      <button id="rptExportHTML" class="rpt-generate">Generate HTML Report</button>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button id="rptExportHTML" class="rpt-generate">Generate HTML Report</button>
+        <button id="rptExportXLSX" class="rpt-generate" style="background:var(--accent-green,#10b981)">Export XLSX</button>
+      </div>
+      <div id="rptFooterStats" style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px"></div>
     </div>
   </div>
   <div class="fw-dash" id="fwDash">
@@ -2997,6 +3001,171 @@ function _rptCSS(){
   ].join('\n');
 }
 
+function _rptInteractiveCSS(){
+  return [
+    '/* === Interactive report controls === */',
+    '.rpt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;margin-bottom:8px;border-bottom:1px solid #334155}',
+    '.rpt-toolbar input[type="text"]{background:#0f172a;color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:6px 12px;font-size:13px;width:220px;outline:none}',
+    '.rpt-toolbar input[type="text"]:focus{border-color:#60a5fa}',
+    '.rpt-toolbar input[type="text"]::placeholder{color:#64748b}',
+    '.rpt-pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #475569;color:#94a3b8;background:transparent;transition:all .15s;user-select:none}',
+    '.rpt-pill:hover{border-color:#60a5fa;color:#e2e8f0}',
+    '.rpt-pill.active{background:#1e40af;border-color:#3b82f6;color:#fff}',
+    '.rpt-pill-crit.active{background:#991b1b;border-color:#dc2626;color:#fff}',
+    '.rpt-pill-high.active{background:#9a3412;border-color:#ea580c;color:#fff}',
+    '.rpt-pill-med.active{background:#92400e;border-color:#d97706;color:#fff}',
+    '.rpt-pill-low.active{background:#1e3a5f;border-color:#2563eb;color:#fff}',
+    '.rpt-pill-protected.active{background:#064e3b;border-color:#10b981;color:#fff}',
+    '.rpt-pill-partial.active{background:#78350f;border-color:#f59e0b;color:#fff}',
+    '.rpt-pill-atrisk.active{background:#7f1d1d;border-color:#ef4444;color:#fff}',
+    '.rpt-row-count{font-size:11px;color:#64748b;margin-left:auto;white-space:nowrap}',
+    '.rpt-clear{font-size:11px;color:#60a5fa;cursor:pointer;text-decoration:none;border:none;background:none;padding:0}',
+    '.rpt-clear:hover{text-decoration:underline}',
+    'table thead.rpt-sticky{position:sticky;top:0;z-index:2}',
+    '.rpt-section-toggle{cursor:pointer;user-select:none}',
+    '.rpt-section-toggle::after{content:" \\25BC";font-size:10px;color:#64748b;margin-left:6px}',
+    '.rpt-section-toggle.collapsed::after{content:" \\25B6"}',
+    '.rpt-section-body{transition:max-height .3s ease;overflow:hidden}',
+    '.rpt-section-body.collapsed{max-height:0!important;overflow:hidden}',
+    '#rpt-back-top{position:fixed;bottom:24px;right:24px;width:40px;height:40px;border-radius:50%;background:#1e293b;border:1px solid #475569;color:#94a3b8;font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:100;transition:opacity .2s}',
+    '#rpt-back-top:hover{background:#334155;color:#e2e8f0}',
+    '@media print{.rpt-toolbar,.rpt-clear,#rpt-back-top{display:none!important}',
+    '.rpt-section-body.collapsed{max-height:none!important;overflow:visible!important}',
+    'table thead.rpt-sticky{position:static}',
+    'tr[style*="display: none"]{display:table-row!important}}'
+  ].join('\n');
+}
+
+function _rptInteractiveJS(){
+  return '<scr'+'ipt>\n'+
+  '(function(){\n'+
+  '  /* Filter rows by data attribute */\n'+
+  '  function rptFilter(tableId){\n'+
+  '    var wrap=document.getElementById(tableId);\n'+
+  '    if(!wrap)return;\n'+
+  '    var pills=wrap.querySelectorAll(".rpt-pill");\n'+
+  '    var active={};\n'+
+  '    pills.forEach(function(p){\n'+
+  '      if(!p.classList.contains("active"))return;\n'+
+  '      var attr=p.dataset.attr;\n'+
+  '      if(!active[attr])active[attr]=[];\n'+
+  '      active[attr].push(p.dataset.val.toUpperCase());\n'+
+  '    });\n'+
+  '    var searchInput=wrap.querySelector(".rpt-search");\n'+
+  '    var query=searchInput?searchInput.value.toLowerCase():"";\n'+
+  '    var table=wrap.querySelector("table");\n'+
+  '    if(!table)return;\n'+
+  '    var rows=table.querySelectorAll("tbody tr");\n'+
+  '    var shown=0;\n'+
+  '    rows.forEach(function(tr){\n'+
+  '      var vis=true;\n'+
+  '      /* attribute filters */\n'+
+  '      Object.keys(active).forEach(function(attr){\n'+
+  '        var val=(tr.dataset[attr]||"").toUpperCase();\n'+
+  '        if(active[attr].indexOf(val)===-1)vis=false;\n'+
+  '      });\n'+
+  '      /* text search */\n'+
+  '      if(vis&&query){\n'+
+  '        var text=tr.textContent.toLowerCase();\n'+
+  '        if(text.indexOf(query)===-1)vis=false;\n'+
+  '      }\n'+
+  '      tr.style.display=vis?"":"none";\n'+
+  '      if(vis)shown++;\n'+
+  '    });\n'+
+  '    /* update count badge */\n'+
+  '    var badge=wrap.querySelector(".rpt-row-count");\n'+
+  '    if(badge)badge.textContent="Showing "+shown+" of "+rows.length;\n'+
+  '  }\n'+
+  '\n'+
+  '  /* Pill click handler */\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    var pill=e.target.closest(".rpt-pill");\n'+
+  '    if(!pill)return;\n'+
+  '    pill.classList.toggle("active");\n'+
+  '    var wrap=pill.closest(".rpt-table-wrap");\n'+
+  '    if(wrap)rptFilter(wrap.id);\n'+
+  '  });\n'+
+  '\n'+
+  '  /* Clear filters */\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    if(!e.target.classList.contains("rpt-clear"))return;\n'+
+  '    var wrap=e.target.closest(".rpt-table-wrap");\n'+
+  '    if(!wrap)return;\n'+
+  '    wrap.querySelectorAll(".rpt-pill.active").forEach(function(p){p.classList.remove("active")});\n'+
+  '    var si=wrap.querySelector(".rpt-search");\n'+
+  '    if(si)si.value="";\n'+
+  '    rptFilter(wrap.id);\n'+
+  '  });\n'+
+  '\n'+
+  '  /* Debounced search */\n'+
+  '  var _searchTimer=0;\n'+
+  '  document.addEventListener("input",function(e){\n'+
+  '    if(!e.target.classList.contains("rpt-search"))return;\n'+
+  '    clearTimeout(_searchTimer);\n'+
+  '    var wrap=e.target.closest(".rpt-table-wrap");\n'+
+  '    _searchTimer=setTimeout(function(){if(wrap)rptFilter(wrap.id)},300);\n'+
+  '  });\n'+
+  '\n'+
+  '  /* Section collapse/expand */\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    var tog=e.target.closest(".rpt-section-toggle");\n'+
+  '    if(!tog)return;\n'+
+  '    tog.classList.toggle("collapsed");\n'+
+  '    var body=tog.parentElement.querySelector(".rpt-section-body");\n'+
+  '    if(body)body.classList.toggle("collapsed");\n'+
+  '  });\n'+
+  '\n'+
+  '  /* Back to top button */\n'+
+  '  var btn=document.getElementById("rpt-back-top");\n'+
+  '  if(btn){\n'+
+  '    window.addEventListener("scroll",function(){\n'+
+  '      btn.style.display=window.scrollY>400?"flex":"none";\n'+
+  '    });\n'+
+  '    btn.addEventListener("click",function(){\n'+
+  '      window.scrollTo({top:0,behavior:"smooth"});\n'+
+  '    });\n'+
+  '  }\n'+
+  '})();\n'+
+  '</'+'script>';
+}
+
+function _rptBuildToolbar(tableId, opts){
+  opts=opts||{};
+  var h='<div class="rpt-toolbar">';
+  h+='<input type="text" class="rpt-search" placeholder="Search..." aria-label="Search table">';
+  if(opts.severities){
+    var sevs=[
+      {val:'CRITICAL',cls:'rpt-pill-crit',label:'Critical'},
+      {val:'HIGH',cls:'rpt-pill-high',label:'High'},
+      {val:'MEDIUM',cls:'rpt-pill-med',label:'Medium'},
+      {val:'LOW',cls:'rpt-pill-low',label:'Low'}
+    ];
+    sevs.forEach(function(s){
+      h+='<span class="rpt-pill '+s.cls+'" data-attr="sev" data-val="'+s.val+'">'+s.label+'</span>';
+    });
+  }
+  if(opts.frameworks){
+    var fws=opts.frameworks;
+    fws.forEach(function(fw){
+      h+='<span class="rpt-pill" data-attr="fw" data-val="'+esc(fw)+'">'+esc(fw)+'</span>';
+    });
+  }
+  if(opts.tiers){
+    var tiers=[
+      {val:'protected',cls:'rpt-pill-protected',label:'Protected'},
+      {val:'partial',cls:'rpt-pill-partial',label:'Partial'},
+      {val:'at_risk',cls:'rpt-pill-atrisk',label:'At Risk'}
+    ];
+    tiers.forEach(function(t){
+      h+='<span class="rpt-pill '+t.cls+'" data-attr="tier" data-val="'+t.val+'">'+t.label+'</span>';
+    });
+  }
+  h+='<button class="rpt-clear" type="button">Clear</button>';
+  h+='<span class="rpt-row-count"></span>';
+  h+='</div>';
+  return h;
+}
+
 function _rptExecSummary(ctx, opts){
   var c=_rlCtx;
   if(!c) return '<section class="rpt-section" id="s-exec-summary"><h2>Executive Summary</h2><p>No data loaded.</p></section>';
@@ -3089,7 +3258,7 @@ function _rptCollectStyles(){
 
 function _rptCompliance(ctx, opts){
   var f=_complianceFindings;
-  var h='<section class="rpt-section" id="s-compliance"><h2>Compliance Findings</h2>';
+  var h='<section class="rpt-section" id="s-compliance"><h2 class="rpt-section-toggle">Compliance Findings</h2>';
   if(!f||!f.length){return h+'<p>No compliance findings.</p></section>'}
   var fwMap={};
   f.forEach(function(x){
@@ -3098,26 +3267,43 @@ function _rptCompliance(ctx, opts){
     fwMap[fw].push(x);
   });
   var fwKeys=Object.keys(fwMap);
+  // Jump nav
+  h+='<div class="rpt-section-body">';
+  h+='<nav style="margin-bottom:12px;font-size:13px">';
+  fwKeys.forEach(function(fw,i){
+    var label=_FW_LABELS[fw]||fw;
+    if(i>0) h+=' | ';
+    h+='<a href="#s-compliance-'+esc(fw)+'" style="color:#60a5fa;text-decoration:none">'+esc(label)+' ('+fwMap[fw].length+')</a>';
+  });
+  h+='</nav>';
   fwKeys.forEach(function(fw){
     var label=_FW_LABELS[fw]||fw;
     var items=fwMap[fw].slice().sort(function(a,b){
       return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
     });
+    var tableId='rpt-tbl-compliance-'+fw;
+    h+='<div id="s-compliance-'+esc(fw)+'">';
     h+='<h3>'+esc(label)+' ('+items.length+')</h3>';
+    h+='<div class="rpt-table-wrap" id="'+tableId+'">';
+    h+=_rptBuildToolbar(tableId,{severities:true});
     h+=_rptFindingsTable(items);
+    h+='</div></div>';
   });
+  h+='</div>';
   h+='</section>';
   return h;
 }
 
 function _rptFindingsTable(items){
-  var h='<table><thead><tr>';
-  h+='<th>Severity</th><th>Control</th><th>Resource</th>';
+  var h='<table><thead class="rpt-sticky"><tr>';
+  h+='<th>Severity</th><th>Framework</th><th>Control</th><th>Resource</th>';
   h+='<th>Finding</th><th>Remediation</th>';
   h+='</tr></thead><tbody>';
   items.forEach(function(f){
-    h+='<tr>';
+    var fw=f.framework||'OTHER';
+    h+='<tr data-sev="'+esc(f.severity)+'" data-fw="'+esc(fw)+'">';
     h+='<td><span class="sev-badge sev-'+esc(f.severity)+'">'+esc(f.severity)+'</span></td>';
+    h+='<td>'+esc(_FW_LABELS[fw]||fw)+'</td>';
     h+='<td>'+esc(f.control)+'</td>';
     h+='<td>'+esc(f.resourceName||f.resource)+'</td>';
     h+='<td>'+esc(f.message)+'</td>';
@@ -3129,20 +3315,31 @@ function _rptFindingsTable(items){
 }
 
 function _rptBUDR(ctx, opts){
-  var h='<section class="rpt-section" id="s-budr"><h2>BUDR Assessment</h2>';
+  var h='<section class="rpt-section" id="s-budr"><h2 class="rpt-section-toggle">BUDR Assessment</h2>';
   if(!_budrAssessments||!_budrAssessments.length){
     return h+'<p>No BUDR assessments available.</p></section>';
   }
   var counts=_getBUDRTierCounts();
+  h+='<div class="rpt-section-body">';
+  h+='<nav style="margin-bottom:12px;font-size:13px">';
+  h+='<a href="#s-budr-summary" style="color:#60a5fa;text-decoration:none">Summary</a>';
+  h+=' | <a href="#s-budr-assessments" style="color:#60a5fa;text-decoration:none">Assessments ('+_budrAssessments.length+')</a>';
+  if(_budrFindings&&_budrFindings.length) h+=' | <a href="#s-budr-findings" style="color:#60a5fa;text-decoration:none">Findings ('+_budrFindings.length+')</a>';
+  h+='</nav>';
+  h+='<div id="s-budr-summary">';
   h+=_rptBUDRStatGrid(counts);
+  h+='</div>';
   h+=_rptBUDRAssessmentTable();
   if(_budrFindings&&_budrFindings.length){
-    h+='<h3>BUDR Findings ('+_budrFindings.length+')</h3>';
+    h+='<div id="s-budr-findings"><h3>BUDR Findings ('+_budrFindings.length+')</h3>';
+    h+='<div class="rpt-table-wrap" id="rpt-tbl-budr-findings">';
+    h+=_rptBuildToolbar('rpt-tbl-budr-findings',{severities:true});
     h+=_rptFindingsTable(_budrFindings.slice().sort(function(a,b){
       return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
     }));
+    h+='</div></div>';
   }
-  h+='</section>';
+  h+='</div></section>';
   return h;
 }
 
@@ -3170,8 +3367,10 @@ function _rptBUDRAssessmentTable(){
     var tb=b.profile?tierOrder[b.profile.tier]:9;
     return ta-tb;
   });
-  var h='<h3>Assessments ('+sorted.length+')</h3>';
-  h+='<table><thead><tr><th>Type</th><th>Resource</th>';
+  var h='<div id="s-budr-assessments"><h3>Assessments ('+sorted.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-budr">';
+  h+=_rptBuildToolbar('rpt-tbl-budr',{tiers:true});
+  h+='<table><thead class="rpt-sticky"><tr><th>Type</th><th>Resource</th>';
   h+='<th>Tier</th><th>RTO</th><th>RPO</th><th>Signals</th>';
   h+='</tr></thead><tbody>';
   sorted.forEach(function(a){
@@ -3180,7 +3379,7 @@ function _rptBUDRAssessmentTable(){
     var rto=a.profile?a.profile.rto:'N/A';
     var rpo=a.profile?a.profile.rpo:'N/A';
     var sigs=a.signals?_rptFormatSignals(a.signals):'';
-    h+='<tr>';
+    h+='<tr data-tier="'+esc(tier)+'">';
     h+='<td>'+esc(a.type)+'</td>';
     h+='<td>'+esc(a.name||a.id)+'</td>';
     h+='<td><span class="'+cls+'">'+esc(tier)+'</span></td>';
@@ -3189,7 +3388,7 @@ function _rptBUDRAssessmentTable(){
     h+='<td>'+esc(sigs)+'</td>';
     h+='</tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div></div>';
   return h;
 }
 
@@ -3201,8 +3400,25 @@ function _rptFormatSignals(sigs){
 
 function _rptInventory(ctx, opts){
   var c=_rlCtx;
-  var h='<section class="rpt-section" id="s-inventory"><h2>Resource Inventory</h2>';
+  var h='<section class="rpt-section" id="s-inventory"><h2 class="rpt-section-toggle">Resource Inventory</h2>';
   if(!c){return h+'<p>No data loaded.</p></section>'}
+  h+='<div class="rpt-section-body">';
+  var invTypes=[
+    {key:'vpcs',label:'VPCs',anchor:'vpcs'},{key:'subnets',label:'Subnets',anchor:'subnets'},
+    {key:'instances',label:'EC2',anchor:'ec2'},{key:'rdsInstances',label:'RDS',anchor:'rds'},
+    {key:'albs',label:'ALBs',anchor:'albs'},{key:'ecsServices',label:'ECS',anchor:'ecs'},
+    {key:'lambdaFns',label:'Lambda',anchor:'lambda'}
+  ];
+  h+='<nav style="margin-bottom:12px;font-size:13px">';
+  var navParts=[];
+  invTypes.forEach(function(t){
+    var cnt=(c[t.key]||[]).length;
+    if(cnt) navParts.push('<a href="#s-inv-'+t.anchor+'" style="color:#60a5fa;text-decoration:none">'+t.label+' ('+cnt+')</a>');
+  });
+  h+=navParts.join(' | ');
+  h+='</nav>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inventory">';
+  h+=_rptBuildToolbar('rpt-tbl-inventory',{});
   h+=_rptInvVPCs(c);
   h+=_rptInvSubnets(c);
   h+=_rptInvEC2(c);
@@ -3210,7 +3426,7 @@ function _rptInventory(ctx, opts){
   h+=_rptInvALBs(c);
   h+=_rptInvECS(c);
   h+=_rptInvLambda(c);
-  h+='</section>';
+  h+='</div></div></section>';
   return h;
 }
 
@@ -3222,8 +3438,8 @@ function _rptTagName(o){
 function _rptInvVPCs(c){
   var items=c.vpcs||[];
   if(!items.length) return '';
-  var h='<h3>VPCs ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Name</th><th>VPC ID</th>';
+  var h='<h3 id="s-inv-vpcs">VPCs ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>VPC ID</th>';
   h+='<th>CIDR</th><th>State</th></tr></thead><tbody>';
   items.forEach(function(v){
     h+='<tr><td>'+esc(_rptTagName(v))+'</td>';
@@ -3238,8 +3454,8 @@ function _rptInvVPCs(c){
 function _rptInvSubnets(c){
   var items=c.subnets||[];
   if(!items.length) return '';
-  var h='<h3>Subnets ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Name</th><th>Subnet ID</th>';
+  var h='<h3 id="s-inv-subnets">Subnets ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>Subnet ID</th>';
   h+='<th>CIDR</th><th>AZ</th><th>Public</th></tr></thead><tbody>';
   items.forEach(function(s){
     var pub=c.pubSubs&&c.pubSubs.has(s.SubnetId)?'Yes':'No';
@@ -3256,8 +3472,8 @@ function _rptInvSubnets(c){
 function _rptInvEC2(c){
   var items=c.instances||[];
   if(!items.length) return '';
-  var h='<h3>EC2 Instances ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Name</th><th>Instance ID</th>';
+  var h='<h3 id="s-inv-ec2">EC2 Instances ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>Instance ID</th>';
   h+='<th>Type</th><th>State</th><th>AZ</th></tr></thead><tbody>';
   items.forEach(function(i){
     var state=i.State?i.State.Name:'';
@@ -3275,8 +3491,8 @@ function _rptInvEC2(c){
 function _rptInvRDS(c){
   var items=c.rdsInstances||[];
   if(!items.length) return '';
-  var h='<h3>RDS Instances ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Identifier</th><th>Engine</th>';
+  var h='<h3 id="s-inv-rds">RDS Instances ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Identifier</th><th>Engine</th>';
   h+='<th>Class</th><th>Multi-AZ</th></tr></thead><tbody>';
   items.forEach(function(d){
     h+='<tr><td>'+esc(d.DBInstanceIdentifier)+'</td>';
@@ -3291,8 +3507,8 @@ function _rptInvRDS(c){
 function _rptInvALBs(c){
   var items=c.albs||[];
   if(!items.length) return '';
-  var h='<h3>Load Balancers ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Name</th><th>Type</th>';
+  var h='<h3 id="s-inv-albs">Load Balancers ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>Type</th>';
   h+='<th>Scheme</th><th>AZs</th></tr></thead><tbody>';
   items.forEach(function(a){
     var azCount=(a.AvailabilityZones||[]).length;
@@ -3308,8 +3524,8 @@ function _rptInvALBs(c){
 function _rptInvECS(c){
   var items=c.ecsServices||[];
   if(!items.length) return '';
-  var h='<h3>ECS Services ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Service</th><th>Desired</th>';
+  var h='<h3 id="s-inv-ecs">ECS Services ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Service</th><th>Desired</th>';
   h+='<th>Running</th><th>Launch Type</th></tr></thead><tbody>';
   items.forEach(function(s){
     h+='<tr><td>'+esc(s.serviceName)+'</td>';
@@ -3324,8 +3540,8 @@ function _rptInvECS(c){
 function _rptInvLambda(c){
   var items=c.lambdaFns||[];
   if(!items.length) return '';
-  var h='<h3>Lambda Functions ('+items.length+')</h3>';
-  h+='<table><thead><tr><th>Function</th><th>Runtime</th>';
+  var h='<h3 id="s-inv-lambda">Lambda Functions ('+items.length+')</h3>';
+  h+='<table><thead class="rpt-sticky"><tr><th>Function</th><th>Runtime</th>';
   h+='<th>Memory (MB)</th><th>Timeout (s)</th></tr></thead><tbody>';
   items.forEach(function(fn){
     h+='<tr><td>'+esc(fn.FunctionName)+'</td>';
@@ -3338,31 +3554,46 @@ function _rptInvLambda(c){
 }
 
 function _rptActionPlan(ctx, opts){
-  var h='<section class="rpt-section" id="s-action-plan"><h2>Action Plan</h2>';
+  var h='<section class="rpt-section" id="s-action-plan"><h2 class="rpt-section-toggle">Action Plan</h2>';
   var all=(_complianceFindings||[]).concat(_budrFindings||[]);
   if(!all.length){return h+'<p>No findings to prioritize.</p></section>'}
+  h+='<div class="rpt-section-body">';
   var tiers=_getTierGroups(all);
+  var tierNames={1:'fix-now',2:'this-sprint',3:'backlog'};
+  // Jump nav
+  h+='<nav style="margin-bottom:12px;font-size:13px">';
+  var apParts=[];
+  [1,2,3].forEach(function(t){
+    var rgs=tiers[t];if(!rgs||!rgs.length) return;
+    var total=0;rgs.forEach(function(rg){total+=rg.findings.length});
+    apParts.push('<a href="#s-action-'+tierNames[t]+'" style="color:'+_TIER_META[t].color+';text-decoration:none">'+_TIER_META[t].name+' ('+total+')</a>');
+  });
+  h+=apParts.join(' | ')+'</nav>';
   [1,2,3].forEach(function(t){
     var rgs=tiers[t];
     if(!rgs||!rgs.length) return;
     var meta=_TIER_META[t];
-    h+='<h3 style="color:'+meta.color+'">'+esc(meta.name);
+    h+='<h3 id="s-action-'+tierNames[t]+'" style="color:'+meta.color+'">'+esc(meta.name);
     var total=0;
     rgs.forEach(function(rg){total+=rg.findings.length});
     h+=' ('+total+' findings)</h3>';
+    var tableId='rpt-tbl-action-'+t;
+    h+='<div class="rpt-table-wrap" id="'+tableId+'">';
+    h+=_rptBuildToolbar(tableId,{severities:true});
     h+=_rptActionTierTable(rgs);
+    h+='</div>';
   });
-  h+='</section>';
+  h+='</div></section>';
   return h;
 }
 
 function _rptActionTierTable(resourceGroups){
-  var h='<table><thead><tr><th>Severity</th><th>Framework</th>';
+  var h='<table><thead class="rpt-sticky"><tr><th>Severity</th><th>Framework</th>';
   h+='<th>Control</th><th>Resource</th><th>Finding</th>';
   h+='<th>Remediation</th></tr></thead><tbody>';
   resourceGroups.forEach(function(rg){
     rg.findings.forEach(function(f){
-      h+='<tr>';
+      h+='<tr data-sev="'+esc(f.severity)+'">';
       h+='<td><span class="sev-badge sev-'+esc(f.severity)+'">'+esc(f.severity)+'</span></td>';
       h+='<td>'+esc(_FW_LABELS[f.framework]||f.framework)+'</td>';
       h+='<td>'+esc(f.control)+'</td>';
@@ -14158,6 +14389,7 @@ function _renderRptPreview(){
   wrapper.innerHTML=html;
   container.textContent='';
   container.appendChild(wrapper);
+  if(typeof _rptUpdateFooterStats==='function') _rptUpdateFooterStats();
 }
 
 function _rptEnabledModules(){
@@ -14218,12 +14450,14 @@ function _rptFullHTML(enabled,pngDataUrl){
   html+='<meta charset="UTF-8">\n';
   html+='<meta name="viewport" content="width=device-width,initial-scale=1.0">\n';
   html+='<title>'+title+'</title>\n';
-  html+='<style>\n'+_rptCSS()+'\n</style>\n';
+  html+='<style>\n'+_rptCSS()+'\n'+_rptInteractiveCSS()+'\n</style>\n';
   html+='</head>\n<body>\n';
   html+=_rptBuildHeader();
   html+=_rptBuildTOC(enabled);
   html+=_rptBuildSections(enabled);
   html+=_rptBuildFooter();
+  html+='<button id="rpt-back-top" title="Back to top" aria-label="Scroll to top">&#9650;</button>\n';
+  html+=_rptInteractiveJS()+'\n';
   html+='\n</body>\n</html>';
   if(pngDataUrl) html=_rptSwapArchPng(html,pngDataUrl);
   return html;
@@ -14307,6 +14541,270 @@ async function _generateReport(){
   }
 }
 document.getElementById('rptExportHTML').addEventListener('click',function(){_generateReport()});
+
+// === XLSX EXPORT (SheetJS) ===
+var _sheetJSLoaded=false;
+function _loadSheetJS(){
+  if(_sheetJSLoaded&&window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js';
+    s.onload=function(){_sheetJSLoaded=true;resolve(window.XLSX)};
+    s.onerror=function(){reject(new Error('Failed to load SheetJS library'))};
+    document.head.appendChild(s);
+  });
+}
+
+var _XLSX_COLORS={
+  headerBg:'1B2A4A',headerFg:'FFFFFF',
+  critFg:'DC2626',highFg:'EA580C',medFg:'D97706',lowFg:'2563EB',
+  protectedBg:'D1FAE5',partialBg:'FEF3C7',atRiskBg:'FEE2E2',
+  stripeBg:'F8FAFC',borderClr:'CBD5E1'
+};
+
+function _xlsxHeaderStyle(){
+  return {font:{bold:true,color:{rgb:_XLSX_COLORS.headerFg},name:'Calibri',sz:11},
+    fill:{fgColor:{rgb:_XLSX_COLORS.headerBg}},
+    alignment:{horizontal:'center',vertical:'center',wrapText:true},
+    border:{bottom:{style:'thin',color:{rgb:_XLSX_COLORS.borderClr}}}};
+}
+
+function _xlsxSevStyle(sev){
+  var map={CRITICAL:_XLSX_COLORS.critFg,HIGH:_XLSX_COLORS.highFg,MEDIUM:_XLSX_COLORS.medFg,LOW:_XLSX_COLORS.lowFg};
+  return {font:{bold:true,color:{rgb:map[sev]||'000000'},name:'Calibri',sz:10}};
+}
+
+function _xlsxTierFill(tier){
+  var map={protected:_XLSX_COLORS.protectedBg,partial:_XLSX_COLORS.partialBg,at_risk:_XLSX_COLORS.atRiskBg};
+  return {fill:{fgColor:{rgb:map[tier]||'FFFFFF'}}};
+}
+
+function _xlsxAutoWidth(ws,data){
+  if(!data||!data.length) return;
+  var colWidths=[];
+  data.forEach(function(row){
+    row.forEach(function(cell,i){
+      var len=String(cell!=null?cell:'').length;
+      colWidths[i]=Math.min(Math.max(colWidths[i]||8,len+2),50);
+    });
+  });
+  ws['!cols']=colWidths.map(function(w){return {wch:w}});
+}
+
+function _xlsxAddSheet(wb,name,headers,rows,opts){
+  opts=opts||{};
+  var data=[headers].concat(rows);
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  _xlsxAutoWidth(ws,data);
+  // Style headers
+  var hdrStyle=_xlsxHeaderStyle();
+  headers.forEach(function(_,i){
+    var addr=XLSX.utils.encode_cell({r:0,c:i});
+    if(ws[addr]) ws[addr].s=hdrStyle;
+  });
+  // Style severity column
+  if(typeof opts.sevCol==='number'){
+    for(var r=1;r<data.length;r++){
+      var addr=XLSX.utils.encode_cell({r:r,c:opts.sevCol});
+      if(ws[addr]){
+        var val=String(ws[addr].v||'');
+        ws[addr].s=_xlsxSevStyle(val);
+      }
+    }
+  }
+  // Style tier column
+  if(typeof opts.tierCol==='number'){
+    for(var r=1;r<data.length;r++){
+      var addr=XLSX.utils.encode_cell({r:r,c:opts.tierCol});
+      if(ws[addr]){
+        var val=String(ws[addr].v||'').toLowerCase().replace(/ /g,'_');
+        ws[addr].s=_xlsxTierFill(val);
+      }
+    }
+  }
+  // Stripe rows
+  for(var r=1;r<data.length;r++){
+    if(r%2===0){
+      for(var c=0;c<headers.length;c++){
+        var addr=XLSX.utils.encode_cell({r:r,c:c});
+        if(ws[addr]&&!ws[addr].s) ws[addr].s={fill:{fgColor:{rgb:_XLSX_COLORS.stripeBg}}};
+      }
+    }
+  }
+  XLSX.utils.book_append_sheet(wb,ws,name);
+}
+
+function _rptBuildXlsxSummary(wb){
+  var c=_rlCtx;
+  var rows=[];
+  rows.push(['Report Title',_rptState.title||'AWS Infrastructure Assessment']);
+  rows.push(['Author',_rptState.author||'']);
+  rows.push(['Date',_rptState.date||new Date().toISOString().slice(0,10)]);
+  rows.push([]);
+  if(c){
+    var counts=[
+      ['VPCs',(c.vpcs||[]).length],['Subnets',(c.subnets||[]).length],
+      ['EC2',(c.instances||[]).length],['RDS',(c.rdsInstances||[]).length],
+      ['ALBs',(c.albs||[]).length],['ECS',(c.ecsServices||[]).length],
+      ['Lambda',(c.lambdaFns||[]).length],['Security Groups',(c.sgs||[]).length]
+    ];
+    rows.push(['Resource','Count']);
+    counts.forEach(function(r){rows.push(r)});
+  }
+  rows.push([]);
+  if(_complianceFindings&&_complianceFindings.length){
+    var sevs={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+    _complianceFindings.forEach(function(f){sevs[f.severity]=(sevs[f.severity]||0)+1});
+    rows.push(['Compliance Findings',_complianceFindings.length]);
+    ['CRITICAL','HIGH','MEDIUM','LOW'].forEach(function(s){
+      if(sevs[s])rows.push(['  '+s,sevs[s]]);
+    });
+  }
+  if(_budrAssessments&&_budrAssessments.length){
+    rows.push([]);
+    var tc=_getBUDRTierCounts();
+    rows.push(['BUDR Assessments',_budrAssessments.length]);
+    rows.push(['  Protected',tc.protected||0]);
+    rows.push(['  Partial',tc.partial||0]);
+    rows.push(['  At Risk',tc.at_risk||0]);
+  }
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:25},{wch:40}];
+  // Style title row
+  var titleAddr=XLSX.utils.encode_cell({r:0,c:0});
+  if(ws[titleAddr]) ws[titleAddr].s={font:{bold:true,sz:14,color:{rgb:_XLSX_COLORS.headerBg}}};
+  XLSX.utils.book_append_sheet(wb,ws,'Summary');
+}
+
+function _rptBuildXlsxCompliance(wb){
+  var f=_complianceFindings;
+  if(!f||!f.length) return;
+  var headers=['Severity','Framework','Control','Resource','Finding','Remediation'];
+  var sorted=f.slice().sort(function(a,b){return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
+  var rows=sorted.map(function(x){
+    return [x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
+      x.resourceName||x.resource,x.message,x.remediation];
+  });
+  _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:0});
+}
+
+function _rptBuildXlsxBUDR(wb){
+  if(!_budrAssessments||!_budrAssessments.length) return;
+  var headers=['Type','Resource ID','Name','Tier','RTO','RPO','Signals'];
+  var tierOrder={at_risk:0,partial:1,protected:2};
+  var sorted=_budrAssessments.slice().sort(function(a,b){
+    return (tierOrder[a.profile?a.profile.tier:'']||9)-(tierOrder[b.profile?b.profile.tier:'']||9);
+  });
+  var rows=sorted.map(function(a){
+    var tier=a.profile?a.profile.tier:'unknown';
+    var rto=a.profile?a.profile.rto:'N/A';
+    var rpo=a.profile?a.profile.rpo:'N/A';
+    var sigs=a.signals?Object.keys(a.signals).map(function(k){return k+':'+a.signals[k]}).join(', '):'';
+    return [a.type,a.id,a.name||'',tier,rto,rpo,sigs];
+  });
+  _xlsxAddSheet(wb,'BUDR',headers,rows,{tierCol:3});
+}
+
+function _rptBuildXlsxInventory(wb){
+  var c=_rlCtx;
+  if(!c) return;
+  var headers=['Type','ID','Name','Detail 1','Detail 2','Detail 3'];
+  var rows=[];
+  (c.vpcs||[]).forEach(function(v){
+    rows.push(['VPC',v.VpcId,_rptTagName(v),v.CidrBlock,v.State,'']);
+  });
+  (c.subnets||[]).forEach(function(s){
+    var pub=c.pubSubs&&c.pubSubs.has(s.SubnetId)?'Public':'Private';
+    rows.push(['Subnet',s.SubnetId,_rptTagName(s),s.CidrBlock,s.AvailabilityZone,pub]);
+  });
+  (c.instances||[]).forEach(function(i){
+    var state=i.State?i.State.Name:'';
+    var az=i.Placement?i.Placement.AvailabilityZone:'';
+    rows.push(['EC2',i.InstanceId,_rptTagName(i),i.InstanceType,state,az]);
+  });
+  (c.rdsInstances||[]).forEach(function(d){
+    rows.push(['RDS',d.DBInstanceIdentifier,'',d.Engine,d.DBInstanceClass,d.MultiAZ?'Multi-AZ':'Single-AZ']);
+  });
+  (c.albs||[]).forEach(function(a){
+    rows.push(['ALB',a.LoadBalancerArn||'',a.LoadBalancerName,a.Type,a.Scheme,(a.AvailabilityZones||[]).length+' AZs']);
+  });
+  (c.ecsServices||[]).forEach(function(s){
+    rows.push(['ECS',s.serviceArn||'',s.serviceName,'Desired: '+s.desiredCount,'Running: '+s.runningCount,s.launchType||'']);
+  });
+  (c.lambdaFns||[]).forEach(function(fn){
+    rows.push(['Lambda',fn.FunctionArn||'',fn.FunctionName,fn.Runtime,fn.MemorySize+'MB',fn.Timeout+'s']);
+  });
+  if(!rows.length) return;
+  _xlsxAddSheet(wb,'Inventory',headers,rows);
+}
+
+function _rptBuildXlsxActionPlan(wb){
+  var all=(_complianceFindings||[]).concat(_budrFindings||[]);
+  if(!all.length) return;
+  var headers=['Priority','Severity','Framework','Control','Resource','Finding',
+    'Effort','Remediation','Owner','Target Date','Status','Justification'];
+  var tiers=_getTierGroups(all);
+  var rows=[];
+  [1,2,3].forEach(function(t){
+    var rgs=tiers[t];
+    if(!rgs) return;
+    var tierName=_TIER_META[t].name;
+    rgs.forEach(function(rg){
+      rg.findings.forEach(function(f){
+        var effort=_EFFORT_MAP[f.control]||'moderate';
+        rows.push([tierName,f.severity,_FW_LABELS[f.framework]||f.framework||'',f.control,
+          f.resourceName||f.resource,f.message,
+          _EFFORT_LABELS[effort]||effort,f.remediation,'','','Open','']);
+      });
+    });
+  });
+  _xlsxAddSheet(wb,'Action Plan',headers,rows,{sevCol:1});
+}
+
+async function _generateXlsx(){
+  var btn=document.getElementById('rptExportXLSX');
+  if(btn){btn.textContent='Loading...';btn.disabled=true;}
+  try{
+    await _loadSheetJS();
+    var enabled=_rptEnabledModules();
+    if(!enabled.length){_showToast('No sections enabled');return;}
+    var wb=XLSX.utils.book_new();
+    _rptBuildXlsxSummary(wb);
+    if(enabled.indexOf('compliance')>=0) _rptBuildXlsxCompliance(wb);
+    if(enabled.indexOf('budr')>=0) _rptBuildXlsxBUDR(wb);
+    if(enabled.indexOf('inventory')>=0) _rptBuildXlsxInventory(wb);
+    if(enabled.indexOf('action-plan')>=0) _rptBuildXlsxActionPlan(wb);
+    var slug=_rptSlugify(_rptState.title);
+    var date=_rptState.date||new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb,slug+'-'+date+'.xlsx');
+    _showToast('XLSX report exported');
+  }catch(e){
+    console.error('XLSX export failed:',e);
+    _showToast('XLSX export failed: '+e.message);
+  }finally{
+    if(btn){btn.textContent='Export XLSX';btn.disabled=false;}
+  }
+}
+document.getElementById('rptExportXLSX').addEventListener('click',function(){_generateXlsx()});
+
+// Report footer stats
+function _rptUpdateFooterStats(){
+  var el=document.getElementById('rptFooterStats');
+  if(!el) return;
+  var parts=[];
+  var fLen=(_complianceFindings||[]).length+(_budrFindings||[]).length;
+  if(fLen) parts.push(fLen+' findings');
+  if(_rlCtx){
+    var rCount=0;
+    ['vpcs','subnets','instances','rdsInstances','albs','ecsServices','lambdaFns'].forEach(function(k){
+      rCount+=(_rlCtx[k]||[]).length;
+    });
+    if(rCount) parts.push(rCount+' resources');
+  }
+  var all=(_complianceFindings||[]).concat(_budrFindings||[]);
+  if(all.length) parts.push(all.length+' action items');
+  el.textContent=parts.length?parts.join('  |  '):'';
+}
 
 var _rptInputTimer=0;
 function _rptDebouncedPreview(){clearTimeout(_rptInputTimer);_rptInputTimer=setTimeout(_renderRptPreview,300)}
