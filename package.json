@@ -1,6 +1,6 @@
 {
   "name": "aws-network-mapper",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AWS Network Topology Mapper - Desktop Application",
   "author": "schylerchase",
   "main": "main.js",
