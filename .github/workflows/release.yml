@@ -87,12 +87,21 @@ jobs:
 
       - name: Resolve tag name
         id: tag
+        env:
+          DISPATCH_TAG: ${{ needs.version.outputs.tag }}
+          REF_TAG: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ needs.version.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$DISPATCH_TAG"
           else
-            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            TAG="$REF_TAG"
           fi
+          if [ -z "$TAG" ] || [ "$TAG" = "v" ]; then
+            echo "::error::Tag resolved to empty or 'v' — aborting release"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
