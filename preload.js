@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportFile: (data, defaultName, filters) =>
     ipcRenderer.invoke('file:export', { data, defaultName, filters }),
 
+  // ── BUDR Export ──────────────────────────────────────────────
+  exportBUDRXlsx: (jsonData) =>
+    ipcRenderer.invoke('budr:export-xlsx', { jsonData }),
+
   // ── AWS CLI ───────────────────────────────────────────────────
 
   checkCli: () =>
