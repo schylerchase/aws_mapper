@@ -93,6 +93,11 @@ function buildMenu() {
           label: 'Scan AWS Account...',
           accelerator: 'CmdOrCtrl+Shift+A',
           click: () => mainWindow?.webContents.send('menu:scan-aws')
+        },
+        { type: 'separator' },
+        {
+          label: 'Check for Updates...',
+          click: () => checkForUpdates(true)
         }
       ]
     }
@@ -255,16 +260,34 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
 
 // ── Auto-Update ───────────────────────────────────────────────────
 
-function checkForUpdates() {
+function checkForUpdates(manual = false) {
   try {
     const { autoUpdater } = require('electron-updater');
     autoUpdater.autoDownload = false;
+    autoUpdater.removeAllListeners();
     autoUpdater.on('update-available', (info) => {
       mainWindow?.webContents.send('update:available', {
         version: info.version,
         releaseNotes: info.releaseNotes
       });
     });
+    if (manual) {
+      autoUpdater.on('update-not-available', () => {
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'No Updates',
+          message: `You're on the latest version (${app.getVersion()}).`
+        });
+      });
+      autoUpdater.on('error', (err) => {
+        dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: 'Update Check Failed',
+          message: 'Could not check for updates.',
+          detail: err?.message || ''
+        });
+      });
+    }
     autoUpdater.checkForUpdates().catch(() => {});
   } catch {}
 }
