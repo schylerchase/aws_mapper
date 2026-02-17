@@ -133,7 +133,7 @@
   .export-bar.collapsed .export-btn,.export-bar.collapsed .export-btn+.export-btn{display:none}
   .export-bar .eb-toggle{padding:4px 10px;background:rgba(17,24,39,.92);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s}
   .export-bar .eb-toggle:hover{color:var(--text-primary);border-color:var(--accent-blue)}
-  .hl-locked-indicator{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--accent-cyan);border-radius:6px;padding:5px 14px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent-cyan);display:none;z-index:10;cursor:pointer;backdrop-filter:blur(8px)}
+  .hl-locked-indicator{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--accent-cyan);border-radius:6px;padding:5px 14px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent-cyan);display:none;z-index:10;cursor:pointer;backdrop-filter:blur(8px)}
   .hl-locked-indicator:hover{background:rgba(17,24,39,1);border-color:#fff}
   .hl-active .route-label-g:not(.visible){opacity:.08}
   .hl-active .region-boundary{opacity:.08}
@@ -222,6 +222,73 @@
   .fw-legend{display:flex;gap:12px;padding:4px 0 6px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--text-muted);border-bottom:1px solid rgba(30,45,74,.3);margin-bottom:4px}
   .fw-legend span{display:flex;align-items:center;gap:3px}
   .fw-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  /* firewall editor */
+  .fw-edit-row{display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:4px;margin:2px 0;font-family:'IBM Plex Mono',monospace;font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));border:1px solid transparent}
+  .fw-edit-row.modified{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25)}
+  .fw-edit-row.deleted{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);text-decoration:line-through;opacity:.5}
+  .fw-edit-row.new-rule{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25)}
+  .fw-edit-btn{width:20px;height:20px;border:none;border-radius:3px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+  .fw-edit-btn.edit{background:rgba(59,130,246,.15);color:var(--accent-blue)}.fw-edit-btn.edit:hover{background:rgba(59,130,246,.3)}
+  .fw-edit-btn.del{background:rgba(239,68,68,.15);color:var(--accent-red)}.fw-edit-btn.del:hover{background:rgba(239,68,68,.3)}
+  .fw-edit-btn.add{background:rgba(16,185,129,.15);color:var(--accent-green);width:auto;padding:2px 8px;gap:3px}.fw-edit-btn.add:hover{background:rgba(16,185,129,.3)}
+  .fw-edit-btn.save{background:rgba(16,185,129,.15);color:var(--accent-green);width:auto;padding:2px 8px}.fw-edit-btn.save:hover{background:rgba(16,185,129,.3)}
+  .fw-edit-btn.cancel{background:rgba(239,68,68,.15);color:var(--accent-red);width:auto;padding:2px 8px}.fw-edit-btn.cancel:hover{background:rgba(239,68,68,.3)}
+  .fw-input{background:var(--bg-input);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));padding:2px 4px}
+  .fw-input.invalid{border-color:var(--accent-red);background:rgba(239,68,68,.08)}
+  .fw-input:focus{border-color:var(--accent-cyan);outline:none}
+  .fw-select{background:var(--bg-input);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));padding:2px 4px}
+  .fw-select:focus{border-color:var(--accent-cyan);outline:none}
+  .fw-badge{font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600;margin-left:6px}
+  .fw-badge.edits{background:rgba(59,130,246,.15);color:var(--accent-blue)}
+  .fw-badge.warning{background:rgba(245,158,11,.15);color:var(--accent-orange)}
+  .fw-toolbar{display:flex;gap:4px;border-top:1px solid var(--border);margin-top:6px;padding:4px 0}
+  .fw-toolbar button{background:var(--bg-tertiary);border:1px solid var(--border);border-radius:3px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:8px;padding:3px 8px;cursor:pointer;transition:background .15s}.fw-toolbar button:hover{background:var(--border);color:var(--text-primary)}
+  .fw-full-panel{position:fixed;top:0;right:0;bottom:0;width:520px;background:var(--bg-primary);border-left:1px solid var(--border);z-index:80;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .2s ease}
+  .fw-full-panel.open{transform:translateX(0)}
+  .fw-fp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .fw-fp-header h3{margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text-primary)}
+  .fw-fp-tabs{display:flex;gap:0;border-bottom:1px solid var(--border)}
+  .fw-fp-tab{flex:1;padding:8px 12px;text-align:center;font-size:11px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;font-family:'IBM Plex Mono',monospace;background:none;border-top:none;border-left:none;border-right:none}
+  .fw-fp-tab.active{color:var(--accent-cyan);border-bottom-color:var(--accent-cyan)}
+  .fw-fp-tab:hover{color:var(--text-primary)}
+  .fw-fp-body{flex:1;overflow-y:auto;padding:12px 16px}
+  .fw-fp-bottom{display:flex;border-top:1px solid var(--border);height:200px;flex-shrink:0}
+  .fw-fp-visual{flex:1;overflow-y:auto;padding:8px 12px;border-right:1px solid var(--border)}
+  .fw-fp-cli{flex:1;overflow-y:auto;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent-green);white-space:pre-wrap;background:rgba(0,0,0,.3)}
+  /* === FIREWALL DASHBOARD === */
+  .fw-dash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
+  .fw-dash.open{display:flex}
+  .fw-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+  .fw-dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#ef4444;margin:0}
+  .fw-dash-pills{display:flex;gap:6px}
+  .fw-dash-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);color:var(--text-muted)}
+  .fw-dash-pill.active{border-color:currentColor}
+  .fw-dash-pill[data-type="sg"]{color:#ef4444}.fw-dash-pill[data-type="sg"].active{background:rgba(239,68,68,.15)}
+  .fw-dash-pill[data-type="nacl"]{color:#f59e0b}.fw-dash-pill[data-type="nacl"].active{background:rgba(245,158,11,.15)}
+  .fw-dash-pill[data-type="route"]{color:#22d3ee}.fw-dash-pill[data-type="route"].active{background:rgba(34,211,238,.15)}
+  .fw-dash-pill[data-type="all"]{color:var(--text-secondary)}.fw-dash-pill[data-type="all"].active{background:rgba(255,255,255,.08)}
+  .fw-dash-close{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:12px;padding:4px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-left:auto}
+  .fw-dash-close:hover{color:var(--text-primary);border-color:var(--text-muted)}
+  .fw-dash-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
+  .fw-dash-toolbar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px}
+  .fw-dash-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
+  .fw-dash-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+  .fw-dash-body{flex:1;overflow-y:auto;padding:0}
+  .fw-dash table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px}
+  .fw-dash table th{position:sticky;top:0;background:var(--bg-secondary);padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:2px solid var(--border);user-select:none;white-space:nowrap}
+  .fw-dash table td{padding:6px 12px;border-bottom:1px solid rgba(30,45,74,.15);vertical-align:top}
+  .fw-dash table tr.fw-row:hover{background:rgba(100,116,139,.06);cursor:pointer}
+  .fw-dash table tr.fw-row.has-edits{background:rgba(16,185,129,.05)}
+  .fw-dash .fw-type-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px}
+  .fw-dash .fw-type-badge.sg{background:rgba(239,68,68,.15);color:#ef4444}
+  .fw-dash .fw-type-badge.nacl{background:rgba(245,158,11,.15);color:#f59e0b}
+  .fw-dash .fw-type-badge.route{background:rgba(34,211,238,.15);color:#22d3ee}
+  .fw-dash .fw-edit-badge{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(16,185,129,.15);color:#10b981;font-weight:600}
+  .fw-dash .fw-expand-row td{padding:8px 16px;background:var(--bg-secondary);border-bottom:2px solid var(--border)}
+  .fw-dash-footer{display:flex;gap:8px;padding:8px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
+  .fw-dash-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;cursor:pointer}
+  .fw-dash-footer button:hover{background:rgba(96,165,250,.1);border-color:var(--accent-cyan)}
+  .fw-dash-footer .fw-edit-count{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
   .iam-risk-card{display:inline-flex;flex-direction:column;align-items:center;padding:8px 14px;border-radius:6px;border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;min-width:80px}
   .iam-risk-card .count{font-size:calc(18px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:700}
   .iam-risk-card .label{font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
@@ -372,6 +439,29 @@
   .note-badge.cat-todo circle{fill:#f59e0b}
   .note-badge.cat-info circle{fill:#06b6d4}
   .note-badge.cat-warning circle{fill:#f97316}
+  /* Compliance badges on map nodes */
+  .comp-badge{cursor:pointer;pointer-events:all}
+  .comp-badge circle{stroke:rgba(0,0,0,.5);stroke-width:1}
+  .comp-badge text{fill:#fff;font-size:6px;font-weight:700;font-family:'IBM Plex Mono',monospace;pointer-events:none}
+  .comp-badge.sev-CRITICAL circle{fill:#ef4444}
+  .comp-badge.sev-HIGH circle{fill:#f97316}
+  .comp-badge.sev-MEDIUM circle{fill:#eab308}
+  .comp-badge.sev-LOW circle{fill:#3b82f6}
+  /* Compliance column in firewall dashboard */
+  .fw-comp-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:600;font-family:'IBM Plex Mono',monospace;margin-left:4px}
+  .fw-comp-badge.sev-CRITICAL{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+  .fw-comp-badge.sev-HIGH{background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)}
+  .fw-comp-badge.sev-MEDIUM{background:rgba(234,179,8,.12);color:#eab308;border:1px solid rgba(234,179,8,.25)}
+  .fw-comp-badge.sev-LOW{background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.25)}
+  .fw-findings-section{margin-top:8px;padding:8px 10px;background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.12);border-radius:6px}
+  .fw-findings-section .fw-finding-item{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px;color:var(--text-secondary);display:flex;gap:6px;align-items:baseline}
+  .fw-findings-section .fw-finding-item:last-child{border-bottom:none}
+  .fw-findings-section .fw-finding-ctrl{color:var(--accent-cyan);font-size:9px;min-width:80px}
+  .fw-findings-section .fw-finding-msg{flex:1}
+  .fw-findings-section .fw-finding-rem{color:var(--text-muted);font-size:9px;font-style:italic}
+  /* Jump-to-resource button in compliance dashboard */
+  .comp-jump-btn{background:none;border:1px solid var(--border);border-radius:3px;color:var(--accent-cyan);font-size:8px;padding:1px 6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-left:4px;transition:all .15s}
+  .comp-jump-btn:hover{background:rgba(34,211,238,.1);border-color:var(--accent-cyan)}
   .notes-panel{position:fixed;top:0;right:0;width:420px;height:100%;background:rgba(10,14,23,.97);border-left:1px solid var(--border);backdrop-filter:blur(16px);z-index:60;display:none;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.4)}
   .notes-panel.open{display:flex}
   .notes-panel-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -831,7 +921,7 @@
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v28</span></h1>
+    <h1><img src="logo.png" alt="Logo" style="width:28px;height:28px;border-radius:50%;vertical-align:middle;margin-right:6px">AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v28</span></h1>
     <p>Paste CLI JSON exports or upload folder</p>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -989,7 +1079,7 @@
       </div>
     </div>
   </div>
-  <div id="bottomToolbar" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:flex;gap:6px;align-items:center">
+  <div id="bottomToolbar" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;gap:6px;align-items:center">
     <button id="saveProjectBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-green);color:var(--accent-green);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Save project to file (Ctrl+S)">Save</button>
     <button id="loadProjectBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-orange);color:var(--accent-orange);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Load project from file">Open</button>
     <div style="width:1px;height:18px;background:var(--border);opacity:.5"></div>
@@ -1000,6 +1090,7 @@
     <button id="timelineBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-cyan);color:var(--accent-cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Snapshot timeline (H)">History</button>
     <button id="flowBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #22d3ee;color:#22d3ee;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Trace traffic flow (Shift+T)">Flow</button>
     <button id="traceBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #f472b6;color:#f472b6;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Trace from a subnet — click a subnet to start">Trace</button>
+    <button id="firewallBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #ef4444;color:#ef4444;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Open firewall editor — pick a Security Group or NACL (F)">Firewall</button>
     <button id="accountsBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-purple);color:var(--accent-purple);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Multi-account view (Shift+A)">Accounts</button>
     <button id="scanAwsBtn" style="display:none;height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #f59e0b;color:#f59e0b;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;align-items:center;gap:5px;padding:0 14px;transition:all .15s;font-weight:600" title="Scan AWS account via CLI">Scan AWS</button>
   </div>
@@ -1164,14 +1255,39 @@
       <label>Sort</label>
       <select id="compSort"><option value="severity">Severity</option><option value="framework">Framework</option><option value="control">Control</option><option value="resource">Resource</option></select>
       <label style="margin-left:12px"><input type="checkbox" id="compShowMuted" style="margin-right:4px">Show muted</label>
+      <button id="compToggleSummary" style="margin-left:12px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:4px;color:var(--accent-cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;cursor:pointer">Executive Summary</button>
     </div>
+    <div id="compExecSummary" style="display:none;padding:16px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);overflow-y:auto;max-height:45vh"></div>
     <div class="comp-body" id="compBody"></div>
     <div class="comp-dash-footer" id="compFooter">
+      <button onclick="exportPolicies(_complianceFindings,'cli')">Remediation CLI</button>
       <button onclick="exportPolicies(_complianceFindings,'config')">Export: AWS Config</button>
       <button onclick="exportPolicies(_complianceFindings,'rego')">Export: OPA Rego</button>
       <button onclick="exportPolicies(_complianceFindings,'checkov')">Export: Checkov</button>
       <button onclick="_openCompExportModal()">Export Report</button>
       <span class="muted-count" id="compMutedCount"></span>
+    </div>
+  </div>
+  <div class="fw-dash" id="fwDash">
+    <div class="fw-dash-hdr">
+      <h2>Firewall Dashboard</h2>
+      <div class="fw-dash-pills" id="fwDashPills"></div>
+      <button class="fw-dash-close" id="fwDashClose">Close [Esc]</button>
+    </div>
+    <div class="fw-dash-toolbar" id="fwDashToolbar">
+      <label>Search</label>
+      <input id="fwDashSearch" type="text" placeholder="Filter by name, ID, VPC...">
+      <label>VPC</label>
+      <select id="fwDashVpcFilter"><option value="all">All VPCs</option></select>
+      <label>Sort</label>
+      <select id="fwDashSort"><option value="type">Type</option><option value="name">Name</option><option value="vpc">VPC</option><option value="rules">Rules</option><option value="compliance">Compliance</option></select>
+      <label style="margin-left:12px"><input type="checkbox" id="fwDashEditsOnly" style="margin-right:4px">Edits only</label>
+    </div>
+    <div class="fw-dash-body" id="fwDashBody"></div>
+    <div class="fw-dash-footer" id="fwDashFooter">
+      <button id="fwDashExportAll">Export All CLI</button>
+      <button id="fwDashResetAll">Reset All Edits</button>
+      <span class="fw-edit-count" id="fwDashEditCount"></span>
     </div>
   </div>
   <div id="searchOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:90">
@@ -1196,6 +1312,25 @@
       <button class="dp-size-btn" id="dpSizeReset" style="font-size:9px;width:auto;padding:0 6px">Reset</button>
     </div>
     <div class="dp-body" id="dpBody"></div>
+  </div>
+</div>
+<div class="fw-full-panel" id="fwFullPanel">
+  <div class="fw-fp-header">
+    <h3 id="fwFpTitle">Firewall Editor</h3>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button id="fwFpRetrace" style="display:none;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);border-radius:4px;color:var(--accent-cyan);padding:3px 10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px">Re-trace</button>
+      <button id="fwFpCopy" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:4px;color:var(--accent-green);padding:3px 10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px">Copy CLI</button>
+      <button id="fwFpClose" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;padding:3px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px">Close</button>
+    </div>
+  </div>
+  <div class="fw-fp-tabs" id="fwFpTabs">
+    <button class="fw-fp-tab active" data-dir="ingress">Inbound</button>
+    <button class="fw-fp-tab" data-dir="egress">Outbound</button>
+  </div>
+  <div class="fw-fp-body" id="fwFpBody"></div>
+  <div class="fw-fp-bottom">
+    <div class="fw-fp-visual" id="fwFpVisual"></div>
+    <div class="fw-fp-cli" id="fwFpCli"></div>
   </div>
 </div>
 <script>
@@ -1352,6 +1487,9 @@ function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];fo
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
+const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
+const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+const _FW_LABELS={CIS:'CIS Benchmark',WAF:'WAF Security',IAM:'IAM Security',ARCH:'Best Practices',SOC2:'SOC 2',PCI:'PCI DSS 4'};
 function clsGw(id){const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','eigw-':'EIGW','lgw-':'LGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
 function isShared(t){return t==='TGW'||t==='PCX'}
 function gcv(t){return{IGW:'var(--igw-color)',NAT:'var(--nat-color)',TGW:'var(--tgw-color)',VGW:'var(--vgw-color)',VPCE:'var(--vpce-color)',PCX:'var(--pcx-color)',EIGW:'var(--igw-color)'}[t]||'var(--text-muted)'}
@@ -2206,6 +2344,24 @@ function runArchChecks(ctx){
       if(!hasRoute)f.push({severity:'HIGH',control:'ARCH-X1',framework:'ARCH',resource:p.VpcPeeringConnectionId,resourceName:p.VpcPeeringConnectionId,message:'VPC '+vid+' has no route for peering '+p.VpcPeeringConnectionId,remediation:'Add routes in both VPCs for the peering connection'});
     });
   });
+  // ARCH-C4: Lambda using deprecated/EOL runtime
+  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
+    f.push({severity:'HIGH',control:'ARCH-C4',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda uses deprecated runtime: '+fn.Runtime,remediation:'Upgrade to a supported runtime version to receive security patches'})});
+  // ARCH-C5: Lambda with excessive timeout and no DLQ
+  (ctx.lambdaFns||[]).forEach(fn=>{if((fn.Timeout||3)>300&&!fn.DeadLetterConfig?.TargetArn)
+    f.push({severity:'LOW',control:'ARCH-C5',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda timeout >5min with no dead letter queue',remediation:'Add an SQS or SNS DLQ for failed invocations'})});
+  // ARCH-D6: ElastiCache without encryption at rest
+  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.AtRestEncryptionEnabled===false||(!ec.AtRestEncryptionEnabled&&ec.Engine==='redis'))
+    f.push({severity:'MEDIUM',control:'ARCH-D6',framework:'ARCH',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache cluster without encryption at rest',remediation:'Enable at-rest encryption (requires creating a new cluster)'})});
+  // ARCH-D7: Redshift publicly accessible
+  (ctx.redshiftClusters||[]).forEach(rs=>{if(rs.PubliclyAccessible)
+    f.push({severity:'CRITICAL',control:'ARCH-D7',framework:'ARCH',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift cluster is publicly accessible',remediation:'Disable public access; connect via VPN or bastion in private subnet'})});
+  // ARCH-E2: CloudFront allowing HTTP (not redirect/https-only)
+  (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
+    if(vpp==='allow-all')f.push({severity:'MEDIUM',control:'ARCH-E2',framework:'ARCH',resource:d.Id||d.ARN||'',resourceName:d.DomainName||d.Id||'',message:'CloudFront allows HTTP connections',remediation:'Set ViewerProtocolPolicy to redirect-to-https or https-only'})});
+  // ARCH-C6: ECS service with desiredCount=0 or mismatch
+  (ctx.ecsServices||[]).forEach(svc=>{if(svc.desiredCount>0&&svc.runningCount===0)
+    f.push({severity:'HIGH',control:'ARCH-C6',framework:'ARCH',resource:svc.serviceName,resourceName:svc.serviceName,message:'ECS service has 0 running tasks (desired: '+svc.desiredCount+')',remediation:'Check task definition, IAM role, and container health checks'})});
   return f;
 }
 function runSOC2Checks(ctx){
@@ -2258,6 +2414,18 @@ function runSOC2Checks(ctx){
   // C1.2 – Data at rest: unencrypted EBS
   (ctx.volumes||[]).forEach(vol=>{if(!vol.Encrypted&&vol.State==='in-use')
     f.push({severity:'HIGH',control:'SOC2-C1.2',framework:'SOC2',resource:vol.VolumeId,resourceName:gn2(vol,vol.VolumeId),message:'EBS volume not encrypted at rest — data protection gap',remediation:'Enable EBS encryption by default in account settings'})});
+  // C1.3 – Confidentiality: ElastiCache without transit encryption
+  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.TransitEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.TransitEncryptionEnabled))
+    f.push({severity:'HIGH',control:'SOC2-C1.3',framework:'SOC2',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without in-transit encryption — data exposure risk',remediation:'Enable transit encryption (requires new cluster for existing Redis)'})});
+  // CC7.3 – Monitoring: CloudFront permissive protocol policy
+  (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
+    if(vpp==='allow-all')f.push({severity:'MEDIUM',control:'SOC2-CC7.3',framework:'SOC2',resource:d.Id||d.ARN||'',resourceName:d.DomainName||d.Id||'',message:'CloudFront allows unencrypted HTTP — monitoring blind spot',remediation:'Set ViewerProtocolPolicy to redirect-to-https'})});
+  // A1.4 – Availability: ECS services not meeting desired count
+  (ctx.ecsServices||[]).forEach(svc=>{if(svc.desiredCount>0&&svc.runningCount<svc.desiredCount)
+    f.push({severity:'HIGH',control:'SOC2-A1.4',framework:'SOC2',resource:svc.serviceName,resourceName:svc.serviceName,message:'ECS service running '+svc.runningCount+'/'+svc.desiredCount+' tasks — availability gap',remediation:'Check task health, resource limits, and container image availability'})});
+  // CC6.10 – Runtime security: Lambda deprecated runtimes
+  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
+    f.push({severity:'HIGH',control:'SOC2-CC6.10',framework:'SOC2',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda using EOL runtime '+fn.Runtime+' — no security patches',remediation:'Upgrade to supported runtime version'})});
   // PI1.1 – Processing integrity: VPC without custom route table
   (ctx.vpcs||[]).forEach(vpc=>{
     const customRts=(ctx.rts||[]).filter(rt=>rt.VpcId===vpc.VpcId&&!(rt.Associations||[]).some(a=>a.Main));
@@ -2335,6 +2503,21 @@ function runPCIDSSChecks(ctx){
     const instCount=(ctx.instances||[]).filter(i=>i.VpcId===vpc.VpcId).length;
     if(instCount>5&&!vpc.FlowLogs)f.push({severity:'MEDIUM',control:'PCI-12.10.1',framework:'PCI',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'Large VPC ('+instCount+' instances) without monitoring — incident response gap',remediation:'Enable GuardDuty, CloudTrail, and VPC Flow Logs; create SNS alerts'});
   });
+  // PCI-2.3.1 – Encrypt services: ElastiCache without transit encryption
+  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.TransitEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.TransitEncryptionEnabled))
+    f.push({severity:'HIGH',control:'PCI-2.3.1',framework:'PCI',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without in-transit encryption — data exposed in network',remediation:'Enable transit encryption; use TLS for Redis connections'})});
+  // PCI-3.4.1 – ElastiCache without at-rest encryption
+  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.AtRestEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.AtRestEncryptionEnabled))
+    f.push({severity:'HIGH',control:'PCI-3.4.1',framework:'PCI',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without at-rest encryption — cached data at risk',remediation:'Enable at-rest encryption (requires new cluster)'})});
+  // PCI-6.3.1 – Patch management: Lambda deprecated runtime
+  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
+    f.push({severity:'CRITICAL',control:'PCI-6.3.1',framework:'PCI',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda on EOL runtime '+fn.Runtime+' — unpatched vulnerabilities',remediation:'Upgrade to supported runtime for security patch coverage'})});
+  // PCI-4.2.1 – CloudFront allowing HTTP
+  (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
+    if(vpp==='allow-all')f.push({severity:'HIGH',control:'PCI-4.2.1',framework:'PCI',resource:d.Id||d.ARN||'',resourceName:d.DomainName||d.Id||'',message:'CloudFront allows unencrypted HTTP — data in transit violation',remediation:'Set ViewerProtocolPolicy to redirect-to-https or https-only'})});
+  // PCI-11.3.1 – Redshift publicly accessible
+  (ctx.redshiftClusters||[]).forEach(rs=>{if(rs.PubliclyAccessible)
+    f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift publicly accessible — data warehouse exposed',remediation:'Disable public access; use private subnet with VPN access only'})});
   return f;
 }
 function runComplianceChecks(ctx){
@@ -2354,10 +2537,10 @@ function _toggleMute(f){const k=_muteKey(f);if(_mutedFindings.has(k))_mutedFindi
 let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false};
 function renderCompliancePanel(findings){
   document.getElementById('compDash').classList.add('open');
+  const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
   _renderCompDash(findings);
 }
 function _renderCompDash(findings){
-  const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
   const crit=findings.filter(f=>f.severity==='CRITICAL').length;const high=findings.filter(f=>f.severity==='HIGH').length;
   const med=findings.filter(f=>f.severity==='MEDIUM').length;const low=findings.filter(f=>f.severity==='LOW').length;
   const mutedCount=findings.filter(f=>_isMuted(f)).length;
@@ -2372,23 +2555,111 @@ function _renderCompDash(findings){
   if(_compDashState.fwFilter!=='all')filtered=filtered.filter(f=>f.framework===_compDashState.fwFilter);
   if(_compDashState.search){const q=_compDashState.search.toLowerCase();filtered=filtered.filter(f=>(f.message||'').toLowerCase().includes(q)||(f.resource||'').toLowerCase().includes(q)||(f.resourceName||'').toLowerCase().includes(q)||(f.control||'').toLowerCase().includes(q)||(f.remediation||'').toLowerCase().includes(q))}
   if(!_compDashState.showMuted)filtered=filtered.filter(f=>!_isMuted(f));
-  filtered.sort((a,b)=>{if(_compDashState.sort==='severity')return(sevOrder[a.severity]||9)-(sevOrder[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
+  filtered.sort((a,b)=>{if(_compDashState.sort==='severity')return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
   const body=document.getElementById('compBody');
-  let h='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:60px">Actions</th></tr></thead><tbody>';
+  let h='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody>';
   filtered.forEach((f,i)=>{const muted=_isMuted(f);const ref=_complianceRefs[f.control];
     h+='<tr class="'+(muted?'muted':'')+'">';
     h+='<td><span class="sev-badge sev-'+f.severity+'">'+f.severity+'</span></td>';
-    h+='<td style="color:var(--text-muted);font-size:10px">'+f.framework+'</td>';
-    h+='<td style="color:var(--accent-cyan);font-size:11px">'+f.control+(ref?' <a href="'+ref.url+'" target="_blank" style="color:var(--accent-blue);font-size:9px;text-decoration:none" title="'+ref.ref+'">[docs]</a>':'')+'</td>';
-    h+='<td style="font-size:11px">'+( f.resourceName||f.resource)+'</td>';
-    h+='<td><span style="color:var(--text-secondary)">'+f.message+'</span><div class="comp-remediation">'+f.remediation+'</div></td>';
-    h+='<td><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
+    h+='<td style="color:var(--text-muted);font-size:10px">'+esc(f.framework)+'</td>';
+    h+='<td style="color:var(--accent-cyan);font-size:11px">'+esc(f.control)+(ref?' <a href="'+esc(ref.url)+'" target="_blank" style="color:var(--accent-blue);font-size:9px;text-decoration:none" title="'+esc(ref.ref)+'">[docs]</a>':'')+'</td>';
+    h+='<td style="font-size:11px">'+esc(f.resourceName||f.resource)+'</td>';
+    h+='<td><span style="color:var(--text-secondary)">'+esc(f.message)+'</span><div class="comp-remediation">'+esc(f.remediation)+'</div></td>';
+    h+='<td><button class="comp-jump-btn" data-rid="'+f.resource+'" title="Zoom to resource on map">Jump</button><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
   });
   if(!filtered.length)h+='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">No findings match current filters</td></tr>';
   h+='</tbody></table>';body.innerHTML=h;
   document.getElementById('compMutedCount').textContent=mutedCount>0?mutedCount+' finding(s) muted':'';
   body.querySelectorAll('.comp-mute-btn').forEach(btn=>{btn.addEventListener('click',function(e){e.stopPropagation();_toggleMute(filtered[parseInt(this.dataset.fi)]);_renderCompDash(findings)})});
+  body.querySelectorAll('.comp-jump-btn').forEach(btn=>{btn.addEventListener('click',function(e){
+    e.stopPropagation();const rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
+    document.getElementById('compDash').classList.remove('open');
+    setTimeout(()=>_zoomToElement(rid),100);
+  })});
   body.querySelectorAll('th[data-col]').forEach(th=>{th.addEventListener('click',()=>{_compDashState.sort=th.dataset.col;_renderCompDash(findings)})});
+}
+function _calcComplianceScore(findings){
+  const active=findings.filter(f=>!_isMuted(f));if(!active.length)return{score:100,grade:'A',color:'#22c55e'};
+  const w={CRITICAL:10,HIGH:5,MEDIUM:2,LOW:0.5};
+  const penalty=active.reduce((s,f)=>s+(w[f.severity]||0),0);
+  const score=Math.max(0,Math.round(100-penalty));
+  const grade=score>=90?'A':score>=80?'B':score>=70?'C':score>=50?'D':'F';
+  const color=score>=90?'#22c55e':score>=70?'#eab308':score>=50?'#f97316':'#ef4444';
+  return{score,grade,color};
+}
+function _aggregateTopResources(findings,limit){
+  const map={};findings.forEach(f=>{
+    const r=f.resourceName||f.resource;if(!r||r==='Multiple')return;
+    if(!map[r])map[r]={count:0,worst:'LOW',sevs:{}};
+    map[r].count++;map[r].sevs[f.severity]=(map[r].sevs[f.severity]||0)+1;
+    if((_SEV_ORDER[f.severity]||9)<(_SEV_ORDER[map[r].worst]||9))map[r].worst=f.severity;
+  });
+  return Object.entries(map).sort((a,b)=>{const sd=(_SEV_ORDER[a[1].worst]||9)-(_SEV_ORDER[b[1].worst]||9);return sd!==0?sd:b[1].count-a[1].count}).slice(0,limit);
+}
+function _renderExecSummary(){
+  const el=document.getElementById('compExecSummary');if(!el)return;
+  const f=_complianceFindings||[];const active=f.filter(x=>!_isMuted(x));
+  const overall=_calcComplianceScore(f);
+  const crit=active.filter(x=>x.severity==='CRITICAL').length;
+  const high=active.filter(x=>x.severity==='HIGH').length;
+  const med=active.filter(x=>x.severity==='MEDIUM').length;
+  const low=active.filter(x=>x.severity==='LOW').length;
+  const fws=['CIS','WAF','IAM','ARCH','SOC2','PCI'];
+  const fwScores=fws.map(fw=>{
+    const ff=f.filter(x=>x.framework===fw);
+    return{fw,count:ff.filter(x=>!_isMuted(x)).length,..._calcComplianceScore(ff)};
+  });
+  const sorted=_aggregateTopResources(active,8);
+  // Build DOM
+  el.textContent='';
+  const wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:20px;flex-wrap:wrap';
+  // Overall score circle (SVG)
+  const scoreDiv=document.createElement('div');scoreDiv.style.cssText='text-align:center;min-width:120px';
+  const pct=overall.score/100,r=40,circ=2*Math.PI*r,off=circ*(1-pct);
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');svg.setAttribute('width','100');svg.setAttribute('height','100');svg.setAttribute('viewBox','0 0 100 100');
+  const bg=document.createElementNS(ns,'circle');bg.setAttribute('cx','50');bg.setAttribute('cy','50');bg.setAttribute('r',r);bg.setAttribute('fill','none');bg.setAttribute('stroke','rgba(255,255,255,.08)');bg.setAttribute('stroke-width','8');svg.appendChild(bg);
+  const fg=document.createElementNS(ns,'circle');fg.setAttribute('cx','50');fg.setAttribute('cy','50');fg.setAttribute('r',r);fg.setAttribute('fill','none');fg.setAttribute('stroke',overall.color);fg.setAttribute('stroke-width','8');fg.setAttribute('stroke-dasharray',circ);fg.setAttribute('stroke-dashoffset',off);fg.setAttribute('stroke-linecap','round');fg.setAttribute('transform','rotate(-90 50 50)');svg.appendChild(fg);
+  const t1=document.createElementNS(ns,'text');t1.setAttribute('x','50');t1.setAttribute('y','46');t1.setAttribute('text-anchor','middle');t1.setAttribute('fill',overall.color);t1.setAttribute('font-size','22');t1.setAttribute('font-weight','700');t1.setAttribute('font-family','IBM Plex Mono,monospace');t1.textContent=overall.score;svg.appendChild(t1);
+  const t2=document.createElementNS(ns,'text');t2.setAttribute('x','50');t2.setAttribute('y','62');t2.setAttribute('text-anchor','middle');t2.setAttribute('fill','var(--text-muted)');t2.setAttribute('font-size','10');t2.setAttribute('font-family','IBM Plex Mono,monospace');t2.textContent='Grade: '+overall.grade;svg.appendChild(t2);
+  scoreDiv.appendChild(svg);
+  const scoreLabel=document.createElement('div');scoreLabel.style.cssText='color:var(--text-muted);font-size:10px;margin-top:4px';scoreLabel.textContent='Overall Score';scoreDiv.appendChild(scoreLabel);
+  wrap.appendChild(scoreDiv);
+  // Severity breakdown
+  const sevDiv=document.createElement('div');sevDiv.style.cssText='flex:1;min-width:200px';
+  const sevTitle=document.createElement('div');sevTitle.style.cssText='font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:8px';sevTitle.textContent='Severity Breakdown';sevDiv.appendChild(sevTitle);
+  [{l:'Critical',n:crit,c:'#ef4444'},{l:'High',n:high,c:'#f97316'},{l:'Medium',n:med,c:'#eab308'},{l:'Low',n:low,c:'#3b82f6'}].forEach(s=>{
+    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;margin:4px 0';
+    const lbl=document.createElement('span');lbl.style.cssText='font-size:10px;color:'+s.c+';width:55px;font-weight:600';lbl.textContent=s.l;row.appendChild(lbl);
+    const barWrap=document.createElement('div');barWrap.style.cssText='flex:1;height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden';
+    const bar=document.createElement('div');bar.style.cssText='width:'+(active.length?(s.n/active.length*100):0)+'%;height:100%;background:'+s.c+';border-radius:3px';barWrap.appendChild(bar);row.appendChild(barWrap);
+    const cnt=document.createElement('span');cnt.style.cssText='font-size:10px;color:var(--text-muted);width:30px;text-align:right';cnt.textContent=s.n;row.appendChild(cnt);
+    sevDiv.appendChild(row);
+  });
+  wrap.appendChild(sevDiv);
+  // Framework scores
+  const fwDiv=document.createElement('div');fwDiv.style.cssText='flex:1;min-width:280px';
+  const fwTitle=document.createElement('div');fwTitle.style.cssText='font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:8px';fwTitle.textContent='Framework Scores';fwDiv.appendChild(fwTitle);
+  const fwGrid=document.createElement('div');fwGrid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:6px';
+  fwScores.forEach(fs=>{
+    const card=document.createElement('div');card.style.cssText='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center';
+    const cn=document.createElement('div');cn.style.cssText='font-size:9px;color:var(--text-muted);margin-bottom:4px';cn.textContent=_FW_LABELS[fs.fw]||fs.fw;card.appendChild(cn);
+    const sc=document.createElement('div');sc.style.cssText='font-size:18px;font-weight:700;color:'+fs.color+';font-family:IBM Plex Mono,monospace';sc.textContent=fs.score;card.appendChild(sc);
+    const fc=document.createElement('div');fc.style.cssText='font-size:8px;color:var(--text-muted)';fc.textContent=fs.count+' finding'+(fs.count!==1?'s':'');card.appendChild(fc);
+    fwGrid.appendChild(card);
+  });
+  fwDiv.appendChild(fwGrid);wrap.appendChild(fwDiv);
+  // Top risky resources
+  const resDiv=document.createElement('div');resDiv.style.cssText='flex:1;min-width:220px';
+  const resTitle=document.createElement('div');resTitle.style.cssText='font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:8px';resTitle.textContent='Top Risky Resources';resDiv.appendChild(resTitle);
+  if(sorted.length){sorted.forEach(([name,data])=>{
+    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:6px;margin:3px 0;font-size:10px';
+    const badge=document.createElement('span');badge.className='sev-badge sev-'+data.worst;badge.style.cssText='font-size:7px;padding:1px 4px';badge.textContent=data.worst;row.appendChild(badge);
+    const nm=document.createElement('span');nm.style.cssText='color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';nm.textContent=name;row.appendChild(nm);
+    const ct=document.createElement('span');ct.style.cssText='color:var(--text-muted)';ct.textContent=data.count;row.appendChild(ct);
+    resDiv.appendChild(row);
+  })}else{const none=document.createElement('div');none.style.cssText='color:var(--text-muted);font-size:10px';none.textContent='No findings';resDiv.appendChild(none);}
+  wrap.appendChild(resDiv);el.appendChild(wrap);
 }
 function _exportComplianceCSV(){
   const rows=[['Severity','Framework','Control','Resource','Resource Name','Message','Remediation']];
@@ -2488,33 +2759,141 @@ function _exportFilteredCSV(findings,options){
 function _exportComplianceHTML(findings,options){
   const filtered=_filterCompFindings(options);
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const sevBg={CRITICAL:'#fecaca',HIGH:'#fee2e2',MEDIUM:'#fef3c7',LOW:'#dbeafe'};
-  const sevTxt={CRITICAL:'#991b1b',HIGH:'#b91c1c',MEDIUM:'#92400e',LOW:'#1e40af'};
-  let h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AWS Compliance Report</title>';
-  h+='<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#0a0e17;color:#e2e8f0;padding:24px;max-width:1200px;margin:0 auto}';
-  h+='h1{color:#06b6d4;margin-bottom:8px}h2{color:#94a3b8;margin:20px 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:1px}';
-  h+='table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px}th{background:#1e293b;color:#e2e8f0;padding:8px 12px;text-align:left;border:1px solid #334155}';
-  h+='td{padding:6px 12px;border:1px solid #1e293b;background:#0f172a}.sev{padding:2px 8px;border-radius:3px;font-weight:600;font-size:11px}';
-  h+='.summary-cards{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}.card{padding:16px 24px;border-radius:8px;border:1px solid #334155;text-align:center}';
-  h+='.card .num{font-size:28px;font-weight:700}.card .lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}';
+  const now=new Date().toISOString().slice(0,19).replace('T',' ');
+  const overall=_calcComplianceScore(filtered);
+  const sevColors={CRITICAL:{bg:'#fecaca',text:'#991b1b',bar:'#dc2626'},HIGH:{bg:'#fee2e2',text:'#b91c1c',bar:'#ef4444'},MEDIUM:{bg:'#fef3c7',text:'#92400e',bar:'#f59e0b'},LOW:{bg:'#dbeafe',text:'#1e40af',bar:'#3b82f6'}};
+  const sevCounts={};let maxSev=0;
+  ['CRITICAL','HIGH','MEDIUM','LOW'].forEach(s=>{sevCounts[s]=filtered.filter(f=>f.severity===s).length;if(sevCounts[s]>maxSev)maxSev=sevCounts[s]});
+  const fwScores=['CIS','WAF','IAM','ARCH','SOC2','PCI'].map(fw=>{
+    const ff=filtered.filter(f=>f.framework===fw);
+    const sc=_calcComplianceScore(ff);
+    return{fw,label:_FW_LABELS[fw],count:ff.length,...sc};
+  });
+  const topSorted=_aggregateTopResources(filtered,10);
+  let h='<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>AWS Compliance Report</title>';
+  h+='<style>';
+  h+='*{margin:0;padding:0;box-sizing:border-box}';
+  h+='body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;color:#1e293b;background:#fff;max-width:1100px;margin:0 auto;padding:40px 32px;line-height:1.5}';
+  h+='h1{font-size:28px;font-weight:700;color:#0f172a;margin-bottom:4px}';
+  h+='.subtitle{font-size:13px;color:#64748b;margin-bottom:32px}';
+  h+='h2{font-size:18px;font-weight:600;color:#0f172a;margin:36px 0 16px;padding-bottom:8px;border-bottom:2px solid #e2e8f0}';
+  h+='h3{font-size:14px;font-weight:600;color:#475569;margin-bottom:12px}';
+  h+='.exec-grid{display:grid;grid-template-columns:200px 1fr;gap:32px;align-items:start}';
+  h+='.score-ring{width:160px;height:160px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto}';
+  h+='.score-inner{width:120px;height:120px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}';
+  h+='.score-inner .score-val{font-size:48px;font-weight:800;line-height:1}';
+  h+='.score-inner .score-grade{font-size:20px;font-weight:700;margin-top:2px}';
+  h+='.score-inner .score-lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-top:4px}';
+  h+='.sev-bars{margin:8px 0 0}';
+  h+='.sev-bar-row{display:flex;align-items:center;margin-bottom:8px}';
+  h+='.sev-bar-label{width:72px;font-size:12px;font-weight:600;text-transform:uppercase}';
+  h+='.sev-bar-track{flex:1;height:22px;background:#f1f5f9;border-radius:4px;overflow:hidden}';
+  h+='.sev-bar-fill{height:100%;border-radius:4px}';
+  h+='.sev-bar-count{width:40px;text-align:right;font-size:13px;font-weight:700;margin-left:8px}';
+  h+='.meta-row{display:flex;gap:24px;margin-top:16px;font-size:13px;color:#64748b}';
+  h+='.fw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}';
+  h+='.fw-card{border:1px solid #e2e8f0;border-radius:8px;padding:16px;text-align:center}';
+  h+='.fw-card .fw-score{font-size:32px;font-weight:800;line-height:1}';
+  h+='.fw-card .fw-grade{font-size:14px;font-weight:700;margin-top:2px}';
+  h+='.fw-card .fw-name{font-size:12px;color:#64748b;margin-top:6px;text-transform:uppercase;letter-spacing:0.5px}';
+  h+='.fw-card .fw-count{font-size:11px;color:#94a3b8;margin-top:2px}';
+  h+='table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:24px}';
+  h+='thead th{background:#f8fafc;color:#475569;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;padding:10px 12px;text-align:left;border-bottom:2px solid #e2e8f0}';
+  h+='tbody td{padding:8px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}';
+  h+='tbody tr:hover{background:#f8fafc}';
+  h+='.sev-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}';
+  h+='.resource-name{font-family:"SF Mono",Consolas,monospace;font-size:11px;color:#334155;word-break:break-all}';
+  h+='.text-muted{color:#94a3b8;font-style:italic}';
+  h+='.worst-crit{border-left:3px solid #dc2626}.worst-high{border-left:3px solid #ef4444}.worst-med{border-left:3px solid #f59e0b}.worst-low{border-left:3px solid #3b82f6}';
+  h+='@media print{';
+  h+='body{padding:20px;max-width:100%;font-size:11px}';
+  h+='h1{font-size:22px}h2{font-size:16px;margin-top:24px;page-break-after:avoid}';
+  h+='.exec-grid{grid-template-columns:180px 1fr;gap:24px}';
+  h+='.fw-grid{grid-template-columns:repeat(3,1fr)}';
+  h+='table{font-size:10px;page-break-inside:auto}';
+  h+='thead{display:table-header-group}';
+  h+='tr{page-break-inside:avoid;page-break-after:auto}';
+  h+='thead th{background:#f0f0f0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}';
+  h+='.sev-badge,.sev-bar-fill,.score-ring,.fw-card{-webkit-print-color-adjust:exact;print-color-adjust:exact}';
+  h+='}';
   h+='</style></head><body>';
-  h+='<h1>AWS Compliance Report</h1><p style="color:#94a3b8;margin-bottom:16px">Generated: '+new Date().toISOString().slice(0,19).replace('T',' ')+' | '+filtered.length+' findings</p>';
-  h+='<div class="summary-cards">';
-  ['CRITICAL','HIGH','MEDIUM','LOW'].forEach(sev=>{
-    const c=filtered.filter(f=>f.severity===sev).length;
-    h+='<div class="card" style="background:'+sevBg[sev]+'20;border-color:'+sevTxt[sev]+'40"><div class="num" style="color:'+sevTxt[sev]+'">'+c+'</div><div class="lbl">'+sev+'</div></div>';
+  h+='<h1>AWS Compliance Report</h1>';
+  h+='<p class="subtitle">Generated '+esc(now)+' &bull; '+filtered.length+' findings across '+options.frameworks.length+' frameworks</p>';
+  h+='<h2>Executive Summary</h2>';
+  h+='<div class="exec-grid"><div>';
+  const ringBg='conic-gradient('+overall.color+' '+(overall.score*3.6)+'deg, #e2e8f0 '+(overall.score*3.6)+'deg)';
+  h+='<div class="score-ring" style="background:'+ringBg+'">';
+  h+='<div class="score-inner">';
+  h+='<div class="score-val" style="color:'+overall.color+'">'+overall.score+'</div>';
+  h+='<div class="score-grade" style="color:'+overall.color+'">'+overall.grade+'</div>';
+  h+='<div class="score-lbl">Score</div>';
+  h+='</div></div></div><div>';
+  h+='<h3>Severity Breakdown</h3><div class="sev-bars">';
+  ['CRITICAL','HIGH','MEDIUM','LOW'].forEach(s=>{
+    const pct=maxSev>0?Math.round((sevCounts[s]/maxSev)*100):0;
+    const c=sevColors[s];
+    h+='<div class="sev-bar-row">';
+    h+='<div class="sev-bar-label" style="color:'+c.text+'">'+s+'</div>';
+    h+='<div class="sev-bar-track"><div class="sev-bar-fill" style="width:'+pct+'%;background:'+c.bar+'"></div></div>';
+    h+='<div class="sev-bar-count" style="color:'+c.text+'">'+sevCounts[s]+'</div>';
+    h+='</div>';
   });
   h+='</div>';
-  h+='<h2>Findings</h2><table><tr><th>Severity</th><th>Framework</th><th>Control</th><th>Resource</th><th>Finding</th>';
+  h+='<div class="meta-row">';
+  h+='<span><strong>Total:</strong> '+filtered.length+'</span>';
+  h+='<span><strong>Active:</strong> '+filtered.filter(f=>!_isMuted(f)).length+'</span>';
+  h+='<span><strong>Muted:</strong> '+filtered.filter(f=>_isMuted(f)).length+'</span>';
+  h+='</div>';
+  h+='</div></div>';
+  h+='<h2>Framework Scores</h2><div class="fw-grid">';
+  fwScores.forEach(fw=>{
+    h+='<div class="fw-card" style="border-top:3px solid '+fw.color+'">';
+    h+='<div class="fw-score" style="color:'+fw.color+'">'+fw.score+'</div>';
+    h+='<div class="fw-grade" style="color:'+fw.color+'">'+fw.grade+'</div>';
+    h+='<div class="fw-name">'+esc(fw.label)+'</div>';
+    h+='<div class="fw-count">'+fw.count+' finding'+(fw.count!==1?'s':'')+'</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  if(topSorted.length>0){
+    h+='<h2>Top Risky Resources</h2>';
+    h+='<table><thead><tr><th>#</th><th>Resource</th><th>Worst</th><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>Total</th></tr></thead><tbody>';
+    topSorted.forEach(([name,data],i)=>{
+      const wc=sevColors[data.worst]||sevColors.LOW;
+      const cls=data.worst==='CRITICAL'?'worst-crit':data.worst==='HIGH'?'worst-high':data.worst==='MEDIUM'?'worst-med':'worst-low';
+      h+='<tr class="'+cls+'">';
+      h+='<td>'+(i+1)+'</td>';
+      h+='<td class="resource-name">'+esc(name)+'</td>';
+      h+='<td><span class="sev-badge" style="background:'+wc.bg+';color:'+wc.text+'">'+data.worst+'</span></td>';
+      h+='<td>'+(data.sevs.CRITICAL||0)+'</td>';
+      h+='<td>'+(data.sevs.HIGH||0)+'</td>';
+      h+='<td>'+(data.sevs.MEDIUM||0)+'</td>';
+      h+='<td>'+(data.sevs.LOW||0)+'</td>';
+      h+='<td><strong>'+data.count+'</strong></td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+  }
+  h+='<h2>Findings Detail</h2>';
+  h+='<table><thead><tr><th>Severity</th><th>Framework</th><th>Control</th><th>Resource</th><th>Finding</th>';
   if(options.includeRemediation)h+='<th>Remediation</th>';
-  h+='</tr>';
-  filtered.forEach(f=>{
-    h+='<tr><td><span class="sev" style="background:'+sevBg[f.severity]+';color:'+sevTxt[f.severity]+'">'+f.severity+'</span></td>';
-    h+='<td>'+esc(f.framework)+'</td><td>'+esc(f.control)+'</td><td>'+esc(f.resourceName||f.resource)+'</td><td>'+esc(f.message)+'</td>';
-    if(options.includeRemediation)h+='<td>'+esc(f.remediation)+'</td>';
+  h+='</tr></thead><tbody>';
+  const sortedFindings=[...filtered].sort((a,b)=>(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9));
+  sortedFindings.forEach(f=>{
+    const c=sevColors[f.severity]||sevColors.LOW;
+    h+='<tr>';
+    h+='<td><span class="sev-badge" style="background:'+c.bg+';color:'+c.text+'">'+f.severity+'</span></td>';
+    h+='<td>'+esc(f.framework)+'</td>';
+    h+='<td>'+esc(f.control)+'</td>';
+    h+='<td class="resource-name">'+esc(f.resourceName||f.resource)+'</td>';
+    h+='<td>'+esc(f.message)+'</td>';
+    if(options.includeRemediation)h+='<td>'+esc(f.remediation||'')+'</td>';
     h+='</tr>';
   });
-  h+='</table></body></html>';
+  if(!sortedFindings.length)h+='<tr><td colspan="'+(options.includeRemediation?6:5)+'" class="text-muted" style="text-align:center;padding:24px">No findings match the selected filters.</td></tr>';
+  h+='</tbody></table>';
+  h+='<p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:32px;border-top:1px solid #e2e8f0;padding-top:16px">AWS Mapper Compliance Report &bull; '+esc(now)+'</p>';
+  h+='</body></html>';
   downloadBlob(new Blob([h],{type:'text/html'}),'compliance-report.html');
 }
 function _openCompExportModal(){
@@ -3223,7 +3602,7 @@ function showDesignForm(formType,context){
       const result=validateDesignChange({action:'add_vpc',params:{CidrBlock:val}},_rlCtx);
       if(!result.valid){errEl.textContent=result.errors[0];errEl.style.display='block';okBtn.disabled=true;cidrInput.classList.add('invalid');warnEl.style.display='none'}
       else{errEl.style.display='none';okBtn.disabled=false;cidrInput.classList.remove('invalid')}
-      if(result.warnings.length){warnEl.innerHTML=result.warnings.map(w=>'<div class="form-hint" style="color:var(--accent-orange)">'+w+'</div>').join('');warnEl.style.display='block'}
+      if(result.warnings.length){warnEl.innerHTML=result.warnings.map(w=>'<div class="form-hint" style="color:var(--accent-orange)">'+esc(w)+'</div>').join('');warnEl.style.display='block'}
       else{warnEl.style.display='none'}
       // IP calculator
       const p=parseCIDR(val);
@@ -3436,11 +3815,61 @@ function generateCheckovCheck(findings){
   });
   return Array.from(checks.values()).join('\n\n');
 }
+function generateRemediationCLI(findings){
+  const region=(_rlCtx&&_rlCtx._accounts&&_rlCtx._accounts[0])?'--region '+(_rlCtx._accounts[0].region||'us-east-1'):'--region ${AWS_REGION}';
+  const lines=['#!/bin/bash','# AWS Compliance Remediation Script','# Generated: '+new Date().toISOString().slice(0,19).replace('T',' '),'# REVIEW EACH COMMAND BEFORE RUNNING — some are destructive','','set -euo pipefail',''];
+  const seen=new Set();
+  const cliMap={
+    'CIS 5.2':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+f.resource+' --protocol tcp --port 22 --cidr 0.0.0.0/0',
+    'CIS 5.3':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+f.resource+' --protocol tcp --port 3389 --cidr 0.0.0.0/0',
+    'CIS 5.4':f=>'# '+f.message+' — Remove all rules from default SG\n# List current rules first:\naws ec2 describe-security-groups '+region+' --group-ids '+f.resource+' --query "SecurityGroups[0].IpPermissions"',
+    'NET-2':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+f.resource+' --protocol -1 --cidr 0.0.0.0/0',
+    'ARCH-D1':f=>'# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+f.resource+' --no-publicly-accessible --apply-immediately',
+    'ARCH-D2':f=>'# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+f.resource+' --multi-az --apply-immediately',
+    'ARCH-D3':f=>'# '+f.message+' — Requires snapshot + restore for existing\n# Step 1: Create snapshot\naws rds create-db-snapshot '+region+' --db-instance-identifier '+f.resource+' --db-snapshot-identifier '+f.resource+'-encrypt-snap\n# Step 2: Copy with encryption\n# aws rds copy-db-snapshot --source-db-snapshot-identifier '+f.resource+'-encrypt-snap --target-db-snapshot-identifier '+f.resource+'-encrypted --kms-key-id alias/aws/rds',
+    'ARCH-C2':f=>'# '+f.message+'\n# Enable default EBS encryption for the account:\naws ec2 enable-ebs-encryption-by-default '+region,
+    'ARCH-S1':f=>'# '+f.message+'\naws s3api put-bucket-encryption '+region+' --bucket '+f.resource+' --server-side-encryption-configuration \'{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}\'',
+    'ARCH-D5':f=>'# '+f.message+' — Requires snapshot migration\n# aws redshift create-cluster-snapshot --cluster-identifier '+f.resource+' --snapshot-identifier '+f.resource+'-encrypt-snap',
+    'ARCH-D7':f=>'# '+f.message+'\naws redshift modify-cluster '+region+' --cluster-identifier '+f.resource+' --no-publicly-accessible',
+    'ARCH-E2':f=>'# '+f.message+'\n# Update CloudFront distribution viewer protocol policy:\n# aws cloudfront get-distribution-config --id '+f.resource+' > cf-config.json\n# Edit DefaultCacheBehavior.ViewerProtocolPolicy to "redirect-to-https"\n# aws cloudfront update-distribution --id '+f.resource+' --distribution-config file://cf-config.json --if-match ETAG',
+    'WAF-3':f=>'# '+f.message+'\n# Associate ALB with a WebACL:\n# aws wafv2 associate-web-acl --web-acl-arn arn:aws:wafv2:REGION:ACCOUNT:regional/webacl/NAME/ID --resource-arn '+f.resource,
+    'WAF-4':f=>'# '+f.message+'\n# Update WebACL default action to BLOCK:\n# aws wafv2 update-web-acl --name '+f.resourceName+' --scope REGIONAL --default-action Block={} --lock-token TOKEN',
+    'SOC2-CC7.2':f=>'# '+f.message+'\naws ec2 create-flow-logs '+region+' --resource-type VPC --resource-ids '+f.resource+' --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name /vpc/flow-logs/'+f.resource+' --deliver-logs-permission-arn arn:aws:iam::role/flow-logs-role',
+    'PCI-10.2.1':f=>'# '+f.message+'\naws ec2 create-flow-logs '+region+' --resource-type VPC --resource-ids '+f.resource+' --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name /vpc/flow-logs/'+f.resource+' --deliver-logs-permission-arn arn:aws:iam::role/flow-logs-role',
+    'PCI-3.4.1':f=>{
+      if(f.resource.startsWith('vol-'))return '# '+f.message+'\n# Enable default EBS encryption:\naws ec2 enable-ebs-encryption-by-default '+region;
+      if(f.resource.includes('rds')||f.message.includes('RDS'))return '# '+f.message+'\n# Requires snapshot + restore with encryption for existing RDS';
+      return '# '+f.message+'\naws s3api put-bucket-encryption '+region+' --bucket '+f.resource+' --server-side-encryption-configuration \'{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}\'';
+    },
+    'PCI-11.3.1':f=>{
+      if(f.message.includes('Redshift'))return '# '+f.message+'\naws redshift modify-cluster '+region+' --cluster-identifier '+f.resource+' --no-publicly-accessible';
+      return '# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+f.resource+' --no-publicly-accessible --apply-immediately';
+    },
+    'PCI-4.2.1':f=>'# '+f.message+'\n# Add HTTPS listener to ALB:\n# aws elbv2 create-listener --load-balancer-arn ARN --protocol HTTPS --port 443 --certificates CertificateArn=arn:aws:acm:REGION:ACCOUNT:certificate/ID --default-actions Type=forward,TargetGroupArn=TG_ARN',
+    'IAM-9':f=>'# '+f.message+'\n# Rotate access key for user '+f.resource+':\naws iam create-access-key --user-name '+f.resource+'\n# Then deactivate old key:\n# aws iam update-access-key --user-name '+f.resource+' --access-key-id OLD_KEY_ID --status Inactive',
+    'IAM-11':f=>'# '+f.message+'\n# Enable virtual MFA for user '+f.resource+':\n# aws iam create-virtual-mfa-device --virtual-mfa-device-name '+f.resource+'-mfa --outfile /tmp/qr-'+f.resource+'.png --bootstrap-method QRCodePNG',
+    'ARCH-G2':f=>'# '+f.message+'\n# Create S3 Gateway Endpoint (free):\naws ec2 create-vpc-endpoint '+region+' --vpc-id '+f.resource+' --service-name com.amazonaws.${AWS_REGION:-us-east-1}.s3 --vpc-endpoint-type Gateway',
+  };
+  findings.filter(f=>!_isMuted(f)).forEach(f=>{
+    const key=f.control+'|'+f.resource;
+    if(seen.has(key))return;seen.add(key);
+    const gen=cliMap[f.control];
+    if(gen){
+      const cmd=typeof gen==='function'?gen(f):gen;
+      lines.push(cmd,'');
+    } else {
+      lines.push('# ['+f.severity+'] '+f.control+': '+f.message+' ('+f.resource+')','# Remediation: '+f.remediation,'');
+    }
+  });
+  lines.push('echo "Remediation script complete. Review output for errors."');
+  return lines.join('\n');
+}
 function exportPolicies(findings,format){
   let content,filename,mime;
   if(format==='config'){content=JSON.stringify(generateAWSConfigRules(findings),null,2);filename='aws-config-rules.json';mime='application/json'}
   else if(format==='rego'){content=generateOPARego(findings);filename='compliance.rego';mime='text/plain'}
   else if(format==='checkov'){content=generateCheckovCheck(findings);filename='custom_checks.py';mime='text/x-python'}
+  else if(format==='cli'){content=generateRemediationCLI(findings);filename='remediation.sh';mime='text/x-shellscript'}
   else return;
   downloadBlob(new Blob([content],{type:mime}),filename);
 }
@@ -3570,7 +3999,29 @@ function runIAMChecks(iamData){
     // Service wildcard check for users
     const uStmts=[];(user.UserPolicyList||[]).forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>uStmts.push(s))});
     uStmts.forEach(stmt=>{if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a)))f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}});
+    // IAM-9: Access key age >90 days
+    (user.AccessKeys||[]).forEach(ak=>{
+      if(ak.Status==='Active'&&ak.CreateDate){const cd=new Date(ak.CreateDate);if(isNaN(cd.getTime()))return;const age=(Date.now()-cd.getTime())/86400000;
+        if(age>90)f.push({severity:'MEDIUM',control:'IAM-9',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'Access key '+ak.AccessKeyId+' is '+ Math.floor(age)+' days old',remediation:'Rotate access keys every 90 days; use IAM roles for EC2/Lambda instead'})}
+    });
+    // IAM-10: Multiple active access keys
+    const activeKeys=(user.AccessKeys||[]).filter(ak=>ak.Status==='Active');
+    if(activeKeys.length>1)f.push({severity:'LOW',control:'IAM-10',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has '+activeKeys.length+' active access keys',remediation:'Maintain only one active key; rotate and deactivate old keys'});
+    // IAM-11: Console password without MFA
+    if(user.LoginProfile&&!(user.MFADevices||[]).length)f.push({severity:'CRITICAL',control:'IAM-11',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'Console login enabled without MFA',remediation:'Enable MFA immediately; enforce MFA via IAM policy condition'});
+    // IAM-12: Excessive managed policy attachments (>10)
+    if((user.AttachedManagedPolicies||[]).length>10)f.push({severity:'LOW',control:'IAM-12',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has '+(user.AttachedManagedPolicies||[]).length+' managed policies attached',remediation:'Consolidate policies; use groups with managed policies instead'});
   });
+  // IAM-13: Password policy checks (account-level)
+  if(iamData.passwordPolicy){
+    const pp=iamData.passwordPolicy;
+    if(!pp.RequireUppercaseCharacters||!pp.RequireLowercaseCharacters||!pp.RequireNumbers||!pp.RequireSymbols)
+      f.push({severity:'MEDIUM',control:'IAM-13',framework:'IAM',resource:'AccountPasswordPolicy',resourceName:'Password Policy',message:'Password policy does not require all character types',remediation:'Require uppercase, lowercase, numbers, and symbols'});
+    if((pp.MinimumPasswordLength||0)<14)
+      f.push({severity:'MEDIUM',control:'IAM-13',framework:'IAM',resource:'AccountPasswordPolicy',resourceName:'Password Policy',message:'Minimum password length is '+(pp.MinimumPasswordLength||'not set')+' (should be 14+)',remediation:'Set MinimumPasswordLength to at least 14 characters'});
+    if((pp.MaxPasswordAge||0)>90||!pp.MaxPasswordAge)
+      f.push({severity:'MEDIUM',control:'IAM-13',framework:'IAM',resource:'AccountPasswordPolicy',resourceName:'Password Policy',message:'Password max age is '+(pp.MaxPasswordAge||'unlimited')+' days',remediation:'Set MaxPasswordAge to 90 days or less'});
+  }
   return f;
 }
 function renderIAMPanel(vpcId){
@@ -3763,8 +4214,8 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
   if(principal._hasWildcard&&!principal._isAdmin)badges.push('<span class="sev-badge sev-HIGH">WILDCARD</span>');
   if(principal.PermissionsBoundary)badges.push('<span class="sev-badge sev-LOW" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)">BOUNDARY</span>');
   if(!isRole&&!(principal.MFADevices||[]).length)badges.push('<span class="sev-badge sev-HIGH">NO MFA</span>');
-  dpTitle.innerHTML=backBtn+name+' '+badges.join(' ');
-  dpSub.innerHTML='<span class="copyable" data-copy="'+arn+'">'+arn+'</span>';
+  dpTitle.innerHTML=backBtn+esc(name)+' '+badges.join(' ');
+  dpSub.innerHTML='<span class="copyable" data-copy="'+esc(arn)+'">'+esc(arn)+'</span>';
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1))">';
   function sec(title,count,bodyHtml,startOpen){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+title+'</span><span><span class="dp-sec-count">'+count+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
@@ -3782,8 +4233,8 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
       else if(pr.AWS)src=Array.isArray(pr.AWS)?pr.AWS.join(', '):pr.AWS;
       else if(pr.Federated)src=Array.isArray(pr.Federated)?pr.Federated.join(', '):pr.Federated;
       else if(pr==='*')src='* (anyone)';
-      const condStr=s.Condition?'<br><span style="color:var(--text-muted);font-size:7px">Cond: '+JSON.stringify(s.Condition).substring(0,80)+'</span>':'';
-      tb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:'+(isAllow?'var(--accent-green)':'var(--accent-red)')+'">&#9654;</span><span class="fw-proto">TRUST</span><span class="fw-port '+(isAllow?'allow':'deny')+'">AssumeRole</span><span class="fw-src">'+src+condStr+'</span></div>';
+      const condStr=s.Condition?'<br><span style="color:var(--text-muted);font-size:7px">Cond: '+esc(JSON.stringify(s.Condition).substring(0,80))+'</span>':'';
+      tb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:'+(isAllow?'var(--accent-green)':'var(--accent-red)')+'">&#9654;</span><span class="fw-proto">TRUST</span><span class="fw-port '+(isAllow?'allow':'deny')+'">AssumeRole</span><span class="fw-src">'+esc(src)+condStr+'</span></div>';
     });
     h+=sec('Trust Policy',stmts.length+' statement(s)',tb,true);
   }
@@ -3797,13 +4248,13 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
     if(!svcKeys.length)pb+='<div style="color:var(--text-muted)">No direct permissions found</div>';
     svcKeys.forEach(svc=>{
       const sd=perms.services[svc];
-      pb+='<div style="font-weight:600;color:var(--accent-cyan);margin:6px 0 2px;text-transform:uppercase;font-size:8px;letter-spacing:.5px">'+svc+' ('+sd.allowed.length+' allowed'+(sd.denied.length?', '+sd.denied.length+' denied':'')+')</div>';
+      pb+='<div style="font-weight:600;color:var(--accent-cyan);margin:6px 0 2px;text-transform:uppercase;font-size:8px;letter-spacing:.5px">'+esc(svc)+' ('+sd.allowed.length+' allowed'+(sd.denied.length?', '+sd.denied.length+' denied':'')+')</div>';
       sd.allowed.forEach(a=>{
         const res=sd.resources[a]||'*';
-        pb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:var(--accent-green)">&#9654;</span><span class="fw-proto">'+svc+'</span><span class="fw-port allow">'+a+'</span><span class="fw-src">'+res+'</span></div>';
+        pb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:var(--accent-green)">&#9654;</span><span class="fw-proto">'+esc(svc)+'</span><span class="fw-port allow">'+esc(a)+'</span><span class="fw-src">'+esc(res)+'</span></div>';
       });
       sd.denied.forEach(a=>{
-        pb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:var(--accent-red)">&#9654;</span><span class="fw-proto">'+svc+'</span><span class="fw-port deny">'+a+'</span><span class="fw-src">Denied</span></div>';
+        pb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:var(--accent-red)">&#9654;</span><span class="fw-proto">'+esc(svc)+'</span><span class="fw-port deny">'+esc(a)+'</span><span class="fw-src">Denied</span></div>';
       });
     });
   }
@@ -3813,7 +4264,7 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
   // Permission Boundary
   if(principal.PermissionsBoundary){
     const bArn=principal.PermissionsBoundary.PermissionsBoundaryArn||principal.PermissionsBoundary;
-    const bb='<div class="dp-kv"><span class="k">Boundary ARN</span><span class="v copyable" data-copy="'+bArn+'">'+bArn+'</span></div>';
+    const bb='<div class="dp-kv"><span class="k">Boundary ARN</span><span class="v copyable" data-copy="'+esc(bArn)+'">'+esc(bArn)+'</span></div>';
     h+=sec('Permission Boundary','1',bb,true);
   }
   // Attached Resources
@@ -3823,17 +4274,17 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
       let rb='';let resCount=0;
       if(res.ec2&&res.ec2.length){
         rb+='<div style="font-weight:600;color:var(--accent-cyan);margin:4px 0 2px;font-size:8px;letter-spacing:.5px">EC2 INSTANCES ('+res.ec2.length+')</div>';
-        res.ec2.forEach(i=>{const iName=(i.Tags||[]).find(t=>t.Key==='Name')?.Value||i.InstanceId;rb+='<div class="dp-row" style="border-left:3px solid #3b82f6;padding-left:8px;margin:3px 0">'+iName+' <span class="k">'+i.InstanceType+'</span></div>'});
+        res.ec2.forEach(i=>{const iName=(i.Tags||[]).find(t=>t.Key==='Name')?.Value||i.InstanceId;rb+='<div class="dp-row" style="border-left:3px solid #3b82f6;padding-left:8px;margin:3px 0">'+esc(iName)+' <span class="k">'+esc(i.InstanceType)+'</span></div>'});
         resCount+=res.ec2.length;
       }
       if(res.lambda&&res.lambda.length){
         rb+='<div style="font-weight:600;color:var(--accent-cyan);margin:4px 0 2px;font-size:8px;letter-spacing:.5px">LAMBDA FUNCTIONS ('+res.lambda.length+')</div>';
-        res.lambda.forEach(fn=>{rb+='<div class="dp-row" style="border-left:3px solid #a855f7;padding-left:8px;margin:3px 0">'+fn.FunctionName+' <span class="k">'+fn.Runtime+'</span></div>'});
+        res.lambda.forEach(fn=>{rb+='<div class="dp-row" style="border-left:3px solid #a855f7;padding-left:8px;margin:3px 0">'+esc(fn.FunctionName)+' <span class="k">'+esc(fn.Runtime)+'</span></div>'});
         resCount+=res.lambda.length;
       }
       if(res.ecs&&res.ecs.length){
         rb+='<div style="font-weight:600;color:var(--accent-cyan);margin:4px 0 2px;font-size:8px;letter-spacing:.5px">ECS SERVICES ('+res.ecs.length+')</div>';
-        res.ecs.forEach(svc=>{rb+='<div class="dp-row" style="border-left:3px solid #f97316;padding-left:8px;margin:3px 0">'+svc.serviceName+' <span class="k">'+(svc.launchType||'')+'</span></div>'});
+        res.ecs.forEach(svc=>{rb+='<div class="dp-row" style="border-left:3px solid #f97316;padding-left:8px;margin:3px 0">'+esc(svc.serviceName)+' <span class="k">'+esc(svc.launchType||'')+'</span></div>'});
         resCount+=res.ecs.length;
       }
       if(resCount>0)h+=sec('Attached Resources',resCount+' resource(s)',rb,true);
@@ -3844,7 +4295,7 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
     const myFindings=_complianceFindings.filter(f=>f.resource===name||f.resourceName===name);
     if(myFindings.length){
       let cb='';
-      myFindings.forEach(f=>{cb+='<div class="dp-row" style="border-left:3px solid '+(f.severity==='CRITICAL'?'#dc2626':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#f59e0b':'#3b82f6')+';padding-left:8px;margin:3px 0"><span class="sev-badge sev-'+f.severity+'">'+f.severity+'</span> <span class="k">'+f.control+'</span> '+f.message+'</div>'});
+      myFindings.forEach(f=>{cb+='<div class="dp-row" style="border-left:3px solid '+(f.severity==='CRITICAL'?'#dc2626':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#f59e0b':'#3b82f6')+';padding-left:8px;margin:3px 0"><span class="sev-badge sev-'+f.severity+'">'+f.severity+'</span> <span class="k">'+esc(f.control)+'</span> '+esc(f.message)+'</div>'});
       h+=sec('Compliance Findings',myFindings.length+' finding(s)',cb,true);
     }
   }
@@ -4431,38 +4882,15 @@ function openSubnetPanel(sub,vpcId,lk){
   const si=lk.instBySub[sub.SubnetId]||[];
   const se=lk.eniBySub[sub.SubnetId]||[];
   const sa=lk.albBySub[sub.SubnetId]||[];
-  // Route Table
+  // Route Table (interactive)
   const rt=lk.subRT[sub.SubnetId];
   if(rt){
-    let rb='<div class="dp-kv"><span class="k">ID</span><span class="v">'+rt.RouteTableId+'</span></div>';
-    rb+='<div class="dp-kv"><span class="k">Name</span><span class="v">'+gn(rt,rt.RouteTableId)+'</span></div>';
-    (rt.Routes||[]).forEach(r=>{
-      const dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
-      const tgt=r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||'local';
-      rb+='<div class="dp-row">'+dest+' <span class="p">-></span> '+routeTgtHtml(tgt)+'</div>';
-    });
-    h+=sec('Route Table',(rt.Routes||[]).length+' routes',rb,true);
+    h+=sec('Route Table',(rt.Routes||[]).length+' routes',_fwRenderRtInline(rt, vpcId, lk),true);
   }
-  // NACLs
+  // NACLs (interactive)
   const nc=lk.subNacl[sub.SubnetId];
   if(nc){
-    const inbound=(nc.Entries||[]).filter(e=>!e.Egress).sort((a,b)=>a.RuleNumber-b.RuleNumber);
-    const outbound=(nc.Entries||[]).filter(e=>e.Egress).sort((a,b)=>a.RuleNumber-b.RuleNumber);
-    let nb='<div class="dp-kv"><span class="k">ID</span><span class="v">'+nc.NetworkAclId+'</span></div>';
-    nb+='<div style="margin-top:6px"><div class="dp-row"><span class="lbl">INBOUND RULES</span></div>';
-    inbound.forEach(e=>{
-      const act=e.RuleAction==='allow'?'<span class="a">ALLOW</span>':'<span class="d">DENY</span>';
-      const port=e.PortRange?'<span class="p">'+e.PortRange.From+'-'+e.PortRange.To+'</span>':'<span class="p">ALL</span>';
-      nb+='<div class="dp-row">#'+e.RuleNumber+' '+act+' '+port+' '+(e.CidrBlock||'')+'</div>';
-    });
-    nb+='</div><div style="margin-top:6px"><div class="dp-row"><span class="lbl">OUTBOUND RULES</span></div>';
-    outbound.forEach(e=>{
-      const act=e.RuleAction==='allow'?'<span class="a">ALLOW</span>':'<span class="d">DENY</span>';
-      const port=e.PortRange?'<span class="p">'+e.PortRange.From+'-'+e.PortRange.To+'</span>':'<span class="p">ALL</span>';
-      nb+='<div class="dp-row">#'+e.RuleNumber+' '+act+' '+port+' '+(e.CidrBlock||'')+'</div>';
-    });
-    nb+='</div>';
-    h+=sec('NACLs',inbound.length+' in / '+outbound.length+' out',nb,true);
+    h+=sec('NACLs',(nc.Entries||[]).filter(e=>!e.Egress).length+' in / '+(nc.Entries||[]).filter(e=>e.Egress).length+' out',_fwRenderNaclInline(nc, sub),false);
   }
   // EC2 Instances
   if(si.length){
@@ -4605,7 +5033,7 @@ function openSubnetPanel(sub,vpcId,lk){
     });
     h+=sec('Lambda (VPC)',slm.length,lmb,false);
   }
-  // Security Groups
+  // Security Groups (interactive)
   const vSgs=lk.sgByVpc[vpcId]||[];
   const subSgIds=new Set();
   se.forEach(e=>(e.Groups||[]).forEach(g=>subSgIds.add(g.GroupId)));
@@ -4613,53 +5041,41 @@ function openSubnetPanel(sub,vpcId,lk){
   const displaySgs=subSgs.length?subSgs:vSgs;
   if(displaySgs.length){
     let sgb='';
-    sgb+='<div class="fw-legend"><span><span class="fw-dot" style="background:var(--accent-green)"></span> Inbound allowed</span><span><span class="fw-dot" style="background:var(--accent-orange)"></span> Port/Range</span><span><span class="fw-dot" style="background:var(--text-muted)"></span> Source</span></div>';
-    displaySgs.forEach(sg=>{
-      sgb+='<div class="dp-row">';
-      sgb+='<span class="i">'+sg.GroupName+'</span> <span class="k">('+sg.GroupId+')</span>';
-      if(sg.Description)sgb+='<br><span class="k">'+sg.Description+'</span>';
-      const perms=sg.IpPermissions||[];
-      if(perms.length){
-        sgb+='<div class="fw-visual">';
-        perms.forEach(p=>{
-          const proto=p.IpProtocol==='-1'?'ALL':p.IpProtocol.toUpperCase();
-          const port=p.IpProtocol==='-1'?'ALL':p.FromPort===p.ToPort?(p.FromPort||'ALL'):(p.FromPort||'*')+'-'+(p.ToPort||'*');
-          const sources=(p.IpRanges||[]).map(r=>r.CidrIp).concat((p.UserIdGroupPairs||[]).map(g=>g.GroupId));
-          sources.forEach(src=>{
-            sgb+='<div class="fw-rule-bar"><div class="fw-arrow allow"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div><span class="fw-proto">'+proto+'</span><span class="fw-port allow">'+port+'</span><span class="fw-src">'+src+'</span></div>';
-          });
-          if(!sources.length){
-            sgb+='<div class="fw-rule-bar"><div class="fw-arrow allow"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div><span class="fw-proto">'+proto+'</span><span class="fw-port allow">'+port+'</span><span class="fw-src">any</span></div>';
-          }
-        });
-        sgb+='</div>';
-      }
-      sgb+='</div>';
-    });
+    displaySgs.forEach(sg=>{sgb+=_fwRenderSgInline(sg)});
     if(subSgs.length&&vSgs.length>subSgs.length){
       sgb+='<div class="dp-row"><span class="k">+ '+(vSgs.length-subSgs.length)+' more SGs in VPC (not attached to this subnet)</span></div>';
     }
-    h+=sec('Firewall Rules (Security Groups)',displaySgs.length,sgb,false);
+    h+=sec('Security Groups',displaySgs.length,sgb,false);
   }
-  // NACL visual
-  const nc2=lk.subNacl[sub.SubnetId];
-  if(nc2){
-    const inbound=(nc2.Entries||[]).filter(e=>!e.Egress).sort((a,b)=>a.RuleNumber-b.RuleNumber);
-    let nb2='';
-    nb2+='<div class="fw-legend"><span><span class="fw-dot" style="background:var(--accent-green)"></span> Allow</span><span><span class="fw-dot" style="background:var(--accent-red)"></span> Deny</span><span><span class="fw-dot" style="background:var(--accent-orange)"></span> Port</span></div>';
-    nb2+='<div class="fw-visual">';
-    inbound.forEach(e=>{
-      const cls=e.RuleAction==='allow'?'allow':'deny';
-      const port=e.PortRange?e.PortRange.From+'-'+e.PortRange.To:'ALL';
-      const proto=e.Protocol==='-1'?'ALL':e.Protocol;
-      nb2+='<div class="fw-rule-bar"><div class="fw-arrow '+cls+'"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div><span class="fw-proto">'+proto+'</span><span class="fw-port '+cls+'">#'+e.RuleNumber+' '+port+'</span><span class="fw-src">'+(e.CidrBlock||'any')+'</span></div>';
-    });
-    nb2+='</div>';
-    h+=sec('NACL Visual (Inbound)',inbound.length+' rules',nb2,false);
+  // Compliance Findings for this subnet and its resources
+  if(_complianceFindings&&_complianceFindings.length){
+    const subResIds=new Set([sub.SubnetId,vpcId]);
+    si.forEach(inst=>subResIds.add(inst.InstanceId));
+    (lk.rdsBySub[sub.SubnetId]||[]).forEach(db=>subResIds.add(db.DBInstanceIdentifier));
+    displaySgs.forEach(sg=>subResIds.add(sg.GroupId));
+    if(nc)subResIds.add(nc.NetworkAclId);
+    if(rt)subResIds.add(rt.RouteTableId);
+    sa.forEach(a=>subResIds.add(a.LoadBalancerName));
+    const subFindings=_complianceFindings.filter(f=>!_isMuted(f)&&subResIds.has(f.resource));
+    if(subFindings.length){
+      let cfb='';
+      subFindings.sort((a,b)=>(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9));
+      subFindings.forEach(f=>{
+        cfb+='<div class="dp-row" style="border-left:3px solid '+(f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6')+';padding-left:8px">';
+        cfb+='<span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 4px">'+f.severity+'</span> ';
+        cfb+='<span style="color:var(--accent-cyan);font-size:10px">'+f.control+'</span> ';
+        cfb+='<span style="color:var(--text-muted);font-size:9px">['+f.framework+']</span><br>';
+        cfb+='<span style="color:var(--text-secondary);font-size:10px">'+_escHtml(f.message)+'</span><br>';
+        cfb+='<span style="color:var(--text-muted);font-size:9px;font-style:italic">'+_escHtml(f.remediation)+'</span>';
+        cfb+='</div>';
+      });
+      h+=sec('Compliance Findings',subFindings.length,cfb,subFindings.some(f=>f.severity==='CRITICAL'||f.severity==='HIGH'));
+    }
   }
   h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span><span id="dpTraceFrom" style="font-family:IBM Plex Mono,monospace;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:#22d3ee;cursor:pointer;padding:3px 8px;border:1px solid rgba(34,211,238,.3);border-radius:4px;background:rgba(34,211,238,.08)">Trace</span></div>'+h;
   dpBody.innerHTML=h;
   dp.classList.add('open');
+  dpBody.addEventListener('click', function(ev){ _fwHandleAction(ev, sub, vpcId, lk); });
   injectDesignToolbar(dpBody,{type:'subnet',data:sub});
   applyDpScale();
   document.getElementById('dpExpandAll')?.addEventListener('click',()=>{
@@ -5352,10 +5768,10 @@ function renderLandingZoneMap(ctx){
         if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',stroke);
         Object.entries(olStyle).forEach(([k,v])=>p.style(k,v));}
       }catch(ex){}});
-      let h='<div class="tt-title">'+tgwName+'</div>';
+      let h='<div class="tt-title">'+esc(tgwName)+'</div>';
       h+='<div class="tt-sub">Transit Gateway</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
-      h+='<div class="tt-r">ID: <span class="i">'+tgwId+'</span></div>';
+      h+='<div class="tt-r">ID: <span class="i">'+esc(tgwId)+'</span></div>';
       h+='<div class="tt-r">Connected VPCs: <span class="i">'+vL.length+'</span></div>';
       h+='</div>';
       tt.innerHTML=h;tt.style.display='block';
@@ -5431,16 +5847,16 @@ function renderLandingZoneMap(ctx){
       let h='<div class="tt-title">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
       h+='<div class="tt-sub">'+(vl.isHub?'Hub VPC':'Spoke VPC')+'</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
-      h+='<div class="tt-r">CIDR: <span class="i">'+vl.vpc.CidrBlock+'</span></div>';
+      h+='<div class="tt-r">CIDR: <span class="i">'+esc(vl.vpc.CidrBlock)+'</span></div>';
       h+='<div class="tt-r">Region: <span class="i">'+(region||'N/A')+'</span></div>';
-      h+='<div class="tt-r">ID: <span class="i">'+vl.vpc.VpcId+'</span></div>';
+      h+='<div class="tt-r">ID: <span class="i">'+esc(vl.vpc.VpcId)+'</span></div>';
       h+='<div class="tt-r">Subnets: <span class="i">'+ss.length+'</span></div>';
       h+='</div>';
       if(vpcGws.length){
         h+='<div class="tt-sec"><div class="tt-sh">Gateways ('+vpcGws.length+')</div>';
         vpcGws.forEach(gw=>{
           const nm=gwNames[gw.id]||sid(gw.id);
-          h+='<div class="tt-r"><span class="i">'+nm+'</span> '+gw.type+'</div>';
+          h+='<div class="tt-r"><span class="i">'+esc(nm)+'</span> '+gw.type+'</div>';
         });
         h+='</div>';
       }
@@ -5448,7 +5864,7 @@ function renderLandingZoneMap(ctx){
         h+='<div class="tt-sec"><div class="tt-sh">VPC Endpoints ('+vpcVpces.length+')</div>';
         vpcVpces.slice(0,5).forEach(v=>{
           const vi=vpces.find(x=>x.VpcEndpointId===v.id);
-          h+='<div class="tt-r"><span class="i">'+(vi?.ServiceName?.split('.').pop()||'?')+'</span></div>';
+          h+='<div class="tt-r"><span class="i">'+esc(vi?.ServiceName?.split('.').pop()||'?')+'</span></div>';
         });
         if(vpcVpces.length>5)h+='<div class="tt-r">... and '+(vpcVpces.length-5)+' more</div>';
         h+='</div>';
@@ -5682,22 +6098,22 @@ function renderLandingZoneMap(ctx){
       let h='<div class="tt-title">'+gn(sl.sub,sl.sub.SubnetId)+'</div>';
       h+='<div class="tt-sub">'+(sl.pub?'Public':'Private')+' Subnet</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
-      h+='<div class="tt-r">CIDR: <span class="i">'+sl.sub.CidrBlock+'</span></div>';
-      h+='<div class="tt-r">AZ: <span class="i">'+(sl.sub.AvailabilityZone||'N/A')+'</span></div>';
-      h+='<div class="tt-r">ID: <span class="i">'+sl.sub.SubnetId+'</span></div>';
+      h+='<div class="tt-r">CIDR: <span class="i">'+esc(sl.sub.CidrBlock)+'</span></div>';
+      h+='<div class="tt-r">AZ: <span class="i">'+esc(sl.sub.AvailabilityZone||'N/A')+'</span></div>';
+      h+='<div class="tt-r">ID: <span class="i">'+esc(sl.sub.SubnetId)+'</span></div>';
       h+='</div>';
       if(subSi.length){
         h+='<div class="tt-sec"><div class="tt-sh">EC2 Instances ('+subSi.length+')</div>';
         subSi.slice(0,5).forEach(inst=>{
           const nm=inst.Tags?.find(t=>t.Key==='Name')?.Value||inst.InstanceId;
-          h+='<div class="tt-r"><span class="i">'+nm+'</span> '+inst.InstanceType+' ['+inst.State?.Name+']</div>';
+          h+='<div class="tt-r"><span class="i">'+esc(nm)+'</span> '+esc(inst.InstanceType)+' ['+esc(inst.State?.Name)+']</div>';
         });
         if(subSi.length>5)h+='<div class="tt-r">... and '+(subSi.length-5)+' more</div>';
         h+='</div>';
       }
       if(subSa.length){
         h+='<div class="tt-sec"><div class="tt-sh">Load Balancers ('+subSa.length+')</div>';
-        subSa.forEach(lb=>{h+='<div class="tt-r"><span class="i">'+(lb.LoadBalancerName||'ALB')+'</span> '+lb.Type+'</div>'});
+        subSa.forEach(lb=>{h+='<div class="tt-r"><span class="i">'+esc(lb.LoadBalancerName||'ALB')+'</span> '+esc(lb.Type)+'</div>'});
         h+='</div>';
       }
       tt.innerHTML=h;tt.style.display='block';
@@ -5780,19 +6196,19 @@ function renderLandingZoneMap(ctx){
     const gwName=gwNames[gw.id]||sid(gw.id);
     gG.on('mouseenter',function(){
       if(!_lzLocked) lzHlVpc(hubVpc.VpcId);
-      let h='<div class="tt-title">'+gwName+'</div>';
-      h+='<div class="tt-sub">'+gw.type+' Gateway</div>';
+      let h='<div class="tt-title">'+esc(gwName)+'</div>';
+      h+='<div class="tt-sub">'+esc(gw.type)+' Gateway</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
-      h+='<div class="tt-r">ID: <span class="i">'+gw.id+'</span></div>';
-      h+='<div class="tt-r">Type: <span class="i">'+gw.type+'</span></div>';
+      h+='<div class="tt-r">ID: <span class="i">'+esc(gw.id)+'</span></div>';
+      h+='<div class="tt-r">Type: <span class="i">'+esc(gw.type)+'</span></div>';
       h+='<div class="tt-r">VPC: <span class="i">'+gn(hubVpc,hubVpc.VpcId)+'</span></div>';
       h+='</div>';
       if(gw.type==='NAT'){
         const natInfo=nats.find(n=>n.NatGatewayId===gw.id);
         if(natInfo){
           h+='<div class="tt-sec"><div class="tt-sh">NAT Info</div>';
-          h+='<div class="tt-r">Subnet: <span class="i">'+(natInfo.SubnetId||'N/A')+'</span></div>';
-          h+='<div class="tt-r">State: <span class="i">'+(natInfo.State||'N/A')+'</span></div>';
+          h+='<div class="tt-r">Subnet: <span class="i">'+esc(natInfo.SubnetId||'N/A')+'</span></div>';
+          h+='<div class="tt-r">State: <span class="i">'+esc(natInfo.State||'N/A')+'</span></div>';
           h+='</div>';
         }
       }
@@ -5910,10 +6326,10 @@ function renderLandingZoneMap(ctx){
       const gwName=gwNames[gw.id]||sid(gw.id);
       gG.on('mouseenter',function(){
         if(!_lzLocked) lzHlVpc(spoke.vpc.VpcId);
-        let h='<div class="tt-title">'+gwName+'</div>';
-        h+='<div class="tt-sub">'+gw.type+' Gateway</div>';
+        let h='<div class="tt-title">'+esc(gwName)+'</div>';
+        h+='<div class="tt-sub">'+esc(gw.type)+' Gateway</div>';
         h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
-        h+='<div class="tt-r">ID: <span class="i">'+gw.id+'</span></div>';
+        h+='<div class="tt-r">ID: <span class="i">'+esc(gw.id)+'</span></div>';
         h+='<div class="tt-r">VPC: <span class="i">'+gn(spoke.vpc,spoke.vpc.VpcId)+'</span></div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
@@ -6026,7 +6442,7 @@ function renderLandingZoneMap(ctx){
         const vi=vpces.find(x=>x.VpcEndpointId===v.id);
         const svc=vi?.ServiceName||'?';
         const nm=gwNames[v.id];
-        h+='<div class="tt-r"><span class="i">'+(nm||v.id.slice(-8))+'</span> '+svc.split('.').pop()+' ['+vi?.VpcEndpointType+']</div>';
+        h+='<div class="tt-r"><span class="i">'+esc(nm||v.id.slice(-8))+'</span> '+esc(svc.split('.').pop())+' ['+esc(vi?.VpcEndpointType)+']</div>';
       });
       h+='</div>';
       tt.innerHTML=h;tt.style.display='block';
@@ -6216,16 +6632,16 @@ function renderLandingZoneMap(ctx){
       // Tooltip
       zG.on('mouseenter',function(){
         let h='<div class="tt-title">'+(isPub?'Public':'Private')+' Hosted Zone</div>';
-        h+='<div class="tt-sub">'+z.Name+'</div>';
+        h+='<div class="tt-sub">'+esc(z.Name)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">Zone ID</span> '+zid+'</div>';
+        h+='<div class="tt-r"><span class="i">Zone ID</span> '+esc(zid)+'</div>';
         h+='<div class="tt-r"><span class="i">Records</span> '+z.ResourceRecordSetCount+'</div>';
         if(!isPub&&z.VPCs){
           h+='<div class="tt-sh" style="margin-top:4px">Associated VPCs</div>';
           z.VPCs.forEach(v=>{
             const vid=v.VPCId||v.VpcId;
             const vpcObj=vpcs.find(x=>x.VpcId===vid);
-            h+='<div class="tt-r"><span class="i">'+(vpcObj?gn(vpcObj,vid):vid)+'</span></div>';
+            h+='<div class="tt-r"><span class="i">'+(vpcObj?gn(vpcObj,vid):esc(vid))+'</span></div>';
           });
         }
         h+='</div>';
@@ -6270,7 +6686,7 @@ function renderLandingZoneMap(ctx){
 
       bG.on('mouseenter',function(){
         let h='<div class="tt-title">S3 Bucket</div>';
-        h+='<div class="tt-sub">'+bk.Name+'</div>';
+        h+='<div class="tt-sub">'+esc(bk.Name)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">Created</span> '+(bk.CreationDate||'N/A').split('T')[0]+'</div>';
         h+='</div>';
@@ -6318,17 +6734,17 @@ function renderLandingZoneMap(ctx){
 
       cG.on('mouseenter',function(){
         let h='<div class="tt-title">CloudFront Distribution</div>';
-        h+='<div class="tt-sub">'+(d.DomainName||d.Id)+'</div>';
+        h+='<div class="tt-sub">'+esc(d.DomainName||d.Id)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">ID</span> '+d.Id+'</div>';
-        h+='<div class="tt-r"><span class="i">Status</span> '+(d.Status||'?')+'</div>';
-        if(aliases.length)h+='<div class="tt-r"><span class="i">Aliases</span> '+aliases.join(', ')+'</div>';
+        h+='<div class="tt-r"><span class="i">ID</span> '+esc(d.Id)+'</div>';
+        h+='<div class="tt-r"><span class="i">Status</span> '+esc(d.Status||'?')+'</div>';
+        if(aliases.length)h+='<div class="tt-r"><span class="i">Aliases</span> '+esc(aliases.join(', '))+'</div>';
         const origins=(d.Origins?.Items||[]);
         if(origins.length){
           h+='<div class="tt-sh" style="margin-top:4px">Origins</div>';
-          origins.forEach(o=>{h+='<div class="tt-r"><span class="i">'+(o.Id||'')+'</span> '+o.DomainName+'</div>'});
+          origins.forEach(o=>{h+='<div class="tt-r"><span class="i">'+esc(o.Id||'')+'</span> '+esc(o.DomainName)+'</div>'});
         }
-        if(d.WebACLId)h+='<div class="tt-r"><span class="i">WAF</span> '+d.WebACLId.split('/').pop()+'</div>';
+        if(d.WebACLId)h+='<div class="tt-r"><span class="i">WAF</span> '+esc(d.WebACLId.split('/').pop())+'</div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
       }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none'})
@@ -6363,12 +6779,14 @@ function renderLandingZoneMap(ctx){
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.style.cssText='border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08)';ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){}
+  try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
   try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){}
   // Diff overlay (landing zone)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){}
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
+  document.getElementById('bottomToolbar').style.display='flex';
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
@@ -6586,10 +7004,10 @@ function renderExecutiveOverview(ctx){
     // Tooltip on hover
     cG.on('mouseenter',function(){
       let h='<div class="tt-title">'+gn(vs.vpc,vs.vpc.VpcId)+'</div>';
-      h+='<div class="tt-sub">'+vs.vpc.VpcId+'</div>';
+      h+='<div class="tt-sub">'+esc(vs.vpc.VpcId)+'</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Overview</div>';
-      h+='<div class="tt-r">CIDR: <span class="i">'+vs.vpc.CidrBlock+'</span></div>';
-      h+='<div class="tt-r">Region: <span class="i">'+(vs.region||'Unknown')+'</span></div>';
+      h+='<div class="tt-r">CIDR: <span class="i">'+esc(vs.vpc.CidrBlock)+'</span></div>';
+      h+='<div class="tt-r">Region: <span class="i">'+esc(vs.region||'Unknown')+'</span></div>';
       h+='<div class="tt-r">Subnets: <span class="i">'+vs.subCount+'</span></div>';
       h+='<div class="tt-r">Total Resources: <span class="i">'+vs.total+'</span></div>';
       h+='</div>';
@@ -6683,6 +7101,7 @@ function renderExecutiveOverview(ctx){
   leg.style.display='flex';
   leg.classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
+  document.getElementById('bottomToolbar').style.display='flex';
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
@@ -8418,9 +8837,9 @@ function _renderMapInner(){
       // Tooltip (always)
       zG.on('mouseenter',function(){
         let h='<div class="tt-title">'+(isPub?'Public':'Private')+' Hosted Zone</div>';
-        h+='<div class="tt-sub">'+z.Name+'</div>';
+        h+='<div class="tt-sub">'+esc(z.Name)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">Zone ID</span> '+zid+'</div>';
+        h+='<div class="tt-r"><span class="i">Zone ID</span> '+esc(zid)+'</div>';
         h+='<div class="tt-r"><span class="i">Records</span> '+z.ResourceRecordSetCount+'</div>';
         h+='<div class="tt-r"><span class="i">Type</span> '+(isPub?'Public':'Private')+'</div>';
         if(!isPub&&z.VPCs&&z.VPCs.length>0){
@@ -8428,7 +8847,7 @@ function _renderMapInner(){
           z.VPCs.forEach(v=>{
             const vid=v.VPCId||v.VpcId;
             const vpc=vpcs.find(vp=>vp.VpcId===vid);
-            h+='<div class="tt-r"><span class="i">'+gn(vpc||{},vid)+'</span> '+vid+'</div>';
+            h+='<div class="tt-r"><span class="i">'+gn(vpc||{},vid)+'</span> '+esc(vid)+'</div>';
           });
         }
         h+='</div>';
@@ -8477,7 +8896,7 @@ function _renderMapInner(){
       
       bG.on('mouseenter',function(){
         let h='<div class="tt-title">S3 Bucket</div>';
-        h+='<div class="tt-sub">'+bk.Name+'</div>';
+        h+='<div class="tt-sub">'+esc(bk.Name)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">Created</span> '+(bk.CreationDate||'N/A').split('T')[0]+'</div>';
         h+='</div>';
@@ -8525,17 +8944,17 @@ function _renderMapInner(){
 
       cG.on('mouseenter',function(){
         let h='<div class="tt-title">CloudFront Distribution</div>';
-        h+='<div class="tt-sub">'+(d.DomainName||d.Id)+'</div>';
+        h+='<div class="tt-sub">'+esc(d.DomainName||d.Id)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">ID</span> '+d.Id+'</div>';
-        h+='<div class="tt-r"><span class="i">Status</span> '+(d.Status||'?')+'</div>';
-        if(aliases.length)h+='<div class="tt-r"><span class="i">Aliases</span> '+aliases.join(', ')+'</div>';
+        h+='<div class="tt-r"><span class="i">ID</span> '+esc(d.Id)+'</div>';
+        h+='<div class="tt-r"><span class="i">Status</span> '+esc(d.Status||'?')+'</div>';
+        if(aliases.length)h+='<div class="tt-r"><span class="i">Aliases</span> '+esc(aliases.join(', '))+'</div>';
         const origins=(d.Origins?.Items||[]);
         if(origins.length){
           h+='<div class="tt-sh" style="margin-top:4px">Origins</div>';
-          origins.forEach(o=>{h+='<div class="tt-r"><span class="i">'+(o.Id||'')+'</span> '+o.DomainName+'</div>'});
+          origins.forEach(o=>{h+='<div class="tt-r"><span class="i">'+esc(o.Id||'')+'</span> '+esc(o.DomainName)+'</div>'});
         }
-        if(d.WebACLId)h+='<div class="tt-r"><span class="i">WAF</span> '+d.WebACLId.split('/').pop()+'</div>';
+        if(d.WebACLId)h+='<div class="tt-r"><span class="i">WAF</span> '+esc(d.WebACLId.split('/').pop())+'</div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
       }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none'})
@@ -8554,6 +8973,7 @@ function _renderMapInner(){
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.style.cssText='border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08)';ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){}
+  try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
   try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){}
   // Design validation chip (when in design mode)
   if(_designMode&&_lastDesignValidation){
@@ -8581,6 +9001,7 @@ function _renderMapInner(){
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
+  document.getElementById('bottomToolbar').style.display='flex';
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
   }catch(e){console.error('renderMap error:',e);alert('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
 }
@@ -8636,7 +9057,7 @@ function _loadProjectData(project){
       return;
     }
   }
-  renderMap(()=>{_autoSaveSession();_renderNoteBadges();
+  renderMap(()=>{_autoSaveSession();_renderNoteBadges();_renderComplianceBadges();
     if(project.designChanges&&project.designChanges.length){if(!_designMode)enterDesignMode();if(project.designRegion)_designRegion=project.designRegion;project.designChanges.forEach(ch=>addDesignChange(ch));_showToast('Loaded with '+project.designChanges.length+' design changes')}
     else{_showToast('Project loaded')}
   });
@@ -8778,7 +9199,7 @@ document.getElementById('searchInput').addEventListener('input',function(){
   (_rlCtx.lambdaFns||[]).forEach(f=>{if(f.FunctionName.toLowerCase().includes(q))add('Lambda',f.FunctionName,f.FunctionName,f.Runtime)});
   (_rlCtx.sgs||[]).forEach(s=>{const n=s.GroupName||s.GroupId;if((n+' '+s.GroupId).toLowerCase().includes(q))add('SG',n,s.GroupId,s.VpcId)});
   _getAllNotes().forEach(n=>{if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))add('Note',n.text.slice(0,50),n.resourceId,n.category)});
-  let h='';matches.forEach(m=>{h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+m.id+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+m.name+'</span><span style="font-size:10px;color:var(--text-muted)">'+m.extra+'</span></div>'});
+  let h='';matches.forEach(m=>{h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span><span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
   if(!matches.length)h='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">No results</div>';
   res.innerHTML=h;
 });
@@ -8856,7 +9277,7 @@ function _addTimelineDot(container,snap,x,idx){
   dot.style.left=x+'px';
   const d=new Date(snap.timestamp);
   const timeStr=d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  dot.innerHTML='<div class="timeline-tooltip">'+snap.label+' - '+timeStr+'</div>';
+  dot.innerHTML='<div class="timeline-tooltip">'+esc(snap.label)+' - '+timeStr+'</div>';
   dot.addEventListener('click',()=>_viewSnapshot(idx));
   dot.addEventListener('contextmenu',function(ev){ev.preventDefault();if(typeof _compareWithSnapshot==='function')_compareWithSnapshot(snap)});
   dot.title='Click: view | Right-click: compare with current';
@@ -9067,6 +9488,91 @@ function _renderNoteBadges(){
     badge.append('circle').attr('r',6);
     badge.append('text').attr('text-anchor','middle').attr('dy','2.5').text(notes.length>1?notes.length:'N');
     badge.on('click',()=>{openNotesPanel();const f=document.getElementById('notesSearch');if(f){f.value=rid;f.dispatchEvent(new Event('input'))}});
+  });
+}
+// Build a lookup: resourceId → {worst severity, count, findings[]}
+function _buildComplianceLookup(){
+  const lookup={};
+  if(!_complianceFindings||!_complianceFindings.length)return lookup;
+  const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  _complianceFindings.forEach(f=>{
+    if(_isMuted(f))return;
+    const rid=f.resource;if(!rid||rid==='Multiple')return;
+    if(!lookup[rid])lookup[rid]={worst:'LOW',count:0,findings:[]};
+    lookup[rid].count++;
+    lookup[rid].findings.push(f);
+    if((sevOrder[f.severity]||9)<(sevOrder[lookup[rid].worst]||9))lookup[rid].worst=f.severity;
+  });
+  return lookup;
+}
+function _renderComplianceBadges(){
+  if(!_mapG)return;
+  _mapG.selectAll('.comp-badge').remove();
+  if(!_complianceFindings||!_complianceFindings.length)return;
+  const nodesLayer=_mapG.select('.nodes-layer');if(nodesLayer.empty())return;
+  const lookup=_buildComplianceLookup();
+  // For SGs/NACLs that aren't rendered as map nodes, roll up to their VPC
+  const vpcRollup={};
+  Object.entries(lookup).forEach(([rid,data])=>{
+    const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
+    if(el)return; // Has its own node — badge goes directly on it
+    // Try to find VPC for this resource
+    let vpcId=null;
+    if(_rlCtx){
+      const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===rid);if(sg){vpcId=sg.VpcId}
+      if(!vpcId){const nacl=(_rlCtx.nacls||[]).find(n=>n.NetworkAclId===rid);if(nacl)vpcId=nacl.VpcId}
+      if(!vpcId){const rt=(_rlCtx.rts||[]).find(r=>r.RouteTableId===rid);if(rt)vpcId=rt.VpcId}
+    }
+    if(vpcId){
+      if(!vpcRollup[vpcId])vpcRollup[vpcId]={worst:'LOW',count:0};
+      const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+      vpcRollup[vpcId].count+=data.count;
+      if((sevOrder[data.worst]||9)<(sevOrder[vpcRollup[vpcId].worst]||9))vpcRollup[vpcId].worst=data.worst;
+    }
+  });
+  const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  // Render badges on elements that exist on map
+  Object.entries(lookup).forEach(([rid,data])=>{
+    const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
+    if(!el)return;
+    const bb=el.getBBox();
+    // Offset from note badges — place on opposite corner (top-left)
+    const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform','translate('+(bb.x+8)+','+(bb.y+4)+')').style('cursor','pointer');
+    badge.node()._compRid=rid;
+    badge.append('circle').attr('r',7);
+    badge.append('text').attr('text-anchor','middle').attr('dy','2').text(data.count>9?'9+':data.count);
+    badge.on('click',()=>{
+      if(_complianceFindings.length){
+        _compDashState.search=rid;_compDashState.sevFilter='ALL';
+        renderCompliancePanel(_complianceFindings);
+        const si=document.getElementById('compSearch');if(si){si.value=rid;si.dispatchEvent(new Event('input'))}
+      }
+    });
+  });
+  // Render VPC rollup badges for SGs/NACLs/RTs
+  Object.entries(vpcRollup).forEach(([vpcId,data])=>{
+    // Merge with existing VPC badge if present
+    if(lookup[vpcId]){
+      const existing=lookup[vpcId];
+      data.count+=existing.count;
+      if((sevOrder[existing.worst]||9)<(sevOrder[data.worst]||9))data.worst=existing.worst;
+      // Remove the direct badge we already placed — we'll replace with merged
+      _mapG.selectAll('.comp-badge').filter(function(){return d3.select(this).attr('transform')&&this._compRid===vpcId}).remove();
+    }
+    const el=_mapG.node().querySelector('[data-vpc-id="'+vpcId+'"]');
+    if(!el)return;
+    const bb=el.getBBox();
+    const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform','translate('+(bb.x+8)+','+(bb.y+4)+')').style('cursor','pointer');
+    badge.node()._compRid=vpcId;
+    badge.append('circle').attr('r',7);
+    badge.append('text').attr('text-anchor','middle').attr('dy','2').text(data.count>9?'9+':data.count);
+    badge.on('click',()=>{
+      if(_complianceFindings.length){
+        _compDashState.search=vpcId;_compDashState.sevFilter='ALL';
+        renderCompliancePanel(_complianceFindings);
+        const si=document.getElementById('compSearch');if(si){si.value=vpcId;si.dispatchEvent(new Event('input'))}
+      }
+    });
   });
 }
 function openNotesPanel(){
@@ -9416,8 +9922,8 @@ function _renderAccountPanel(){
     h+='<div class="account-card" style="'+(ctx.visible?'':'opacity:.5')+'">';
     h+='<div class="ac-top">';
     h+='<div class="account-color-dot" style="background:'+(ctx.color||'var(--text-muted)')+'"></div>';
-    h+='<span class="ac-label" title="'+ctx.accountId+'">'+ctx.accountLabel+'</span>';
-    h+='<span class="ac-region">'+ctx.region+'</span>';
+    h+='<span class="ac-label" title="'+esc(ctx.accountId)+'">'+esc(ctx.accountLabel)+'</span>';
+    h+='<span class="ac-region">'+esc(ctx.region)+'</span>';
     h+='</div>';
     h+='<div class="ac-meta">';
     h+=vpcCount+' VPC'+(vpcCount!==1?'s':'')+' &middot; '+subCount+' Subnet'+(subCount!==1?'s':'')+' &middot; '+instCount+' EC2';
@@ -9487,6 +9993,1382 @@ document.getElementById('captureCurrentBtn').addEventListener('click',function()
   _renderAccountPanel();
   _showToast('Captured current context as account: '+ctx.accountLabel);
 });
+
+// === FIREWALL EDITOR DATA MODEL ===
+let _fwEdits=[];
+let _fwSnapshot=null;
+
+function _fwTakeSnapshot(){
+  if(_fwSnapshot) return;
+  if(!_rlCtx) return;
+  _fwSnapshot={
+    nacls:JSON.parse(JSON.stringify(_rlCtx.nacls||[])),
+    sgs:JSON.parse(JSON.stringify(_rlCtx.sgs||[])),
+    rts:JSON.parse(JSON.stringify(_rlCtx.rts||[]))
+  };
+}
+
+function _fwResetAll(){
+  if(!_fwSnapshot||!_rlCtx) return;
+  // Restore nacls preserving array reference
+  _rlCtx.nacls.length=0;
+  _fwSnapshot.nacls.forEach(n=>_rlCtx.nacls.push(JSON.parse(JSON.stringify(n))));
+  // Restore sgs preserving array reference
+  _rlCtx.sgs.length=0;
+  _fwSnapshot.sgs.forEach(s=>_rlCtx.sgs.push(JSON.parse(JSON.stringify(s))));
+  // Restore rts preserving array reference
+  _rlCtx.rts.length=0;
+  _fwSnapshot.rts.forEach(r=>_rlCtx.rts.push(JSON.parse(JSON.stringify(r))));
+  _fwRebuildLookups();
+  _fwEdits=[];
+  _fwSnapshot=null;
+}
+
+function _fwRebuildLookups(){
+  if(!_rlCtx) return;
+  // Rebuild subNacl
+  const subNacl={};
+  (_rlCtx.nacls||[]).forEach(n=>{
+    (n.Associations||[]).forEach(a=>{if(a.SubnetId) subNacl[a.SubnetId]=n});
+  });
+  _rlCtx.subNacl=subNacl;
+  // Rebuild subRT with main RT fallback
+  const mainRT={};
+  (_rlCtx.rts||[]).forEach(rt=>{
+    if((rt.Associations||[]).some(a=>a.Main)) mainRT[rt.VpcId]=rt;
+  });
+  const subRT={};
+  (_rlCtx.rts||[]).forEach(rt=>{
+    (rt.Associations||[]).forEach(a=>{if(a.SubnetId) subRT[a.SubnetId]=rt});
+  });
+  (_rlCtx.subnets||[]).forEach(s=>{
+    if(!subRT[s.SubnetId]&&mainRT[s.VpcId]) subRT[s.SubnetId]=mainRT[s.VpcId];
+  });
+  _rlCtx.subRT=subRT;
+  // Rebuild sgByVpc
+  const sgByVpc={};
+  (_rlCtx.sgs||[]).forEach(sg=>{
+    (sgByVpc[sg.VpcId]=sgByVpc[sg.VpcId]||[]).push(sg);
+  });
+  _rlCtx.sgByVpc=sgByVpc;
+}
+
+// --- Edit operations ---
+function _fwUndo(){
+  if(!_fwEdits.length) return null;
+  const edit=_fwEdits.pop();
+  if(edit.action==='add') _fwRemoveRule(edit);
+  else if(edit.action==='delete') _fwRestoreRule(edit);
+  else if(edit.action==='modify'){
+    _fwApplyRule(edit.type, edit.resourceId, edit.direction, edit.originalRule);
+  }
+  _fwRebuildLookups();
+  return edit;
+}
+
+function _fwRemoveRule(edit){
+  if(edit.type==='nacl'){
+    const nacl=(_rlCtx.nacls||[]).find(n=>n.NetworkAclId===edit.resourceId);
+    if(!nacl) return;
+    const isEgress=edit.direction==='egress';
+    const idx=(nacl.Entries||[]).findIndex(e=>
+      e.RuleNumber===edit.rule.RuleNumber && e.Egress===isEgress
+    );
+    if(idx>=0) nacl.Entries.splice(idx,1);
+  } else if(edit.type==='sg'){
+    const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===edit.resourceId);
+    if(!sg) return;
+    const arr=edit.direction==='ingress'?sg.IpPermissions:sg.IpPermissionsEgress;
+    if(!arr) return;
+    const idx=arr.findIndex(p=>_fwRuleMatch(p,edit.rule));
+    if(idx>=0) arr.splice(idx,1);
+  } else if(edit.type==='route'){
+    const rt=(_rlCtx.rts||[]).find(r=>r.RouteTableId===edit.resourceId);
+    if(!rt||!rt.Routes) return;
+    const idx=rt.Routes.findIndex(r=>r.DestinationCidrBlock===edit.rule.DestinationCidrBlock);
+    if(idx>=0) rt.Routes.splice(idx,1);
+  }
+}
+
+function _fwRestoreRule(edit){
+  if(edit.originalRule){
+    _fwApplyRule(edit.type, edit.resourceId, edit.direction, edit.originalRule);
+  }
+}
+
+function _fwApplyRule(type, resourceId, direction, ruleData){
+  if(type==='nacl'){
+    const nacl=(_rlCtx.nacls||[]).find(n=>n.NetworkAclId===resourceId);
+    if(!nacl) return;
+    if(!nacl.Entries) nacl.Entries=[];
+    const isEgress=direction==='egress';
+    const idx=nacl.Entries.findIndex(e=>
+      e.RuleNumber===ruleData.RuleNumber && e.Egress===isEgress
+    );
+    const entry=Object.assign({}, ruleData, {Egress:isEgress});
+    if(idx>=0) nacl.Entries[idx]=entry;
+    else nacl.Entries.push(entry);
+  } else if(type==='sg'){
+    const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===resourceId);
+    if(!sg) return;
+    const key=direction==='ingress'?'IpPermissions':'IpPermissionsEgress';
+    if(!sg[key]) sg[key]=[];
+    const arr=sg[key];
+    const idx=arr.findIndex(p=>_fwRuleMatch(p,ruleData));
+    if(idx>=0) arr[idx]=Object.assign({},ruleData);
+    else arr.push(Object.assign({},ruleData));
+  } else if(type==='route'){
+    const rt=(_rlCtx.rts||[]).find(r=>r.RouteTableId===resourceId);
+    if(!rt) return;
+    if(!rt.Routes) rt.Routes=[];
+    const idx=rt.Routes.findIndex(r=>r.DestinationCidrBlock===ruleData.DestinationCidrBlock);
+    if(idx>=0) rt.Routes[idx]=Object.assign({},ruleData);
+    else rt.Routes.push(Object.assign({},ruleData));
+  }
+}
+
+function _fwRuleMatch(a, b){
+  if(!a||!b) return false;
+  if(String(a.IpProtocol)!==String(b.IpProtocol)) return false;
+  if((a.FromPort||0)!==(b.FromPort||0)) return false;
+  if((a.ToPort||0)!==(b.ToPort||0)) return false;
+  const aCidrs=(a.IpRanges||[]).map(r=>r.CidrIp).sort().join(',');
+  const bCidrs=(b.IpRanges||[]).map(r=>r.CidrIp).sort().join(',');
+  if(aCidrs!==bCidrs) return false;
+  const aGrps=(a.UserIdGroupPairs||[]).map(g=>g.GroupId).sort().join(',');
+  const bGrps=(b.UserIdGroupPairs||[]).map(g=>g.GroupId).sort().join(',');
+  return aGrps===bGrps;
+}
+
+function _fwEditCount(resourceId){
+  return _fwEdits.filter(e=>e.resourceId===resourceId).length;
+}
+
+// --- Validation ---
+function _fwValidateCidr(cidr){
+  if(!cidr||typeof cidr!=='string') return false;
+  if(!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/.test(cidr)) return false;
+  const parts=cidr.split('/');
+  const octets=parts[0].split('.');
+  for(let i=0;i<4;i++){if(parseInt(octets[i],10)>255) return false}
+  if(parseInt(parts[1],10)>32) return false;
+  return true;
+}
+
+function _fwValidateNaclRule(rule, existingEntries, direction){
+  const errs=[];
+  const num=parseInt(rule.RuleNumber,10);
+  if(isNaN(num)||num<1||num>32766) errs.push('Rule number must be 1-32766');
+  const isEgress=direction==='egress';
+  if(existingEntries&&!isNaN(num)){
+    const dup=existingEntries.some(e=>
+      e.RuleNumber===num && e.Egress===isEgress
+    );
+    if(dup) errs.push('Duplicate rule number '+num+' in '+direction+' direction');
+  }
+  if(!_fwValidateCidr(rule.CidrBlock)) errs.push('Invalid CIDR format');
+  const proto=String(rule.Protocol);
+  if(proto==='6'||proto==='17'){
+    if(!rule.PortRange) errs.push('Port range required for TCP/UDP');
+    else{
+      const from=parseInt(rule.PortRange.From,10);
+      const to=parseInt(rule.PortRange.To,10);
+      if(isNaN(from)||isNaN(to)) errs.push('Invalid port range values');
+      else{
+        if(from<0||from>65535) errs.push('From port must be 0-65535');
+        if(to<0||to>65535) errs.push('To port must be 0-65535');
+        if(from>to) errs.push('From port must be <= To port');
+      }
+    }
+  }
+  return errs;
+}
+
+function _fwValidateSgRule(rule){
+  const errs=[];
+  const proto=String(rule.IpProtocol||'');
+  const validProtos=['tcp','udp','icmp','-1'];
+  if(!validProtos.includes(proto)) errs.push('Invalid protocol: '+proto);
+  if(proto==='tcp'||proto==='udp'){
+    const from=parseInt(rule.FromPort,10);
+    const to=parseInt(rule.ToPort,10);
+    if(isNaN(from)||isNaN(to)) errs.push('Port range required for TCP/UDP');
+    else{
+      if(from<0||from>65535) errs.push('FromPort must be 0-65535');
+      if(to<0||to>65535) errs.push('ToPort must be 0-65535');
+      if(from>to) errs.push('FromPort must be <= ToPort');
+    }
+  }
+  const hasCidr=(rule.IpRanges||[]).some(r=>r.CidrIp);
+  const hasSgRef=(rule.UserIdGroupPairs||[]).some(g=>g.GroupId);
+  if(!hasCidr&&!hasSgRef) errs.push('At least one source (CIDR or SG reference) required');
+  if(hasCidr){
+    (rule.IpRanges||[]).forEach(r=>{
+      if(r.CidrIp&&!_fwValidateCidr(r.CidrIp)) errs.push('Invalid CIDR: '+r.CidrIp);
+    });
+  }
+  return errs;
+}
+
+function _fwValidateRoute(route, existingRoutes){
+  const errs=[];
+  if(!_fwValidateCidr(route.DestinationCidrBlock)) errs.push('Invalid destination CIDR');
+  if(existingRoutes){
+    const dup=existingRoutes.some(r=>
+      r.DestinationCidrBlock===route.DestinationCidrBlock
+    );
+    if(dup) errs.push('Duplicate destination CIDR: '+route.DestinationCidrBlock);
+  }
+  const hasTarget=route.GatewayId||route.NatGatewayId||
+    route.TransitGatewayId||route.VpcPeeringConnectionId||route.VpcEndpointId;
+  if(!hasTarget) errs.push('Route target required');
+  return errs;
+}
+
+// --- Conflict warnings ---
+function _fwCheckNaclShadow(nacl, direction){
+  if(!nacl||!nacl.Entries) return [];
+  const isEgress=direction==='egress';
+  const entries=(nacl.Entries||[])
+    .filter(e=>e.Egress===isEgress && e.RuleNumber!==32767)
+    .sort((a,b)=>a.RuleNumber-b.RuleNumber);
+  const warnings=[];
+  for(let i=1;i<entries.length;i++){
+    for(let j=0;j<i;j++){
+      const hi=entries[i], lo=entries[j];
+      const sameCidr=(hi.CidrBlock||'')===(lo.CidrBlock||'');
+      const sameProto=(hi.Protocol||'')===(lo.Protocol||'') || lo.Protocol==='-1';
+      if(sameCidr&&sameProto&&hi.RuleAction!==lo.RuleAction){
+        warnings.push(
+          'Rule #'+hi.RuleNumber+' ('+hi.RuleAction+') is shadowed by #'+
+          lo.RuleNumber+' ('+lo.RuleAction+') — same CIDR '+
+          (hi.CidrBlock||'any')+', evaluated first'
+        );
+      }
+    }
+  }
+  return warnings;
+}
+
+// --- CLI generation ---
+function _fwGenerateCli(edits){
+  const list=edits||_fwEdits;
+  const cmds=[];
+  list.forEach(edit=>{
+    if(edit.type==='nacl') _fwGenNaclCli(edit, cmds);
+    else if(edit.type==='sg') _fwGenSgCli(edit, cmds);
+    else if(edit.type==='route') _fwGenRouteCli(edit, cmds);
+  });
+  return cmds;
+}
+
+function _fwGenNaclCli(edit, cmds){
+  const id=edit.resourceId;
+  const dirFlag=edit.direction==='egress'?'--egress':'--ingress';
+  if(edit.action==='add'){
+    cmds.push(_fwNaclEntryCmd('create-network-acl-entry', id, edit.rule, dirFlag));
+  } else if(edit.action==='modify'){
+    cmds.push(_fwNaclEntryCmd('replace-network-acl-entry', id, edit.rule, dirFlag));
+  } else if(edit.action==='delete'){
+    cmds.push(
+      'aws ec2 delete-network-acl-entry --network-acl-id '+id+
+      ' --rule-number '+edit.rule.RuleNumber+' '+dirFlag
+    );
+  }
+}
+
+function _fwNaclEntryCmd(verb, naclId, rule, dirFlag){
+  let cmd='aws ec2 '+verb+' --network-acl-id '+naclId+
+    ' --rule-number '+rule.RuleNumber+' '+dirFlag+
+    ' --protocol '+rule.Protocol+
+    ' --cidr-block '+rule.CidrBlock;
+  if(rule.PortRange){
+    cmd+=' --port-range From='+rule.PortRange.From+',To='+rule.PortRange.To;
+  }
+  cmd+=' --rule-action '+rule.RuleAction;
+  return cmd;
+}
+
+function _fwGenSgCli(edit, cmds){
+  const id=edit.resourceId;
+  const suffix=edit.direction==='ingress'?'ingress':'egress';
+  if(edit.action==='add'){
+    cmds.push(_fwSgRuleCmd('authorize-security-group-'+suffix, id, edit.rule));
+  } else if(edit.action==='delete'){
+    cmds.push(_fwSgRuleCmd('revoke-security-group-'+suffix, id, edit.rule));
+  } else if(edit.action==='modify'){
+    // Modify = revoke old, authorize new
+    if(edit.originalRule){
+      cmds.push(_fwSgRuleCmd('revoke-security-group-'+suffix, id, edit.originalRule));
+    }
+    cmds.push(_fwSgRuleCmd('authorize-security-group-'+suffix, id, edit.rule));
+  }
+}
+
+function _fwSgRuleCmd(verb, sgId, rule){
+  let cmd='aws ec2 '+verb+' --group-id '+sgId+
+    ' --protocol '+rule.IpProtocol;
+  if(rule.FromPort!==undefined&&rule.FromPort!==-1){
+    cmd+=' --port '+rule.FromPort;
+    if(rule.ToPort!==undefined&&rule.ToPort!==rule.FromPort){
+      cmd+='-'+rule.ToPort;
+    }
+  }
+  const cidrs=(rule.IpRanges||[]).map(r=>r.CidrIp).filter(Boolean);
+  const sgRefs=(rule.UserIdGroupPairs||[]).map(g=>g.GroupId).filter(Boolean);
+  if(cidrs.length) cmd+=' --cidr '+cidrs[0];
+  else if(sgRefs.length) cmd+=' --source-group '+sgRefs[0];
+  return cmd;
+}
+
+function _fwGenRouteCli(edit, cmds){
+  const id=edit.resourceId;
+  if(edit.action==='add'){
+    cmds.push(_fwRouteCmd('create-route', id, edit.rule));
+  } else if(edit.action==='modify'){
+    cmds.push(_fwRouteCmd('replace-route', id, edit.rule));
+  } else if(edit.action==='delete'){
+    cmds.push(
+      'aws ec2 delete-route --route-table-id '+id+
+      ' --destination-cidr-block '+edit.rule.DestinationCidrBlock
+    );
+  }
+}
+
+function _fwRouteCmd(verb, rtId, route){
+  let cmd='aws ec2 '+verb+' --route-table-id '+rtId+
+    ' --destination-cidr-block '+route.DestinationCidrBlock;
+  if(route.GatewayId) cmd+=' --gateway-id '+route.GatewayId;
+  else if(route.NatGatewayId) cmd+=' --nat-gateway-id '+route.NatGatewayId;
+  else if(route.TransitGatewayId) cmd+=' --transit-gateway-id '+route.TransitGatewayId;
+  else if(route.VpcPeeringConnectionId) cmd+=' --vpc-peering-connection-id '+route.VpcPeeringConnectionId;
+  else if(route.VpcEndpointId) cmd+=' --vpc-endpoint-id '+route.VpcEndpointId;
+  return cmd;
+}
+
+// === FIREWALL EDITOR RENDERING ===
+
+function _fwProtoLabel(proto){
+  var p=String(proto);
+  if(p==='6') return 'TCP';
+  if(p==='17') return 'UDP';
+  if(p==='1') return 'ICMP';
+  if(p==='-1') return 'ALL';
+  return p;
+}
+
+function _fwRenderNaclInline(nacl, sub){
+  var naclId=nacl.NetworkAclId;
+  var ec=_fwEditCount(naclId);
+  var h='<div class="dp-kv"><span class="k">ID</span><span class="v">'+naclId+(ec?'<span class="fw-badge edits">'+ec+' edit'+(ec>1?'s':'')+'</span>':'')+'</span></div>';
+  h+='<div class="dp-kv"><span class="k">Name</span><span class="v">'+gn(nacl,naclId)+'</span></div>';
+  h+=_fwRenderNaclDirection(nacl, (nacl.Entries||[]).filter(function(e){return !e.Egress}).sort(function(a,b){return a.RuleNumber-b.RuleNumber}), 'ingress', sub);
+  h+=_fwRenderNaclDirection(nacl, (nacl.Entries||[]).filter(function(e){return e.Egress}).sort(function(a,b){return a.RuleNumber-b.RuleNumber}), 'egress', sub);
+  var iWarn=_fwCheckNaclShadow(nacl,'ingress');
+  var eWarn=_fwCheckNaclShadow(nacl,'egress');
+  var allWarn=iWarn.concat(eWarn);
+  if(allWarn.length){
+    h+='<div style="margin-top:6px;padding:4px 6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));font-family:\'IBM Plex Mono\',monospace">';
+    h+='<div style="color:var(--accent-orange);font-weight:600;margin-bottom:2px">Shadow Warnings</div>';
+    allWarn.forEach(function(w){h+='<div style="color:var(--text-muted);margin:1px 0">'+_escHtml(w)+'</div>'});
+    h+='</div>';
+  }
+  h+='<div class="fw-toolbar">';
+  h+='<button data-fw-action="full-editor" data-nacl-id="'+naclId+'">Full Editor</button>';
+  h+='<button data-fw-action="export-cli" data-fw-type="nacl" data-nacl-id="'+naclId+'">Export CLI</button>';
+  h+='<button data-fw-action="undo">Undo</button>';
+  h+='<button data-fw-action="reset">Reset</button>';
+  h+='</div>';
+  return h;
+}
+
+function _fwRenderNaclDirection(nacl, entries, direction, sub){
+  var naclId=nacl.NetworkAclId;
+  var label=direction==='ingress'?'INBOUND RULES':'OUTBOUND RULES';
+  var isEgress=direction==='egress';
+  var h='<div style="margin-top:6px"><div class="dp-row"><span class="lbl">'+label+'</span></div>';
+  var userRules=entries.filter(function(e){return e.RuleNumber!==32767});
+  userRules.forEach(function(e){
+    var cls=e.RuleAction==='allow'?'allow':'deny';
+    var proto=_fwProtoLabel(e.Protocol);
+    var port=(e.PortRange)?e.PortRange.From+'-'+e.PortRange.To:'ALL';
+    h+='<div class="fw-edit-row">';
+    h+='<div class="fw-arrow '+cls+'"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div>';
+    h+='<span class="fw-proto">'+proto+'</span>';
+    h+='<span class="fw-port '+cls+'">#'+e.RuleNumber+' '+port+'</span>';
+    h+='<span class="fw-src">'+(e.CidrBlock||'any')+'</span>';
+    h+='<span style="margin-left:auto;display:flex;gap:2px">';
+    h+='<button class="fw-edit-btn edit" data-fw-action="edit-nacl" data-nacl-id="'+naclId+'" data-rule-num="'+e.RuleNumber+'" data-egress="'+isEgress+'" data-direction="'+direction+'" title="Edit">&#9998;</button>';
+    h+='<button class="fw-edit-btn del" data-fw-action="delete-nacl" data-nacl-id="'+naclId+'" data-rule-num="'+e.RuleNumber+'" data-egress="'+isEgress+'" data-direction="'+direction+'" title="Delete">&#10005;</button>';
+    h+='</span></div>';
+  });
+  h+='<div class="fw-edit-row" style="opacity:.4">';
+  h+='<div class="fw-arrow deny"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div>';
+  h+='<span class="fw-proto">ALL</span>';
+  h+='<span class="fw-port deny">#* ALL</span>';
+  h+='<span class="fw-src">0.0.0.0/0</span>';
+  h+='</div>';
+  h+='<button class="fw-edit-btn add" data-fw-action="add-nacl" data-nacl-id="'+naclId+'" data-egress="'+isEgress+'" data-direction="'+direction+'">+ Add Rule</button>';
+  h+='</div>';
+  return h;
+}
+
+function _fwShowNaclEditForm(naclId, ruleNum, egress, container){
+  var nacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===naclId});
+  if(!nacl) return;
+  var isEgress=(egress==='true'||egress===true);
+  var direction=isEgress?'egress':'ingress';
+  var existing=null;
+  if(ruleNum!==null&&ruleNum!==undefined){
+    var rn=parseInt(ruleNum,10);
+    existing=(nacl.Entries||[]).find(function(e){return e.RuleNumber===rn&&e.Egress===isEgress});
+  }
+  var proto=existing?String(existing.Protocol):'-1';
+  var portFrom=existing&&existing.PortRange?existing.PortRange.From:'';
+  var portTo=existing&&existing.PortRange?existing.PortRange.To:'';
+  var cidr=existing?existing.CidrBlock||'':'0.0.0.0/0';
+  var rAction=existing?existing.RuleAction:'allow';
+  var rNum=existing?existing.RuleNumber:'';
+  var disablePorts=(proto==='-1'||proto==='1')?'disabled':'';
+  var row=document.createElement('div');
+  row.className='fw-edit-row new-rule';
+  row.setAttribute('data-fw-form','nacl');
+  var formHtml=
+    '<input class="fw-input" data-field="ruleNum" type="number" min="1" max="32766" placeholder="#" value="'+rNum+'" style="width:48px" title="Rule Number">'+
+    '<select class="fw-select" data-field="action" title="Action">'+
+      '<option value="allow"'+(rAction==='allow'?' selected':'')+'>Allow</option>'+
+      '<option value="deny"'+(rAction==='deny'?' selected':'')+'>Deny</option>'+
+    '</select>'+
+    '<select class="fw-select" data-field="protocol" title="Protocol">'+
+      '<option value="6"'+(proto==='6'?' selected':'')+'>TCP</option>'+
+      '<option value="17"'+(proto==='17'?' selected':'')+'>UDP</option>'+
+      '<option value="1"'+(proto==='1'?' selected':'')+'>ICMP</option>'+
+      '<option value="-1"'+(proto==='-1'?' selected':'')+'>ALL</option>'+
+    '</select>'+
+    '<input class="fw-input" data-field="portFrom" type="number" min="0" max="65535" placeholder="From" value="'+portFrom+'" style="width:52px" '+disablePorts+'>'+
+    '<input class="fw-input" data-field="portTo" type="number" min="0" max="65535" placeholder="To" value="'+portTo+'" style="width:52px" '+disablePorts+'>'+
+    '<input class="fw-input" data-field="cidr" placeholder="CIDR" value="'+_escHtml(cidr)+'" style="width:100px">'+
+    '<button class="fw-edit-btn save" data-fw-action="save-nacl" data-nacl-id="'+naclId+'" data-egress="'+isEgress+'" data-direction="'+direction+'"'+(existing?' data-editing="'+rNum+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
+  row.innerHTML=formHtml;
+  container.appendChild(row);
+  var protoSel=row.querySelector('[data-field="protocol"]');
+  protoSel.addEventListener('change',function(){
+    var v=protoSel.value;
+    var pfEl=row.querySelector('[data-field="portFrom"]');
+    var ptEl=row.querySelector('[data-field="portTo"]');
+    if(v==='-1'||v==='1'){pfEl.disabled=true;ptEl.disabled=true;pfEl.value='';ptEl.value=''}
+    else{pfEl.disabled=false;ptEl.disabled=false}
+  });
+}
+
+function _fwRenderSgInline(sg){
+  var sgId=sg.GroupId;
+  var ec=_fwEditCount(sgId);
+  var h='<div style="margin-bottom:8px;padding:6px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px">';
+  h+='<div class="dp-kv"><span class="k">'+_escHtml(sg.GroupName)+'</span><span class="v">'+sgId+(ec?'<span class="fw-badge edits">'+ec+' edit'+(ec>1?'s':'')+'</span>':'')+'</span></div>';
+  if(sg.Description) h+='<div style="font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--text-muted);margin-bottom:4px">'+_escHtml(sg.Description)+'</div>';
+  h+=_fwRenderSgDirection(sg,'ingress');
+  h+=_fwRenderSgDirection(sg,'egress');
+  h+='<div class="fw-toolbar">';
+  h+='<button data-fw-action="full-editor" data-sg-id="'+sgId+'">Full Editor</button>';
+  h+='<button data-fw-action="export-cli" data-fw-type="sg" data-sg-id="'+sgId+'">Export CLI</button>';
+  h+='<button data-fw-action="undo">Undo</button>';
+  h+='<button data-fw-action="reset">Reset</button>';
+  h+='</div></div>';
+  return h;
+}
+
+function _fwRenderSgDirection(sg, direction){
+  var sgId=sg.GroupId;
+  var label=direction==='ingress'?'INBOUND':'OUTBOUND';
+  var rules=direction==='ingress'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
+  var h='<div style="margin-top:4px"><div class="dp-row"><span class="lbl">'+label+'</span></div>';
+  rules.forEach(function(p,idx){
+    var proto=p.IpProtocol==='-1'?'ALL':p.IpProtocol.toUpperCase();
+    var port=p.IpProtocol==='-1'?'ALL':p.FromPort===p.ToPort?(p.FromPort||'ALL'):(p.FromPort||'*')+'-'+(p.ToPort||'*');
+    var sources=(p.IpRanges||[]).map(function(r){return r.CidrIp}).concat((p.UserIdGroupPairs||[]).map(function(g){return g.GroupId}));
+    var srcStr=sources.length?sources.join(', '):'any';
+    h+='<div class="fw-edit-row">';
+    h+='<div class="fw-arrow allow"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div>';
+    h+='<span class="fw-proto">'+proto+'</span>';
+    h+='<span class="fw-port allow">'+port+'</span>';
+    h+='<span class="fw-src">'+_escHtml(srcStr)+'</span>';
+    h+='<span style="margin-left:auto;display:flex;gap:2px">';
+    h+='<button class="fw-edit-btn edit" data-fw-action="edit-sg" data-sg-id="'+sgId+'" data-rule-idx="'+idx+'" data-direction="'+direction+'" title="Edit">&#9998;</button>';
+    h+='<button class="fw-edit-btn del" data-fw-action="delete-sg" data-sg-id="'+sgId+'" data-rule-idx="'+idx+'" data-direction="'+direction+'" title="Delete">&#10005;</button>';
+    h+='</span></div>';
+  });
+  h+='<button class="fw-edit-btn add" data-fw-action="add-sg" data-sg-id="'+sgId+'" data-direction="'+direction+'">+ Add Rule</button>';
+  h+='</div>';
+  return h;
+}
+
+function _fwShowSgEditForm(sgId, ruleIdx, direction, container){
+  var sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===sgId});
+  if(!sg) return;
+  var rules=direction==='ingress'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
+  var existing=(ruleIdx!==null&&ruleIdx!==undefined)?rules[parseInt(ruleIdx,10)]:null;
+  var proto=existing?String(existing.IpProtocol):'tcp';
+  var portFrom=existing&&existing.FromPort!==undefined&&existing.FromPort!==-1?existing.FromPort:'';
+  var portTo=existing&&existing.ToPort!==undefined&&existing.ToPort!==-1?existing.ToPort:'';
+  var source='0.0.0.0/0';
+  if(existing){
+    var cidrs=(existing.IpRanges||[]).map(function(r){return r.CidrIp}).filter(Boolean);
+    var sgRefs=(existing.UserIdGroupPairs||[]).map(function(g){return g.GroupId}).filter(Boolean);
+    if(cidrs.length) source=cidrs[0];
+    else if(sgRefs.length) source=sgRefs[0];
+  }
+  var disablePorts=(proto==='-1'||proto==='icmp')?'disabled':'';
+  var row=document.createElement('div');
+  row.className='fw-edit-row new-rule';
+  row.setAttribute('data-fw-form','sg');
+  var formHtml=
+    '<select class="fw-select" data-field="protocol" title="Protocol">'+
+      '<option value="tcp"'+(proto==='tcp'?' selected':'')+'>TCP</option>'+
+      '<option value="udp"'+(proto==='udp'?' selected':'')+'>UDP</option>'+
+      '<option value="icmp"'+(proto==='icmp'?' selected':'')+'>ICMP</option>'+
+      '<option value="-1"'+(proto==='-1'?' selected':'')+'>ALL</option>'+
+    '</select>'+
+    '<input class="fw-input" data-field="portFrom" type="number" min="0" max="65535" placeholder="From" value="'+portFrom+'" style="width:52px" '+disablePorts+'>'+
+    '<input class="fw-input" data-field="portTo" type="number" min="0" max="65535" placeholder="To" value="'+portTo+'" style="width:52px" '+disablePorts+'>'+
+    '<input class="fw-input" data-field="source" placeholder="CIDR or sg-xxx" value="'+_escHtml(source)+'" style="width:110px">'+
+    '<button class="fw-edit-btn save" data-fw-action="save-sg" data-sg-id="'+sgId+'" data-direction="'+direction+'"'+(existing?' data-editing="'+ruleIdx+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
+  row.innerHTML=formHtml;
+  container.appendChild(row);
+  var protoSel=row.querySelector('[data-field="protocol"]');
+  protoSel.addEventListener('change',function(){
+    var v=protoSel.value;
+    var pfEl=row.querySelector('[data-field="portFrom"]');
+    var ptEl=row.querySelector('[data-field="portTo"]');
+    if(v==='-1'||v==='icmp'){pfEl.disabled=true;ptEl.disabled=true;pfEl.value='';ptEl.value=''}
+    else{pfEl.disabled=false;ptEl.disabled=false}
+  });
+}
+
+function _fwRenderRtInline(rt, vpcId, lk){
+  var rtId=rt.RouteTableId;
+  var ec=_fwEditCount(rtId);
+  var h='<div class="dp-kv"><span class="k">ID</span><span class="v">'+rtId+(ec?'<span class="fw-badge edits">'+ec+' edit'+(ec>1?'s':'')+'</span>':'')+'</span></div>';
+  h+='<div class="dp-kv"><span class="k">Name</span><span class="v">'+gn(rt,rtId)+'</span></div>';
+  (rt.Routes||[]).forEach(function(r,idx){
+    var dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
+    var tgt=r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||r.VpcEndpointId||'local';
+    var isLocal=(tgt==='local');
+    h+='<div class="fw-edit-row">';
+    h+='<span style="color:var(--text-primary);min-width:100px">'+_escHtml(dest)+'</span>';
+    h+='<span class="p" style="margin:0 4px">-&gt;</span>';
+    h+='<span>'+routeTgtHtml(tgt)+'</span>';
+    if(!isLocal){
+      h+='<span style="margin-left:auto;display:flex;gap:2px">';
+      h+='<button class="fw-edit-btn edit" data-fw-action="edit-rt" data-rt-id="'+rtId+'" data-rule-idx="'+idx+'" title="Edit">&#9998;</button>';
+      h+='<button class="fw-edit-btn del" data-fw-action="delete-rt" data-rt-id="'+rtId+'" data-rule-idx="'+idx+'" title="Delete">&#10005;</button>';
+      h+='</span>';
+    }
+    h+='</div>';
+  });
+  h+='<button class="fw-edit-btn add" data-fw-action="add-rt" data-rt-id="'+rtId+'">+ Add Route</button>';
+  h+='<div class="fw-toolbar">';
+  h+='<button data-fw-action="full-editor" data-rt-id="'+rtId+'">Full Editor</button>';
+  h+='<button data-fw-action="export-cli" data-fw-type="route" data-rt-id="'+rtId+'">Export CLI</button>';
+  h+='<button data-fw-action="undo">Undo</button>';
+  h+='<button data-fw-action="reset">Reset</button>';
+  h+='</div>';
+  return h;
+}
+
+function _fwShowRtEditForm(rtId, routeIdx, container, vpcId, lk){
+  var rt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===rtId});
+  if(!rt) return;
+  var existing=(routeIdx!==null&&routeIdx!==undefined)?(rt.Routes||[])[parseInt(routeIdx,10)]:null;
+  var dest=existing?existing.DestinationCidrBlock||'':'';
+  var selTgt='';
+  if(existing){
+    selTgt=existing.GatewayId||existing.NatGatewayId||existing.TransitGatewayId||existing.VpcPeeringConnectionId||existing.VpcEndpointId||'';
+  }
+  var opts='<option value="">-- select target --</option>';
+  opts+='<option value="local"'+(selTgt==='local'?' selected':'')+'>local</option>';
+  (lk.igws||[]).forEach(function(g){
+    var att=(g.Attachments||[]);
+    if(att.some(function(a){return a.VpcId===vpcId})){
+      var sel=selTgt===g.InternetGatewayId?' selected':'';
+      opts+='<option value="'+g.InternetGatewayId+'"'+sel+'>'+g.InternetGatewayId+' (IGW)</option>';
+    }
+  });
+  (lk.nats||[]).forEach(function(n){
+    if(n.VpcId===vpcId){
+      var sel=selTgt===n.NatGatewayId?' selected':'';
+      opts+='<option value="'+n.NatGatewayId+'"'+sel+'>'+n.NatGatewayId+' (NAT)</option>';
+    }
+  });
+  (lk.vpces||[]).forEach(function(v){
+    if(v.VpcId===vpcId){
+      var sel=selTgt===v.VpcEndpointId?' selected':'';
+      opts+='<option value="'+v.VpcEndpointId+'"'+sel+'>'+v.VpcEndpointId+' (VPCE)</option>';
+    }
+  });
+  (lk.peerings||[]).forEach(function(p){
+    var req=p.RequesterVpcInfo||{};
+    var acc=p.AccepterVpcInfo||{};
+    if(req.VpcId===vpcId||acc.VpcId===vpcId){
+      var sel=selTgt===p.VpcPeeringConnectionId?' selected':'';
+      opts+='<option value="'+p.VpcPeeringConnectionId+'"'+sel+'>'+p.VpcPeeringConnectionId+' (PCX)</option>';
+    }
+  });
+  (lk.tgwAttachments||[]).forEach(function(t){
+    if(t.VpcId===vpcId&&t.TransitGatewayId){
+      var sel=selTgt===t.TransitGatewayId?' selected':'';
+      opts+='<option value="'+t.TransitGatewayId+'"'+sel+'>'+t.TransitGatewayId+' (TGW)</option>';
+    }
+  });
+  var row=document.createElement('div');
+  row.className='fw-edit-row new-rule';
+  row.setAttribute('data-fw-form','route');
+  var formHtml=
+    '<input class="fw-input" data-field="dest" placeholder="Dest CIDR" value="'+_escHtml(dest)+'" style="width:110px">'+
+    '<span class="p" style="margin:0 4px">-&gt;</span>'+
+    '<select class="fw-select" data-field="target" style="width:160px" title="Target">'+opts+'</select>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-rt" data-rt-id="'+rtId+'"'+(existing?' data-editing="'+routeIdx+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
+  row.innerHTML=formHtml;
+  container.appendChild(row);
+}
+
+// === FIREWALL FULL PANEL EDITOR ===
+var _fwFpType=null, _fwFpResId=null, _fwFpSub=null, _fwFpVpcId=null, _fwFpLk=null, _fwFpDir='ingress';
+
+function _fwOpenFullEditor(type, resourceId, sub, vpcId, lk){
+  _fwFpType=type;
+  _fwFpResId=resourceId;
+  _fwFpSub=sub;
+  _fwFpVpcId=vpcId;
+  _fwFpLk=lk;
+  _fwFpDir='ingress';
+
+  var titleEl=document.getElementById('fwFpTitle');
+  var label=type==='nacl'?'NACL':type==='sg'?'Security Group':'Route Table';
+  var name='';
+  if(type==='nacl'){
+    var nacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===resourceId});
+    if(nacl) name=gn(nacl,resourceId);
+  } else if(type==='sg'){
+    var sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===resourceId});
+    if(sg) name=sg.GroupName||gn(sg,resourceId);
+  } else if(type==='route'){
+    var rt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===resourceId});
+    if(rt) name=gn(rt,resourceId);
+  }
+  titleEl.textContent=label+': '+(name||resourceId);
+
+  // Show/hide tabs: route tables don't have direction
+  var tabsEl=document.getElementById('fwFpTabs');
+  tabsEl.style.display=(type==='route')?'none':'flex';
+
+  // Show retrace button if flow trace is active
+  var retraceBtn=document.getElementById('fwFpRetrace');
+  retraceBtn.style.display=_flowMode?'inline-block':'none';
+
+  _fwRefreshFullPanel();
+  document.getElementById('fwFullPanel').classList.add('open');
+}
+
+function _fwRefreshFullPanel(){
+  if(!_fwFpType||!_fwFpResId) return;
+  var bodyEl=document.getElementById('fwFpBody');
+  var visualEl=document.getElementById('fwFpVisual');
+  var cliEl=document.getElementById('fwFpCli');
+  var h='';
+
+  // Update tab active state
+  var tabs=document.querySelectorAll('#fwFpTabs .fw-fp-tab');
+  tabs.forEach(function(t){
+    t.classList.toggle('active', t.getAttribute('data-dir')===_fwFpDir);
+  });
+
+  if(_fwFpType==='nacl'){
+    var nacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===_fwFpResId});
+    if(!nacl){ bodyEl.innerHTML='<div style="color:var(--text-muted);padding:12px">NACL not found</div>'; return; }
+    var isEgress=_fwFpDir==='egress';
+    var entries=(nacl.Entries||[]).filter(function(e){return isEgress?e.Egress:!e.Egress}).sort(function(a,b){return a.RuleNumber-b.RuleNumber});
+    h+=_fwRenderNaclDirection(nacl, entries, _fwFpDir, _fwFpSub);
+    // Shadow warnings for this direction
+    var warns=_fwCheckNaclShadow(nacl, _fwFpDir);
+    if(warns.length){
+      h+='<div style="margin-top:6px;padding:4px 6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace">';
+      h+='<div style="color:var(--accent-orange);font-weight:600;margin-bottom:2px">Shadow Warnings</div>';
+      warns.forEach(function(w){h+='<div style="color:var(--text-muted);margin:1px 0">'+_escHtml(w)+'</div>'});
+      h+='</div>';
+    }
+  } else if(_fwFpType==='sg'){
+    var sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===_fwFpResId});
+    if(!sg){ bodyEl.innerHTML='<div style="color:var(--text-muted);padding:12px">Security Group not found</div>'; return; }
+    h+=_fwRenderSgDirection(sg, _fwFpDir);
+  } else if(_fwFpType==='route'){
+    var rt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===_fwFpResId});
+    if(!rt){ bodyEl.innerHTML='<div style="color:var(--text-muted);padding:12px">Route Table not found</div>'; return; }
+    // Route tables: render all routes (no direction concept)
+    var rtId=rt.RouteTableId;
+    (rt.Routes||[]).forEach(function(r,idx){
+      var dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
+      var tgt=r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||r.VpcEndpointId||'local';
+      var isLocal=(tgt==='local');
+      h+='<div class="fw-edit-row">';
+      h+='<span style="color:var(--text-primary);min-width:100px">'+_escHtml(dest)+'</span>';
+      h+='<span class="p" style="margin:0 4px">-&gt;</span>';
+      h+='<span>'+routeTgtHtml(tgt)+'</span>';
+      if(!isLocal){
+        h+='<span style="margin-left:auto;display:flex;gap:2px">';
+        h+='<button class="fw-edit-btn edit" data-fw-action="edit-rt" data-rt-id="'+rtId+'" data-rule-idx="'+idx+'" title="Edit">&#9998;</button>';
+        h+='<button class="fw-edit-btn del" data-fw-action="delete-rt" data-rt-id="'+rtId+'" data-rule-idx="'+idx+'" title="Delete">&#10005;</button>';
+        h+='</span>';
+      }
+      h+='</div>';
+    });
+    h+='<button class="fw-edit-btn add" data-fw-action="add-rt" data-rt-id="'+rt.RouteTableId+'">+ Add Route</button>';
+  }
+
+  bodyEl.innerHTML=h;
+
+  // Click delegation for edit actions within the full panel body
+  // _fwHandleAction handles full panel refresh after data-modifying actions
+  bodyEl.onclick=function(ev){
+    _fwHandleAction(ev, _fwFpSub, _fwFpVpcId, _fwFpLk);
+  };
+
+  // Render visual pane: show arrow visualization for current direction
+  var vH='';
+  if(_fwFpType==='nacl'){
+    var vNacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===_fwFpResId});
+    if(vNacl){
+      var vIsEgress=_fwFpDir==='egress';
+      var vEntries=(vNacl.Entries||[]).filter(function(e){return vIsEgress?e.Egress:!e.Egress}).sort(function(a,b){return a.RuleNumber-b.RuleNumber});
+      var vLabel=_fwFpDir==='ingress'?'INBOUND':'OUTBOUND';
+      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:\'IBM Plex Mono\',monospace">'+vLabel+' FLOW</div>';
+      vEntries.filter(function(e){return e.RuleNumber!==32767}).forEach(function(e){
+        var cls=e.RuleAction==='allow'?'allow':'deny';
+        var proto=_fwProtoLabel(e.Protocol);
+        var port=(e.PortRange)?e.PortRange.From+'-'+e.PortRange.To:'ALL';
+        vH+='<div class="fw-edit-row" style="padding:2px 0">';
+        vH+='<div class="fw-arrow '+cls+'"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div>';
+        vH+='<span style="font-size:9px;color:var(--text-muted)">#'+e.RuleNumber+' '+proto+' '+port+' '+(e.RuleAction==='allow'?'ALLOW':'DENY')+'</span>';
+        vH+='</div>';
+      });
+      vH+='<div class="fw-edit-row" style="padding:2px 0;opacity:.4"><div class="fw-arrow deny"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div><span style="font-size:9px;color:var(--text-muted)">#* DENY ALL</span></div>';
+    }
+  } else if(_fwFpType==='sg'){
+    var vSg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===_fwFpResId});
+    if(vSg){
+      var vRules=_fwFpDir==='ingress'?(vSg.IpPermissions||[]):(vSg.IpPermissionsEgress||[]);
+      var vLabel2=_fwFpDir==='ingress'?'INBOUND':'OUTBOUND';
+      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:\'IBM Plex Mono\',monospace">'+vLabel2+' FLOW</div>';
+      vRules.forEach(function(p){
+        var proto=p.IpProtocol==='-1'?'ALL':p.IpProtocol.toUpperCase();
+        var port=p.IpProtocol==='-1'?'ALL':p.FromPort===p.ToPort?(p.FromPort||'ALL'):(p.FromPort||'*')+'-'+(p.ToPort||'*');
+        var sources=(p.IpRanges||[]).map(function(r){return r.CidrIp}).concat((p.UserIdGroupPairs||[]).map(function(g){return g.GroupId}));
+        var srcStr=sources.length?sources.join(', '):'any';
+        vH+='<div class="fw-edit-row" style="padding:2px 0">';
+        vH+='<div class="fw-arrow allow"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div>';
+        vH+='<span style="font-size:9px;color:var(--text-muted)">'+proto+' '+port+' from '+_escHtml(srcStr)+'</span>';
+        vH+='</div>';
+      });
+      if(!vRules.length){
+        vH+='<div style="font-size:9px;color:var(--text-muted);padding:4px 0">No rules</div>';
+      }
+    }
+  } else if(_fwFpType==='route'){
+    var vRt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===_fwFpResId});
+    if(vRt){
+      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:\'IBM Plex Mono\',monospace">ROUTE FLOW</div>';
+      (vRt.Routes||[]).forEach(function(r){
+        var dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
+        var tgt=r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||r.VpcEndpointId||'local';
+        vH+='<div class="fw-edit-row" style="padding:2px 0">';
+        vH+='<div class="fw-arrow allow"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div>';
+        vH+='<span style="font-size:9px;color:var(--text-muted)">'+_escHtml(dest)+' &rarr; '+_escHtml(tgt)+'</span>';
+        vH+='</div>';
+      });
+    }
+  }
+  visualEl.innerHTML=vH;
+
+  // Render CLI pane: filtered edits for this resource
+  var filtered=_fwEdits.filter(function(ed){return ed.resourceId===_fwFpResId});
+  var cmds=_fwGenerateCli(filtered);
+  if(cmds.length){
+    cliEl.textContent=cmds.join('\n');
+  } else {
+    cliEl.innerHTML='<span style="color:var(--text-muted);font-style:italic">No pending edits</span>';
+  }
+}
+
+// === FIREWALL EVENT HANDLER ===
+
+function _fwHandleAction(e, sub, vpcId, lk){
+  var el=e.target.closest('[data-fw-action]');
+  if(!el) return;
+  e.stopPropagation();
+  var action=el.getAttribute('data-fw-action');
+  var _inFullPanel=!!el.closest('#fwFpBody');
+  var dpBody=_inFullPanel?document.getElementById('fwFpBody'):document.getElementById('dpBody');
+
+  if(action==='cancel-edit'){
+    var form=el.closest('[data-fw-form]');
+    if(form) form.remove();
+    return;
+  }
+  if(action==='undo'){
+    _fwUndo();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+  if(action==='reset'){
+    _fwResetAll();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+  if(action==='export-cli'){
+    var fwType=el.getAttribute('data-fw-type');
+    var resId=el.getAttribute('data-nacl-id')||el.getAttribute('data-sg-id')||el.getAttribute('data-rt-id');
+    var filtered=_fwEdits.filter(function(ed){return ed.type===fwType&&ed.resourceId===resId});
+    var cmds=_fwGenerateCli(filtered);
+    if(cmds.length){
+      var txt=cmds.join('\n');
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(function(){
+          el.textContent='Copied!';
+          setTimeout(function(){el.textContent='Export CLI'},1500);
+        }).catch(function(){el.textContent='Copy failed';setTimeout(function(){el.textContent='Export CLI'},1500)});
+      } else {
+        el.textContent=cmds.length+' cmd(s)';
+        setTimeout(function(){el.textContent='Export CLI'},1500);
+      }
+    } else {
+      el.textContent='No edits';
+      setTimeout(function(){el.textContent='Export CLI'},1500);
+    }
+    return;
+  }
+  if(action==='full-editor'){
+    var feNaclId=el.getAttribute('data-nacl-id');
+    var feSgId=el.getAttribute('data-sg-id');
+    var feRtId=el.getAttribute('data-rt-id');
+    var feType=feNaclId?'nacl':feSgId?'sg':'route';
+    var feId=feNaclId||feSgId||feRtId;
+    _fwOpenFullEditor(feType, feId, sub, vpcId, lk);
+    return;
+  }
+
+  // NACL actions
+  if(action==='edit-nacl'){
+    dpBody.querySelectorAll('[data-fw-form]').forEach(function(f){f.remove()});
+    var naclId=el.getAttribute('data-nacl-id');
+    var ruleNum=el.getAttribute('data-rule-num');
+    var egress=el.getAttribute('data-egress');
+    var parentRow=el.closest('.fw-edit-row');
+    var insertAfter=parentRow||el.closest('.dp-row');
+    if(insertAfter&&insertAfter.parentNode){
+      _fwShowNaclEditForm(naclId, ruleNum, egress, insertAfter.parentNode);
+    }
+    return;
+  }
+  if(action==='add-nacl'){
+    dpBody.querySelectorAll('[data-fw-form]').forEach(function(f){f.remove()});
+    var naclId2=el.getAttribute('data-nacl-id');
+    var egress2=el.getAttribute('data-egress');
+    var parent2=el.parentNode;
+    if(parent2){
+      _fwShowNaclEditForm(naclId2, null, egress2, parent2);
+    }
+    return;
+  }
+  if(action==='delete-nacl'){
+    var dNaclId=el.getAttribute('data-nacl-id');
+    var dRuleNum=parseInt(el.getAttribute('data-rule-num'),10);
+    var dEgress=el.getAttribute('data-egress')==='true';
+    var dDirection=dEgress?'egress':'ingress';
+    var dNacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===dNaclId});
+    if(!dNacl) return;
+    var dEntry=(dNacl.Entries||[]).find(function(en){return en.RuleNumber===dRuleNum&&en.Egress===dEgress});
+    if(!dEntry) return;
+    _fwTakeSnapshot();
+    var dIdx=(dNacl.Entries||[]).findIndex(function(en){return en.RuleNumber===dRuleNum&&en.Egress===dEgress});
+    if(dIdx>=0) dNacl.Entries.splice(dIdx,1);
+    _fwEdits.push({type:'nacl',resourceId:dNaclId,direction:dDirection,action:'delete',rule:Object.assign({},dEntry),originalRule:Object.assign({},dEntry)});
+    _fwRebuildLookups();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+  if(action==='save-nacl'){
+    var sNaclId=el.getAttribute('data-nacl-id');
+    var sEgress=el.getAttribute('data-egress')==='true';
+    var sDirection=el.getAttribute('data-direction');
+    var sEditing=el.getAttribute('data-editing');
+    var formRow=el.closest('[data-fw-form]');
+    if(!formRow) return;
+    var rn=parseInt(formRow.querySelector('[data-field="ruleNum"]').value,10);
+    var act=formRow.querySelector('[data-field="action"]').value;
+    var proto=formRow.querySelector('[data-field="protocol"]').value;
+    var pf=formRow.querySelector('[data-field="portFrom"]').value;
+    var pt=formRow.querySelector('[data-field="portTo"]').value;
+    var cidr=formRow.querySelector('[data-field="cidr"]').value.trim();
+    var ruleObj={
+      RuleNumber:rn,
+      Protocol:proto,
+      RuleAction:act,
+      CidrBlock:cidr,
+      Egress:sEgress
+    };
+    if(proto==='6'||proto==='17'){
+      ruleObj.PortRange={From:parseInt(pf,10)||0,To:parseInt(pt,10)||0};
+    }
+    var sNacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===sNaclId});
+    var otherEntries=sNacl?(sNacl.Entries||[]).filter(function(en){
+      if(sEditing!==null&&sEditing!==undefined&&en.RuleNumber===parseInt(sEditing,10)&&en.Egress===sEgress) return false;
+      return true;
+    }):[];
+    var errs=_fwValidateNaclRule(ruleObj, otherEntries, sDirection);
+    formRow.querySelectorAll('.fw-input,.fw-select').forEach(function(inp){inp.classList.remove('invalid')});
+    if(errs.length){
+      errs.forEach(function(er){
+        if(er.indexOf('Rule number')>=0) formRow.querySelector('[data-field="ruleNum"]').classList.add('invalid');
+        if(er.indexOf('CIDR')>=0) formRow.querySelector('[data-field="cidr"]').classList.add('invalid');
+        if(er.indexOf('Port')>=0||er.indexOf('port')>=0){
+          var pfEl=formRow.querySelector('[data-field="portFrom"]');
+          var ptEl=formRow.querySelector('[data-field="portTo"]');
+          if(pfEl) pfEl.classList.add('invalid');
+          if(ptEl) ptEl.classList.add('invalid');
+        }
+      });
+      return;
+    }
+    _fwTakeSnapshot();
+    var editAction='add';
+    var origRule=null;
+    if(sEditing!==null&&sEditing!==undefined){
+      var editRn=parseInt(sEditing,10);
+      origRule=(sNacl.Entries||[]).find(function(en){return en.RuleNumber===editRn&&en.Egress===sEgress});
+      if(origRule) origRule=Object.assign({},origRule);
+      var oldIdx=(sNacl.Entries||[]).findIndex(function(en){return en.RuleNumber===editRn&&en.Egress===sEgress});
+      if(oldIdx>=0) sNacl.Entries.splice(oldIdx,1);
+      editAction='modify';
+    }
+    _fwApplyRule('nacl', sNaclId, sDirection, ruleObj);
+    var editObj={type:'nacl',resourceId:sNaclId,direction:sDirection,action:editAction,rule:Object.assign({},ruleObj)};
+    if(origRule) editObj.originalRule=origRule;
+    _fwEdits.push(editObj);
+    _fwRebuildLookups();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+
+  // SG actions
+  if(action==='edit-sg'){
+    dpBody.querySelectorAll('[data-fw-form]').forEach(function(f){f.remove()});
+    var sgId3=el.getAttribute('data-sg-id');
+    var rIdx3=el.getAttribute('data-rule-idx');
+    var dir3=el.getAttribute('data-direction');
+    var parentRow3=el.closest('.fw-edit-row');
+    if(parentRow3&&parentRow3.parentNode){
+      _fwShowSgEditForm(sgId3, rIdx3, dir3, parentRow3.parentNode);
+    }
+    return;
+  }
+  if(action==='add-sg'){
+    dpBody.querySelectorAll('[data-fw-form]').forEach(function(f){f.remove()});
+    var sgId4=el.getAttribute('data-sg-id');
+    var dir4=el.getAttribute('data-direction');
+    var parent4=el.parentNode;
+    if(parent4){
+      _fwShowSgEditForm(sgId4, null, dir4, parent4);
+    }
+    return;
+  }
+  if(action==='delete-sg'){
+    var dSgId=el.getAttribute('data-sg-id');
+    var dRIdx=parseInt(el.getAttribute('data-rule-idx'),10);
+    var dDir=el.getAttribute('data-direction');
+    var dSg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===dSgId});
+    if(!dSg) return;
+    var dArr=dDir==='ingress'?dSg.IpPermissions:dSg.IpPermissionsEgress;
+    if(!dArr||dRIdx>=dArr.length) return;
+    var dRule=JSON.parse(JSON.stringify(dArr[dRIdx]));
+    _fwTakeSnapshot();
+    dArr.splice(dRIdx,1);
+    _fwEdits.push({type:'sg',resourceId:dSgId,direction:dDir,action:'delete',rule:dRule,originalRule:dRule});
+    _fwRebuildLookups();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+  if(action==='save-sg'){
+    var sSgId=el.getAttribute('data-sg-id');
+    var sDir=el.getAttribute('data-direction');
+    var sEditIdx=el.getAttribute('data-editing');
+    var sgForm=el.closest('[data-fw-form]');
+    if(!sgForm) return;
+    var sgProto=sgForm.querySelector('[data-field="protocol"]').value;
+    var sgPf=sgForm.querySelector('[data-field="portFrom"]').value;
+    var sgPt=sgForm.querySelector('[data-field="portTo"]').value;
+    var sgSrc=sgForm.querySelector('[data-field="source"]').value.trim();
+    var sgRule={IpProtocol:sgProto};
+    if(sgProto==='tcp'||sgProto==='udp'){
+      sgRule.FromPort=parseInt(sgPf,10)||0;
+      sgRule.ToPort=parseInt(sgPt,10)||0;
+    } else if(sgProto==='-1'){
+      sgRule.FromPort=-1;
+      sgRule.ToPort=-1;
+    }
+    if(sgSrc.startsWith('sg-')){
+      sgRule.UserIdGroupPairs=[{GroupId:sgSrc}];
+      sgRule.IpRanges=[];
+    } else {
+      sgRule.IpRanges=[{CidrIp:sgSrc}];
+      sgRule.UserIdGroupPairs=[];
+    }
+    var sgErrs=_fwValidateSgRule(sgRule);
+    sgForm.querySelectorAll('.fw-input,.fw-select').forEach(function(inp){inp.classList.remove('invalid')});
+    if(sgErrs.length){
+      sgErrs.forEach(function(er){
+        if(er.indexOf('protocol')>=0) sgForm.querySelector('[data-field="protocol"]').classList.add('invalid');
+        if(er.indexOf('Port')>=0||er.indexOf('port')>=0){
+          var spf=sgForm.querySelector('[data-field="portFrom"]');
+          var spt=sgForm.querySelector('[data-field="portTo"]');
+          if(spf) spf.classList.add('invalid');
+          if(spt) spt.classList.add('invalid');
+        }
+        if(er.indexOf('source')>=0||er.indexOf('CIDR')>=0) sgForm.querySelector('[data-field="source"]').classList.add('invalid');
+      });
+      return;
+    }
+    _fwTakeSnapshot();
+    var sgEditAct='add';
+    var sgOrig=null;
+    var sSg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===sSgId});
+    if(sEditIdx!==null&&sEditIdx!==undefined&&sSg){
+      var eIdx=parseInt(sEditIdx,10);
+      var sArr=sDir==='ingress'?sSg.IpPermissions:sSg.IpPermissionsEgress;
+      if(sArr&&eIdx<sArr.length){
+        sgOrig=JSON.parse(JSON.stringify(sArr[eIdx]));
+        sArr.splice(eIdx,1);
+        sgEditAct='modify';
+      }
+    }
+    _fwApplyRule('sg', sSgId, sDir, sgRule);
+    var sgEdit={type:'sg',resourceId:sSgId,direction:sDir,action:sgEditAct,rule:JSON.parse(JSON.stringify(sgRule))};
+    if(sgOrig) sgEdit.originalRule=sgOrig;
+    _fwEdits.push(sgEdit);
+    _fwRebuildLookups();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+
+  // Route Table actions
+  if(action==='edit-rt'){
+    dpBody.querySelectorAll('[data-fw-form]').forEach(function(f){f.remove()});
+    var rtId5=el.getAttribute('data-rt-id');
+    var rIdx5=el.getAttribute('data-rule-idx');
+    var parentRow5=el.closest('.fw-edit-row');
+    if(parentRow5&&parentRow5.parentNode){
+      _fwShowRtEditForm(rtId5, rIdx5, parentRow5.parentNode, vpcId, lk);
+    }
+    return;
+  }
+  if(action==='add-rt'){
+    dpBody.querySelectorAll('[data-fw-form]').forEach(function(f){f.remove()});
+    var rtId6=el.getAttribute('data-rt-id');
+    var parent6=el.parentNode;
+    if(parent6){
+      _fwShowRtEditForm(rtId6, null, parent6, vpcId, lk);
+    }
+    return;
+  }
+  if(action==='delete-rt'){
+    var dRtId=el.getAttribute('data-rt-id');
+    var dRtIdx=parseInt(el.getAttribute('data-rule-idx'),10);
+    var dRt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===dRtId});
+    if(!dRt||!dRt.Routes||dRtIdx>=dRt.Routes.length) return;
+    var dRoute=Object.assign({},dRt.Routes[dRtIdx]);
+    _fwTakeSnapshot();
+    dRt.Routes.splice(dRtIdx,1);
+    _fwEdits.push({type:'route',resourceId:dRtId,direction:'egress',action:'delete',rule:dRoute,originalRule:dRoute});
+    _fwRebuildLookups();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+  if(action==='save-rt'){
+    var sRtId=el.getAttribute('data-rt-id');
+    var sRtEdit=el.getAttribute('data-editing');
+    var rtForm=el.closest('[data-fw-form]');
+    if(!rtForm) return;
+    var rtDest=rtForm.querySelector('[data-field="dest"]').value.trim();
+    var rtTgt=rtForm.querySelector('[data-field="target"]').value;
+    var routeObj={DestinationCidrBlock:rtDest};
+    if(rtTgt==='local') routeObj.GatewayId='local';
+    else if(rtTgt.startsWith('igw-')) routeObj.GatewayId=rtTgt;
+    else if(rtTgt.startsWith('nat-')) routeObj.NatGatewayId=rtTgt;
+    else if(rtTgt.startsWith('vpce-')) routeObj.VpcEndpointId=rtTgt;
+    else if(rtTgt.startsWith('pcx-')) routeObj.VpcPeeringConnectionId=rtTgt;
+    else if(rtTgt.startsWith('tgw-')) routeObj.TransitGatewayId=rtTgt;
+    else routeObj.GatewayId=rtTgt;
+    var sRt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===sRtId});
+    var otherRoutes=sRt?(sRt.Routes||[]).filter(function(r,ri){
+      if(sRtEdit!==null&&sRtEdit!==undefined&&ri===parseInt(sRtEdit,10)) return false;
+      return true;
+    }):[];
+    var rtErrs=_fwValidateRoute(routeObj, otherRoutes);
+    rtForm.querySelectorAll('.fw-input,.fw-select').forEach(function(inp){inp.classList.remove('invalid')});
+    if(rtErrs.length){
+      rtErrs.forEach(function(er){
+        if(er.indexOf('destination')>=0||er.indexOf('CIDR')>=0) rtForm.querySelector('[data-field="dest"]').classList.add('invalid');
+        if(er.indexOf('target')>=0) rtForm.querySelector('[data-field="target"]').classList.add('invalid');
+      });
+      return;
+    }
+    _fwTakeSnapshot();
+    var rtEditAct='add';
+    var rtOrig=null;
+    if(sRtEdit!==null&&sRtEdit!==undefined&&sRt){
+      var rtEIdx=parseInt(sRtEdit,10);
+      if(sRt.Routes&&rtEIdx<sRt.Routes.length){
+        rtOrig=Object.assign({},sRt.Routes[rtEIdx]);
+        sRt.Routes.splice(rtEIdx,1);
+        rtEditAct='modify';
+      }
+    }
+    _fwApplyRule('route', sRtId, 'egress', routeObj);
+    var rtEditObj={type:'route',resourceId:sRtId,direction:'egress',action:rtEditAct,rule:Object.assign({},routeObj)};
+    if(rtOrig) rtEditObj.originalRule=rtOrig;
+    _fwEdits.push(rtEditObj);
+    _fwRebuildLookups();
+    openSubnetPanel(sub, vpcId, lk);
+    if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
+    return;
+  }
+}
+
+// === FIREWALL DASHBOARD ===
+var _fwDashFilter='all';
+var _fwDashExpanded=null;
+
+function openFirewallDash(){
+  if(!_rlCtx){alert('Render a map first');return}
+  var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
+  if(!sgs.length&&!nacls.length&&!rts.length){alert('No security groups, NACLs, or route tables loaded');return}
+  _fwDashFilter='all';_fwDashExpanded=null;
+  // Build type pills
+  var pills=document.getElementById('fwDashPills');
+  pills.textContent='';
+  [{t:'all',l:'All',c:sgs.length+nacls.length+rts.length},{t:'sg',l:'SG',c:sgs.length},{t:'nacl',l:'NACL',c:nacls.length},{t:'route',l:'RT',c:rts.length}].forEach(function(p){
+    var el=document.createElement('span');el.className='fw-dash-pill'+(p.t==='all'?' active':'');
+    el.dataset.type=p.t;el.textContent=p.c+' '+p.l;
+    el.addEventListener('click',function(){
+      _fwDashFilter=p.t;pills.querySelectorAll('.fw-dash-pill').forEach(function(x){x.classList.remove('active')});el.classList.add('active');
+      _fwDashExpanded=null;_fwDashRender();
+    });
+    pills.appendChild(el);
+  });
+  // Build VPC filter
+  var vpcSel=document.getElementById('fwDashVpcFilter');
+  vpcSel.textContent='';
+  var allOpt=document.createElement('option');allOpt.value='all';allOpt.textContent='All VPCs';vpcSel.appendChild(allOpt);
+  (_rlCtx.vpcs||[]).forEach(function(v){
+    var o=document.createElement('option');o.value=v.VpcId;o.textContent=gn(v,v.VpcId)+' ('+v.VpcId+')';vpcSel.appendChild(o);
+  });
+  _fwDashRender();
+  document.getElementById('fwDash').classList.add('open');
+}
+
+function closeFirewallDash(){document.getElementById('fwDash').classList.remove('open')}
+
+function _fwDashRender(){
+  var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
+  var search=(document.getElementById('fwDashSearch').value||'').toLowerCase();
+  var vpcFilter=document.getElementById('fwDashVpcFilter').value;
+  var sortBy=document.getElementById('fwDashSort').value;
+  var editsOnly=document.getElementById('fwDashEditsOnly').checked;
+  var compLookup=_buildComplianceLookup();
+
+  // Build unified rows
+  var rows=[];
+  sgs.forEach(function(sg){
+    var name=sg.GroupName||gn(sg,sg.GroupId);
+    var inCount=(sg.IpPermissions||[]).length;var outCount=(sg.IpPermissionsEgress||[]).length;
+    var ec=_fwEditCount(sg.GroupId);
+    var cf=compLookup[sg.GroupId]||null;
+    rows.push({type:'sg',id:sg.GroupId,name:name,vpc:sg.VpcId,rules:inCount+outCount,rulesLabel:inCount+' in / '+outCount+' out',edits:ec,desc:sg.Description||'',obj:sg,comp:cf});
+  });
+  nacls.forEach(function(n){
+    var name=gn(n,n.NetworkAclId);
+    var entries=n.Entries||[];
+    var inCount=entries.filter(function(e){return !e.Egress&&e.RuleNumber!==32767}).length;
+    var outCount=entries.filter(function(e){return e.Egress&&e.RuleNumber!==32767}).length;
+    var ec=_fwEditCount(n.NetworkAclId);
+    var cf=compLookup[n.NetworkAclId]||null;
+    rows.push({type:'nacl',id:n.NetworkAclId,name:name,vpc:n.VpcId,rules:inCount+outCount,rulesLabel:inCount+' in / '+outCount+' out',edits:ec,desc:'',obj:n,comp:cf});
+  });
+  rts.forEach(function(r){
+    var name=gn(r,r.RouteTableId);
+    var rc=(r.Routes||[]).length;
+    var ec=_fwEditCount(r.RouteTableId);
+    var cf=compLookup[r.RouteTableId]||null;
+    rows.push({type:'route',id:r.RouteTableId,name:name,vpc:r.VpcId,rules:rc,rulesLabel:rc+' routes',edits:ec,desc:'',obj:r,comp:cf});
+  });
+
+  // Apply filters
+  if(_fwDashFilter!=='all') rows=rows.filter(function(r){return r.type===_fwDashFilter});
+  if(vpcFilter!=='all') rows=rows.filter(function(r){return r.vpc===vpcFilter});
+  if(editsOnly) rows=rows.filter(function(r){return r.edits>0});
+  if(search) rows=rows.filter(function(r){return (r.name+' '+r.id+' '+r.vpc+' '+r.desc).toLowerCase().indexOf(search)!==-1});
+
+  // Sort
+  rows.sort(function(a,b){
+    if(sortBy==='type') return a.type.localeCompare(b.type)||a.name.localeCompare(b.name);
+    if(sortBy==='name') return a.name.localeCompare(b.name);
+    if(sortBy==='vpc') return (a.vpc||'').localeCompare(b.vpc||'');
+    if(sortBy==='rules') return b.rules-a.rules;
+    if(sortBy==='compliance'){var sevOrd={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};var sa=a.comp?(sevOrd[a.comp.worst]||9):99;var sb2=b.comp?(sevOrd[b.comp.worst]||9):99;return sa-sb2}
+    return 0;
+  });
+
+  // Build table
+  var body=document.getElementById('fwDashBody');
+  var tbl=document.createElement('table');
+  var thead=document.createElement('thead');
+  var hRow=document.createElement('tr');
+  ['Type','Name','ID','VPC','Rules','Compliance','Edits',''].forEach(function(h){
+    var th=document.createElement('th');th.textContent=h;hRow.appendChild(th);
+  });
+  thead.appendChild(hRow);tbl.appendChild(thead);
+
+  var tbody=document.createElement('tbody');
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    tr.className='fw-row'+(r.edits?' has-edits':'')+(r.comp?' has-findings':'');
+
+    var tdType=document.createElement('td');
+    var badge=document.createElement('span');badge.className='fw-type-badge '+r.type;
+    badge.textContent=r.type==='sg'?'SG':r.type==='nacl'?'NACL':'RT';
+    tdType.appendChild(badge);tr.appendChild(tdType);
+
+    var tdName=document.createElement('td');tdName.textContent=r.name;
+    tdName.style.cssText='font-weight:500;color:var(--text-primary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    tr.appendChild(tdName);
+
+    var tdId=document.createElement('td');tdId.textContent=r.id;
+    tdId.style.cssText='font-size:10px;color:var(--text-muted)';tr.appendChild(tdId);
+
+    var tdVpc=document.createElement('td');
+    var vpcName=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===r.vpc});
+    tdVpc.textContent=vpcName?gn(vpcName,r.vpc):r.vpc||'—';
+    tdVpc.style.cssText='font-size:10px;color:var(--text-secondary)';tr.appendChild(tdVpc);
+
+    var tdRules=document.createElement('td');tdRules.textContent=r.rulesLabel;
+    tdRules.style.cssText='font-size:10px';tr.appendChild(tdRules);
+
+    var tdComp=document.createElement('td');
+    if(r.comp){var cb=document.createElement('span');cb.className='fw-comp-badge sev-'+r.comp.worst;cb.textContent=r.comp.count+' '+(r.comp.count===1?'finding':'findings');cb.title=r.comp.findings.map(function(f){return f.severity+': '+f.message}).join('\n');tdComp.appendChild(cb)}
+    else{tdComp.textContent='—';tdComp.style.cssText='color:var(--text-muted);font-size:10px'}
+    tr.appendChild(tdComp);
+
+    var tdEdits=document.createElement('td');
+    if(r.edits){var eb=document.createElement('span');eb.className='fw-edit-badge';eb.textContent=r.edits+' edit'+(r.edits>1?'s':'');tdEdits.appendChild(eb)}
+    tr.appendChild(tdEdits);
+
+    var tdAction=document.createElement('td');
+    var openBtn=document.createElement('button');
+    openBtn.textContent='Edit';
+    openBtn.style.cssText='background:none;border:1px solid var(--border);border-radius:3px;color:var(--accent-cyan);font-size:9px;padding:2px 8px;cursor:pointer;font-family:"IBM Plex Mono",monospace';
+    openBtn.addEventListener('click',function(e){e.stopPropagation();_fwOpenFullEditor(r.type,r.id,null,r.vpc,null)});
+    tdAction.appendChild(openBtn);tr.appendChild(tdAction);
+
+    tr.addEventListener('click',function(){
+      if(_fwDashExpanded===r.id){
+        _fwDashExpanded=null;
+        var ex=tbody.querySelector('.fw-expand-row[data-for="'+r.id+'"]');
+        if(ex)ex.remove();
+        tr.style.background='';
+        return;
+      }
+      // Collapse previous
+      var prev=tbody.querySelector('.fw-expand-row');if(prev)prev.remove();
+      tbody.querySelectorAll('.fw-row').forEach(function(x){x.style.background=''});
+      _fwDashExpanded=r.id;
+      tr.style.background='rgba(59,130,246,.08)';
+      // Create expanded row
+      var exTr=document.createElement('tr');exTr.className='fw-expand-row';exTr.dataset.for=r.id;
+      var exTd=document.createElement('td');exTd.colSpan=8;exTd.className='fw-expand-row';
+      // Render rules inline
+      var rulesHtml='';
+      if(r.type==='nacl') rulesHtml=_fwRenderNaclInline(r.obj,null);
+      else if(r.type==='sg') rulesHtml=_fwRenderSgInline(r.obj);
+      else if(r.type==='route') rulesHtml=_fwRenderRtInline(r.obj,r.vpc,null);
+      // Append compliance findings if any
+      if(r.comp&&r.comp.findings.length){
+        rulesHtml+='<div class="fw-findings-section"><div style="font-size:10px;font-weight:600;color:var(--accent-orange);margin-bottom:6px">Compliance Findings ('+r.comp.count+')</div>';
+        r.comp.findings.forEach(function(f){
+          rulesHtml+='<div class="fw-finding-item"><span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 4px">'+f.severity+'</span>';
+          rulesHtml+='<span class="fw-finding-ctrl">'+f.control+'</span>';
+          rulesHtml+='<span class="fw-finding-msg">'+_escHtml(f.message)+'</span></div>';
+          rulesHtml+='<div class="fw-finding-item" style="padding-left:90px"><span class="fw-finding-rem">Remediation: '+_escHtml(f.remediation)+'</span></div>';
+        });
+        rulesHtml+='</div>';
+      }
+      exTd.innerHTML=rulesHtml;
+      // Wire up event delegation for fw actions inside expanded row
+      exTd.addEventListener('click',function(ev){_fwHandleAction(ev,null,r.vpc,null)});
+      exTr.appendChild(exTd);
+      // Insert after current row
+      if(tr.nextSibling) tbody.insertBefore(exTr,tr.nextSibling);
+      else tbody.appendChild(exTr);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+
+  body.textContent='';
+  if(!rows.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='padding:60px 20px;text-align:center;color:var(--text-muted);font-family:"IBM Plex Mono",monospace;font-size:12px';
+    empty.textContent=editsOnly?'No resources with pending edits':'No firewall resources match filters';
+    body.appendChild(empty);
+  } else {
+    body.appendChild(tbl);
+  }
+
+  // Update footer
+  var totalEdits=_fwEdits?_fwEdits.length:0;
+  document.getElementById('fwDashEditCount').textContent=totalEdits?totalEdits+' edit'+(totalEdits>1?'s':'')+' pending':'No pending edits';
+}
+
+// Dashboard event handlers
+document.getElementById('fwDashClose').addEventListener('click',closeFirewallDash);
+document.getElementById('fwDashSearch').addEventListener('input',function(){_fwDashExpanded=null;_fwDashRender()});
+document.getElementById('fwDashVpcFilter').addEventListener('change',function(){_fwDashExpanded=null;_fwDashRender()});
+document.getElementById('fwDashSort').addEventListener('change',function(){_fwDashExpanded=null;_fwDashRender()});
+document.getElementById('fwDashEditsOnly').addEventListener('change',function(){_fwDashExpanded=null;_fwDashRender()});
+document.getElementById('fwDashExportAll').addEventListener('click',function(){
+  if(!_fwEdits||!_fwEdits.length){alert('No edits to export');return}
+  var cmds=_fwGenerateCli(_fwEdits);
+  if(cmds.length&&navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(cmds.join('\n')).then(function(){
+      var btn=document.getElementById('fwDashExportAll');btn.textContent='Copied!';setTimeout(function(){btn.textContent='Export All CLI'},1500);
+    }).catch(function(){var btn=document.getElementById('fwDashExportAll');btn.textContent='Copy failed';setTimeout(function(){btn.textContent='Export All CLI'},1500)});
+  }
+});
+document.getElementById('fwDashResetAll').addEventListener('click',function(){
+  if(!_fwEdits||!_fwEdits.length){alert('No edits to reset');return}
+  if(!confirm('Reset all '+_fwEdits.length+' firewall edits?'))return;
+  _fwResetAll();_fwDashRender();
+});
+
+document.getElementById('firewallBtn').addEventListener('click',openFirewallDash);
 
 // === TRAFFIC FLOW VISUALIZATION ===
 let _flowMode=false;
@@ -9864,7 +11746,7 @@ function enterFlowMode(presetSource){
   if(presetSource){
     var srcPos=_resolveNetworkPosition(presetSource.type, presetSource.id, _rlCtx);
     var srcName=srcPos?srcPos.name:presetSource.id;
-    document.getElementById('flowLabel').innerHTML='TRACE FLOW: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+srcName+'</span> \u2192 Click a target resource';
+    document.getElementById('flowLabel').innerHTML='TRACE FLOW: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+esc(srcName)+'</span> \u2192 Click a target resource';
     document.getElementById('flowSrcName')?.addEventListener('click',function(e){e.stopPropagation();_flowResetToSource();});
     _highlightFlowNode(presetSource,'source');
   } else {
@@ -9917,7 +11799,7 @@ function _flowClickHandler(event){
     _clearFlowHighlights();
     var srcPos=_resolveNetworkPosition(target.type, target.id, _rlCtx);
     var srcName=srcPos?srcPos.name:target.id;
-    document.getElementById('flowLabel').innerHTML='TRACE FLOW: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+srcName+'</span> \u2192 Click a target resource';
+    document.getElementById('flowLabel').innerHTML='TRACE FLOW: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+esc(srcName)+'</span> \u2192 Click a target resource';
     document.getElementById('flowSrcName')?.addEventListener('click',function(e){e.stopPropagation();_flowResetToSource();});
     _highlightFlowNode(target,'source');
   } else if(_flowSelecting==='target'){
@@ -10786,6 +12668,11 @@ document.getElementById('compSearch').addEventListener('input',function(){_compD
 document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_renderCompDash(_complianceFindings)});
 document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash(_complianceFindings)});
 document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_renderCompDash(_complianceFindings)});
+document.getElementById('compToggleSummary').addEventListener('click',function(){
+  const el=document.getElementById('compExecSummary');if(!el)return;
+  if(el.style.display==='none'){el.style.display='block';_renderExecSummary();this.textContent='Hide Summary'}
+  else{el.style.display='none';this.textContent='Executive Summary'}
+});
 
 // === AUTO-SAVE / CRASH RECOVERY ===
 const _SAVE_KEY='aws_mapper_session';const _SAVE_INTERVAL=30000;
@@ -10858,8 +12745,37 @@ document.getElementById('dpBody').addEventListener('click',function(e){
   const v=e.target.closest('.dp-kv .v');
   if(v&&v.textContent.trim()){e.stopPropagation();copyText(v.textContent.trim())}
 });
+// Full panel editor event handlers
+document.getElementById('fwFpClose').addEventListener('click',function(){
+  document.getElementById('fwFullPanel').classList.remove('open');
+});
+document.getElementById('fwFpTabs').addEventListener('click',function(e){
+  var tab=e.target.closest('.fw-fp-tab');
+  if(!tab) return;
+  _fwFpDir=tab.getAttribute('data-dir');
+  _fwRefreshFullPanel();
+});
+document.getElementById('fwFpRetrace').addEventListener('click',function(){
+  if(_flowMode&&typeof _executeTrace==='function') _executeTrace();
+});
+document.getElementById('fwFpCopy').addEventListener('click',function(){
+  var cliEl=document.getElementById('fwFpCli');
+  var txt=cliEl.textContent||'';
+  if(!txt||txt==='No pending edits'){
+    var btn=this;btn.textContent='No edits';setTimeout(function(){btn.textContent='Copy CLI'},1500);
+    return;
+  }
+  var btn=this;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){
+      btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy CLI'},1500);
+    }).catch(function(){btn.textContent='Copy failed';setTimeout(function(){btn.textContent='Copy CLI'},1500)});
+  } else {
+    btn.textContent='No clipboard';setTimeout(function(){btn.textContent='Copy CLI'},1500);
+  }
+});
 document.querySelector('.main').addEventListener('click',function(e){
-  if(!e.target.closest('.detail-panel')&&!e.target.closest('.subnet-node')&&!e.target.closest('.gw-node')&&!e.target.closest('.lz-gw-node')&&!e.target.closest('.lz-tgw-node')&&!e.target.closest('.export-bar')&&!e.target.closest('.zoom-controls')&&!e.target.closest('.stats-bar')){
+  if(!e.target.closest('.detail-panel')&&!e.target.closest('.fw-full-panel')&&!e.target.closest('.subnet-node')&&!e.target.closest('.gw-node')&&!e.target.closest('.lz-gw-node')&&!e.target.closest('.lz-tgw-node')&&!e.target.closest('.export-bar')&&!e.target.closest('.zoom-controls')&&!e.target.closest('.stats-bar')){
     document.getElementById('detailPanel').classList.remove('open');
     _clearBlastRadius();
   }
@@ -11005,7 +12921,7 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   this.value='';
   if(matched>0)renderMap();
 });
-document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none'});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none'});
 document.getElementById('loadDemo').addEventListener('click',()=>{
   const m={in_vpcs:'vpcs',in_subnets:'subnets',in_rts:'rts',in_sgs:'sgs',in_nacls:'nacls',in_igws:'igws',in_nats:'nats',in_ec2:'ec2',in_albs:'albs',in_peer:'peer',in_vpn:'vpn',in_vpces:'vpces',in_vols:'vols',in_s3:'s3',in_r53:'r53',in_r53records:'r53records',in_tgs:'tgs',in_snaps:'snaps',in_enis:'enis',in_waf:'waf',in_rds:'rds',in_ecs:'ecs',in_lambda:'lambda',in_elasticache:'elasticache',in_redshift:'redshift',in_tgwatt:'tgwatt',in_cf:'cf',in_iam:'iam'};
   Object.entries(m).forEach(([id,k])=>{if(demo[k])document.getElementById(id).value=JSON.stringify(demo[k],null,2)});
@@ -14813,7 +16729,7 @@ function openIacModal(type){
     _rlCtx.vpcs.forEach(vpc=>{
       const n=vpc.Tags&&vpc.Tags.find(t=>t.Key==='Name');
       const label=(n?n.Value:vpc.VpcId);
-      scopeSel.innerHTML+='<option value="'+vpc.VpcId+'">'+label+'</option>';
+      scopeSel.innerHTML+='<option value="'+esc(vpc.VpcId)+'">'+esc(label)+'</option>';
     });
   }
 
@@ -14955,6 +16871,8 @@ document.addEventListener('keydown',function(e){
   const tag=e.target.tagName;
   if(e.key==='Escape'){
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')e.target.blur();
+    const fwFp=document.getElementById('fwFullPanel');if(fwFp&&fwFp.classList.contains('open')){fwFp.classList.remove('open');return}
+    const fwd=document.getElementById('fwDash');if(fwd&&fwd.classList.contains('open')){closeFirewallDash();return}
     const iacM=document.getElementById('iacModal');if(iacM&&iacM.classList.contains('open')){closeIacModal();return}
     if(document.getElementById('compExportModal').classList.contains('open')){document.getElementById('compExportModal').classList.remove('open');return}
     const cd=document.getElementById('compDash');if(cd&&cd.classList.contains('open')){cd.classList.remove('open');return}
@@ -14994,6 +16912,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='n'){openNotesPanel();return}
   if(e.key==='b'&&!_designMode){if(_blastActive){_clearBlastRadius()}return}
   if(e.key==='h'&&!_designMode){const tb=document.getElementById('timelineBar');if(tb.classList.contains('open'))closeTimeline();else openTimeline();return}
+  if(e.key==='F'&&e.shiftKey){document.getElementById('firewallBtn').click();return}
   if(e.key==='A'&&e.shiftKey){_toggleAccountPanel();return}
 });
 
@@ -16037,6 +17956,217 @@ window._edgeCaseTests.dep=function(){
     const br1=getBlastRadius('vpc-dt-1',g,1);const br5=getBlastRadius('vpc-dt-1',g,5);
     const maxD1=br1.all.length>0?Math.max(...br1.all.map(e=>e.depth)):0;
     return {pass:br1.all.length<=br5.all.length&&maxD1<=1,detail:'d1='+br1.all.length+' (max='+maxD1+'), d5='+br5.all.length};
+  });
+
+  return results;
+};
+
+// --- Feature 8: Firewall Editor Edge Case Tests ---
+window._edgeCaseTests.firewall=function(){
+  const results=[];
+  const T=(name,fn)=>{try{const r=fn();results.push({name,pass:r.pass,detail:r.detail})}catch(e){results.push({name,pass:false,detail:'Exception: '+e.message})}};
+
+  // Save/restore helpers to avoid cross-test pollution
+  function saveState(){
+    return {
+      rlCtx:window._rlCtx,
+      fwEdits:window._fwEdits,
+      fwSnapshot:window._fwSnapshot
+    };
+  }
+  function restoreState(s){
+    window._rlCtx=s.rlCtx;
+    window._fwEdits=s.fwEdits;
+    window._fwSnapshot=s.fwSnapshot;
+  }
+
+  // Minimal context builder for firewall tests
+  function mkCtx(){
+    const v1='vpc-fw-1',s1='subnet-fw-1',s2='subnet-fw-2';
+    const sg1={GroupId:'sg-fw-1',GroupName:'fw-test-sg',VpcId:v1,
+      IpPermissions:[{IpProtocol:'tcp',FromPort:443,ToPort:443,IpRanges:[{CidrIp:'0.0.0.0/0'}],UserIdGroupPairs:[]}],
+      IpPermissionsEgress:[{IpProtocol:'-1',IpRanges:[{CidrIp:'0.0.0.0/0'}],UserIdGroupPairs:[]}]};
+    const naclAllow={NetworkAclId:'acl-fw-1',VpcId:v1,Associations:[{SubnetId:s1},{SubnetId:s2}],Entries:[
+      {RuleNumber:100,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:0,To:65535}},
+      {RuleNumber:100,Protocol:'6',RuleAction:'allow',Egress:true,CidrBlock:'0.0.0.0/0',PortRange:{From:0,To:65535}},
+      {RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:false,CidrBlock:'0.0.0.0/0'},
+      {RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:true,CidrBlock:'0.0.0.0/0'}
+    ]};
+    const rt1={RouteTableId:'rtb-fw-1',VpcId:v1,Routes:[{DestinationCidrBlock:'10.0.0.0/16',GatewayId:'local'}],Associations:[{SubnetId:s1},{SubnetId:s2}]};
+    const subnets=[{SubnetId:s1,VpcId:v1,CidrBlock:'10.0.0.0/24'},{SubnetId:s2,VpcId:v1,CidrBlock:'10.0.1.0/24'}];
+    const subRT={};[rt1].forEach(rt=>(rt.Associations||[]).forEach(a=>{if(a.SubnetId)subRT[a.SubnetId]=rt}));
+    const subNacl={};[naclAllow].forEach(n=>(n.Associations||[]).forEach(a=>{if(a.SubnetId)subNacl[a.SubnetId]=n}));
+    return {vpcs:[{VpcId:v1,CidrBlock:'10.0.0.0/16'}],subnets,sgs:[sg1],rts:[rt1],nacls:[naclAllow],
+      igws:[],nats:[],vpces:[],instances:[],albs:[],rdsInstances:[],ecsServices:[],lambdaFns:[],
+      ecacheClusters:[],redshiftClusters:[],peerings:[],tgwAttachments:[],tgs:[],
+      instBySub:{},albBySub:{},rdsBySub:{},ecsBySub:{},lambdaBySub:{},subRT,subNacl,
+      sgByVpc:{[v1]:[sg1]},tgByAlb:{},eniBySub:{},pubSubs:new Set()};
+  }
+
+  // 1: Add NACL inbound rule
+  T('Add NACL inbound rule',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      _fwTakeSnapshot();
+      const newRule={RuleNumber:200,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'10.0.0.0/24',PortRange:{From:80,To:80}};
+      ctx.nacls[0].Entries.push(Object.assign({},newRule));
+      _fwEdits.push({type:'nacl',action:'add',resourceId:'acl-fw-1',direction:'ingress',rule:newRule});
+      const hasRule=ctx.nacls[0].Entries.some(e=>e.RuleNumber===200&&!e.Egress);
+      const cli=_fwGenerateCli(_fwEdits).join('\n');
+      const hasCli=cli.includes('create-network-acl-entry');
+      _fwResetAll();
+      return {pass:hasRule&&hasCli,detail:'ruleAdded='+hasRule+', cli='+hasCli};
+    }finally{restoreState(saved)}
+  });
+
+  // 2: Delete NACL rule
+  T('Delete NACL rule',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      _fwTakeSnapshot();
+      const delRule=ctx.nacls[0].Entries.find(e=>e.RuleNumber===100&&!e.Egress);
+      const idx=ctx.nacls[0].Entries.indexOf(delRule);
+      ctx.nacls[0].Entries.splice(idx,1);
+      _fwEdits.push({type:'nacl',action:'delete',resourceId:'acl-fw-1',direction:'ingress',rule:delRule,originalRule:delRule});
+      const gone=!ctx.nacls[0].Entries.some(e=>e.RuleNumber===100&&!e.Egress);
+      const cli=_fwGenerateCli(_fwEdits).join('\n');
+      const hasCli=cli.includes('delete-network-acl-entry');
+      _fwResetAll();
+      return {pass:gone&&hasCli,detail:'ruleGone='+gone+', cli='+hasCli};
+    }finally{restoreState(saved)}
+  });
+
+  // 3: Modify SG inbound rule
+  T('Modify SG inbound rule',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      _fwTakeSnapshot();
+      const origRule=JSON.parse(JSON.stringify(ctx.sgs[0].IpPermissions[0]));
+      const newRule={IpProtocol:'tcp',FromPort:8080,ToPort:8080,IpRanges:[{CidrIp:'10.0.0.0/8'}],UserIdGroupPairs:[]};
+      ctx.sgs[0].IpPermissions[0]=Object.assign({},newRule);
+      _fwEdits.push({type:'sg',action:'modify',resourceId:'sg-fw-1',direction:'ingress',rule:newRule,originalRule:origRule});
+      const cli=_fwGenerateCli(_fwEdits).join('\n');
+      const hasRevoke=cli.includes('revoke-security-group-ingress');
+      const hasAuth=cli.includes('authorize-security-group-ingress');
+      _fwResetAll();
+      return {pass:hasRevoke&&hasAuth,detail:'revoke='+hasRevoke+', authorize='+hasAuth};
+    }finally{restoreState(saved)}
+  });
+
+  // 4: Add route
+  T('Add route to route table',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      _fwTakeSnapshot();
+      const newRoute={DestinationCidrBlock:'0.0.0.0/0',GatewayId:'igw-fw-test'};
+      ctx.rts[0].Routes.push(Object.assign({},newRoute));
+      _fwEdits.push({type:'route',action:'add',resourceId:'rtb-fw-1',direction:'egress',rule:newRoute});
+      const hasRoute=ctx.rts[0].Routes.some(r=>r.DestinationCidrBlock==='0.0.0.0/0'&&r.GatewayId==='igw-fw-test');
+      const cli=_fwGenerateCli(_fwEdits).join('\n');
+      const hasCli=cli.includes('create-route');
+      _fwResetAll();
+      return {pass:hasRoute&&hasCli,detail:'routeAdded='+hasRoute+', cli='+hasCli};
+    }finally{restoreState(saved)}
+  });
+
+  // 5: Shadowed NACL rule warning
+  T('Shadowed NACL rule warning',()=>{
+    const nacl={NetworkAclId:'acl-fw-shadow',Entries:[
+      {RuleNumber:50,Protocol:'6',RuleAction:'deny',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:0,To:65535}},
+      {RuleNumber:100,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:0,To:65535}},
+      {RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:false,CidrBlock:'0.0.0.0/0'}
+    ]};
+    const warnings=_fwCheckNaclShadow(nacl,'ingress');
+    const hasShadow=warnings.length>0&&warnings.some(w=>w.toLowerCase().includes('shadowed'));
+    return {pass:hasShadow,detail:'warnings='+warnings.length+', msg='+(warnings[0]||'none')};
+  });
+
+  // 6: Invalid CIDR rejected
+  T('Invalid CIDR rejected',()=>{
+    const r1=_fwValidateCidr('not-a-cidr');
+    const r2=_fwValidateCidr('999.0.0.0/8');
+    const r3=_fwValidateCidr('10.0.0.0/33');
+    const r4=_fwValidateCidr('10.0.0.0/24');
+    const pass=!r1&&!r2&&!r3&&r4;
+    return {pass,detail:'notCidr='+r1+', 999='+r2+', /33='+r3+', valid='+r4};
+  });
+
+  // 7: Duplicate NACL rule number rejected
+  T('Duplicate NACL rule number rejected',()=>{
+    const entries=[{RuleNumber:100,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:80,To:80}}];
+    const errs=_fwValidateNaclRule({RuleNumber:100,Protocol:'6',CidrBlock:'10.0.0.0/24',PortRange:{From:443,To:443},RuleAction:'allow'},entries,'ingress');
+    const hasDup=errs.some(e=>e.toLowerCase().includes('duplicate'));
+    return {pass:hasDup,detail:'errors='+errs.length+', msg='+(errs.find(e=>e.toLowerCase().includes('duplicate'))||'none')};
+  });
+
+  // 8: Undo restores original
+  T('Undo restores original rule',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      _fwTakeSnapshot();
+      const origLen=ctx.nacls[0].Entries.filter(e=>!e.Egress).length;
+      const delRule=ctx.nacls[0].Entries.find(e=>e.RuleNumber===100&&!e.Egress);
+      const delCopy=JSON.parse(JSON.stringify(delRule));
+      // Remove it via _fwRemoveRule-style splice
+      const idx=ctx.nacls[0].Entries.indexOf(delRule);
+      ctx.nacls[0].Entries.splice(idx,1);
+      _fwEdits.push({type:'nacl',action:'delete',resourceId:'acl-fw-1',direction:'ingress',rule:delCopy,originalRule:delCopy});
+      const afterDel=ctx.nacls[0].Entries.filter(e=>!e.Egress).length;
+      _fwUndo();
+      const afterUndo=ctx.nacls[0].Entries.filter(e=>!e.Egress).length;
+      _fwResetAll();
+      return {pass:afterDel===origLen-1&&afterUndo===origLen,detail:'orig='+origLen+', afterDel='+afterDel+', afterUndo='+afterUndo};
+    }finally{restoreState(saved)}
+  });
+
+  // 9: Reset All restores snapshot
+  T('Reset All restores snapshot',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      _fwTakeSnapshot();
+      const origLen=ctx.nacls[0].Entries.length;
+      // Delete two rules
+      ctx.nacls[0].Entries.splice(0,2);
+      _fwEdits.push({type:'nacl',action:'delete',resourceId:'acl-fw-1',direction:'ingress',rule:{RuleNumber:100}});
+      _fwEdits.push({type:'nacl',action:'delete',resourceId:'acl-fw-1',direction:'egress',rule:{RuleNumber:100}});
+      const afterDel=ctx.nacls[0].Entries.length;
+      _fwResetAll();
+      const afterReset=ctx.nacls[0].Entries.length;
+      return {pass:afterDel<origLen&&afterReset===origLen,detail:'orig='+origLen+', afterDel='+afterDel+', afterReset='+afterReset};
+    }finally{restoreState(saved)}
+  });
+
+  // 10: evaluateSG reflects edits (before=deny, after=allow)
+  T('SG eval reflects edit: deny then allow',()=>{
+    const saved=saveState();
+    try{
+      const ctx=mkCtx();
+      window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
+      // SG initially allows tcp/443 only. Check port 8080 => should deny
+      const before=evaluateSG(ctx.sgs,'inbound','tcp',8080,'10.0.0.5/32');
+      const denied=before.action==='deny';
+      // Now add an allow rule for tcp/8080
+      _fwTakeSnapshot();
+      const newRule={IpProtocol:'tcp',FromPort:8080,ToPort:8080,IpRanges:[{CidrIp:'0.0.0.0/0'}],UserIdGroupPairs:[]};
+      ctx.sgs[0].IpPermissions.push(newRule);
+      _fwEdits.push({type:'sg',action:'add',resourceId:'sg-fw-1',direction:'ingress',rule:newRule});
+      const after=evaluateSG(ctx.sgs,'inbound','tcp',8080,'10.0.0.5/32');
+      const allowed=after.action==='allow';
+      _fwResetAll();
+      return {pass:denied&&allowed,detail:'before='+before.action+', after='+after.action};
+    }finally{restoreState(saved)}
   });
 
   return results;

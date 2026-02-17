@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
 
+app.setName('AWS Network Mapper');
+
 let mainWindow = null;
 let activeScan = null;
 const SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/;
@@ -16,6 +18,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'AWS Network Mapper',
+    icon: path.join(__dirname, 'build', 'icon.png'),
     backgroundColor: '#0b1120',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -295,6 +298,9 @@ function checkForUpdates(manual = false) {
 // ── App Lifecycle ─────────────────────────────────────────────────
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, 'build', 'icon.png'));
+  }
   buildMenu();
   createWindow();
 
