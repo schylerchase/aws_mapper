@@ -18,10 +18,7 @@
       "index.html",
       "main.js",
       "preload.js",
-      "export-aws-data.sh",
-      "assets/**/*",
-      "logo.jpg",
-      "logo.png"
+      "export-aws-data.sh"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
