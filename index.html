@@ -1480,7 +1480,7 @@
   </div>
   <div class="rpt-builder" id="rptBuilder">
     <div class="rpt-hdr">
-      <h2>&#128203; Report Builder</h2>
+      <h2>Report Builder</h2>
       <button class="rpt-close" id="rptClose">Close [Esc]</button>
     </div>
     <div class="rpt-main">
@@ -14331,8 +14331,10 @@ async function _generateReport(){
 }
 document.getElementById('rptExportHTML').addEventListener('click',function(){_generateReport()});
 
-document.getElementById('rptTitle').addEventListener('input',function(){_rptState.title=this.value;_renderRptPreview()});
-document.getElementById('rptAuthor').addEventListener('input',function(){_rptState.author=this.value;_renderRptPreview()});
+var _rptInputTimer=0;
+function _rptDebouncedPreview(){clearTimeout(_rptInputTimer);_rptInputTimer=setTimeout(_renderRptPreview,300)}
+document.getElementById('rptTitle').addEventListener('input',function(){_rptState.title=this.value;_rptDebouncedPreview()});
+document.getElementById('rptAuthor').addEventListener('input',function(){_rptState.author=this.value;_rptDebouncedPreview()});
 document.getElementById('rptDate').addEventListener('change',function(){_rptState.date=this.value;_renderRptPreview()});
 
 // === AUTO-SAVE / CRASH RECOVERY ===
