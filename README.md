@@ -92,7 +92,7 @@ Outputs are in `dist/`. macOS builds are unsigned by default — right-click and
 Single-file HTML app (`index.html`) with embedded CSS and JavaScript. D3.js handles SVG rendering. No build step needed for the browser version.
 
 ```
-index.html          # Complete app (~16k lines)
+index.html          # Complete app
 main.js             # Electron main process
 preload.js          # Secure IPC bridge
 export-aws-data.sh  # AWS CLI export script
