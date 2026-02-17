@@ -999,6 +999,7 @@
     <button id="compareBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #6ee7b7;color:#6ee7b7;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Compare with another snapshot (Shift+D)">Compare</button>
     <button id="timelineBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-cyan);color:var(--accent-cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Snapshot timeline (H)">History</button>
     <button id="flowBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #22d3ee;color:#22d3ee;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Trace traffic flow (Shift+T)">Flow</button>
+    <button id="traceBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #f472b6;color:#f472b6;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Trace from a subnet — click a subnet to start">Trace</button>
     <button id="accountsBtn" style="height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid var(--accent-purple);color:var(--accent-purple);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 14px;transition:all .15s" title="Multi-account view (Shift+A)">Accounts</button>
     <button id="scanAwsBtn" style="display:none;height:30px;border-radius:15px;background:rgba(17,24,39,.92);border:1px solid #f59e0b;color:#f59e0b;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;align-items:center;gap:5px;padding:0 14px;transition:all .15s;font-weight:600" title="Scan AWS account via CLI">Scan AWS</button>
   </div>
@@ -9888,6 +9889,7 @@ function exitFlowMode(){
   _flowPath=null;
   _flowBlocked=null;
   _flowStepIndex=-1;
+  if(typeof _cancelTracePick==='function') _cancelTracePick();
   var banner=document.getElementById('flowBanner');
   banner.style.display='none';
   var mainEl=document.querySelector('.main');
@@ -10023,10 +10025,13 @@ function _getHopCoords(hop){
       var w=parseFloat(subEl.getAttribute('width'))||100;
       var h=parseFloat(subEl.getAttribute('height'))||60;
       var offsetX=0;
-      if(hop.type==='source') offsetX=-20;
-      else if(hop.type==='target') offsetX=20;
-      else if(hop.type==='sg-outbound'||hop.type==='nacl-outbound'||hop.type==='route-table') offsetX=-10;
-      else if(hop.type==='sg-inbound'||hop.type==='nacl-inbound') offsetX=10;
+      if(hop.type==='source') offsetX=-w*0.35;
+      else if(hop.type==='target') offsetX=w*0.35;
+      else if(hop.type==='route-table') offsetX=-w*0.2;
+      else if(hop.type==='nacl-outbound') offsetX=-w*0.05;
+      else if(hop.type==='sg-outbound') offsetX=w*0.08;
+      else if(hop.type==='sg-inbound') offsetX=w*0.2;
+      else if(hop.type==='nacl-inbound') offsetX=w*0.33;
       return {x:x+w/2+offsetX,y:y+h/2};
     }
   }
@@ -10092,7 +10097,9 @@ function _renderFlowDetail(){
   dp.classList.add('open');
   var retraceBtn=document.getElementById('flowRetraceBtn');
   if(retraceBtn){
-    retraceBtn.addEventListener('click',function(){
+    retraceBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      e.preventDefault();
       var proto=document.getElementById('flowProtoSel').value;
       var port=parseInt(document.getElementById('flowPortInput').value,10)||443;
       _flowConfig.protocol=proto;
@@ -10139,6 +10146,40 @@ document.getElementById('flowBtn').addEventListener('click',function(){
   if(_flowMode) exitFlowMode();
   else enterFlowMode();
 });
+// Trace button — enters flow mode with subnet picker
+let _tracePicking=false;
+document.getElementById('traceBtn').addEventListener('click',function(){
+  if(_flowMode) exitFlowMode();
+  if(_tracePicking){_cancelTracePick();return;}
+  _tracePicking=true;
+  var btn=document.getElementById('traceBtn');
+  btn.style.background='rgba(244,114,182,.2)';
+  btn.textContent='Click a subnet…';
+  document.querySelectorAll('.subnet-node').forEach(function(el){
+    el.style.cursor='crosshair';
+  });
+  document.getElementById('mapSvg').addEventListener('click',_tracePickHandler,true);
+});
+function _tracePickHandler(e){
+  var subEl=e.target.closest('.subnet-node');
+  if(!subEl) return;
+  e.stopPropagation();
+  e.preventDefault();
+  var subId=subEl.getAttribute('data-subnet-id');
+  if(!subId) return;
+  _cancelTracePick();
+  enterFlowMode({type:'subnet',id:subId});
+}
+function _cancelTracePick(){
+  _tracePicking=false;
+  var btn=document.getElementById('traceBtn');
+  btn.style.background='rgba(17,24,39,.92)';
+  btn.textContent='Trace';
+  document.querySelectorAll('.subnet-node').forEach(function(el){
+    el.style.cursor='';
+  });
+  document.getElementById('mapSvg').removeEventListener('click',_tracePickHandler,true);
+}
 document.getElementById('flowExitBtn').addEventListener('click',exitFlowMode);
 document.getElementById('flowStepBack').addEventListener('click',_stepBack);
 document.getElementById('flowStepFwd').addEventListener('click',_stepForward);
