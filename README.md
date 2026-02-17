@@ -12,18 +12,24 @@
 
 ## Features
 
+### Visualization
 - **Visual Network Map** — D3.js SVG canvas with VPCs, public/private subnets, gateways, peering, transit gateways, and 25+ resource types
 - **Traffic Flow Tracing** — Trace network paths between resources with SG/NACL/route table evaluation
-- **Diff/Change Detection** — Compare snapshots to detect added, removed, and modified resources
 - **Dependency Graph** — Blast radius analysis for any resource
 - **Multi-Account/Multi-Region** — Merge and view multiple AWS accounts side by side
+- **Design Mode** — Add VPCs, subnets, and resources from scratch with a drag-and-drop palette
+
+### Compliance & Reporting
+- **Compliance Dashboard** — 2800+ checks across CIS, SOC2, HIPAA, PCI-DSS, NIST frameworks with per-framework scoring
+- **IAM Analysis** — Effective permissions view with overprivileged principal detection
+- **Exportable Reports** — Generate compliance reports as CSV, Excel, or HTML with framework filtering and severity breakdowns
+- **Diff/Change Detection** — Compare snapshots to detect added, removed, and modified resources
+
+### Export & Integration
+- **Infrastructure as Code** — Export to Terraform HCL or CloudFormation YAML/JSON
+- **Diagram Export** — PNG, Visio (.vsdx), Lucidchart (.lucid)
 - **Time-Series Snapshots** — Capture, browse, and restore historical infrastructure states
 - **Annotations/Notes** — Pin notes to any resource, searchable and exportable
-- **Terraform/CloudFormation Export** — Generate IaC from live infrastructure
-- **Design Mode** — Add VPCs, subnets, and resources from scratch with a drag-and-drop palette
-- **Compliance Dashboard** — 2800+ checks across CIS, SOC2, HIPAA, PCI-DSS, NIST frameworks
-- **IAM Analysis** — Effective permissions view with overprivileged principal detection
-- **Export** — PNG, SVG, Visio (.vsdx), JSON, Excel/CSV compliance reports
 
 ## Quick Start
 
