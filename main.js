@@ -261,6 +261,51 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
   return result.filePath;
 });
 
+// ── BUDR XLSX Export ──────────────────────────────────────────────
+
+ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
+  const os = require('os');
+  const tmpJson = path.join(os.tmpdir(), `budr-${Date.now()}.json`);
+  const tmpXlsx = path.join(os.tmpdir(), `budr-${Date.now()}.xlsx`);
+  fs.writeFileSync(tmpJson, jsonData, 'utf8');
+
+  const scriptPath = path.join(__dirname, 'budr_export_xlsx.py');
+  if (!fs.existsSync(scriptPath)) {
+    return { error: 'budr_export_xlsx.py not found' };
+  }
+
+  try {
+    const { execFileSync } = require('child_process');
+    execFileSync('python3', [scriptPath, tmpJson, '-o', tmpXlsx], {
+      timeout: 30000,
+      stdio: 'pipe'
+    });
+  } catch (err) {
+    return { error: err.stderr?.toString() || err.message };
+  }
+
+  if (!fs.existsSync(tmpXlsx)) {
+    return { error: 'XLSX generation failed — output file not created' };
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save BUDR Report',
+    defaultPath: `budr-assessment-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }]
+  });
+
+  if (result.canceled || !result.filePath) {
+    fs.unlinkSync(tmpJson);
+    fs.unlinkSync(tmpXlsx);
+    return null;
+  }
+
+  fs.copyFileSync(tmpXlsx, result.filePath);
+  fs.unlinkSync(tmpJson);
+  fs.unlinkSync(tmpXlsx);
+  return { path: result.filePath };
+});
+
 // ── Auto-Update ───────────────────────────────────────────────────
 
 function checkForUpdates(manual = false) {
