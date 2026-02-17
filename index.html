@@ -1733,7 +1733,7 @@ function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Val
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
 const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
 const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
-const _FW_LABELS={CIS:'CIS Benchmark',WAF:'WAF Security',IAM:'IAM Security',ARCH:'Best Practices',SOC2:'SOC 2',PCI:'PCI DSS 4',BUDR:'Backup & DR'};
+const _FW_LABELS={CIS:'CIS Benchmark',WAF:'Web Application Firewall (WAF)',IAM:'IAM Security',ARCH:'Well-Architected',SOC2:'SOC 2',PCI:'PCI DSS 4',BUDR:'Backup & DR'};
 function clsGw(id){const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','eigw-':'EIGW','lgw-':'LGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
 function isShared(t){return t==='TGW'||t==='PCX'}
 function gcv(t){return{IGW:'var(--igw-color)',NAT:'var(--nat-color)',TGW:'var(--tgw-color)',VGW:'var(--vgw-color)',VPCE:'var(--vpce-color)',PCX:'var(--pcx-color)',EIGW:'var(--igw-color)'}[t]||'var(--text-muted)'}
@@ -2785,27 +2785,29 @@ function runComplianceChecks(ctx){
   return _complianceFindings;
 }
 // === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
+const _BUDR_STRATEGY={hot:'Hot',warm:'Warm',pilot:'Pilot Light',cold:'Cold'};
+const _BUDR_STRATEGY_ORDER={hot:0,warm:1,pilot:2,cold:3};
 const _BUDR_RTO_RPO={
-  rds_multi_az:{rto:'~5 min',rpo:'~1 min',tier:'protected'},
-  rds_single_backup:{rto:'~30 min',rpo:'backup interval',tier:'partial'},
-  rds_no_backup:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk'},
-  ec2_asg:{rto:'~3 min',rpo:'~0 (stateless)',tier:'protected'},
-  ec2_ami_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial'},
-  ec2_standalone:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk'},
-  ecs_multi:{rto:'~1 min',rpo:'~0',tier:'protected'},
-  ecs_single:{rto:'~5 min',rpo:'~0',tier:'partial'},
-  lambda:{rto:'~0',rpo:'~0',tier:'protected'},
-  ecache_multi:{rto:'~2 min',rpo:'~seconds',tier:'protected'},
-  ecache_single:{rto:'~15 min',rpo:'snapshot age',tier:'partial'},
-  ecache_no_snap:{rto:'~15 min',rpo:'unrecoverable',tier:'at_risk'},
-  redshift_snap:{rto:'~30 min',rpo:'snapshot interval',tier:'partial'},
-  redshift_multi:{rto:'~15 min',rpo:'~minutes',tier:'protected'},
-  redshift_none:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk'},
-  alb_multi_az:{rto:'~0',rpo:'N/A',tier:'protected'},
-  alb_single_az:{rto:'~5 min',rpo:'N/A',tier:'partial'},
-  s3:{rto:'~0',rpo:'~0',tier:'protected'},
-  ebs_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial'},
-  ebs_no_snap:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk'}
+  rds_multi_az:{rto:'~5 min',rpo:'~1 min',tier:'protected',strategy:'warm'},
+  rds_single_backup:{rto:'~30 min',rpo:'backup interval',tier:'partial',strategy:'pilot'},
+  rds_no_backup:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'},
+  ec2_asg:{rto:'~3 min',rpo:'~0 (stateless)',tier:'protected',strategy:'warm'},
+  ec2_ami_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial',strategy:'pilot'},
+  ec2_standalone:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'},
+  ecs_multi:{rto:'~1 min',rpo:'~0',tier:'protected',strategy:'hot'},
+  ecs_single:{rto:'~5 min',rpo:'~0',tier:'partial',strategy:'warm'},
+  lambda:{rto:'~0',rpo:'~0',tier:'protected',strategy:'hot'},
+  ecache_multi:{rto:'~2 min',rpo:'~seconds',tier:'protected',strategy:'warm'},
+  ecache_single:{rto:'~15 min',rpo:'snapshot age',tier:'partial',strategy:'pilot'},
+  ecache_no_snap:{rto:'~15 min',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'},
+  redshift_snap:{rto:'~30 min',rpo:'snapshot interval',tier:'partial',strategy:'pilot'},
+  redshift_multi:{rto:'~15 min',rpo:'~minutes',tier:'protected',strategy:'warm'},
+  redshift_none:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'},
+  alb_multi_az:{rto:'~0',rpo:'N/A',tier:'protected',strategy:'hot'},
+  alb_single_az:{rto:'~5 min',rpo:'N/A',tier:'partial',strategy:'warm'},
+  s3:{rto:'~0',rpo:'~0',tier:'protected',strategy:'hot'},
+  ebs_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial',strategy:'pilot'},
+  ebs_no_snap:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'}
 };
 let _budrFindings=[];
 let _budrAssessments=[];
@@ -3004,34 +3006,114 @@ function _rptCSS(){
 function _rptInteractiveCSS(){
   return [
     '/* === Interactive report controls === */',
-    '.rpt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;margin-bottom:8px;border-bottom:1px solid #334155}',
-    '.rpt-toolbar input[type="text"]{background:#0f172a;color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:6px 12px;font-size:13px;width:220px;outline:none}',
-    '.rpt-toolbar input[type="text"]:focus{border-color:#60a5fa}',
-    '.rpt-toolbar input[type="text"]::placeholder{color:#64748b}',
-    '.rpt-pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #475569;color:#94a3b8;background:transparent;transition:all .15s;user-select:none}',
-    '.rpt-pill:hover{border-color:#60a5fa;color:#e2e8f0}',
-    '.rpt-pill.active{background:#1e40af;border-color:#3b82f6;color:#fff}',
-    '.rpt-pill-crit.active{background:#991b1b;border-color:#dc2626;color:#fff}',
-    '.rpt-pill-high.active{background:#9a3412;border-color:#ea580c;color:#fff}',
-    '.rpt-pill-med.active{background:#92400e;border-color:#d97706;color:#fff}',
-    '.rpt-pill-low.active{background:#1e3a5f;border-color:#2563eb;color:#fff}',
-    '.rpt-pill-protected.active{background:#064e3b;border-color:#10b981;color:#fff}',
-    '.rpt-pill-partial.active{background:#78350f;border-color:#f59e0b;color:#fff}',
-    '.rpt-pill-atrisk.active{background:#7f1d1d;border-color:#ef4444;color:#fff}',
-    '.rpt-row-count{font-size:11px;color:#64748b;margin-left:auto;white-space:nowrap}',
-    '.rpt-clear{font-size:11px;color:#60a5fa;cursor:pointer;text-decoration:none;border:none;background:none;padding:0}',
-    '.rpt-clear:hover{text-decoration:underline}',
+    /* ── Anchor jump nav ── */
+    '.rpt-jump-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;padding:10px 14px;background:#0b1120;border:1px solid #1e2d4a;border-radius:8px}',
+    '.rpt-jump-link{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;color:#60a5fa;text-decoration:none;border:1px solid #1e3a5f;background:rgba(37,99,235,.08);transition:all .15s;white-space:nowrap;letter-spacing:.2px}',
+    '.rpt-jump-link:hover{background:rgba(37,99,235,.18);color:#93c5fd;border-color:#2563eb}',
+    '.rpt-jump-link .rpt-jump-ct{font-size:10px;font-weight:700;color:#93c5fd;background:rgba(37,99,235,.2);padding:2px 7px;border-radius:10px;min-width:20px;text-align:center;transition:all .15s}',
+    '.rpt-jump-link:hover .rpt-jump-ct{background:rgba(37,99,235,.35);color:#bfdbfe}',
+    /* ── Filter toolbar ── */
+    '.rpt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;margin-bottom:4px;background:#0d1220;border:1px solid #1e2d4a;border-radius:8px}',
+    '.rpt-toolbar input[type="text"]{background:#0a0e17;color:#e2e8f0;border:1px solid #1e2d4a;border-radius:6px;padding:5px 10px 5px 28px;font-size:12px;width:180px;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' fill=\'%2364748b\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z\'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:8px center}',
+    '.rpt-toolbar input[type="text"]:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.15)}',
+    '.rpt-toolbar input[type="text"]::placeholder{color:#475569}',
+    '.rpt-pill-sep{width:1px;height:20px;background:#1e2d4a;margin:0 2px;flex-shrink:0}',
+    '.rpt-pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1e2d4a;color:#64748b;background:transparent;transition:all .15s;user-select:none;letter-spacing:.3px}',
+    '.rpt-pill:hover{border-color:#475569;color:#94a3b8;background:rgba(30,41,59,.5)}',
+    '.rpt-pill.active{color:#fff}',
+    '.rpt-pill-ct{font-size:10px;opacity:.7;margin-left:3px;font-weight:400}',
+    '.rpt-pill-ct:empty{display:none}',
+    '.rpt-pill-crit{border-color:rgba(220,38,38,.25);color:#f87171}',
+    '.rpt-pill-crit:hover{background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.4)}',
+    '.rpt-pill-crit.active{background:#991b1b;border-color:#dc2626}',
+    '.rpt-pill-high{border-color:rgba(234,88,12,.25);color:#fb923c}',
+    '.rpt-pill-high:hover{background:rgba(234,88,12,.1);border-color:rgba(234,88,12,.4)}',
+    '.rpt-pill-high.active{background:#9a3412;border-color:#ea580c}',
+    '.rpt-pill-med{border-color:rgba(217,119,6,.25);color:#fbbf24}',
+    '.rpt-pill-med:hover{background:rgba(217,119,6,.1);border-color:rgba(217,119,6,.4)}',
+    '.rpt-pill-med.active{background:#92400e;border-color:#d97706}',
+    '.rpt-pill-low{border-color:rgba(37,99,235,.25);color:#60a5fa}',
+    '.rpt-pill-low:hover{background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.4)}',
+    '.rpt-pill-low.active{background:#1e3a5f;border-color:#2563eb}',
+    '.rpt-pill-protected{border-color:rgba(16,185,129,.25);color:#34d399}',
+    '.rpt-pill-protected:hover{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.4)}',
+    '.rpt-pill-protected.active{background:#064e3b;border-color:#10b981}',
+    '.rpt-pill-partial{border-color:rgba(245,158,11,.25);color:#fbbf24}',
+    '.rpt-pill-partial:hover{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.4)}',
+    '.rpt-pill-partial.active{background:#78350f;border-color:#f59e0b}',
+    '.rpt-pill-atrisk{border-color:rgba(239,68,68,.25);color:#f87171}',
+    '.rpt-pill-atrisk:hover{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4)}',
+    '.rpt-pill-atrisk.active{background:#7f1d1d;border-color:#ef4444}',
+    /* ── Strategy pills ── */
+    '.rpt-pill-hot{border-color:rgba(239,68,68,.25);color:#f87171}',
+    '.rpt-pill-hot:hover{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4)}',
+    '.rpt-pill-hot.active{background:#7f1d1d;border-color:#ef4444}',
+    '.rpt-pill-warm{border-color:rgba(245,158,11,.25);color:#fbbf24}',
+    '.rpt-pill-warm:hover{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.4)}',
+    '.rpt-pill-warm.active{background:#78350f;border-color:#f59e0b}',
+    '.rpt-pill-pilot{border-color:rgba(99,102,241,.25);color:#a5b4fc}',
+    '.rpt-pill-pilot:hover{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.4)}',
+    '.rpt-pill-pilot.active{background:#312e81;border-color:#6366f1}',
+    '.rpt-pill-cold{border-color:rgba(100,116,139,.25);color:#94a3b8}',
+    '.rpt-pill-cold:hover{background:rgba(100,116,139,.1);border-color:rgba(100,116,139,.4)}',
+    '.rpt-pill-cold.active{background:#1e293b;border-color:#64748b}',
+    /* ── Strategy badges (in table) ── */
+    '.strategy-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.5px;text-transform:uppercase}',
+    '.strategy-hot{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}',
+    '.strategy-warm{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)}',
+    '.strategy-pilot{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.3)}',
+    '.strategy-cold{background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)}',
+    '.rpt-res-link{color:#67e8f9;text-decoration:none;border-bottom:1px dashed rgba(103,232,249,.3);transition:all .15s}',
+    '.rpt-res-link:hover{color:#a5f3fc;border-bottom-color:#67e8f9}',
+    '.rpt-row-count{font-size:10px;color:#475569;margin-left:auto;white-space:nowrap;font-weight:500;letter-spacing:.3px}',
+    '.rpt-clear{font-size:11px;color:#475569;cursor:pointer;border:1px solid #1e2d4a;background:transparent;padding:4px 10px;border-radius:6px;transition:all .15s;font-weight:500}',
+    '.rpt-clear:hover{color:#94a3b8;border-color:#475569;background:rgba(30,41,59,.5)}',
+    /* ── Sticky header ── */
     'table thead.rpt-sticky{position:sticky;top:0;z-index:2}',
-    '.rpt-section-toggle{cursor:pointer;user-select:none}',
-    '.rpt-section-toggle::after{content:" \\25BC";font-size:10px;color:#64748b;margin-left:6px}',
-    '.rpt-section-toggle.collapsed::after{content:" \\25B6"}',
+    'table thead.rpt-sticky th{background:#0f172a;border-bottom:2px solid #1e2d4a}',
+    /* ── Collapsible sections ── */
+    '.rpt-section-toggle{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}',
+    '.rpt-section-toggle::before{content:"";display:inline-block;width:8px;height:8px;border-right:2px solid #64748b;border-bottom:2px solid #64748b;transform:rotate(45deg);transition:transform .2s;flex-shrink:0}',
+    '.rpt-section-toggle.collapsed::before{transform:rotate(-45deg)}',
     '.rpt-section-body{transition:max-height .3s ease;overflow:hidden}',
     '.rpt-section-body.collapsed{max-height:0!important;overflow:hidden}',
-    '#rpt-back-top{position:fixed;bottom:24px;right:24px;width:40px;height:40px;border-radius:50%;background:#1e293b;border:1px solid #475569;color:#94a3b8;font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:100;transition:opacity .2s}',
-    '#rpt-back-top:hover{background:#334155;color:#e2e8f0}',
-    '@media print{.rpt-toolbar,.rpt-clear,#rpt-back-top{display:none!important}',
+    /* ── Sub-section headings ── */
+    '.rpt-section h3{font-size:15px;color:#cbd5e1;margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #1e2d4a}',
+    /* ── Back to top ── */
+    '#rpt-back-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;border-radius:8px;background:#1e293b;border:1px solid #334155;color:#94a3b8;font-size:16px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:100;transition:all .2s;box-shadow:0 4px 12px rgba(0,0,0,.3)}',
+    '#rpt-back-top:hover{background:#334155;color:#e2e8f0;transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.4)}',
+    /* ── Pagination ── */
+    '.rpt-pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0;font-size:12px;color:#94a3b8}',
+    '.rpt-page-btn{padding:4px 10px;border-radius:5px;border:1px solid #1e2d4a;background:transparent;color:#60a5fa;cursor:pointer;font-size:11px;font-weight:500;transition:all .15s}',
+    '.rpt-page-btn:hover:not(:disabled){background:rgba(37,99,235,.15);border-color:#2563eb}',
+    '.rpt-page-btn:disabled{color:#334155;border-color:#1e2d4a;cursor:default}',
+    '.rpt-page-info{color:#64748b;font-size:11px;min-width:100px;text-align:center}',
+    '.rpt-per-page{background:#0a0e17;color:#94a3b8;border:1px solid #1e2d4a;border-radius:5px;padding:3px 6px;font-size:11px;outline:none}',
+    '.rpt-per-page:focus{border-color:#3b82f6}',
+    /* ── Sortable columns ── */
+    'th.rpt-sortable{cursor:pointer;user-select:none;position:relative;padding-right:18px!important;white-space:nowrap}',
+    'th.rpt-sortable:hover{color:#93c5fd}',
+    'th.rpt-sortable::after{content:"\\2195";position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:#475569;transition:color .15s}',
+    'th.rpt-sort-asc::after{content:"\\25B2";color:#60a5fa}',
+    'th.rpt-sort-desc::after{content:"\\25BC";color:#60a5fa}',
+    /* ── Group-by-control ── */
+    '.rpt-ctrl-row{cursor:pointer;transition:background .1s}',
+    '.rpt-ctrl-row:hover{background:rgba(37,99,235,.08)!important}',
+    '.rpt-ctrl-toggle{display:inline-block;width:16px;font-size:10px;color:#475569;transition:transform .15s}',
+    '.rpt-ctrl-row.expanded .rpt-ctrl-toggle{transform:rotate(90deg);color:#60a5fa}',
+    '.rpt-ctrl-detail{display:none}',
+    '.rpt-ctrl-detail.show{display:table-row}',
+    '.rpt-ctrl-detail>td{padding:0!important}',
+    '.rpt-detail-table{width:100%;font-size:12px;margin:0;background:#0b1120;border-collapse:collapse}',
+    '.rpt-detail-table td{padding:5px 10px!important;border-bottom:1px solid #0f172a;color:#94a3b8;font-size:11px}',
+    '.rpt-detail-table tr:last-child td{border-bottom:none}',
+    '.rpt-expand-all{font-size:11px;color:#475569;cursor:pointer;border:1px solid #1e2d4a;background:transparent;padding:4px 10px;border-radius:6px;transition:all .15s;font-weight:500;margin:4px 0 8px;display:inline-block}',
+    '.rpt-expand-all:hover{color:#94a3b8;border-color:#475569}',
+    /* ── Print overrides ── */
+    '@media print{.rpt-toolbar,.rpt-clear,.rpt-jump-nav,.rpt-pagination,#rpt-back-top{display:none!important}',
     '.rpt-section-body.collapsed{max-height:none!important;overflow:visible!important}',
     'table thead.rpt-sticky{position:static}',
+    '.rpt-ctrl-detail{display:table-row!important}',
     'tr[style*="display: none"]{display:table-row!important}}'
   ].join('\n');
 }
@@ -3039,7 +3121,38 @@ function _rptInteractiveCSS(){
 function _rptInteractiveJS(){
   return '<scr'+'ipt>\n'+
   '(function(){\n'+
-  '  /* Filter rows by data attribute */\n'+
+  '  var SEV_ORD={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};\n'+
+  '  var TIER_ORD={at_risk:0,partial:1,protected:2};\n'+
+  '  var STRAT_ORD={hot:0,warm:1,pilot:2,cold:3};\n'+
+  '\n'+
+  '  /* ── Pagination ── */\n'+
+  '  function rptPaginate(tableId){\n'+
+  '    var wrap=document.getElementById(tableId);\n'+
+  '    if(!wrap)return;\n'+
+  '    var table=wrap.querySelector("table");\n'+
+  '    if(!table)return;\n'+
+  '    var tbody=table.querySelector(":scope > tbody");\n'+
+  '    if(!tbody)return;\n'+
+  '    var allRows=Array.prototype.slice.call(tbody.querySelectorAll(":scope > tr:not(.rpt-ctrl-detail)"));\n'+
+  '    var visible=allRows.filter(function(r){return r.dataset.filtered!=="0"});\n'+
+  '    var perPage=parseInt(wrap.dataset.perPage)||50;\n'+
+  '    if(perPage<=0)perPage=visible.length||1;\n'+
+  '    var totalPages=Math.max(1,Math.ceil(visible.length/perPage));\n'+
+  '    var page=Math.min(parseInt(wrap.dataset.page)||1,totalPages);\n'+
+  '    wrap.dataset.page=page;\n'+
+  '    var start=(page-1)*perPage,end=start+perPage;\n'+
+  '    allRows.forEach(function(r){r.style.display="none"});\n'+
+  '    visible.forEach(function(r,i){r.style.display=(i>=start&&i<end)?"":"none"});\n'+
+  '    /* hide detail rows for non-visible control rows */\n'+
+  '    table.querySelectorAll(".rpt-ctrl-detail").forEach(function(d){var p=d.previousElementSibling;d.style.display=(p&&p.style.display!==""&&p.classList.contains("expanded"))?"table-row":"none"});\n'+
+  '    var bar=wrap.querySelector(".rpt-pagination");\n'+
+  '    if(!bar)return;\n'+
+  '    bar.querySelector(".rpt-page-info").textContent="Page "+page+" of "+totalPages+" ("+visible.length+" rows)";\n'+
+  '    bar.querySelector(".rpt-page-prev").disabled=(page<=1);\n'+
+  '    bar.querySelector(".rpt-page-next").disabled=(page>=totalPages);\n'+
+  '  }\n'+
+  '\n'+
+  '  /* ── Filter ── */\n'+
   '  function rptFilter(tableId){\n'+
   '    var wrap=document.getElementById(tableId);\n'+
   '    if(!wrap)return;\n'+
@@ -3055,29 +3168,68 @@ function _rptInteractiveJS(){
   '    var query=searchInput?searchInput.value.toLowerCase():"";\n'+
   '    var table=wrap.querySelector("table");\n'+
   '    if(!table)return;\n'+
-  '    var rows=table.querySelectorAll("tbody tr");\n'+
-  '    var shown=0;\n'+
+  '    var tbody=table.querySelector(":scope > tbody");\n'+
+  '    if(!tbody)return;\n'+
+  '    var rows=tbody.querySelectorAll(":scope > tr:not(.rpt-ctrl-detail)");\n'+
+  '    var shown=0,attrCounts={},total=rows.length;\n'+
   '    rows.forEach(function(tr){\n'+
   '      var vis=true;\n'+
-  '      /* attribute filters */\n'+
   '      Object.keys(active).forEach(function(attr){\n'+
   '        var val=(tr.dataset[attr]||"").toUpperCase();\n'+
   '        if(active[attr].indexOf(val)===-1)vis=false;\n'+
   '      });\n'+
-  '      /* text search */\n'+
   '      if(vis&&query){\n'+
-  '        var text=tr.textContent.toLowerCase();\n'+
-  '        if(text.indexOf(query)===-1)vis=false;\n'+
+  '        if(tr.textContent.toLowerCase().indexOf(query)===-1)vis=false;\n'+
   '      }\n'+
-  '      tr.style.display=vis?"":"none";\n'+
+  '      tr.dataset.filtered=vis?"1":"0";\n'+
   '      if(vis)shown++;\n'+
+  '      ["sev","tier","fw","strategy"].forEach(function(attr){\n'+
+  '        var v=(tr.dataset[attr]||"").toUpperCase();\n'+
+  '        if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}\n'+
+  '      });\n'+
   '    });\n'+
-  '    /* update count badge */\n'+
   '    var badge=wrap.querySelector(".rpt-row-count");\n'+
-  '    if(badge)badge.textContent="Showing "+shown+" of "+rows.length;\n'+
+  '    if(badge)badge.textContent=shown+" of "+total;\n'+
+  '    /* update pill counts */\n'+
+  '    pills.forEach(function(p){\n'+
+  '      var ct=p.querySelector(".rpt-pill-ct");\n'+
+  '      if(!ct)return;\n'+
+  '      var val=p.dataset.val.toUpperCase();\n'+
+  '      ct.textContent=attrCounts[val]||0;\n'+
+  '    });\n'+
+  '    wrap.dataset.page="1";\n'+
+  '    rptPaginate(tableId);\n'+
   '  }\n'+
   '\n'+
-  '  /* Pill click handler */\n'+
+  '  /* ── Sort ── */\n'+
+  '  function rptSort(th){\n'+
+  '    var table=th.closest("table");\n'+
+  '    if(!table)return;\n'+
+  '    var idx=Array.prototype.indexOf.call(th.parentElement.children,th);\n'+
+  '    var type=th.dataset.sortType||"text";\n'+
+  '    var dir=th.classList.contains("rpt-sort-asc")?"desc":th.classList.contains("rpt-sort-desc")?"none":"asc";\n'+
+  '    th.parentElement.querySelectorAll("th").forEach(function(h){h.classList.remove("rpt-sort-asc","rpt-sort-desc")});\n'+
+  '    if(dir!=="none")th.classList.add("rpt-sort-"+dir);\n'+
+  '    var tbody=table.querySelector("tbody");\n'+
+  '    var rows=Array.prototype.slice.call(tbody.querySelectorAll(":scope > tr:not(.rpt-ctrl-detail)"));\n'+
+  '    if(dir==="none")return;\n'+
+  '    rows.sort(function(a,b){\n'+
+  '      var av=a.children[idx]?a.children[idx].textContent.trim():"";\n'+
+  '      var bv=b.children[idx]?b.children[idx].textContent.trim():"";\n'+
+  '      var cmp=0;\n'+
+  '      if(type==="severity")cmp=(SEV_ORD[av]===undefined?9:SEV_ORD[av])-(SEV_ORD[bv]===undefined?9:SEV_ORD[bv]);\n'+
+  '      else if(type==="tier")cmp=(TIER_ORD[av]===undefined?9:TIER_ORD[av])-(TIER_ORD[bv]===undefined?9:TIER_ORD[bv]);\n'+
+  '      else if(type==="strategy")cmp=(STRAT_ORD[av.toLowerCase()]===undefined?9:STRAT_ORD[av.toLowerCase()])-(STRAT_ORD[bv.toLowerCase()]===undefined?9:STRAT_ORD[bv.toLowerCase()]);\n'+
+  '      else cmp=av.localeCompare(bv);\n'+
+  '      return dir==="desc"?-cmp:cmp;\n'+
+  '    });\n'+
+  '    var pairs=rows.map(function(r){var d=r.nextElementSibling;return{row:r,detail:(d&&d.classList.contains("rpt-ctrl-detail"))?d:null}});\n'+
+  '    pairs.forEach(function(p){tbody.appendChild(p.row);if(p.detail)tbody.appendChild(p.detail)});\n'+
+  '    var wrap=th.closest(".rpt-table-wrap");\n'+
+  '    if(wrap){wrap.dataset.page="1";rptPaginate(wrap.id)}\n'+
+  '  }\n'+
+  '\n'+
+  '  /* ── Pill click ── */\n'+
   '  document.addEventListener("click",function(e){\n'+
   '    var pill=e.target.closest(".rpt-pill");\n'+
   '    if(!pill)return;\n'+
@@ -3086,7 +3238,7 @@ function _rptInteractiveJS(){
   '    if(wrap)rptFilter(wrap.id);\n'+
   '  });\n'+
   '\n'+
-  '  /* Clear filters */\n'+
+  '  /* ── Clear filters ── */\n'+
   '  document.addEventListener("click",function(e){\n'+
   '    if(!e.target.classList.contains("rpt-clear"))return;\n'+
   '    var wrap=e.target.closest(".rpt-table-wrap");\n'+
@@ -3097,7 +3249,56 @@ function _rptInteractiveJS(){
   '    rptFilter(wrap.id);\n'+
   '  });\n'+
   '\n'+
-  '  /* Debounced search */\n'+
+  '  /* ── Sortable header click ── */\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    var th=e.target.closest("th.rpt-sortable");\n'+
+  '    if(!th)return;\n'+
+  '    rptSort(th);\n'+
+  '  });\n'+
+  '\n'+
+  '  /* ── Pagination click ── */\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    var btn=e.target.closest(".rpt-page-prev,.rpt-page-next");\n'+
+  '    if(!btn)return;\n'+
+  '    var wrap=btn.closest(".rpt-table-wrap");\n'+
+  '    if(!wrap)return;\n'+
+  '    var page=parseInt(wrap.dataset.page)||1;\n'+
+  '    wrap.dataset.page=btn.classList.contains("rpt-page-prev")?Math.max(1,page-1):page+1;\n'+
+  '    rptPaginate(wrap.id);\n'+
+  '  });\n'+
+  '  document.addEventListener("change",function(e){\n'+
+  '    if(!e.target.classList.contains("rpt-per-page"))return;\n'+
+  '    var wrap=e.target.closest(".rpt-table-wrap");\n'+
+  '    if(!wrap)return;\n'+
+  '    wrap.dataset.perPage=e.target.value;\n'+
+  '    wrap.dataset.page="1";\n'+
+  '    rptPaginate(wrap.id);\n'+
+  '  });\n'+
+  '\n'+
+  '  /* ── Group-by-control expand/collapse ── */\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    var row=e.target.closest(".rpt-ctrl-row");\n'+
+  '    if(!row)return;\n'+
+  '    row.classList.toggle("expanded");\n'+
+  '    var next=row.nextElementSibling;\n'+
+  '    while(next&&next.classList.contains("rpt-ctrl-detail")){\n'+
+  '      next.classList.toggle("show");\n'+
+  '      next.style.display=next.classList.contains("show")?"table-row":"none";\n'+
+  '      next=next.nextElementSibling;\n'+
+  '    }\n'+
+  '  });\n'+
+  '  document.addEventListener("click",function(e){\n'+
+  '    if(!e.target.classList.contains("rpt-expand-all"))return;\n'+
+  '    var wrap=e.target.closest(".rpt-table-wrap");\n'+
+  '    if(!wrap)return;\n'+
+  '    var anyCollapsed=wrap.querySelector(".rpt-ctrl-row:not(.expanded)");\n'+
+  '    var expand=!!anyCollapsed;\n'+
+  '    wrap.querySelectorAll(".rpt-ctrl-row").forEach(function(r){r.classList.toggle("expanded",expand)});\n'+
+  '    wrap.querySelectorAll(".rpt-ctrl-detail").forEach(function(d){d.classList.toggle("show",expand);d.style.display=expand?"table-row":"none"});\n'+
+  '    e.target.textContent=expand?"Collapse All":"Expand All";\n'+
+  '  });\n'+
+  '\n'+
+  '  /* ── Debounced search ── */\n'+
   '  var _searchTimer=0;\n'+
   '  document.addEventListener("input",function(e){\n'+
   '    if(!e.target.classList.contains("rpt-search"))return;\n'+
@@ -3106,7 +3307,7 @@ function _rptInteractiveJS(){
   '    _searchTimer=setTimeout(function(){if(wrap)rptFilter(wrap.id)},300);\n'+
   '  });\n'+
   '\n'+
-  '  /* Section collapse/expand */\n'+
+  '  /* ── Section collapse/expand ── */\n'+
   '  document.addEventListener("click",function(e){\n'+
   '    var tog=e.target.closest(".rpt-section-toggle");\n'+
   '    if(!tog)return;\n'+
@@ -3115,7 +3316,7 @@ function _rptInteractiveJS(){
   '    if(body)body.classList.toggle("collapsed");\n'+
   '  });\n'+
   '\n'+
-  '  /* Back to top button */\n'+
+  '  /* ── Back to top ── */\n'+
   '  var btn=document.getElementById("rpt-back-top");\n'+
   '  if(btn){\n'+
   '    window.addEventListener("scroll",function(){\n'+
@@ -3125,6 +3326,13 @@ function _rptInteractiveJS(){
   '      window.scrollTo({top:0,behavior:"smooth"});\n'+
   '    });\n'+
   '  }\n'+
+  '\n'+
+  '  /* ── Init pagination on all tables ── */\n'+
+  '  document.querySelectorAll(".rpt-table-wrap").forEach(function(w){\n'+
+  '    if(!w.dataset.perPage)w.dataset.perPage="50";\n'+
+  '    w.dataset.page="1";\n'+
+  '    rptFilter(w.id);\n'+
+  '  });\n'+
   '})();\n'+
   '</'+'script>';
 }
@@ -3133,6 +3341,8 @@ function _rptBuildToolbar(tableId, opts){
   opts=opts||{};
   var h='<div class="rpt-toolbar">';
   h+='<input type="text" class="rpt-search" placeholder="Search..." aria-label="Search table">';
+  var hasPills=opts.severities||opts.frameworks||opts.tiers||opts.strategies;
+  if(hasPills) h+='<span class="rpt-pill-sep"></span>';
   if(opts.severities){
     var sevs=[
       {val:'CRITICAL',cls:'rpt-pill-crit',label:'Critical'},
@@ -3141,10 +3351,11 @@ function _rptBuildToolbar(tableId, opts){
       {val:'LOW',cls:'rpt-pill-low',label:'Low'}
     ];
     sevs.forEach(function(s){
-      h+='<span class="rpt-pill '+s.cls+'" data-attr="sev" data-val="'+s.val+'">'+s.label+'</span>';
+      h+='<span class="rpt-pill '+s.cls+'" data-attr="sev" data-val="'+s.val+'">'+s.label+' <span class="rpt-pill-ct"></span></span>';
     });
   }
   if(opts.frameworks){
+    if(opts.severities) h+='<span class="rpt-pill-sep"></span>';
     var fws=opts.frameworks;
     fws.forEach(function(fw){
       h+='<span class="rpt-pill" data-attr="fw" data-val="'+esc(fw)+'">'+esc(fw)+'</span>';
@@ -3157,11 +3368,34 @@ function _rptBuildToolbar(tableId, opts){
       {val:'at_risk',cls:'rpt-pill-atrisk',label:'At Risk'}
     ];
     tiers.forEach(function(t){
-      h+='<span class="rpt-pill '+t.cls+'" data-attr="tier" data-val="'+t.val+'">'+t.label+'</span>';
+      h+='<span class="rpt-pill '+t.cls+'" data-attr="tier" data-val="'+t.val+'">'+t.label+' <span class="rpt-pill-ct"></span></span>';
     });
   }
+  if(opts.strategies){
+    if(opts.tiers||opts.severities) h+='<span class="rpt-pill-sep"></span>';
+    var strats=[
+      {val:'hot',cls:'rpt-pill-hot',label:'Hot'},
+      {val:'warm',cls:'rpt-pill-warm',label:'Warm'},
+      {val:'pilot',cls:'rpt-pill-pilot',label:'Pilot Light'},
+      {val:'cold',cls:'rpt-pill-cold',label:'Cold'}
+    ];
+    strats.forEach(function(s){
+      h+='<span class="rpt-pill '+s.cls+'" data-attr="strategy" data-val="'+s.val+'">'+s.label+' <span class="rpt-pill-ct"></span></span>';
+    });
+  }
+  if(hasPills) h+='<span class="rpt-pill-sep"></span>';
   h+='<button class="rpt-clear" type="button">Clear</button>';
   h+='<span class="rpt-row-count"></span>';
+  h+='</div>';
+  /* Pagination bar */
+  h+='<div class="rpt-pagination">';
+  h+='<button class="rpt-page-btn rpt-page-prev" title="Previous page">&lsaquo; Prev</button>';
+  h+='<span class="rpt-page-info">Page 1 of 1</span>';
+  h+='<button class="rpt-page-btn rpt-page-next" title="Next page">Next &rsaquo;</button>';
+  h+='<select class="rpt-per-page" title="Rows per page">';
+  h+='<option value="25">25</option><option value="50" selected>50</option>';
+  h+='<option value="100">100</option><option value="0">All</option>';
+  h+='</select>';
   h+='</div>';
   return h;
 }
@@ -3267,26 +3501,22 @@ function _rptCompliance(ctx, opts){
     fwMap[fw].push(x);
   });
   var fwKeys=Object.keys(fwMap);
-  // Jump nav
   h+='<div class="rpt-section-body">';
-  h+='<nav style="margin-bottom:12px;font-size:13px">';
-  fwKeys.forEach(function(fw,i){
+  h+='<nav class="rpt-jump-nav">';
+  fwKeys.forEach(function(fw){
     var label=_FW_LABELS[fw]||fw;
-    if(i>0) h+=' | ';
-    h+='<a href="#s-compliance-'+esc(fw)+'" style="color:#60a5fa;text-decoration:none">'+esc(label)+' ('+fwMap[fw].length+')</a>';
+    h+='<a href="#s-compliance-'+esc(fw)+'" class="rpt-jump-link">'+esc(label)+'<span class="rpt-jump-ct">'+fwMap[fw].length+'</span></a>';
   });
   h+='</nav>';
   fwKeys.forEach(function(fw){
     var label=_FW_LABELS[fw]||fw;
-    var items=fwMap[fw].slice().sort(function(a,b){
-      return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
-    });
+    var items=fwMap[fw];
     var tableId='rpt-tbl-compliance-'+fw;
     h+='<div id="s-compliance-'+esc(fw)+'">';
     h+='<h3>'+esc(label)+' ('+items.length+')</h3>';
     h+='<div class="rpt-table-wrap" id="'+tableId+'">';
     h+=_rptBuildToolbar(tableId,{severities:true});
-    h+=_rptFindingsTable(items);
+    h+=_rptGroupedFindingsTable(items);
     h+='</div></div>';
   });
   h+='</div>';
@@ -3294,9 +3524,60 @@ function _rptCompliance(ctx, opts){
   return h;
 }
 
+function _rptGroupedFindingsTable(items){
+  /* Group findings by control */
+  var ctrlMap={};
+  items.forEach(function(f){
+    var key=f.control||'UNKNOWN';
+    if(!ctrlMap[key]) ctrlMap[key]={control:key,severity:f.severity,finding:f.message,resources:[]};
+    ctrlMap[key].resources.push(f);
+    /* Use highest severity for summary row */
+    var cur=_SEV_ORDER[ctrlMap[key].severity]||9;
+    var nw=_SEV_ORDER[f.severity]||9;
+    if(nw<cur) ctrlMap[key].severity=f.severity;
+  });
+  var groups=Object.keys(ctrlMap).map(function(k){return ctrlMap[k]});
+  groups.sort(function(a,b){
+    return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
+  });
+  var h='<button class="rpt-expand-all" type="button">Expand All</button>';
+  h+='<table><thead class="rpt-sticky"><tr>';
+  h+='<th class="rpt-sortable" data-sort-type="severity">Severity</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Control</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Affected</th>';
+  h+='<th>Finding</th>';
+  h+='</tr></thead><tbody>';
+  groups.forEach(function(g){
+    var sev=g.severity;
+    h+='<tr class="rpt-ctrl-row" data-sev="'+esc(sev)+'">';
+    h+='<td><span class="sev-badge sev-'+esc(sev)+'">'+esc(sev)+'</span></td>';
+    h+='<td><span class="rpt-ctrl-toggle">&#9654;</span> '+esc(g.control)+'</td>';
+    h+='<td>'+g.resources.length+'</td>';
+    h+='<td>'+esc(g.finding)+'</td>';
+    h+='</tr>';
+    /* Detail row — single row with nested table, hidden by default */
+    h+='<tr class="rpt-ctrl-detail" data-sev="'+esc(sev)+'" style="display:none">';
+    h+='<td colspan="4"><table class="rpt-detail-table"><tbody>';
+    g.resources.forEach(function(f){
+      h+='<tr>';
+      h+='<td><span class="sev-badge sev-'+esc(f.severity)+'">'+esc(f.severity)+'</span></td>';
+      h+='<td>'+esc(f.resourceName||f.resource)+'</td>';
+      h+='<td>'+esc(f.message)+'</td>';
+      h+='<td>'+esc(f.remediation)+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table></td></tr>';
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
 function _rptFindingsTable(items){
   var h='<table><thead class="rpt-sticky"><tr>';
-  h+='<th>Severity</th><th>Framework</th><th>Control</th><th>Resource</th>';
+  h+='<th class="rpt-sortable" data-sort-type="severity">Severity</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Framework</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Control</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Resource</th>';
   h+='<th>Finding</th><th>Remediation</th>';
   h+='</tr></thead><tbody>';
   items.forEach(function(f){
@@ -3321,20 +3602,21 @@ function _rptBUDR(ctx, opts){
   }
   var counts=_getBUDRTierCounts();
   h+='<div class="rpt-section-body">';
-  h+='<nav style="margin-bottom:12px;font-size:13px">';
-  h+='<a href="#s-budr-summary" style="color:#60a5fa;text-decoration:none">Summary</a>';
-  h+=' | <a href="#s-budr-assessments" style="color:#60a5fa;text-decoration:none">Assessments ('+_budrAssessments.length+')</a>';
-  if(_budrFindings&&_budrFindings.length) h+=' | <a href="#s-budr-findings" style="color:#60a5fa;text-decoration:none">Findings ('+_budrFindings.length+')</a>';
+  h+='<nav class="rpt-jump-nav">';
+  h+='<a href="#s-budr-summary" class="rpt-jump-link">Summary</a>';
+  h+='<a href="#s-budr-assessments" class="rpt-jump-link">Assessments<span class="rpt-jump-ct">'+_budrAssessments.length+'</span></a>';
+  if(_budrFindings&&_budrFindings.length) h+='<a href="#s-budr-findings" class="rpt-jump-link">Findings<span class="rpt-jump-ct">'+_budrFindings.length+'</span></a>';
   h+='</nav>';
   h+='<div id="s-budr-summary">';
   h+=_rptBUDRStatGrid(counts);
+  h+=_rptBUDRStrategyGrid();
   h+='</div>';
   h+=_rptBUDRAssessmentTable();
   if(_budrFindings&&_budrFindings.length){
     h+='<div id="s-budr-findings"><h3>BUDR Findings ('+_budrFindings.length+')</h3>';
     h+='<div class="rpt-table-wrap" id="rpt-tbl-budr-findings">';
     h+=_rptBuildToolbar('rpt-tbl-budr-findings',{severities:true});
-    h+=_rptFindingsTable(_budrFindings.slice().sort(function(a,b){
+    h+=_rptGroupedFindingsTable(_budrFindings.slice().sort(function(a,b){
       return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
     }));
     h+='</div></div>';
@@ -3360,29 +3642,65 @@ function _rptBUDRStatGrid(counts){
   return h;
 }
 
+function _rptBUDRStrategyGrid(){
+  var strats=[
+    {k:'hot',label:'Hot',color:'#ef4444'},
+    {k:'warm',label:'Warm',color:'#f59e0b'},
+    {k:'pilot',label:'Pilot Light',color:'#6366f1'},
+    {k:'cold',label:'Cold',color:'#64748b'}
+  ];
+  var counts={};
+  _budrAssessments.forEach(function(a){
+    var s=a.profile?a.profile.strategy:'unknown';
+    counts[s]=(counts[s]||0)+1;
+  });
+  var h='<div class="stat-grid" style="margin-top:12px">';
+  strats.forEach(function(s){
+    var v=counts[s.k]||0;
+    h+='<div class="stat-box" style="border-color:'+s.color+'">';
+    h+='<span class="val" style="color:'+s.color+'">'+v+'</span>';
+    h+='<span class="lbl">'+esc(s.label)+'</span></div>';
+  });
+  h+='</div>';
+  return h;
+}
+
 function _rptBUDRAssessmentTable(){
   var tierOrder={at_risk:0,partial:1,protected:2};
   var sorted=_budrAssessments.slice().sort(function(a,b){
     var ta=a.profile?tierOrder[a.profile.tier]:9;
     var tb=b.profile?tierOrder[b.profile.tier]:9;
-    return ta-tb;
+    if(ta!==tb) return ta-tb;
+    var sa=a.profile?(_BUDR_STRATEGY_ORDER[a.profile.strategy]||9):9;
+    var sb=b.profile?(_BUDR_STRATEGY_ORDER[b.profile.strategy]||9):9;
+    return sa-sb;
   });
   var h='<div id="s-budr-assessments"><h3>Assessments ('+sorted.length+')</h3>';
   h+='<div class="rpt-table-wrap" id="rpt-tbl-budr">';
-  h+=_rptBuildToolbar('rpt-tbl-budr',{tiers:true});
-  h+='<table><thead class="rpt-sticky"><tr><th>Type</th><th>Resource</th>';
-  h+='<th>Tier</th><th>RTO</th><th>RPO</th><th>Signals</th>';
+  h+=_rptBuildToolbar('rpt-tbl-budr',{tiers:true,strategies:true});
+  h+='<table><thead class="rpt-sticky"><tr>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Type</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Resource</th>';
+  h+='<th class="rpt-sortable" data-sort-type="tier">Tier</th>';
+  h+='<th class="rpt-sortable" data-sort-type="strategy">Strategy</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">RTO</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">RPO</th>';
+  h+='<th>Signals</th>';
   h+='</tr></thead><tbody>';
   sorted.forEach(function(a){
     var tier=a.profile?a.profile.tier:'unknown';
     var cls='tier-'+tier;
+    var tierLabel={protected:'Protected',partial:'Partial',at_risk:'At Risk'}[tier]||tier;
     var rto=a.profile?a.profile.rto:'N/A';
     var rpo=a.profile?a.profile.rpo:'N/A';
+    var strategy=a.profile?a.profile.strategy:'unknown';
+    var stratLabel=_BUDR_STRATEGY[strategy]||strategy;
     var sigs=a.signals?_rptFormatSignals(a.signals):'';
-    h+='<tr data-tier="'+esc(tier)+'">';
+    h+='<tr data-tier="'+esc(tier)+'" data-strategy="'+esc(strategy)+'">';
     h+='<td>'+esc(a.type)+'</td>';
-    h+='<td>'+esc(a.name||a.id)+'</td>';
-    h+='<td><span class="'+cls+'">'+esc(tier)+'</span></td>';
+    h+='<td><a href="#res-'+esc(a.id)+'" class="rpt-res-link">'+esc(a.name||a.id)+'</a></td>';
+    h+='<td><span class="'+cls+'">'+esc(tierLabel)+'</span></td>';
+    h+='<td><span class="strategy-badge strategy-'+esc(strategy)+'">'+esc(stratLabel)+'</span></td>';
     h+='<td>'+esc(rto)+'</td>';
     h+='<td>'+esc(rpo)+'</td>';
     h+='<td>'+esc(sigs)+'</td>';
@@ -3409,13 +3727,11 @@ function _rptInventory(ctx, opts){
     {key:'albs',label:'ALBs',anchor:'albs'},{key:'ecsServices',label:'ECS',anchor:'ecs'},
     {key:'lambdaFns',label:'Lambda',anchor:'lambda'}
   ];
-  h+='<nav style="margin-bottom:12px;font-size:13px">';
-  var navParts=[];
+  h+='<nav class="rpt-jump-nav">';
   invTypes.forEach(function(t){
     var cnt=(c[t.key]||[]).length;
-    if(cnt) navParts.push('<a href="#s-inv-'+t.anchor+'" style="color:#60a5fa;text-decoration:none">'+t.label+' ('+cnt+')</a>');
+    if(cnt) h+='<a href="#s-inv-'+t.anchor+'" class="rpt-jump-link">'+t.label+'<span class="rpt-jump-ct">'+cnt+'</span></a>';
   });
-  h+=navParts.join(' | ');
   h+='</nav>';
   h+='<div class="rpt-table-wrap" id="rpt-tbl-inventory">';
   h+=_rptBuildToolbar('rpt-tbl-inventory',{});
@@ -3442,7 +3758,7 @@ function _rptInvVPCs(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>VPC ID</th>';
   h+='<th>CIDR</th><th>State</th></tr></thead><tbody>';
   items.forEach(function(v){
-    h+='<tr><td>'+esc(_rptTagName(v))+'</td>';
+    h+='<tr id="res-'+esc(v.VpcId)+'"><td>'+esc(_rptTagName(v))+'</td>';
     h+='<td>'+esc(v.VpcId)+'</td>';
     h+='<td>'+esc(v.CidrBlock)+'</td>';
     h+='<td>'+esc(v.State)+'</td></tr>';
@@ -3459,7 +3775,7 @@ function _rptInvSubnets(c){
   h+='<th>CIDR</th><th>AZ</th><th>Public</th></tr></thead><tbody>';
   items.forEach(function(s){
     var pub=c.pubSubs&&c.pubSubs.has(s.SubnetId)?'Yes':'No';
-    h+='<tr><td>'+esc(_rptTagName(s))+'</td>';
+    h+='<tr id="res-'+esc(s.SubnetId)+'"><td>'+esc(_rptTagName(s))+'</td>';
     h+='<td>'+esc(s.SubnetId)+'</td>';
     h+='<td>'+esc(s.CidrBlock)+'</td>';
     h+='<td>'+esc(s.AvailabilityZone)+'</td>';
@@ -3478,7 +3794,7 @@ function _rptInvEC2(c){
   items.forEach(function(i){
     var state=i.State?i.State.Name:'';
     var az=i.Placement?i.Placement.AvailabilityZone:'';
-    h+='<tr><td>'+esc(_rptTagName(i))+'</td>';
+    h+='<tr id="res-'+esc(i.InstanceId)+'"><td>'+esc(_rptTagName(i))+'</td>';
     h+='<td>'+esc(i.InstanceId)+'</td>';
     h+='<td>'+esc(i.InstanceType)+'</td>';
     h+='<td>'+esc(state)+'</td>';
@@ -3495,7 +3811,7 @@ function _rptInvRDS(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Identifier</th><th>Engine</th>';
   h+='<th>Class</th><th>Multi-AZ</th></tr></thead><tbody>';
   items.forEach(function(d){
-    h+='<tr><td>'+esc(d.DBInstanceIdentifier)+'</td>';
+    h+='<tr id="res-'+esc(d.DBInstanceIdentifier)+'"><td>'+esc(d.DBInstanceIdentifier)+'</td>';
     h+='<td>'+esc(d.Engine)+'</td>';
     h+='<td>'+esc(d.DBInstanceClass)+'</td>';
     h+='<td>'+esc(d.MultiAZ?'Yes':'No')+'</td></tr>';
@@ -3512,7 +3828,7 @@ function _rptInvALBs(c){
   h+='<th>Scheme</th><th>AZs</th></tr></thead><tbody>';
   items.forEach(function(a){
     var azCount=(a.AvailabilityZones||[]).length;
-    h+='<tr><td>'+esc(a.LoadBalancerName)+'</td>';
+    h+='<tr id="res-'+esc(a.LoadBalancerName||a.LoadBalancerArn)+'"><td>'+esc(a.LoadBalancerName)+'</td>';
     h+='<td>'+esc(a.Type)+'</td>';
     h+='<td>'+esc(a.Scheme)+'</td>';
     h+='<td>'+azCount+'</td></tr>';
@@ -3528,7 +3844,7 @@ function _rptInvECS(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Service</th><th>Desired</th>';
   h+='<th>Running</th><th>Launch Type</th></tr></thead><tbody>';
   items.forEach(function(s){
-    h+='<tr><td>'+esc(s.serviceName)+'</td>';
+    h+='<tr id="res-'+esc(s.serviceName||s.serviceArn)+'"><td>'+esc(s.serviceName)+'</td>';
     h+='<td>'+esc(s.desiredCount)+'</td>';
     h+='<td>'+esc(s.runningCount)+'</td>';
     h+='<td>'+esc(s.launchType||'')+'</td></tr>';
@@ -3544,7 +3860,7 @@ function _rptInvLambda(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Function</th><th>Runtime</th>';
   h+='<th>Memory (MB)</th><th>Timeout (s)</th></tr></thead><tbody>';
   items.forEach(function(fn){
-    h+='<tr><td>'+esc(fn.FunctionName)+'</td>';
+    h+='<tr id="res-'+esc(fn.FunctionName)+'"><td>'+esc(fn.FunctionName)+'</td>';
     h+='<td>'+esc(fn.Runtime)+'</td>';
     h+='<td>'+esc(fn.MemorySize)+'</td>';
     h+='<td>'+esc(fn.Timeout)+'</td></tr>';
@@ -3560,15 +3876,13 @@ function _rptActionPlan(ctx, opts){
   h+='<div class="rpt-section-body">';
   var tiers=_getTierGroups(all);
   var tierNames={1:'fix-now',2:'this-sprint',3:'backlog'};
-  // Jump nav
-  h+='<nav style="margin-bottom:12px;font-size:13px">';
-  var apParts=[];
+  h+='<nav class="rpt-jump-nav">';
   [1,2,3].forEach(function(t){
     var rgs=tiers[t];if(!rgs||!rgs.length) return;
     var total=0;rgs.forEach(function(rg){total+=rg.findings.length});
-    apParts.push('<a href="#s-action-'+tierNames[t]+'" style="color:'+_TIER_META[t].color+';text-decoration:none">'+_TIER_META[t].name+' ('+total+')</a>');
+    h+='<a href="#s-action-'+tierNames[t]+'" class="rpt-jump-link" style="color:'+_TIER_META[t].color+'">'+_TIER_META[t].name+'<span class="rpt-jump-ct" style="color:'+_TIER_META[t].color+'">'+total+'</span></a>';
   });
-  h+=apParts.join(' | ')+'</nav>';
+  h+='</nav>';
   [1,2,3].forEach(function(t){
     var rgs=tiers[t];
     if(!rgs||!rgs.length) return;
@@ -3588,9 +3902,13 @@ function _rptActionPlan(ctx, opts){
 }
 
 function _rptActionTierTable(resourceGroups){
-  var h='<table><thead class="rpt-sticky"><tr><th>Severity</th><th>Framework</th>';
-  h+='<th>Control</th><th>Resource</th><th>Finding</th>';
-  h+='<th>Remediation</th></tr></thead><tbody>';
+  var h='<table><thead class="rpt-sticky"><tr>';
+  h+='<th class="rpt-sortable" data-sort-type="severity">Severity</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Framework</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Control</th>';
+  h+='<th class="rpt-sortable" data-sort-type="text">Resource</th>';
+  h+='<th>Finding</th><th>Remediation</th>';
+  h+='</tr></thead><tbody>';
   resourceGroups.forEach(function(rg){
     rg.findings.forEach(function(f){
       h+='<tr data-sev="'+esc(f.severity)+'">';
@@ -14380,7 +14698,7 @@ function _renderRptPreview(){
     container.appendChild(p);
     return;
   }
-  var html='<style>'+_rptCSS()+'</style>';
+  var html='<style>'+_rptCSS()+_rptInteractiveCSS()+'</style>';
   html+=_rptBuildHeader();
   html+=_rptBuildTOC(enabled);
   html+=_rptBuildSections(enabled);
@@ -14390,6 +14708,223 @@ function _renderRptPreview(){
   container.textContent='';
   container.appendChild(wrapper);
   if(typeof _rptUpdateFooterStats==='function') _rptUpdateFooterStats();
+  /* Wire up anchor jump links to scroll within preview panel */
+  var scrollBox=document.getElementById('rptPreview');
+  wrapper.addEventListener('click',function(e){
+    var link=e.target.closest('a[href^="#"]');
+    if(!link) return;
+    var hash=link.getAttribute('href');
+    if(!hash||hash.length<2) return;
+    e.preventDefault();
+    var target=wrapper.querySelector(hash)||wrapper.querySelector('[id="'+hash.slice(1)+'"]');
+    if(!target||!scrollBox) return;
+    var boxTop=scrollBox.getBoundingClientRect().top;
+    var elTop=target.getBoundingClientRect().top;
+    scrollBox.scrollTop+=elTop-boxTop-12;
+  });
+  /* ── Wire up interactive JS for preview (innerHTML doesn't execute <script>) ── */
+  _rptInitInteractive(wrapper);
+}
+
+function _rptInitInteractive(root){
+  var SEV_ORD={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  var TIER_ORD={at_risk:0,partial:1,protected:2};
+  var STRAT_ORD={hot:0,warm:1,pilot:2,cold:3};
+
+  function rptPaginate(tableId){
+    var wrap=root.querySelector('#'+tableId)||document.getElementById(tableId);
+    if(!wrap)return;
+    var table=wrap.querySelector('table');
+    if(!table)return;
+    var tbody=table.querySelector(':scope > tbody');
+    if(!tbody)return;
+    var allRows=[].slice.call(tbody.querySelectorAll(':scope > tr:not(.rpt-ctrl-detail)'));
+    var visible=allRows.filter(function(r){return r.dataset.filtered!=='0'});
+    var perPage=parseInt(wrap.dataset.perPage)||50;
+    if(perPage<=0)perPage=visible.length||1;
+    var totalPages=Math.max(1,Math.ceil(visible.length/perPage));
+    var page=Math.min(parseInt(wrap.dataset.page)||1,totalPages);
+    wrap.dataset.page=page;
+    var start=(page-1)*perPage,end=start+perPage;
+    allRows.forEach(function(r){r.style.display='none'});
+    visible.forEach(function(r,i){r.style.display=(i>=start&&i<end)?'':'none'});
+    /* detail rows follow their control row visibility */
+    table.querySelectorAll('.rpt-ctrl-detail').forEach(function(d){
+      var p=d.previousElementSibling;
+      d.style.display=(p&&p.style.display!=='none'&&p.classList.contains('expanded'))?'table-row':'none';
+    });
+    var bar=wrap.querySelector('.rpt-pagination');
+    if(!bar)return;
+    var info=bar.querySelector('.rpt-page-info');
+    if(info)info.textContent='Page '+page+' of '+totalPages+' ('+visible.length+' rows)';
+    var prev=bar.querySelector('.rpt-page-prev');
+    var next=bar.querySelector('.rpt-page-next');
+    if(prev)prev.disabled=(page<=1);
+    if(next)next.disabled=(page>=totalPages);
+  }
+
+  function rptFilter(tableId){
+    var wrap=root.querySelector('#'+tableId)||document.getElementById(tableId);
+    if(!wrap)return;
+    var pills=wrap.querySelectorAll('.rpt-pill');
+    var active={};
+    pills.forEach(function(p){
+      if(!p.classList.contains('active'))return;
+      var attr=p.dataset.attr;
+      if(!active[attr])active[attr]=[];
+      active[attr].push(p.dataset.val.toUpperCase());
+    });
+    var si=wrap.querySelector('.rpt-search');
+    var query=si?si.value.toLowerCase():'';
+    var table=wrap.querySelector('table');
+    if(!table)return;
+    var tbody=table.querySelector(':scope > tbody');
+    if(!tbody)return;
+    var rows=tbody.querySelectorAll(':scope > tr:not(.rpt-ctrl-detail)');
+    var shown=0,attrCounts={},total=rows.length;
+    rows.forEach(function(tr){
+      var vis=true;
+      Object.keys(active).forEach(function(attr){
+        var val=(tr.dataset[attr]||'').toUpperCase();
+        if(active[attr].indexOf(val)===-1)vis=false;
+      });
+      if(vis&&query){if(tr.textContent.toLowerCase().indexOf(query)===-1)vis=false}
+      tr.dataset.filtered=vis?'1':'0';
+      if(vis)shown++;
+      ['sev','tier','fw','strategy'].forEach(function(attr){
+        var v=(tr.dataset[attr]||'').toUpperCase();
+        if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}
+      });
+    });
+    var badge=wrap.querySelector('.rpt-row-count');
+    if(badge)badge.textContent=shown+' of '+total;
+    pills.forEach(function(p){
+      var ct=p.querySelector('.rpt-pill-ct');
+      if(!ct)return;
+      var val=p.dataset.val.toUpperCase();
+      ct.textContent=attrCounts[val]||0;
+    });
+    wrap.dataset.page='1';
+    rptPaginate(tableId);
+  }
+
+  function rptSort(th){
+    var table=th.closest('table');
+    if(!table)return;
+    var idx=[].indexOf.call(th.parentElement.children,th);
+    var type=th.dataset.sortType||'text';
+    var dir=th.classList.contains('rpt-sort-asc')?'desc':th.classList.contains('rpt-sort-desc')?'none':'asc';
+    th.parentElement.querySelectorAll('th').forEach(function(h){h.classList.remove('rpt-sort-asc','rpt-sort-desc')});
+    if(dir!=='none')th.classList.add('rpt-sort-'+dir);
+    var tbody=table.querySelector('tbody');
+    var rows=[].slice.call(tbody.querySelectorAll(':scope > tr:not(.rpt-ctrl-detail)'));
+    if(dir==='none')return;
+    rows.sort(function(a,b){
+      var av=a.children[idx]?a.children[idx].textContent.trim():'';
+      var bv=b.children[idx]?b.children[idx].textContent.trim():'';
+      var cmp=0;
+      if(type==='severity')cmp=(SEV_ORD[av]===undefined?9:SEV_ORD[av])-(SEV_ORD[bv]===undefined?9:SEV_ORD[bv]);
+      else if(type==='tier')cmp=(TIER_ORD[av]===undefined?9:TIER_ORD[av])-(TIER_ORD[bv]===undefined?9:TIER_ORD[bv]);
+      else if(type==='strategy')cmp=(STRAT_ORD[av.toLowerCase()]===undefined?9:STRAT_ORD[av.toLowerCase()])-(STRAT_ORD[bv.toLowerCase()]===undefined?9:STRAT_ORD[bv.toLowerCase()]);
+      else cmp=av.localeCompare(bv);
+      return dir==='desc'?-cmp:cmp;
+    });
+    /* Collect control-detail pairs before moving */
+    var pairs=rows.map(function(r){
+      var detail=r.nextElementSibling;
+      return {row:r,detail:(detail&&detail.classList.contains('rpt-ctrl-detail'))?detail:null};
+    });
+    pairs.forEach(function(p){
+      tbody.appendChild(p.row);
+      if(p.detail)tbody.appendChild(p.detail);
+    });
+    var wrap=th.closest('.rpt-table-wrap');
+    if(wrap){wrap.dataset.page='1';rptPaginate(wrap.id)}
+  }
+
+  /* Event delegation on the preview wrapper */
+  var _searchTimer=0;
+  root.addEventListener('click',function(e){
+    /* Pill toggle */
+    var pill=e.target.closest('.rpt-pill');
+    if(pill){pill.classList.toggle('active');var w=pill.closest('.rpt-table-wrap');if(w)rptFilter(w.id);return}
+    /* Clear */
+    if(e.target.classList.contains('rpt-clear')){
+      var w=e.target.closest('.rpt-table-wrap');
+      if(!w)return;w.querySelectorAll('.rpt-pill.active').forEach(function(p){p.classList.remove('active')});
+      var si=w.querySelector('.rpt-search');if(si)si.value='';rptFilter(w.id);return;
+    }
+    /* Sortable header */
+    var th=e.target.closest('th.rpt-sortable');
+    if(th){rptSort(th);return}
+    /* Pagination */
+    var btn=e.target.closest('.rpt-page-prev,.rpt-page-next');
+    if(btn){
+      var w=btn.closest('.rpt-table-wrap');if(!w)return;
+      var pg=parseInt(w.dataset.page)||1;
+      w.dataset.page=btn.classList.contains('rpt-page-prev')?Math.max(1,pg-1):pg+1;
+      rptPaginate(w.id);return;
+    }
+    /* Group expand/collapse */
+    var ctrlRow=e.target.closest('.rpt-ctrl-row');
+    if(ctrlRow){
+      ctrlRow.classList.toggle('expanded');
+      var nx=ctrlRow.nextElementSibling;
+      while(nx&&nx.classList.contains('rpt-ctrl-detail')){
+        nx.classList.toggle('show');
+        nx.style.display=nx.classList.contains('show')?'table-row':'none';
+        nx=nx.nextElementSibling;
+      }
+      return;
+    }
+    /* Expand all */
+    if(e.target.classList.contains('rpt-expand-all')){
+      var w=e.target.closest('.rpt-table-wrap');
+      if(!w)return;
+      var anyCollapsed=w.querySelector('.rpt-ctrl-row:not(.expanded)');
+      var expand=!!anyCollapsed;
+      w.querySelectorAll('.rpt-ctrl-row').forEach(function(r){r.classList.toggle('expanded',expand)});
+      w.querySelectorAll('.rpt-ctrl-detail').forEach(function(d){d.classList.toggle('show',expand);d.style.display=expand?'table-row':'none'});
+      e.target.textContent=expand?'Collapse All':'Expand All';
+      return;
+    }
+    /* Resource link — scroll within report preview */
+    var resLink=e.target.closest('.rpt-res-link');
+    if(resLink){
+      e.preventDefault();
+      var href=resLink.getAttribute('href');
+      if(href&&href.charAt(0)==='#'){
+        var target=root.querySelector(href)||document.querySelector(href);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'center'});target.style.outline='2px solid #67e8f9';setTimeout(function(){target.style.outline=''},2000)}
+      }
+      return;
+    }
+    /* Section toggle */
+    var tog=e.target.closest('.rpt-section-toggle');
+    if(tog){
+      tog.classList.toggle('collapsed');
+      var body=tog.parentElement.querySelector('.rpt-section-body');
+      if(body)body.classList.toggle('collapsed');
+      return;
+    }
+  });
+  root.addEventListener('change',function(e){
+    if(!e.target.classList.contains('rpt-per-page'))return;
+    var w=e.target.closest('.rpt-table-wrap');if(!w)return;
+    w.dataset.perPage=e.target.value;w.dataset.page='1';rptPaginate(w.id);
+  });
+  root.addEventListener('input',function(e){
+    if(!e.target.classList.contains('rpt-search'))return;
+    clearTimeout(_searchTimer);
+    var w=e.target.closest('.rpt-table-wrap');
+    _searchTimer=setTimeout(function(){if(w)rptFilter(w.id)},300);
+  });
+  /* Init: paginate all tables */
+  root.querySelectorAll('.rpt-table-wrap').forEach(function(w){
+    if(!w.dataset.perPage)w.dataset.perPage='50';
+    w.dataset.page='1';
+    rptFilter(w.id);
+  });
 }
 
 function _rptEnabledModules(){
