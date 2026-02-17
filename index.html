@@ -86,7 +86,6 @@
   .dock-btn.cyan{color:#22d3ee;border-color:rgba(34,211,238,.15)}.dock-btn.cyan:hover{background:rgba(6,182,212,.15);border-color:rgba(34,211,238,.3)}
   .dock-btn.mint{color:#6ee7b7;border-color:rgba(110,231,183,.15)}.dock-btn.mint:hover{background:rgba(110,231,183,.15);border-color:rgba(110,231,183,.3)}
   .dock-btn.pink{color:#f472b6;border-color:rgba(244,114,182,.15)}.dock-btn.pink:hover{background:rgba(244,114,182,.15);border-color:rgba(244,114,182,.3)}
-  .dock-btn.teal{color:#22d3ee;border-color:rgba(34,211,238,.15)}.dock-btn.teal:hover{background:rgba(34,211,238,.15);border-color:rgba(34,211,238,.3)}
   .dock-btn.red{color:#f87171;border-color:rgba(248,113,113,.15)}.dock-btn.red:hover{background:rgba(239,68,68,.15);border-color:rgba(248,113,113,.3)}
   .dock-btn.purple{color:#c084fc;border-color:rgba(192,132,252,.15)}.dock-btn.purple:hover{background:rgba(168,85,247,.15);border-color:rgba(192,132,252,.3)}
   .dock-btn.amber{color:#fbbf24;border-color:rgba(251,191,36,.15)}.dock-btn.amber:hover{background:rgba(245,158,11,.15);border-color:rgba(251,191,36,.3)}
@@ -1271,7 +1270,7 @@
     </div>
     <div class="dock-group">
       <span class="dock-label">NETWORK</span>
-      <button id="flowBtn" class="dock-btn teal" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace</button>
+      <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace</button>
       <button id="firewallBtn" class="dock-btn red" title="Open firewall editor (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
     </div>
     <div class="dock-group">
@@ -1467,7 +1466,7 @@
   </div>
   <div class="budr-dash" id="budrDash">
     <div class="budr-hdr">
-      <h2>⛑ Backup &amp; DR Assessment</h2>
+      <h2>Backup &amp; DR Assessment</h2>
       <div class="budr-pills" id="budrPills"></div>
       <button class="budr-close" id="budrClose">Close [Esc]</button>
     </div>
@@ -3071,29 +3070,7 @@ function _rptArchDiagram(ctx, opts){
 
 function _rptBuildSvgUri(svgEl,root){
   var clone=svgEl.cloneNode(true);
-  var cloneRoot=clone.querySelector('.map-root');
-  if(cloneRoot) cloneRoot.removeAttribute('transform');
-  var bb=root.getBBox();
-  var pad=40;
-  clone.setAttribute('viewBox',
-    (bb.x-pad)+' '+(bb.y-pad)+' '+(bb.width+pad*2)+' '+(bb.height+pad*2));
-  clone.setAttribute('width',bb.width+pad*2);
-  clone.setAttribute('height',bb.height+pad*2);
-  var bgRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-  bgRect.setAttribute('x',bb.x-pad);
-  bgRect.setAttribute('y',bb.y-pad);
-  bgRect.setAttribute('width',bb.width+pad*2);
-  bgRect.setAttribute('height',bb.height+pad*2);
-  bgRect.setAttribute('fill','#0f172a');
-  clone.insertBefore(bgRect,clone.firstChild);
-  var styles=_rptCollectStyles();
-  if(styles){
-    var defs=clone.querySelector('defs')||
-      clone.insertBefore(document.createElementNS('http://www.w3.org/2000/svg','defs'),clone.firstChild);
-    var styleEl=document.createElementNS('http://www.w3.org/2000/svg','style');
-    styleEl.textContent=styles;
-    defs.appendChild(styleEl);
-  }
+  _rptPrepClone(clone,root);
   var xml=new XMLSerializer().serializeToString(clone);
   return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
 }
@@ -7412,8 +7389,8 @@ function renderLandingZoneMap(ctx){
     const lzTw=lzLblTxt.length*5.2+14;
     gG.append('rect').attr('x',gx-lzTw/2).attr('y',lzLblY-9).attr('width',lzTw).attr('height',14).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
     gG.append('text').attr('x',gx).attr('y',lzLblY).attr('text-anchor','middle')
-      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',gwNm?'var(--text-secondary)':'var(--text-muted)').text(lzLblTxt)
-    
+      .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',gwNm?'var(--text-secondary)':'var(--text-muted)').text(lzLblTxt);
+
     // Gateway tooltip
     const gwName=gwNames[gw.id]||sid(gw.id);
     gG.on('mouseenter',function(){
@@ -7535,8 +7512,8 @@ function renderLandingZoneMap(ctx){
       const skTw=skLblTxt.length*5.2+14;
       gG.append('rect').attr('x',sgX-skTw/2).attr('y',skLblY-9).attr('width',skTw).attr('height',14).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
       gG.append('text').attr('x',sgX).attr('y',skLblY).attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',sgNm?'var(--text-secondary)':'var(--text-muted)').text(skLblTxt)
-      
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',sgNm?'var(--text-secondary)':'var(--text-muted)').text(skLblTxt);
+
       // Connection line from spoke to gateway
       const psg=lzRouteG.append('path')
         .attr('class','route-trunk animated')
@@ -9758,7 +9735,7 @@ function _renderMapInner(){
     const lblClass=nm&&nm!==gw.id?'gw-name':'gw-id';
     const tw=lblTxt.length*6.2+16;
     gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
-    gG.append('text').attr('class',lblClass).attr('x',pos.x).attr('y',lblY).attr('text-anchor','middle').text(lblTxt)
+    gG.append('text').attr('class',lblClass).attr('x',pos.x).attr('y',lblY).attr('text-anchor','middle').text(lblTxt);
     gG.on('mouseenter',function(){
       if(_hlLocked) return;
       hlGw(id);
@@ -11218,7 +11195,7 @@ function _toggleAccountPanel(){
 // Account panel event listeners
 document.getElementById('accountsBtn').addEventListener('click',_toggleAccountPanel);
 document.getElementById('reportsBtn').addEventListener('click',function(){openReportBuilder()});
-document.getElementById('compDashBtn').addEventListener('click',function(){if(typeof _complianceFindings!=='undefined'&&_complianceFindings.length)renderCompliancePanel(_complianceFindings);else{const t=document.createElement('div');t.textContent='No compliance data — run compliance scan first';t.style.cssText='position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid var(--border);color:#fbbf24;padding:8px 16px;border-radius:8px;font:11px "IBM Plex Mono",monospace;z-index:999';document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}});
+document.getElementById('compDashBtn').addEventListener('click',function(){if(typeof _complianceFindings!=='undefined'&&_complianceFindings.length)renderCompliancePanel(_complianceFindings);else _showToast('No compliance data — run compliance scan first')});
 document.getElementById('accountPanelClose').addEventListener('click',closeAccountPanel);
 document.getElementById('addAccountBtn').addEventListener('click',()=>document.getElementById('addAccountInput').click());
 document.getElementById('addAccountInput').addEventListener('change',function(){
@@ -13919,9 +13896,9 @@ document.getElementById('compToggleSummary').addEventListener('click',function()
 // === BUDR DASHBOARD ===
 let _budrDashState={tierFilter:'all'};
 const _BUDR_TIER_META={
-  protected:{name:'Protected',color:'#10b981',icon:'✓'},
-  partial:{name:'Partially Protected',color:'#f59e0b',icon:'⚠'},
-  at_risk:{name:'At Risk',color:'#ef4444',icon:'✗'}
+  protected:{name:'Protected',color:'#10b981',icon:''},
+  partial:{name:'Partially Protected',color:'#f59e0b',icon:''},
+  at_risk:{name:'At Risk',color:'#ef4444',icon:''}
 };
 function openBUDRDash(){
   if(!_rlCtx){_showToast('Render data first');return}
@@ -13987,7 +13964,7 @@ function _renderBUDRDash(){
           const good=v===true||(typeof v==='number'&&v>1);
           const bad=v===false||v===0;
           const cls=good?'good':bad?'bad':'warn';
-          const icon=good?'✓':bad?'✗':'⚠';
+          const icon=good?'+':bad?'-':'!';
           h+='<div class="budr-signal"><span class="sig-icon '+cls+'">'+icon+'</span><span>'+esc(k)+': '+esc(String(v))+'</span></div>';
         });
       }
