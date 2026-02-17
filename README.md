@@ -1,6 +1,12 @@
-# AWS Network Mapper
+<p align="center">
+  <img src="logo-cropped.png" alt="AWS Mapper" width="300">
+</p>
 
-Interactive topology mapper for AWS infrastructure. Paste AWS CLI JSON exports and get a visual network map with VPCs, subnets, gateways, EC2 instances, RDS, Lambda, ECS, and more.
+<h1 align="center">AWS Network Mapper</h1>
+
+<p align="center">
+  Interactive topology mapper for AWS infrastructure. Paste AWS CLI JSON exports and get a visual network map with VPCs, subnets, gateways, EC2 instances, RDS, Lambda, ECS, and more.
+</p>
 
 **[Live Demo](https://schylerchase.github.io/aws_mapper/)** | **[Download Desktop App](https://github.com/schylerchase/aws_mapper/releases/latest)**
 
