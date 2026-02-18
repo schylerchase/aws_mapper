@@ -1187,6 +1187,7 @@
   <div class="upload-row">
     <button class="btn-upload" id="uploadBtn">Upload JSON Files</button>
     <button class="btn-upload" id="importFolderBtn" style="display:none;background:linear-gradient(135deg,#f59e0b,#d97706);margin-left:4px">Import Folder</button>
+    <button class="btn-upload" id="dlExportScript" style="background:linear-gradient(135deg,#6366f1,#4f46e5);margin-left:4px;font-size:9px" title="Download the bash script to collect AWS data">Get Export Script</button>
     <input type="file" id="fileInput" multiple accept=".json" style="display:none" />
   </div>
   <div class="upload-status" id="uploadStatus"></div>
@@ -16430,6 +16431,100 @@ function matchFile(fname, content){
 }
 
 document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('dlExportScript').addEventListener('click',function(){
+  var script=[
+'#!/usr/bin/env bash',
+'# AWS Network Mapper — Data Export Script',
+'# Exports all AWS CLI data needed for the mapper tool.',
+'# Usage:',
+'#   ./export-aws-data.sh                   # default profile + region',
+'#   ./export-aws-data.sh -p prod -r us-west-2',
+'#   ./export-aws-data.sh -p prod -r us-east-1 -o ./my-export',
+'set -euo pipefail',
+'PROFILE="" ; REGION="" ; OUTDIR=""',
+'usage(){ echo "Usage: $0 [-p profile] [-r region] [-o output-dir]"; exit 1; }',
+'while getopts "p:r:o:h" opt; do case $opt in p) PROFILE="$OPTARG";; r) REGION="$OPTARG";; o) OUTDIR="$OPTARG";; *) usage;; esac; done',
+'[[ -n "$PROFILE" && ! "$PROFILE" =~ ^[a-zA-Z0-9_-]+$ ]] && echo "ERROR: Invalid profile" >&2 && exit 1',
+'[[ -n "$REGION" && ! "$REGION" =~ ^[a-zA-Z0-9-]+$ ]] && echo "ERROR: Invalid region" >&2 && exit 1',
+'AWS_FLAGS=(); [ -n "$PROFILE" ] && AWS_FLAGS+=(--profile "$PROFILE"); [ -n "$REGION" ] && AWS_FLAGS+=(--region "$REGION")',
+'[ -z "$OUTDIR" ] && OUTDIR="./aws-export-${PROFILE:-default}-$(date +%Y%m%d-%H%M%S)"',
+'mkdir -p "$OUTDIR"',
+'echo "AWS Network Mapper — Data Export"',
+'echo "  Profile: ${PROFILE:-default}  Region: ${REGION:-default}  Output: $OUTDIR"',
+'echo ""',
+'run(){ local label="$1" fn="$2"; shift 2; printf "  %-35s" "$label..."; if output=$(aws "${AWS_FLAGS[@]}" "$@" 2>&1); then echo "$output" > "$OUTDIR/$fn"; echo "OK ($(wc -c < "$OUTDIR/$fn" | tr -d \' \') bytes)"; else echo "SKIP"; fi; }',
+'',
+'echo "── Network ─────────────────────────────────"',
+'run "VPCs"                    "vpcs.json"                    ec2 describe-vpcs',
+'run "Subnets"                 "subnets.json"                 ec2 describe-subnets',
+'run "Route Tables"            "route-tables.json"            ec2 describe-route-tables',
+'run "Security Groups"         "security-groups.json"         ec2 describe-security-groups',
+'run "Network ACLs"            "network-acls.json"            ec2 describe-network-acls',
+'run "ENIs"                    "network-interfaces.json"      ec2 describe-network-interfaces',
+'',
+'echo "── Gateways ────────────────────────────────"',
+'run "Internet Gateways"       "internet-gateways.json"       ec2 describe-internet-gateways',
+'run "NAT Gateways"            "nat-gateways.json"            ec2 describe-nat-gateways',
+'run "VPC Endpoints"           "vpc-endpoints.json"           ec2 describe-vpc-endpoints',
+'',
+'echo "── Compute ─────────────────────────────────"',
+'run "EC2 Instances"           "ec2-instances.json"           ec2 describe-instances',
+'run "RDS Instances"           "rds-instances.json"           rds describe-db-instances',
+'run "Lambda Functions"        "lambda-functions.json"        lambda list-functions',
+'run "ElastiCache Clusters"    "elasticache-clusters.json"    elasticache describe-cache-clusters --show-cache-node-info',
+'run "Redshift Clusters"       "redshift-clusters.json"       redshift describe-clusters',
+'',
+'echo "── Load Balancing ──────────────────────────"',
+'run "ALBs / NLBs"             "load-balancers.json"          elbv2 describe-load-balancers',
+'run "Target Groups"           "target-groups.json"           elbv2 describe-target-groups',
+'',
+'echo "── Connectivity ────────────────────────────"',
+'run "VPC Peering"             "vpc-peering.json"             ec2 describe-vpc-peering-connections',
+'run "VPN Connections"         "vpn-connections.json"         ec2 describe-vpn-connections',
+'run "TGW Attachments"         "tgw-attachments.json"         ec2 describe-transit-gateway-attachments',
+'',
+'echo "── Storage ──────────────────────────────────"',
+'run "EBS Volumes"             "volumes.json"                 ec2 describe-volumes',
+'run "EBS Snapshots"           "snapshots.json"               ec2 describe-snapshots --owner-ids self',
+'run "S3 Buckets"              "s3-buckets.json"              s3api list-buckets',
+'',
+'echo "── DNS ─────────────────────────────────────"',
+'run "Route 53 Hosted Zones"   "hosted-zones.json"            route53 list-hosted-zones',
+'',
+'echo "── Security ────────────────────────────────"',
+'run "WAF WebACLs"             "waf-web-acls.json"            wafv2 list-web-acls --scope REGIONAL',
+'run "CloudFront Distributions" "cloudfront.json"             cloudfront list-distributions',
+'',
+'echo "── IAM ─────────────────────────────────────"',
+'run "IAM Authorization"       "iam.json"                     iam get-account-authorization-details',
+'',
+'echo "── ECS (multi-step) ────────────────────────"',
+'printf "  %-35s" "ECS Services..."',
+'if clusters=$(aws "${AWS_FLAGS[@]}" ecs list-clusters --query \'clusterArns[]\' --output text 2>&1) && [ -n "$clusters" ] && [ "$clusters" != "None" ]; then',
+'  echo \'{"services":[]}\' > "$OUTDIR/ecs-services.json"',
+'  for cluster in $clusters; do',
+'    [[ ! "$cluster" =~ ^arn:aws ]] && continue',
+'    svc_arns=$(aws "${AWS_FLAGS[@]}" ecs list-services --cluster "$cluster" --query \'serviceArns[]\' --output text 2>/dev/null || true)',
+'    if [ -n "$svc_arns" ] && [ "$svc_arns" != "None" ]; then',
+'      for svc_arn in $svc_arns; do',
+'        [[ ! "$svc_arn" =~ ^arn:aws ]] && continue',
+'        aws "${AWS_FLAGS[@]}" ecs describe-services --cluster "$cluster" --services "$svc_arn" > "$OUTDIR/_tmp_ecs.json" 2>/dev/null && \\',
+'        python3 -c "import json,sys;a=json.load(open(sys.argv[1]));b=json.load(open(sys.argv[2]));a[\'services\'].extend(b.get(\'services\',[]));json.dump(a,open(sys.argv[1],\'w\'))" "$OUTDIR/ecs-services.json" "$OUTDIR/_tmp_ecs.json" 2>/dev/null',
+'      done',
+'    fi',
+'  done',
+'  rm -f "$OUTDIR/_tmp_ecs.json"; echo "OK"',
+'else echo "SKIP (no clusters)"; fi',
+'',
+'echo ""',
+'echo "Done! $(ls -1 "$OUTDIR"/*.json 2>/dev/null | wc -l | tr -d \' \') files exported ($(du -sh "$OUTDIR" | cut -f1))"',
+'echo "Output: $OUTDIR"',
+'echo "Drag folder onto Upload JSON Files or paste individually."'
+  ].join('\n');
+  var blob=new Blob([script],{type:'text/x-shellscript'});
+  downloadBlob(blob,'export-aws-data.sh');
+  _showToast('Export script downloaded — run: chmod +x export-aws-data.sh && ./export-aws-data.sh');
+});
 document.getElementById('fileInput').addEventListener('change',async function(){
   const files=[...this.files];
   if(!files.length)return;
