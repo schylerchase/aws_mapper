@@ -73,10 +73,10 @@
   .stat-chip{font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:500;padding:5px 10px;border-radius:4px;background:rgba(17,24,39,.9);border:1px solid var(--border);backdrop-filter:blur(8px);color:var(--text-secondary);cursor:pointer;transition:border-color .15s,background .15s}
   .stat-chip:hover{border-color:var(--accent-blue);background:rgba(59,130,246,.12)}
   .stat-chip b{color:var(--text-primary);font-weight:600;margin-right:3px}
-  .dock-toolbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;align-items:stretch;background:rgba(10,17,30,.92);border:1px solid rgba(255,255,255,.1);border-radius:14px;backdrop-filter:blur(16px);padding:5px 6px;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04) inset}
+  .dock-toolbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;align-items:stretch;background:rgba(10,17,30,.92);border:1px solid rgba(255,255,255,.1);border-radius:14px;backdrop-filter:blur(16px);padding:5px 6px 14px;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04) inset}
   .dock-group{display:flex;align-items:center;gap:3px;padding:0 6px;position:relative}
   .dock-group:not(:last-child)::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:1px;height:22px;background:rgba(255,255,255,.15)}
-  .dock-label{position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:6px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);opacity:.5;white-space:nowrap;pointer-events:none}
+  .dock-label{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);opacity:.65;white-space:nowrap;pointer-events:none}
   .dock-btn{height:30px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;padding:0 10px;transition:all .15s;white-space:nowrap}
   .dock-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.12);transform:translateY(-1px)}
   .dock-btn:active{transform:translateY(0)}
@@ -955,10 +955,10 @@
     .history-banner button,.diff-banner button,.flow-banner button,.account-merge-banner button{font-size:9px;padding:2px 8px}
 
     /* Bottom toolbar: scrollable on mobile (! needed to override inline styles) */
-    #bottomToolbar{left:0 !important;right:0 !important;transform:none !important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-y:contain;padding:0 10px 6px !important;gap:5px !important;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%)}
+    #bottomToolbar{left:0 !important;right:0 !important;transform:none !important;align-items:center;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-y:contain;padding:4px 10px !important;gap:5px !important;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%)}
     #bottomToolbar::-webkit-scrollbar{display:none}
     #bottomToolbar button{flex-shrink:0;font-size:10px;height:28px;padding:0 10px}
-    .dock-toolbar{left:0 !important;right:0 !important;transform:none !important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;padding:6px 10px !important;border-radius:0 !important;scrollbar-width:none}
+    .dock-toolbar{left:0 !important;right:0 !important;transform:none !important;align-items:center;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;padding:4px 10px !important;border-radius:0 !important;scrollbar-width:none}
     .dock-toolbar::-webkit-scrollbar{display:none}
     .dock-toolbar .dock-btn{flex-shrink:0}
     .dock-label{display:none}
@@ -1061,7 +1061,7 @@
     .legend.collapsed .legend-title{font-size:7px;gap:4px;margin-bottom:0}
     .timeline-bar{bottom:40px;height:40px}
     /* Bottom toolbar: scrollable in landscape (width > 768px so portrait rules don't apply) */
-    #bottomToolbar,.dock-toolbar{left:0 !important;right:0 !important;transform:none !important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-y:contain;border-radius:0 !important;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%)}
+    #bottomToolbar,.dock-toolbar{left:0 !important;right:0 !important;transform:none !important;align-items:center;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-y:contain;padding:4px 10px !important;border-radius:0 !important;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%)}
     #bottomToolbar::-webkit-scrollbar,.dock-toolbar::-webkit-scrollbar{display:none}
     #bottomToolbar button{flex-shrink:0}
     .dock-toolbar .dock-btn{flex-shrink:0}
@@ -1088,8 +1088,9 @@
   .dash-nav-btn[data-dash="budr"] .dn-dot{background:var(--accent-green)}
   .dash-nav-btn[data-dash="reports"] .dn-dot{background:var(--accent-orange)}
   /* Smooth open/close for all full-screen dashboards */
-  .comp-dash.open,.fw-dash.open,.budr-dash.open,.rpt-builder.open{animation:dashSlideIn .2s ease both}
-  @keyframes dashSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .comp-dash,.fw-dash,.budr-dash,.rpt-builder{transition:opacity .15s ease,visibility 0s linear .15s}
+  .comp-dash.open,.fw-dash.open,.budr-dash.open,.rpt-builder.open{animation:dashFadeIn .18s ease both;transition:opacity .15s ease,visibility 0s linear 0s}
+  @keyframes dashFadeIn{from{opacity:0}to{opacity:1}}
   /* Unified scrollbar for all dashboard bodies */
   .comp-body::-webkit-scrollbar,.fw-dash-body::-webkit-scrollbar,.budr-body::-webkit-scrollbar,.rpt-modules::-webkit-scrollbar,.rpt-preview::-webkit-scrollbar{width:6px}
   .comp-body::-webkit-scrollbar-track,.fw-dash-body::-webkit-scrollbar-track,.budr-body::-webkit-scrollbar-track,.rpt-modules::-webkit-scrollbar-track,.rpt-preview::-webkit-scrollbar-track{background:transparent}
@@ -14525,10 +14526,9 @@ function _initDashNav(currentId){
       btn.innerHTML='<span class="dn-dot"></span>'+t.label;
       btn.addEventListener('click',function(){
         if(t.id===currentId)return;
-        // Close current
+        // Open target first, then close current (no flash)
+        t.open();
         document.getElementById(d.el).classList.remove('open');
-        // Open target after brief delay for transition
-        setTimeout(function(){t.open()},50);
       });
       nav.appendChild(btn);
     });
@@ -15203,69 +15203,137 @@ document.getElementById('rptExportHTML').addEventListener('click',function(){_ge
 var _sheetJSLoaded=false;
 function _loadSheetJS(){
   if(_sheetJSLoaded&&window.XLSX) return Promise.resolve(window.XLSX);
-  return new Promise(function(resolve,reject){
-    var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js';
-    s.onload=function(){_sheetJSLoaded=true;resolve(window.XLSX)};
-    s.onerror=function(){reject(new Error('Failed to load SheetJS library'))};
-    document.head.appendChild(s);
+  function _tryLoad(src){
+    return new Promise(function(resolve,reject){
+      var s=document.createElement('script');
+      s.src=src;
+      s.onload=function(){_sheetJSLoaded=true;resolve(window.XLSX)};
+      s.onerror=function(){reject(new Error('Failed to load: '+src))};
+      document.head.appendChild(s);
+    });
+  }
+  return _tryLoad('xlsx.bundle.min.js').catch(function(){
+    return _tryLoad('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js');
   });
 }
 
 var _XLSX_COLORS={
   headerBg:'1B2A4A',headerFg:'FFFFFF',
-  critFg:'DC2626',highFg:'EA580C',medFg:'D97706',lowFg:'2563EB',
-  protectedBg:'D1FAE5',partialBg:'FEF3C7',atRiskBg:'FEE2E2',
-  stripeBg:'F8FAFC',borderClr:'CBD5E1'
+  sectionBg:'E2E8F0',sectionFg:'1E293B',
+  critFg:'991B1B',critBg:'FEE2E2',
+  highFg:'9A3412',highBg:'FFEDD5',
+  medFg:'92400E',medBg:'FEF3C7',
+  lowFg:'1E40AF',lowBg:'DBEAFE',
+  protectedFg:'065F46',protectedBg:'D1FAE5',
+  partialFg:'92400E',partialBg:'FEF3C7',
+  atRiskFg:'991B1B',atRiskBg:'FEE2E2',
+  effortQuickFg:'065F46',effortQuickBg:'DCFCE7',
+  effortModFg:'92400E',effortModBg:'FEF3C7',
+  effortProjFg:'991B1B',effortProjBg:'FEE2E2',
+  stripeBg:'F8FAFC',borderClr:'D1D5DB',
+  tierFixBg:'FEE2E2',tierFixFg:'991B1B',
+  tierSprintBg:'FEF3C7',tierSprintFg:'92400E',
+  tierBacklogBg:'DBEAFE',tierBacklogFg:'1E40AF',
+  titleFg:'0F172A',subtitleFg:'64748B',
+  labelFg:'475569',valueFg:'0F172A',
+  linkFg:'2563EB'
 };
+
+function _xlsxBorder(weight){
+  weight=weight||'thin';
+  var clr={rgb:_XLSX_COLORS.borderClr};
+  return {top:{style:weight,color:clr},bottom:{style:weight,color:clr},
+    left:{style:weight,color:clr},right:{style:weight,color:clr}};
+}
 
 function _xlsxHeaderStyle(){
   return {font:{bold:true,color:{rgb:_XLSX_COLORS.headerFg},name:'Calibri',sz:11},
     fill:{fgColor:{rgb:_XLSX_COLORS.headerBg}},
     alignment:{horizontal:'center',vertical:'center',wrapText:true},
-    border:{bottom:{style:'thin',color:{rgb:_XLSX_COLORS.borderClr}}}};
+    border:_xlsxBorder('thin')};
 }
 
 function _xlsxSevStyle(sev){
-  var map={CRITICAL:_XLSX_COLORS.critFg,HIGH:_XLSX_COLORS.highFg,MEDIUM:_XLSX_COLORS.medFg,LOW:_XLSX_COLORS.lowFg};
-  return {font:{bold:true,color:{rgb:map[sev]||'000000'},name:'Calibri',sz:10}};
+  var fg={CRITICAL:_XLSX_COLORS.critFg,HIGH:_XLSX_COLORS.highFg,MEDIUM:_XLSX_COLORS.medFg,LOW:_XLSX_COLORS.lowFg};
+  var bg={CRITICAL:_XLSX_COLORS.critBg,HIGH:_XLSX_COLORS.highBg,MEDIUM:_XLSX_COLORS.medBg,LOW:_XLSX_COLORS.lowBg};
+  return {font:{bold:true,color:{rgb:fg[sev]||'000000'},name:'Calibri',sz:10},
+    fill:{fgColor:{rgb:bg[sev]||'FFFFFF'}},
+    alignment:{horizontal:'center',vertical:'center'},
+    border:_xlsxBorder()};
 }
 
-function _xlsxTierFill(tier){
-  var map={protected:_XLSX_COLORS.protectedBg,partial:_XLSX_COLORS.partialBg,at_risk:_XLSX_COLORS.atRiskBg};
-  return {fill:{fgColor:{rgb:map[tier]||'FFFFFF'}}};
+function _xlsxTierStyle(tier){
+  var norm=String(tier).toLowerCase().replace(/ /g,'_');
+  var map={
+    fix_now:{fg:_XLSX_COLORS.tierFixFg,bg:_XLSX_COLORS.tierFixBg},
+    'this_sprint':{fg:_XLSX_COLORS.tierSprintFg,bg:_XLSX_COLORS.tierSprintBg},
+    backlog:{fg:_XLSX_COLORS.tierBacklogFg,bg:_XLSX_COLORS.tierBacklogBg},
+    protected:{fg:_XLSX_COLORS.protectedFg,bg:_XLSX_COLORS.protectedBg},
+    partial:{fg:_XLSX_COLORS.partialFg,bg:_XLSX_COLORS.partialBg},
+    at_risk:{fg:_XLSX_COLORS.atRiskFg,bg:_XLSX_COLORS.atRiskBg}
+  };
+  var m=map[norm]||{fg:'000000',bg:'FFFFFF'};
+  return {font:{bold:true,color:{rgb:m.fg},name:'Calibri',sz:10},
+    fill:{fgColor:{rgb:m.bg}},alignment:{horizontal:'center',vertical:'center'},
+    border:_xlsxBorder()};
 }
 
-function _xlsxAutoWidth(ws,data){
+function _xlsxEffortStyle(effort){
+  var norm=String(effort).toLowerCase().replace(/ /g,'');
+  var map={
+    quickfix:{fg:_XLSX_COLORS.effortQuickFg,bg:_XLSX_COLORS.effortQuickBg},
+    quick:{fg:_XLSX_COLORS.effortQuickFg,bg:_XLSX_COLORS.effortQuickBg},
+    moderate:{fg:_XLSX_COLORS.effortModFg,bg:_XLSX_COLORS.effortModBg},
+    project:{fg:_XLSX_COLORS.effortProjFg,bg:_XLSX_COLORS.effortProjBg}
+  };
+  var m=map[norm]||{fg:'000000',bg:'FFFFFF'};
+  return {font:{color:{rgb:m.fg},name:'Calibri',sz:10},
+    fill:{fgColor:{rgb:m.bg}},alignment:{horizontal:'center',vertical:'center'},
+    border:_xlsxBorder()};
+}
+
+function _xlsxCellStyle(isStripe){
+  var s={font:{name:'Calibri',sz:10,color:{rgb:'1E293B'}},
+    alignment:{vertical:'center',wrapText:true},
+    border:_xlsxBorder()};
+  if(isStripe) s.fill={fgColor:{rgb:_XLSX_COLORS.stripeBg}};
+  return s;
+}
+
+function _xlsxAutoWidth(ws,data,minWidths){
   if(!data||!data.length) return;
   var colWidths=[];
-  data.forEach(function(row){
+  data.forEach(function(row,ri){
     row.forEach(function(cell,i){
       var len=String(cell!=null?cell:'').length;
-      colWidths[i]=Math.min(Math.max(colWidths[i]||8,len+2),50);
+      if(ri===0) len=Math.max(len+4,12);
+      else len=len+3;
+      colWidths[i]=Math.max(colWidths[i]||8,len);
     });
   });
-  ws['!cols']=colWidths.map(function(w){return {wch:w}});
+  if(minWidths){
+    minWidths.forEach(function(mw,i){if(mw&&i<colWidths.length) colWidths[i]=Math.max(colWidths[i],mw)});
+  }
+  ws['!cols']=colWidths.map(function(w){return {wch:Math.min(w,60)}});
 }
 
 function _xlsxAddSheet(wb,name,headers,rows,opts){
   opts=opts||{};
   var data=[headers].concat(rows);
   var ws=XLSX.utils.aoa_to_sheet(data);
-  _xlsxAutoWidth(ws,data);
-  // Style headers
+  _xlsxAutoWidth(ws,data,opts.minWidths);
   var hdrStyle=_xlsxHeaderStyle();
   headers.forEach(function(_,i){
     var addr=XLSX.utils.encode_cell({r:0,c:i});
     if(ws[addr]) ws[addr].s=hdrStyle;
   });
-  // Style severity column
+  // Style severity column — colored text + tinted fill
   if(typeof opts.sevCol==='number'){
     for(var r=1;r<data.length;r++){
       var addr=XLSX.utils.encode_cell({r:r,c:opts.sevCol});
       if(ws[addr]){
         var val=String(ws[addr].v||'');
-        ws[addr].s=_xlsxSevStyle(val);
+        if(val) ws[addr].s=_xlsxSevStyle(val);
       }
     }
   }
@@ -15274,80 +15342,198 @@ function _xlsxAddSheet(wb,name,headers,rows,opts){
     for(var r=1;r<data.length;r++){
       var addr=XLSX.utils.encode_cell({r:r,c:opts.tierCol});
       if(ws[addr]){
-        var val=String(ws[addr].v||'').toLowerCase().replace(/ /g,'_');
-        ws[addr].s=_xlsxTierFill(val);
+        var val=String(ws[addr].v||'');
+        if(val) ws[addr].s=_xlsxTierStyle(val);
       }
     }
   }
-  // Stripe rows
+  // Style effort column
+  if(typeof opts.effortCol==='number'){
+    for(var r=1;r<data.length;r++){
+      var addr=XLSX.utils.encode_cell({r:r,c:opts.effortCol});
+      if(ws[addr]){
+        var val=String(ws[addr].v||'');
+        if(val) ws[addr].s=_xlsxEffortStyle(val);
+      }
+    }
+  }
+  // Apply base cell styles + row striping to all other cells
   for(var r=1;r<data.length;r++){
-    if(r%2===0){
-      for(var c=0;c<headers.length;c++){
-        var addr=XLSX.utils.encode_cell({r:r,c:c});
-        if(ws[addr]&&!ws[addr].s) ws[addr].s={fill:{fgColor:{rgb:_XLSX_COLORS.stripeBg}}};
-      }
+    var isStripe=r%2===0;
+    for(var c=0;c<headers.length;c++){
+      var addr=XLSX.utils.encode_cell({r:r,c:c});
+      if(ws[addr]&&!ws[addr].s) ws[addr].s=_xlsxCellStyle(isStripe);
+      else if(ws[addr]&&ws[addr].s&&!ws[addr].s.border) ws[addr].s.border=_xlsxBorder();
     }
   }
+  // Row height for header
+  ws['!rows']=[{hpx:28}];
+  // Autofilter — enables sort/filter dropdowns
+  var lastCol=XLSX.utils.encode_col(headers.length-1);
+  var lastRow=data.length;
+  ws['!autofilter']={ref:'A1:'+lastCol+lastRow};
+  // Freeze panes — freeze header row
+  ws['!views']=[{state:'frozen',ySplit:1}];
   XLSX.utils.book_append_sheet(wb,ws,name);
+}
+
+function _xlsxSummarySection(ws,row,label,cols){
+  var addr=XLSX.utils.encode_cell({r:row,c:0});
+  ws[addr]={v:label,t:'s',s:{font:{bold:true,sz:12,color:{rgb:_XLSX_COLORS.headerFg},name:'Calibri'},
+    fill:{fgColor:{rgb:_XLSX_COLORS.headerBg}},alignment:{vertical:'center'},
+    border:_xlsxBorder()}};
+  for(var c=1;c<cols;c++){
+    var a2=XLSX.utils.encode_cell({r:row,c:c});
+    ws[a2]={v:'',t:'s',s:{fill:{fgColor:{rgb:_XLSX_COLORS.headerBg}},border:_xlsxBorder()}};
+  }
+  if(cols>1) ws['!merges']=(ws['!merges']||[]).concat([{s:{r:row,c:0},e:{r:row,c:cols-1}}]);
+}
+
+function _xlsxSummaryRow(ws,row,label,value,cols){
+  var lAddr=XLSX.utils.encode_cell({r:row,c:0});
+  ws[lAddr]={v:label,t:'s',s:{font:{bold:true,sz:10,color:{rgb:_XLSX_COLORS.labelFg},name:'Calibri'},
+    alignment:{vertical:'center'},border:_xlsxBorder()}};
+  var vAddr=XLSX.utils.encode_cell({r:row,c:1});
+  var vType=typeof value==='number'?'n':'s';
+  ws[vAddr]={v:value,t:vType,s:{font:{sz:10,color:{rgb:_XLSX_COLORS.valueFg},name:'Calibri'},
+    alignment:{vertical:'center'},border:_xlsxBorder()}};
+  if(cols>2){
+    for(var c=2;c<cols;c++){
+      var a=XLSX.utils.encode_cell({r:row,c:c});
+      ws[a]={v:'',t:'s',s:{border:_xlsxBorder()}};
+    }
+  }
 }
 
 function _rptBuildXlsxSummary(wb){
   var c=_rlCtx;
-  var rows=[];
-  rows.push(['Report Title',_rptState.title||'AWS Infrastructure Assessment']);
-  rows.push(['Author',_rptState.author||'']);
-  rows.push(['Date',_rptState.date||new Date().toISOString().slice(0,10)]);
-  rows.push([]);
-  if(c){
-    var counts=[
-      ['VPCs',(c.vpcs||[]).length],['Subnets',(c.subnets||[]).length],
-      ['EC2',(c.instances||[]).length],['RDS',(c.rdsInstances||[]).length],
-      ['ALBs',(c.albs||[]).length],['ECS',(c.ecsServices||[]).length],
-      ['Lambda',(c.lambdaFns||[]).length],['Security Groups',(c.sgs||[]).length]
-    ];
-    rows.push(['Resource','Count']);
-    counts.forEach(function(r){rows.push(r)});
+  var cols=4;
+  var ws={};
+  var r=0;
+  // Title row — merged across all columns
+  var titleAddr=XLSX.utils.encode_cell({r:r,c:0});
+  ws[titleAddr]={v:_rptState.title||'AWS Infrastructure Assessment',t:'s',
+    s:{font:{bold:true,sz:18,color:{rgb:_XLSX_COLORS.titleFg},name:'Calibri'},
+      alignment:{vertical:'center'},border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
+  for(var cc=1;cc<cols;cc++){
+    ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',
+      s:{border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
   }
-  rows.push([]);
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:cols-1}}];
+  r++;
+  // Subtitle row
+  var subParts=[];
+  if(_rptState.author) subParts.push('Prepared by '+_rptState.author);
+  subParts.push(_rptState.date||new Date().toISOString().slice(0,10));
+  var subAddr=XLSX.utils.encode_cell({r:r,c:0});
+  ws[subAddr]={v:subParts.join('  |  '),t:'s',
+    s:{font:{sz:10,color:{rgb:_XLSX_COLORS.subtitleFg},name:'Calibri',italic:true},
+      alignment:{vertical:'center'}}};
+  for(var cc=1;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s'};
+  ws['!merges'].push({s:{r:r,c:0},e:{r:r,c:cols-1}});
+  r+=2;
+  // Infrastructure Overview section
+  if(c){
+    _xlsxSummarySection(ws,r,'INFRASTRUCTURE OVERVIEW',cols);r++;
+    var counts=[['VPCs',(c.vpcs||[]).length],['Subnets',(c.subnets||[]).length],
+      ['EC2 Instances',(c.instances||[]).length],['RDS Databases',(c.rdsInstances||[]).length],
+      ['Load Balancers',(c.albs||[]).length],['ECS Services',(c.ecsServices||[]).length],
+      ['Lambda Functions',(c.lambdaFns||[]).length],['Security Groups',(c.sgs||[]).length]];
+    // Two-column layout: resource pairs side by side
+    for(var i=0;i<counts.length;i+=2){
+      var lAddr=XLSX.utils.encode_cell({r:r,c:0});
+      ws[lAddr]={v:counts[i][0],t:'s',s:{font:{bold:true,sz:10,color:{rgb:_XLSX_COLORS.labelFg},name:'Calibri'},border:_xlsxBorder(),alignment:{vertical:'center'}}};
+      var vAddr=XLSX.utils.encode_cell({r:r,c:1});
+      ws[vAddr]={v:counts[i][1],t:'n',s:{font:{bold:true,sz:11,color:{rgb:_XLSX_COLORS.valueFg},name:'Calibri'},border:_xlsxBorder(),alignment:{horizontal:'center',vertical:'center'}}};
+      if(i+1<counts.length){
+        var l2=XLSX.utils.encode_cell({r:r,c:2});
+        ws[l2]={v:counts[i+1][0],t:'s',s:{font:{bold:true,sz:10,color:{rgb:_XLSX_COLORS.labelFg},name:'Calibri'},border:_xlsxBorder(),alignment:{vertical:'center'}}};
+        var v2=XLSX.utils.encode_cell({r:r,c:3});
+        ws[v2]={v:counts[i+1][1],t:'n',s:{font:{bold:true,sz:11,color:{rgb:_XLSX_COLORS.valueFg},name:'Calibri'},border:_xlsxBorder(),alignment:{horizontal:'center',vertical:'center'}}};
+      }
+      r++;
+    }
+    r++;
+  }
+  // Compliance Findings section
   if(_complianceFindings&&_complianceFindings.length){
+    _xlsxSummarySection(ws,r,'COMPLIANCE FINDINGS',cols);r++;
+    _xlsxSummaryRow(ws,r,'Total Findings',_complianceFindings.length,cols);r++;
     var sevs={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
     _complianceFindings.forEach(function(f){sevs[f.severity]=(sevs[f.severity]||0)+1});
-    rows.push(['Compliance Findings',_complianceFindings.length]);
     ['CRITICAL','HIGH','MEDIUM','LOW'].forEach(function(s){
-      if(sevs[s])rows.push(['  '+s,sevs[s]]);
+      var addr=XLSX.utils.encode_cell({r:r,c:0});
+      ws[addr]={v:s,t:'s',s:_xlsxSevStyle(s)};
+      var vAddr=XLSX.utils.encode_cell({r:r,c:1});
+      ws[vAddr]={v:sevs[s],t:'n',s:{font:{bold:true,sz:11,color:{rgb:'0F172A'},name:'Calibri'},
+        alignment:{horizontal:'center',vertical:'center'},border:_xlsxBorder()}};
+      for(var cc=2;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',s:{border:_xlsxBorder()}};
+      r++;
+    });
+    // Framework breakdown
+    r++;
+    var fws=[].concat(Object.keys(_FW_LABELS));
+    var fwHdr=XLSX.utils.encode_cell({r:r,c:0});
+    ws[fwHdr]={v:'Framework',t:'s',s:_xlsxHeaderStyle()};
+    ws[XLSX.utils.encode_cell({r:r,c:1})]={v:'Findings',t:'s',s:_xlsxHeaderStyle()};
+    ws[XLSX.utils.encode_cell({r:r,c:2})]={v:'Critical',t:'s',s:_xlsxHeaderStyle()};
+    ws[XLSX.utils.encode_cell({r:r,c:3})]={v:'High',t:'s',s:_xlsxHeaderStyle()};
+    r++;
+    fws.forEach(function(fw){
+      var ff=_complianceFindings.filter(function(f){return f.framework===fw});
+      if(!ff.length) return;
+      var isStripe=(r%2===0);
+      ws[XLSX.utils.encode_cell({r:r,c:0})]={v:_FW_LABELS[fw]||fw,t:'s',s:_xlsxCellStyle(isStripe)};
+      ws[XLSX.utils.encode_cell({r:r,c:1})]={v:ff.length,t:'n',s:{font:{bold:true,sz:10,name:'Calibri'},alignment:{horizontal:'center'},border:_xlsxBorder(),fill:isStripe?{fgColor:{rgb:_XLSX_COLORS.stripeBg}}:undefined}};
+      var critCt=ff.filter(function(f){return f.severity==='CRITICAL'}).length;
+      var highCt=ff.filter(function(f){return f.severity==='HIGH'}).length;
+      ws[XLSX.utils.encode_cell({r:r,c:2})]={v:critCt,t:'n',s:critCt>0?_xlsxSevStyle('CRITICAL'):_xlsxCellStyle(isStripe)};
+      ws[XLSX.utils.encode_cell({r:r,c:3})]={v:highCt,t:'n',s:highCt>0?_xlsxSevStyle('HIGH'):_xlsxCellStyle(isStripe)};
+      r++;
+    });
+    r++;
+  }
+  // BUDR section
+  if(_budrAssessments&&_budrAssessments.length){
+    _xlsxSummarySection(ws,r,'BACKUP & DISASTER RECOVERY',cols);r++;
+    _xlsxSummaryRow(ws,r,'Total Assessments',_budrAssessments.length,cols);r++;
+    var tc=_getBUDRTierCounts();
+    [['Protected',tc.protected||0,'protected'],['Partial',tc.partial||0,'partial'],['At Risk',tc.at_risk||0,'at_risk']].forEach(function(t){
+      ws[XLSX.utils.encode_cell({r:r,c:0})]={v:t[0],t:'s',s:_xlsxTierStyle(t[2])};
+      ws[XLSX.utils.encode_cell({r:r,c:1})]={v:t[1],t:'n',s:{font:{bold:true,sz:11,name:'Calibri'},alignment:{horizontal:'center'},border:_xlsxBorder()}};
+      for(var cc=2;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',s:{border:_xlsxBorder()}};
+      r++;
     });
   }
-  if(_budrAssessments&&_budrAssessments.length){
-    rows.push([]);
-    var tc=_getBUDRTierCounts();
-    rows.push(['BUDR Assessments',_budrAssessments.length]);
-    rows.push(['  Protected',tc.protected||0]);
-    rows.push(['  Partial',tc.partial||0]);
-    rows.push(['  At Risk',tc.at_risk||0]);
-  }
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:25},{wch:40}];
-  // Style title row
-  var titleAddr=XLSX.utils.encode_cell({r:0,c:0});
-  if(ws[titleAddr]) ws[titleAddr].s={font:{bold:true,sz:14,color:{rgb:_XLSX_COLORS.headerBg}}};
+  // Set sheet range
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r,c:cols-1}});
+  ws['!cols']=[{wch:24},{wch:16},{wch:16},{wch:16}];
+  ws['!rows']=[{hpx:36}];
   XLSX.utils.book_append_sheet(wb,ws,'Summary');
 }
 
 function _rptBuildXlsxCompliance(wb){
   var f=_complianceFindings;
   if(!f||!f.length) return;
-  var headers=['Severity','Framework','Control','Resource','Finding','Remediation'];
-  var sorted=f.slice().sort(function(a,b){return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
+  var headers=['Priority','Effort','Severity','Framework','Control','Resource','Finding','Remediation'];
+  var sorted=f.slice().sort(function(a,b){
+    var ta=_classifyTier(a),tb=_classifyTier(b);
+    if(ta!==tb) return ta-tb;
+    return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
+  });
   var rows=sorted.map(function(x){
-    return [x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
+    var tier=_classifyTier(x);
+    var effort=_EFFORT_LABELS[_getEffort(x)]||'Moderate';
+    return [_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
       x.resourceName||x.resource,x.message,x.remediation];
   });
-  _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:0});
+  _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:2,tierCol:0,effortCol:1,
+    minWidths:[14,14,12,20,14,28,40,40]});
 }
 
 function _rptBuildXlsxBUDR(wb){
   if(!_budrAssessments||!_budrAssessments.length) return;
-  var headers=['Type','Resource ID','Name','Tier','RTO','RPO','Signals'];
+  var headers=['Resource Type','Resource ID','Name','DR Tier','RTO','RPO','Backup Signals'];
   var tierOrder={at_risk:0,partial:1,protected:2};
   var sorted=_budrAssessments.slice().sort(function(a,b){
     return (tierOrder[a.profile?a.profile.tier:'']||9)-(tierOrder[b.profile?b.profile.tier:'']||9);
@@ -15356,19 +15542,20 @@ function _rptBuildXlsxBUDR(wb){
     var tier=a.profile?a.profile.tier:'unknown';
     var rto=a.profile?a.profile.rto:'N/A';
     var rpo=a.profile?a.profile.rpo:'N/A';
-    var sigs=a.signals?Object.keys(a.signals).map(function(k){return k+':'+a.signals[k]}).join(', '):'';
+    var sigs=a.signals?Object.keys(a.signals).map(function(k){return k+': '+a.signals[k]}).join(', '):'';
     return [a.type,a.id,a.name||'',tier,rto,rpo,sigs];
   });
-  _xlsxAddSheet(wb,'BUDR',headers,rows,{tierCol:3});
+  _xlsxAddSheet(wb,'BUDR',headers,rows,{tierCol:3,
+    minWidths:[16,24,20,14,10,10,40]});
 }
 
 function _rptBuildXlsxInventory(wb){
   var c=_rlCtx;
   if(!c) return;
-  var headers=['Type','ID','Name','Detail 1','Detail 2','Detail 3'];
+  var headers=['Type','ID','Name','Configuration','State / AZ','Details'];
   var rows=[];
   (c.vpcs||[]).forEach(function(v){
-    rows.push(['VPC',v.VpcId,_rptTagName(v),v.CidrBlock,v.State,'']);
+    rows.push(['VPC',v.VpcId,_rptTagName(v),v.CidrBlock,v.State||'available','']);
   });
   (c.subnets||[]).forEach(function(s){
     var pub=c.pubSubs&&c.pubSubs.has(s.SubnetId)?'Public':'Private';
@@ -15380,26 +15567,26 @@ function _rptBuildXlsxInventory(wb){
     rows.push(['EC2',i.InstanceId,_rptTagName(i),i.InstanceType,state,az]);
   });
   (c.rdsInstances||[]).forEach(function(d){
-    rows.push(['RDS',d.DBInstanceIdentifier,'',d.Engine,d.DBInstanceClass,d.MultiAZ?'Multi-AZ':'Single-AZ']);
+    rows.push(['RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine+' / '+d.DBInstanceClass,d.MultiAZ?'Multi-AZ':'Single-AZ',d.StorageType||'']);
   });
   (c.albs||[]).forEach(function(a){
-    rows.push(['ALB',a.LoadBalancerArn||'',a.LoadBalancerName,a.Type,a.Scheme,(a.AvailabilityZones||[]).length+' AZs']);
+    rows.push(['ALB',a.LoadBalancerName||'',a.LoadBalancerName,a.Type||'application',a.Scheme||'',(a.AvailabilityZones||[]).length+' AZs']);
   });
   (c.ecsServices||[]).forEach(function(s){
-    rows.push(['ECS',s.serviceArn||'',s.serviceName,'Desired: '+s.desiredCount,'Running: '+s.runningCount,s.launchType||'']);
+    rows.push(['ECS',s.serviceName||'',s.serviceName,s.launchType||'FARGATE',s.runningCount+'/'+s.desiredCount+' tasks','']);
   });
   (c.lambdaFns||[]).forEach(function(fn){
-    rows.push(['Lambda',fn.FunctionArn||'',fn.FunctionName,fn.Runtime,fn.MemorySize+'MB',fn.Timeout+'s']);
+    rows.push(['Lambda',fn.FunctionName||'',fn.FunctionName,fn.Runtime||'',fn.MemorySize+'MB / '+fn.Timeout+'s','']);
   });
   if(!rows.length) return;
-  _xlsxAddSheet(wb,'Inventory',headers,rows);
+  _xlsxAddSheet(wb,'Inventory',headers,rows,{minWidths:[12,24,22,22,18,14]});
 }
 
 function _rptBuildXlsxActionPlan(wb){
   var all=(_complianceFindings||[]).concat(_budrFindings||[]);
   if(!all.length) return;
-  var headers=['Priority','Severity','Framework','Control','Resource','Finding',
-    'Effort','Remediation','Owner','Target Date','Status','Justification'];
+  var headers=['Priority','Severity','Effort','Framework','Control','Resource','Finding',
+    'Remediation','Owner','Target Date','Status'];
   var tiers=_getTierGroups(all);
   var rows=[];
   [1,2,3].forEach(function(t){
@@ -15409,13 +15596,40 @@ function _rptBuildXlsxActionPlan(wb){
     rgs.forEach(function(rg){
       rg.findings.forEach(function(f){
         var effort=_EFFORT_MAP[f.control]||'moderate';
-        rows.push([tierName,f.severity,_FW_LABELS[f.framework]||f.framework||'',f.control,
-          f.resourceName||f.resource,f.message,
-          _EFFORT_LABELS[effort]||effort,f.remediation,'','','Open','']);
+        rows.push([tierName,f.severity,_EFFORT_LABELS[effort]||effort,
+          _FW_LABELS[f.framework]||f.framework||'',f.control,
+          f.resourceName||f.resource,f.message,f.remediation,'','','Open']);
       });
     });
   });
-  _xlsxAddSheet(wb,'Action Plan',headers,rows,{sevCol:1});
+  _xlsxAddSheet(wb,'Action Plan',headers,rows,{sevCol:1,tierCol:0,effortCol:2,
+    minWidths:[14,12,14,20,14,28,40,40,14,14,12]});
+}
+
+// Post-process XLSX zip to inject freeze panes (xlsx-js-style doesn't support !views)
+async function _xlsxInjectFreezePanes(wbBuf,sheetNames){
+  var zip=await JSZip.loadAsync(wbBuf);
+  for(var i=0;i<sheetNames.length;i++){
+    var path='xl/worksheets/sheet'+(i+1)+'.xml';
+    var f=zip.file(path);
+    if(!f) continue;
+    var xml=await f.async('string');
+    // Skip Summary sheet (index 0) — it's a dashboard, not a data table
+    if(i===0) continue;
+    // Inject pane into sheetView to freeze row 1
+    var paneXml='<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>';
+    xml=xml.replace(
+      '<sheetView workbookViewId="0"/>',
+      '<sheetView tabSelected="'+(i===1?'1':'0')+'" workbookViewId="0">'+paneXml+'</sheetView>'
+    );
+    // Also try the non-self-closing variant
+    xml=xml.replace(
+      /<sheetView workbookViewId="0"><\/sheetView>/,
+      '<sheetView tabSelected="'+(i===1?'1':'0')+'" workbookViewId="0">'+paneXml+'</sheetView>'
+    );
+    zip.file(path,xml);
+  }
+  return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 
 async function _generateXlsx(){
@@ -15433,7 +15647,11 @@ async function _generateXlsx(){
     if(enabled.indexOf('action-plan')>=0) _rptBuildXlsxActionPlan(wb);
     var slug=_rptSlugify(_rptState.title);
     var date=_rptState.date||new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb,slug+'-'+date+'.xlsx');
+    var fname=slug+'-'+date+'.xlsx';
+    // Write to buffer, inject freeze panes, then download
+    var wbBuf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+    var blob=await _xlsxInjectFreezePanes(wbBuf,wb.SheetNames);
+    downloadBlob(blob,fname);
     _showToast('XLSX report exported');
   }catch(e){
     console.error('XLSX export failed:',e);
