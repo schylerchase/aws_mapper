@@ -360,6 +360,8 @@
   .main:has(.design-banner.visible) .export-bar{top:40px}
   .main.flow-active .stats-bar{top:44px}
   .main.flow-active .export-bar{top:44px}
+  .main.diff-active .export-bar{top:44px}
+  .main.diff-active .stats-bar{top:44px}
   .design-banner .db-title{font-weight:700;letter-spacing:.5px;text-transform:uppercase}
   .design-banner .db-shortcuts{display:flex;gap:10px;color:var(--text-secondary);font-size:9px}
   .design-banner .db-shortcuts kbd{display:inline-block;padding:1px 5px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;margin:0 2px}
@@ -701,7 +703,7 @@
   .diff-modified{animation:diff-pulse 1.8s ease-in-out infinite !important}
   .diff-modified rect,.diff-modified circle{stroke:#f59e0b !important;stroke-width:2.5px !important}
   .diff-unchanged{opacity:.15 !important;transition:opacity .3s}
-  .diff-summary{position:fixed;top:32px;right:0;width:340px;max-height:60vh;background:rgba(10,14,23,.96);border:1px solid var(--border);border-top:none;border-radius:0 0 0 8px;z-index:60;overflow-y:auto;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;display:none;backdrop-filter:blur(8px)}
+  .diff-summary{position:fixed;top:42px;right:0;width:340px;max-height:60vh;background:rgba(10,14,23,.96);border:1px solid var(--border);border-top:none;border-radius:0 0 0 8px;z-index:60;overflow-y:auto;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;display:none;backdrop-filter:blur(8px)}
   .diff-summary.open{display:block}
   .diff-summary h4{color:var(--accent-cyan);font-size:12px;margin:0 0 8px}
   .diff-summary .diff-item{padding:4px 6px;border-radius:4px;margin-bottom:3px;cursor:pointer;display:flex;align-items:center;gap:6px}
@@ -712,9 +714,16 @@
   .diff-summary .diff-item .diff-badge.modified{background:#f59e0b}
   .diff-summary .diff-item .diff-label{color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .diff-summary .diff-item .diff-type{color:var(--text-muted);font-size:9px;text-transform:uppercase}
-  .diff-summary .diff-fields{padding:2px 0 2px 18px;font-size:10px;color:var(--text-muted)}
+  .diff-summary .diff-fields{padding:2px 0 4px 18px;font-size:10px;color:var(--text-muted)}
   .diff-summary .diff-fields .structural{color:#f59e0b}
   .diff-summary .diff-fields .metadata{color:var(--text-muted)}
+  .diff-field-row{display:flex;align-items:baseline;gap:4px;padding:1px 0;flex-wrap:wrap}
+  .diff-field-name{color:var(--text-muted);font-weight:600;min-width:0;flex-shrink:0}
+  .diff-field-old{color:#ef4444;text-decoration:line-through;opacity:.8;word-break:break-all}
+  .diff-field-arrow{color:var(--text-muted);flex-shrink:0;font-size:9px}
+  .diff-field-new{color:#10b981;word-break:break-all}
+  .diff-field-added{color:#10b981}
+  .diff-field-removed{color:#ef4444;text-decoration:line-through;opacity:.8}
   /* === TRAFFIC FLOW VISUALIZATION === */
   .flow-banner{position:fixed;top:6px;left:50%;transform:translateX(-50%);height:32px;background:linear-gradient(90deg,#0c2d4a,#0a3544);z-index:60;display:flex;align-items:center;justify-content:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#22d3ee;font-weight:600;border-radius:8px;padding:0 16px;border:1px solid rgba(34,211,238,.2);box-shadow:0 4px 12px rgba(0,0,0,.4)}
   .flow-banner button{background:rgba(0,0,0,.3);border:1px solid rgba(34,211,238,.4);color:#22d3ee;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:'IBM Plex Mono',monospace}
@@ -937,7 +946,7 @@
     .timeline-label{font-size:9px}
 
     /* Diff summary */
-    .diff-summary{width:280px;top:32px;right:0}
+    .diff-summary{width:280px;top:42px;right:0}
 
     /* Change log */
     .change-log{max-width:95%;bottom:70px}
@@ -14095,6 +14104,7 @@ function enterDiffMode(baselineData){
   // Show banner
   const banner=document.getElementById('diffBanner');
   banner.style.display='flex';
+  document.querySelector('.main').classList.add('diff-active');
   const srcName=baselineData.accountLabel||baselineData._srcName||'baseline';
   document.getElementById('diffLabel').textContent='COMPARING: '+srcName+' vs current';
   document.getElementById('diffAdded').textContent='+'+_diffResults.total.added+' added';
@@ -14112,6 +14122,7 @@ function exitDiffMode(){
   _diffResults=null;
   _diffFilter='all';
   document.getElementById('diffBanner').style.display='none';
+  document.querySelector('.main').classList.remove('diff-active');
   document.getElementById('diffSummary').classList.remove('open');
   // Remove all diff overlay classes
   if(_mapG&&_mapG.node()){
@@ -14204,6 +14215,21 @@ function _applyDiffOverlay(){
   });
 }
 
+function _diffFmtVal(v){
+  if(v===undefined) return '∅';
+  if(v===null) return 'null';
+  if(typeof v==='boolean') return v?'true':'false';
+  if(typeof v==='number') return String(v);
+  if(typeof v==='string') return v.length>40?v.slice(0,37)+'...':v;
+  if(Array.isArray(v)){
+    if(!v.length) return '[]';
+    var s=JSON.stringify(v);
+    return s.length>50?'['+v.length+' items]':s;
+  }
+  var s=JSON.stringify(v);
+  return s.length>50?'{...}':s;
+}
+
 function _renderDiffSummary(){
   if(!_diffResults) return;
   const panel=document.getElementById('diffSummary');
@@ -14239,7 +14265,20 @@ function _renderDiffSummary(){
       if(item.fields&&item.fields.length){
         html+='<div class="diff-fields">';
         item.fields.slice(0,8).forEach(f=>{
-          html+='<div class="'+f.kind+'">'+_escHtml(f.field)+': changed</div>';
+          var oldVal=_diffFmtVal(f.old);
+          var newVal=_diffFmtVal(f.new);
+          html+='<div class="diff-field-row '+f.kind+'">';
+          html+='<span class="diff-field-name">'+_escHtml(f.field)+'</span>';
+          if(typeof f.old==='undefined'){
+            html+='<span class="diff-field-added">+ '+_escHtml(newVal)+'</span>';
+          } else if(typeof f.new==='undefined'){
+            html+='<span class="diff-field-removed">- '+_escHtml(oldVal)+'</span>';
+          } else {
+            html+='<span class="diff-field-old">'+_escHtml(oldVal)+'</span>';
+            html+='<span class="diff-field-arrow">→</span>';
+            html+='<span class="diff-field-new">'+_escHtml(newVal)+'</span>';
+          }
+          html+='</div>';
         });
         if(item.fields.length>8) html+='<div style="color:var(--text-muted)">...+'+(item.fields.length-8)+' more</div>';
         html+='</div>';
