@@ -1,6 +1,6 @@
 {
   "name": "aws-network-mapper",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "AWS Network Topology Mapper - Desktop Application",
   "author": {
     "name": "schylerchase",
@@ -22,7 +22,8 @@
       "index.html",
       "main.js",
       "preload.js",
-      "export-aws-data.sh"
+      "export-aws-data.sh",
+      "xlsx.bundle.min.js"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
