@@ -614,9 +614,9 @@
   .comp-finding-row .fr-control{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-cyan);min-width:70px;flex-shrink:0}
   .comp-finding-row .fr-msg{color:var(--text-secondary);flex:1;line-height:1.4}
   .comp-finding-row .fr-effort{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap}
-  .comp-finding-row .fr-effort.quick{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
-  .comp-finding-row .fr-effort.moderate{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
-  .comp-finding-row .fr-effort.project{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+  .comp-finding-row .fr-effort.low{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+  .comp-finding-row .fr-effort.med{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
+  .comp-finding-row .fr-effort.high{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
   .comp-finding-row .fr-actions{display:flex;gap:4px;flex-shrink:0}
   .comp-finding-row .fr-remediation{color:var(--text-muted);font-size:11px;margin-top:3px;line-height:1.4;padding-left:78px}
   .comp-no-findings{text-align:center;padding:40px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
@@ -1558,7 +1558,7 @@
         <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Save and Load</h3>
         <p><b>Save</b> downloads your workspace as a .awsmap file. <b>Open</b> loads it back. Compatible between web and desktop. Auto-saved to browser every 30s.</p>
         <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Compliance</h3>
-        <p>Click the <b>Compliance</b> chip in the stats bar to open the full dashboard. Checks include CIS Benchmarks, WAF rules, IAM analysis, and AWS Architecture Best Practices. Mute individual findings, filter by severity/framework, export as CSV.</p>
+        <p>Click the <b>Compliance</b> chip in the stats bar to open the full dashboard. Checks include CIS Benchmarks, Well-Architected Framework, IAM analysis, and AWS Architecture Best Practices. Mute individual findings, filter by severity/framework, export as CSV.</p>
         <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Interactions</h3>
         <p><b>Click a VPC</b> to lock highlight. <b>Click a Subnet</b> for firewall rules. <b>Click a Gateway</b> to highlight routes. <b>Hover</b> for previews.</p>
         <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Design Mode</h3>
@@ -1584,6 +1584,7 @@
       <input id="compSearch" type="text" placeholder="Filter by resource, message, control...">
       <label>Framework</label>
       <select id="compFwFilter"><option value="all">All</option><option value="CIS">CIS</option><option value="WAF">WAF</option><option value="IAM">IAM</option><option value="ARCH">Best Practices</option><option value="SOC2">SOC2</option><option value="PCI">PCI DSS 4</option><option value="BUDR">BUDR</option></select>
+
       <label>Sort</label>
       <select id="compSort"><option value="severity">Severity</option><option value="framework">Framework</option><option value="control">Control</option><option value="resource">Resource</option></select>
       <label style="margin-left:12px"><input type="checkbox" id="compShowMuted" style="margin-right:4px">Show muted</label>
@@ -1886,7 +1887,7 @@ function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Val
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
 const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
 const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
-const _FW_LABELS={CIS:'CIS Benchmark',WAF:'Web Application Firewall (WAF)',IAM:'IAM Security',ARCH:'Well-Architected',SOC2:'SOC 2',PCI:'PCI DSS 4',BUDR:'Backup & DR'};
+const _FW_LABELS={CIS:'CIS Benchmark',WAF:'Well-Architected Framework',IAM:'IAM Security',ARCH:'Best Practices',SOC2:'SOC 2',PCI:'PCI DSS 4',BUDR:'Backup & DR'};
 function clsGw(id){const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','eigw-':'EIGW','lgw-':'LGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
 function isShared(t){return t==='TGW'||t==='PCX'}
 function gcv(t){return{IGW:'var(--igw-color)',NAT:'var(--nat-color)',TGW:'var(--tgw-color)',VGW:'var(--vgw-color)',VPCE:'var(--vpce-color)',PCX:'var(--pcx-color)',EIGW:'var(--igw-color)'}[t]||'var(--text-muted)'}
@@ -3907,7 +3908,7 @@ function _rptBUDRAssessmentTable(){
   var sorted=_budrAssessments.slice().sort(function(a,b){
     var ta=a.profile?tierOrder[a.profile.tier]:9;
     var tb=b.profile?tierOrder[b.profile.tier]:9;
-    if(ta!==tb) return ta-tb;
+    if(ta!==tb) return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);
     var sa=a.profile?(_BUDR_STRATEGY_ORDER[a.profile.strategy]||9):9;
     var sb=b.profile?(_BUDR_STRATEGY_ORDER[b.profile.strategy]||9):9;
     return sa-sb;
@@ -4124,15 +4125,15 @@ function _rptActionPlan(ctx, opts){
   if(!all.length){return h+'<p>No findings to prioritize.</p></section>'}
   h+='<div class="rpt-section-body">';
   var tiers=_getTierGroups(all);
-  var tierNames={1:'fix-now',2:'this-sprint',3:'backlog'};
+  var tierNames={crit:'critical',high:'high',med:'medium',low:'low'};
   h+='<nav class="rpt-jump-nav">';
-  [1,2,3].forEach(function(t){
+  _PRIORITY_KEYS.forEach(function(t){
     var rgs=tiers[t];if(!rgs||!rgs.length) return;
     var total=0;rgs.forEach(function(rg){total+=rg.findings.length});
     h+='<a href="#s-action-'+tierNames[t]+'" class="rpt-jump-link" style="color:'+_TIER_META[t].color+'">'+_TIER_META[t].name+'<span class="rpt-jump-ct" style="color:'+_TIER_META[t].color+'">'+total+'</span></a>';
   });
   h+='</nav>';
-  [1,2,3].forEach(function(t){
+  _PRIORITY_KEYS.forEach(function(t){
     var rgs=tiers[t];
     if(!rgs||!rgs.length) return;
     var meta=_TIER_META[t];
@@ -4199,79 +4200,84 @@ function _rptIaCRecs(ctx, opts){
 // === ACTIONABLE REPORT ENGINE ===
 const _EFFORT_MAP={
   // CIS
-  'CIS 5.1':'quick','CIS 5.2':'quick','CIS 5.3':'quick','CIS 5.4':'quick',
-  'CIS 5.5':'moderate','NET-1':'moderate','NET-2':'quick',
+  'CIS 5.1':'low','CIS 5.2':'low','CIS 5.3':'low','CIS 5.4':'low',
+  'CIS 5.5':'med','NET-1':'med','NET-2':'low',
   // WAF
-  'WAF-1':'moderate','WAF-2':'moderate','WAF-3':'moderate','WAF-4':'quick',
+  'WAF-1':'med','WAF-2':'med','WAF-3':'med','WAF-4':'low',
   // ARCH
-  'ARCH-N1':'moderate','ARCH-N2':'moderate','ARCH-N3':'project','ARCH-N5':'quick',
-  'ARCH-C1':'quick','ARCH-C2':'quick','ARCH-C3':'moderate','ARCH-C4':'moderate','ARCH-C5':'quick','ARCH-C6':'moderate',
-  'ARCH-D1':'quick','ARCH-D2':'moderate','ARCH-D3':'project','ARCH-D4':'moderate','ARCH-D5':'project','ARCH-D6':'project','ARCH-D7':'quick',
-  'ARCH-S1':'quick','ARCH-S2':'quick','ARCH-E1':'moderate','ARCH-E2':'quick',
-  'ARCH-G1':'project','ARCH-G2':'quick','ARCH-X1':'moderate',
+  'ARCH-N1':'med','ARCH-N2':'med','ARCH-N3':'high','ARCH-N5':'low',
+  'ARCH-C1':'low','ARCH-C2':'low','ARCH-C3':'med','ARCH-C4':'med','ARCH-C5':'low','ARCH-C6':'med',
+  'ARCH-D1':'low','ARCH-D2':'med','ARCH-D3':'high','ARCH-D4':'med','ARCH-D5':'high','ARCH-D6':'high','ARCH-D7':'low',
+  'ARCH-S1':'low','ARCH-S2':'low','ARCH-E1':'med','ARCH-E2':'low',
+  'ARCH-G1':'high','ARCH-G2':'low','ARCH-X1':'med',
   // SOC2
-  'SOC2-CC6.1':'quick','SOC2-CC6.3':'quick','SOC2-CC6.6':'moderate','SOC2-CC6.7':'moderate',
-  'SOC2-CC6.8':'quick','SOC2-CC6.10':'moderate','SOC2-CC7.2':'moderate','SOC2-CC7.3':'quick',
-  'SOC2-CC8.1':'quick','SOC2-A1.2':'moderate','SOC2-A1.3':'quick','SOC2-A1.4':'moderate',
-  'SOC2-C1.1':'quick','SOC2-C1.2':'quick','SOC2-C1.3':'project','SOC2-PI1.1':'moderate',
+  'SOC2-CC6.1':'low','SOC2-CC6.3':'low','SOC2-CC6.6':'med','SOC2-CC6.7':'med',
+  'SOC2-CC6.8':'low','SOC2-CC6.10':'med','SOC2-CC7.2':'med','SOC2-CC7.3':'low',
+  'SOC2-CC8.1':'low','SOC2-A1.2':'med','SOC2-A1.3':'low','SOC2-A1.4':'med',
+  'SOC2-C1.1':'low','SOC2-C1.2':'low','SOC2-C1.3':'high','SOC2-PI1.1':'med',
   // PCI
-  'PCI-1.3.1':'quick','PCI-1.3.2':'quick','PCI-1.3.4':'moderate','PCI-2.2.1':'quick',
-  'PCI-2.3.1':'project','PCI-3.4.1':'moderate','PCI-3.5.1':'moderate',
-  'PCI-4.2.1':'moderate','PCI-6.3.1':'moderate','PCI-6.4.1':'moderate','PCI-7.2.1':'quick',
-  'PCI-10.2.1':'moderate','PCI-11.3.1':'quick','PCI-12.10.1':'moderate',
+  'PCI-1.3.1':'low','PCI-1.3.2':'low','PCI-1.3.4':'med','PCI-2.2.1':'low',
+  'PCI-2.3.1':'high','PCI-3.4.1':'med','PCI-3.5.1':'med',
+  'PCI-4.2.1':'med','PCI-6.3.1':'med','PCI-6.4.1':'med','PCI-7.2.1':'low',
+  'PCI-10.2.1':'med','PCI-11.3.1':'low','PCI-12.10.1':'med',
   // IAM
-  'IAM-1':'moderate','IAM-2':'moderate','IAM-3':'quick','IAM-4':'moderate','IAM-5':'quick',
-  'IAM-6':'quick','IAM-7':'quick','IAM-8':'moderate','IAM-9':'quick','IAM-10':'quick',
-  'IAM-11':'quick','IAM-12':'moderate','IAM-13':'quick',
+  'IAM-1':'med','IAM-2':'med','IAM-3':'low','IAM-4':'med','IAM-5':'low',
+  'IAM-6':'low','IAM-7':'low','IAM-8':'med','IAM-9':'low','IAM-10':'low',
+  'IAM-11':'low','IAM-12':'med','IAM-13':'low',
   // CKV (standalone Checkov checks)
-  'CKV_AWS_79':'moderate','CKV_AWS_126':'moderate','CKV_AWS_21':'quick','CKV_AWS_18':'quick',
-  'CKV_AWS_26':'quick','CKV_AWS_45':'quick','CKV_AWS_50':'quick',
+  'CKV_AWS_79':'med','CKV_AWS_126':'med','CKV_AWS_21':'low','CKV_AWS_18':'low',
+  'CKV_AWS_26':'low','CKV_AWS_45':'low','CKV_AWS_50':'low',
   // BUDR
-  'BUDR-HA-1':'moderate','BUDR-HA-2':'moderate','BUDR-HA-3':'quick','BUDR-HA-4':'moderate',
-  'BUDR-HA-5':'moderate','BUDR-HA-6':'quick',
-  'BUDR-BAK-1':'quick','BUDR-BAK-2':'moderate','BUDR-BAK-3':'moderate','BUDR-BAK-4':'quick','BUDR-BAK-5':'quick',
-  'BUDR-DR-1':'project','BUDR-DR-2':'moderate'
+  'BUDR-HA-1':'med','BUDR-HA-2':'med','BUDR-HA-3':'low','BUDR-HA-4':'med',
+  'BUDR-HA-5':'med','BUDR-HA-6':'low',
+  'BUDR-BAK-1':'low','BUDR-BAK-2':'med','BUDR-BAK-3':'med','BUDR-BAK-4':'low','BUDR-BAK-5':'low',
+  'BUDR-DR-1':'high','BUDR-DR-2':'med'
 };
-const _EFFORT_LABELS={quick:'Quick Fix',moderate:'Moderate',project:'Project'};
-const _EFFORT_TIME={quick:'~5 min',moderate:'~1-2 hrs',project:'~1+ days'};
-const _TIER_META={
-  1:{name:'Fix Now',color:'#ef4444',bg:'rgba(239,68,68,.08)',border:'rgba(239,68,68,.3)'},
-  2:{name:'This Sprint',color:'#f59e0b',bg:'rgba(245,158,11,.08)',border:'rgba(245,158,11,.3)'},
-  3:{name:'Backlog',color:'#3b82f6',bg:'rgba(59,130,246,.08)',border:'rgba(59,130,246,.3)'}
+const _EFFORT_LABELS={low:'Low',med:'Med',high:'High'};
+const _EFFORT_TIME={low:'~5 min',med:'~1-2 hrs',high:'~1+ days'};
+const _PRIORITY_META={
+  crit:{name:'Critical',color:'#ef4444',bg:'rgba(239,68,68,.08)',border:'rgba(239,68,68,.3)'},
+  high:{name:'High',color:'#f97316',bg:'rgba(249,115,22,.08)',border:'rgba(249,115,22,.3)'},
+  med:{name:'Medium',color:'#f59e0b',bg:'rgba(245,158,11,.08)',border:'rgba(245,158,11,.3)'},
+  low:{name:'Low',color:'#3b82f6',bg:'rgba(59,130,246,.08)',border:'rgba(59,130,246,.3)'}
 };
-function _getEffort(f){return _EFFORT_MAP[f.control]||'moderate'}
+const _TIER_META=_PRIORITY_META; // alias for backward compat
+function _getEffort(f){return _EFFORT_MAP[f.control]||'med'}
 function _classifyTier(f){
   const e=_getEffort(f),s=f.severity;
-  if(s==='CRITICAL')return 1;
-  if(s==='HIGH'&&e==='quick')return 1;
-  if(s==='HIGH')return 2;
-  if(s==='MEDIUM'&&e==='quick')return 2;
-  return 3;
+  if(s==='CRITICAL') return 'crit';
+  if(s==='HIGH'&&e==='low') return 'crit';
+  if(s==='HIGH') return 'high';
+  if(s==='MEDIUM'&&e==='low') return 'high';
+  if(s==='MEDIUM') return 'med';
+  return 'low';
 }
+const _PRIORITY_ORDER={crit:0,high:1,med:2,low:3};
+const _PRIORITY_KEYS=['crit','high','med','low'];
 function _groupByResource(findings){
   const map={};
   findings.forEach(f=>{
     const k=f.resource;
-    if(!map[k])map[k]={resource:f.resource,resourceName:f.resourceName||f.resource,findings:[],worstSev:'LOW',worstTier:3};
+    if(!map[k])map[k]={resource:f.resource,resourceName:f.resourceName||f.resource,findings:[],worstSev:'LOW',worstTier:'low'};
     const tier=_classifyTier(f);
     map[k].findings.push(Object.assign({},f,{effort:_getEffort(f),tier:tier}));
     if((_SEV_ORDER[f.severity]||9)<(_SEV_ORDER[map[k].worstSev]||9))map[k].worstSev=f.severity;
-    if(tier<map[k].worstTier)map[k].worstTier=tier;
+    if((_PRIORITY_ORDER[tier]||9)<(_PRIORITY_ORDER[map[k].worstTier]||9))map[k].worstTier=tier;
   });
   return Object.values(map).sort(function(a,b){
-    if(a.worstTier!==b.worstTier)return a.worstTier-b.worstTier;
+    if(a.worstTier!==b.worstTier)return(_PRIORITY_ORDER[a.worstTier]||9)-(_PRIORITY_ORDER[b.worstTier]||9);
     return(_SEV_ORDER[a.worstSev]||9)-(_SEV_ORDER[b.worstSev]||9);
   });
 }
 function _getTierGroups(findings){
-  const g={1:[],2:[],3:[]};
+  const g={crit:[],high:[],med:[],low:[]};
   _groupByResource(findings).forEach(function(rg){g[rg.worstTier].push(rg)});
   return g;
 }
 function _estimateTotalEffort(resourceGroups){
   var mins=0;
   resourceGroups.forEach(function(rg){rg.findings.forEach(function(f){
-    if(f.effort==='quick')mins+=5;else if(f.effort==='moderate')mins+=90;else mins+=480;
+    if(f.effort==='low')mins+=5;else if(f.effort==='med')mins+=90;else mins+=480;
   })});
   if(mins<60)return'~'+mins+' min';
   if(mins<480)return'~'+Math.round(mins/60)+' hrs';
@@ -4344,7 +4350,7 @@ function _renderActionPlan(filtered,allFindings){
   var h='';
   // Action summary cards
   h+='<div class="comp-action-summary">';
-  [1,2,3].forEach(function(t){
+  _PRIORITY_KEYS.forEach(function(t){
     var meta=_TIER_META[t];var rgs=tiers[t];
     var findingCount=rgs.reduce(function(s,rg){return s+rg.findings.length},0);
     var effort=_estimateTotalEffort(rgs);
@@ -4357,7 +4363,7 @@ function _renderActionPlan(filtered,allFindings){
   });
   h+='</div>';
   // Tier sections
-  [1,2,3].forEach(function(t){
+  _PRIORITY_KEYS.forEach(function(t){
     var meta=_TIER_META[t];var rgs=tiers[t];
     if(!rgs.length)return;
     var totalFindings=rgs.reduce(function(s,rg){return s+rg.findings.length},0);
@@ -4532,8 +4538,8 @@ function _renderExecSummary(){
   wrap.appendChild(resDiv);el.appendChild(wrap);
 }
 function _exportComplianceCSV(){
-  const rows=[['Priority Tier','Effort','Severity','Framework','Control','CKV','Resource','Resource Name','Message','Remediation']];
-  const sorted=[..._complianceFindings].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return ta-tb;return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
+  const rows=[['Priority','Effort','Severity','Framework','Control','CKV','Resource','Resource Name','Message','Remediation']];
+  const sorted=[..._complianceFindings].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
   sorted.forEach(f=>{rows.push([_TIER_META[_classifyTier(f)].name,_EFFORT_LABELS[_getEffort(f)],f.severity,f.framework,f.control,f.ckv||'',f.resource,f.resourceName||'',f.message,f.remediation])});
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   downloadBlob(new Blob([csv],{type:'text/csv'}),'compliance-report.csv');
@@ -4550,8 +4556,8 @@ function _exportComplianceExcel(findings,options){
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const sevBg={CRITICAL:'#fecaca',HIGH:'#fee2e2',MEDIUM:'#fef3c7',LOW:'#dbeafe'};
   const sevTxt={CRITICAL:'#991b1b',HIGH:'#b91c1c',MEDIUM:'#92400e',LOW:'#1e40af'};
-  const tierBg={'Fix Now':'#fecaca','This Sprint':'#fef3c7',Backlog:'#dbeafe'};
-  const effortBg={'Quick Fix':'#dcfce7',Moderate:'#fef3c7',Project:'#fee2e2'};
+  const tierBg={Critical:'#fecaca',High:'#fed7aa',Medium:'#fef3c7',Low:'#dbeafe'};
+  const effortBg={Low:'#dcfce7',Med:'#fef3c7',High:'#fee2e2'};
   let h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
   h+='<head><meta charset="UTF-8">';
   h+='<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>';
@@ -4569,9 +4575,9 @@ function _exportComplianceExcel(findings,options){
   h+='<tr><td><b>Generated</b></td><td>'+new Date().toISOString().slice(0,19).replace('T',' ')+'</td></tr>';
   h+='<tr><td><b>Total Findings</b></td><td><b>'+filtered.length+'</b></td></tr>';
   h+='<tr><td colspan="2"></td></tr>';
-  h+='<tr><th colspan="2" style="text-align:left">By Priority Tier</th></tr>';
+  h+='<tr><th colspan="2" style="text-align:left">By Priority</th></tr>';
   const tiers=_getTierGroups(filtered);
-  [1,2,3].forEach(t=>{
+  _PRIORITY_KEYS.forEach(t=>{
     const meta=_TIER_META[t];const rgs=tiers[t];
     const cnt=rgs.reduce((s,rg)=>s+rg.findings.length,0);
     const eff=_estimateTotalEffort(rgs);
@@ -4591,7 +4597,7 @@ function _exportComplianceExcel(findings,options){
   // Action Plan sheet — tier-grouped resource summaries
   h+='<div id="Action_x0020_Plan"><table>';
   h+='<tr><th>Priority</th><th>Resource</th><th>Findings</th><th>Worst Severity</th><th>Est. Effort</th><th>Controls</th></tr>';
-  [1,2,3].forEach(t=>{
+  _PRIORITY_KEYS.forEach(t=>{
     const meta=_TIER_META[t];const rgs=tiers[t];
     rgs.forEach(rg=>{
       const controls=rg.findings.map(f=>f.control).join(', ');
@@ -4607,12 +4613,12 @@ function _exportComplianceExcel(findings,options){
     });
   });
   h+='</table></div>';
-  // Findings Detail sheet — now with Priority Tier and Effort columns
+  // Findings Detail sheet — now with Priority and Effort columns
   h+='<div id="Findings_x0020_Detail"><table>';
-  h+='<tr><th>Priority Tier</th><th>Effort</th><th>Severity</th><th>Framework</th><th>Control</th><th>Resource</th><th>Resource Name</th><th>Finding</th>';
+  h+='<tr><th>Priority</th><th>Effort</th><th>Severity</th><th>Framework</th><th>Control</th><th>Resource</th><th>Resource Name</th><th>Finding</th>';
   if(options.includeRemediation)h+='<th>Remediation</th>';
   h+='</tr>';
-  const sorted=[...filtered].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return ta-tb;return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
+  const sorted=[...filtered].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
   sorted.forEach(f=>{
     const tier=_classifyTier(f);const tm=_TIER_META[tier];
     const efLabel=_EFFORT_LABELS[_getEffort(f)];
@@ -4657,10 +4663,10 @@ function _exportComplianceExcel(findings,options){
 }
 function _exportFilteredCSV(findings,options){
   const filtered=_filterCompFindings(options);
-  const cols=['Priority Tier','Effort','Severity','Framework','Control','CKV','Resource','Resource Name','Message'];
+  const cols=['Priority','Effort','Severity','Framework','Control','CKV','Resource','Resource Name','Message'];
   if(options.includeRemediation)cols.push('Remediation');
   const rows=[cols];
-  const sorted=[...filtered].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return ta-tb;return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
+  const sorted=[...filtered].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
   sorted.forEach(f=>{
     const r=[_TIER_META[_classifyTier(f)].name,_EFFORT_LABELS[_getEffort(f)],f.severity,f.framework,f.control,f.ckv||'',f.resource,f.resourceName||'',f.message];
     if(options.includeRemediation)r.push(f.remediation);
@@ -4727,9 +4733,9 @@ function _exportComplianceHTML(findings,options){
   h+='.finding-row:last-child{border-bottom:none}';
   h+='.fr-remediation{color:#64748b;font-size:11px;margin-top:4px;line-height:1.4}';
   h+='.effort-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:0.3px}';
-  h+='.effort-quick{background:#dcfce7;color:#166534}';
-  h+='.effort-moderate{background:#fef3c7;color:#92400e}';
-  h+='.effort-project{background:#fee2e2;color:#991b1b}';
+  h+='.effort-low{background:#dcfce7;color:#166534}';
+  h+='.effort-med{background:#fef3c7;color:#92400e}';
+  h+='.effort-high{background:#fee2e2;color:#991b1b}';
   // Severity badges
   h+='.sev-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}';
   // Framework grid
@@ -4792,7 +4798,7 @@ function _exportComplianceHTML(findings,options){
   // Action Plan Summary
   h+='<h2>Action Plan</h2>';
   h+='<div class="action-summary">';
-  [1,2,3].forEach(t=>{
+  _PRIORITY_KEYS.forEach(t=>{
     const meta=_TIER_META[t];const rgs=tiers[t];
     const fCount=rgs.reduce((s,rg)=>s+rg.findings.length,0);
     const effort=_estimateTotalEffort(rgs);
@@ -4806,7 +4812,7 @@ function _exportComplianceHTML(findings,options){
   h+='</div>';
   // Tier sections with resource cards
   const sevDotColors={CRITICAL:'#dc2626',HIGH:'#ef4444',MEDIUM:'#f59e0b',LOW:'#3b82f6'};
-  [1,2,3].forEach(t=>{
+  _PRIORITY_KEYS.forEach(t=>{
     const meta=_TIER_META[t];const rgs=tiers[t];
     if(!rgs.length)return;
     const totalFindings=rgs.reduce((s,rg)=>s+rg.findings.length,0);
@@ -4859,7 +4865,7 @@ function _exportComplianceHTML(findings,options){
   h+='</tr></thead><tbody>';
   const sortedFindings=[...filtered].sort((a,b)=>{
     const ta=_classifyTier(a),tb=_classifyTier(b);
-    if(ta!==tb)return ta-tb;
+    if(ta!==tb)return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);
     return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
   });
   sortedFindings.forEach(f=>{
@@ -11751,17 +11757,17 @@ function _buildRlCtxFromTextareas(){
     let igwRaw=ext(safeParse(gv('in_igws')),['InternetGateways']);
     let natRaw=ext(safeParse(gv('in_nats')),['NatGateways']);
     let vpceRaw=ext(safeParse(gv('in_vpces')),['VpcEndpoints','Endpoints']);
-    let instances=ext(safeParse(gv('in_inst')),['Reservations']).flatMap(r=>r.Instances||[r]);
+    let instances=ext(safeParse(gv('in_ec2')),['Reservations']).flatMap(r=>r.Instances||[r]);
     let albs=ext(safeParse(gv('in_albs')),['LoadBalancers']);
     let tgs=ext(safeParse(gv('in_tgs')),['TargetGroups']);
     let peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections']);
     let vpns=ext(safeParse(gv('in_vpn')),['VpnConnections']);
-    let volumes=ext(safeParse(gv('in_vol')),['Volumes']);
-    let snapshots=ext(safeParse(gv('in_snap')),['Snapshots']);
+    let volumes=ext(safeParse(gv('in_vols')),['Volumes']);
+    let snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
     let rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
     let ecsServices=ext(safeParse(gv('in_ecs')),['services','Services']);
     let lambdaFns=ext(safeParse(gv('in_lambda')),['Functions']);
-    let ecacheClusters=ext(safeParse(gv('in_ecache')),['CacheClusters']);
+    let ecacheClusters=ext(safeParse(gv('in_elasticache')),['CacheClusters']);
     let redshiftClusters=ext(safeParse(gv('in_redshift')),['Clusters']);
     // Parse IAM data (grid path)
     const iamRaw2=safeParse(gv('in_iam'));
@@ -13529,11 +13535,13 @@ function evaluateRouteTable(rt, destCidr){
   return {target:'local',type:'local'};
 }
 
-function evaluateNACL(nacl, direction, protocol, port, sourceCidr){
+function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts){
   if(!nacl||!nacl.Entries) return {action:'allow',rule:'Default allow (no NACL)',ruleNum:'-'};
   const entries=(nacl.Entries||[])
     .filter(function(e){return e.Egress===(direction==='outbound')})
     .sort(function(a,b){return a.RuleNumber-b.RuleNumber});
+  // Discovery mode: if no entries for this direction, assume allow (missing data)
+  if(entries.length===0&&opts&&opts.assumeAllow) return {action:'allow',rule:'No '+direction+' rules defined (assumed allow)',ruleNum:'-'};
   for(var i=0;i<entries.length;i++){
     var e=entries[i];
     if(e.RuleNumber===32767) continue;
@@ -13562,8 +13570,8 @@ function _protoName(p){
   return String(p).toUpperCase();
 }
 
-function evaluateSG(sgs, direction, protocol, port, sourceCidr){
-  if(!sgs||sgs.length===0) return {action:'deny',rule:'No security groups attached',matchedSg:null};
+function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts){
+  if(!sgs||sgs.length===0) return {action:(opts&&opts.assumeAllow)?'allow':'deny',rule:'No security groups attached',matchedSg:null};
   for(var si=0;si<sgs.length;si++){
     var sg=sgs[si];
     var rules=direction==='inbound'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
@@ -13696,7 +13704,7 @@ function _resolveClickTarget(el){
 }
 
 // --- Internet ↔ Resource trace functions ---
-function _traceInternetToResource(target, config, ctx){
+function _traceInternetToResource(target, config, ctx, opts){
   var path=[];var hopN=1;
   var tgtPos=_resolveNetworkPosition(target.type, target.id, ctx);
   if(!tgtPos) return {path:[{hop:1,type:'error',id:'-',action:'block',detail:'Cannot resolve target'}],blocked:{hop:1,reason:'Target not found'}};
@@ -13720,14 +13728,16 @@ function _traceInternetToResource(target, config, ctx){
   path.push({hop:hopN++,type:'route-table',id:'IGW route',action:'allow',detail:'Target subnet has route to Internet Gateway'});
   // NACL inbound check
   var tgtNacl=(ctx.subNacl||{})[tgtPos.subnetId];
-  var naclIn=evaluateNACL(tgtNacl,'inbound',config.protocol,config.port,'0.0.0.0/0');
+  var naclOpts=opts&&opts.discovery?{assumeAllow:true}:null;
+  var naclIn=evaluateNACL(tgtNacl,'inbound',config.protocol,config.port,'0.0.0.0/0',naclOpts);
   path.push({hop:hopN++,type:'nacl-inbound',id:tgtNacl?(tgtNacl.NetworkAclId||'NACL'):'Default NACL',action:naclIn.action,detail:'Target subnet NACL inbound from Internet',rule:naclIn.rule});
   if(naclIn.action==='deny'){
     path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by NACL',subnetId:tgtPos.subnetId});
     return {path:path,blocked:{hop:hopN-2,reason:'NACL denies inbound from Internet',suggestion:'Add NACL inbound rule allowing '+config.protocol+'/'+config.port+' from 0.0.0.0/0'}};
   }
-  // SG inbound check
-  var sgIn=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,'0.0.0.0/0');
+  // SG inbound check — in discovery mode, skip SG when no SG data attached
+  var sgOpts=opts&&opts.discovery?{assumeAllow:true}:null;
+  var sgIn=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,'0.0.0.0/0',sgOpts);
   path.push({hop:hopN++,type:'sg-inbound',id:'Target SG',action:sgIn.action,detail:'Security Group inbound from Internet',rule:sgIn.rule});
   if(sgIn.action==='deny'){
     path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by SG',subnetId:tgtPos.subnetId});
@@ -13737,13 +13747,14 @@ function _traceInternetToResource(target, config, ctx){
   return {path:path,blocked:null};
 }
 
-function _traceResourceToInternet(source, config, ctx){
+function _traceResourceToInternet(source, config, ctx, opts){
   var path=[];var hopN=1;
   var srcPos=_resolveNetworkPosition(source.type, source.id, ctx);
   if(!srcPos) return {path:[{hop:1,type:'error',id:'-',action:'block',detail:'Cannot resolve source'}],blocked:{hop:1,reason:'Source not found'}};
   path.push({hop:hopN++,type:'source',id:srcPos.name||source.id,action:'allow',detail:'Source: '+(srcPos.name||source.id)+' ('+source.type+')',subnetId:srcPos.subnetId});
-  // SG outbound check
-  var sgOut=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,'0.0.0.0/0');
+  // SG outbound check — in discovery mode, skip SG when no SG data attached
+  var sgOpts=opts&&opts.discovery?{assumeAllow:true}:null;
+  var sgOut=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,'0.0.0.0/0',sgOpts);
   path.push({hop:hopN++,type:'sg-outbound',id:'Source SG',action:sgOut.action,detail:'SG outbound to Internet',rule:sgOut.rule});
   if(sgOut.action==='deny'){
     path.push({hop:hopN++,type:'target',id:'Internet',action:'block',detail:'Blocked by SG'});
@@ -13751,7 +13762,8 @@ function _traceResourceToInternet(source, config, ctx){
   }
   // NACL outbound check
   var srcNacl=(ctx.subNacl||{})[srcPos.subnetId];
-  var naclOut=evaluateNACL(srcNacl,'outbound',config.protocol,config.port,'0.0.0.0/0');
+  var naclOpts=opts&&opts.discovery?{assumeAllow:true}:null;
+  var naclOut=evaluateNACL(srcNacl,'outbound',config.protocol,config.port,'0.0.0.0/0',naclOpts);
   path.push({hop:hopN++,type:'nacl-outbound',id:srcNacl?(srcNacl.NetworkAclId||'NACL'):'Default NACL',action:naclOut.action,detail:'Source subnet NACL outbound to Internet',rule:naclOut.rule});
   if(naclOut.action==='deny'){
     path.push({hop:hopN++,type:'target',id:'Internet',action:'block',detail:'Blocked by NACL'});
@@ -13777,9 +13789,9 @@ function _traceResourceToInternet(source, config, ctx){
   return {path:path,blocked:null};
 }
 
-function _traceFlowLeg(source, target, config, ctx){
-  if(source.type==='internet') return _traceInternetToResource(target, config, ctx);
-  if(target.type==='internet') return _traceResourceToInternet(source, config, ctx);
+function _traceFlowLeg(source, target, config, ctx, opts){
+  if(source.type==='internet') return _traceInternetToResource(target, config, ctx, opts);
+  if(target.type==='internet') return _traceResourceToInternet(source, config, ctx, opts);
   return traceFlow(source, target, config, ctx);
 }
 
@@ -14609,12 +14621,14 @@ let _flowAnalysisCache=null;
 
 function discoverTrafficFlows(ctx){
   if(!ctx) return null;
+  var hasSgData=(ctx.instances||[]).some(function(i){return (i.SecurityGroups||[]).length>0});
+  var hasNaclEgress=(ctx.nacls||[]).some(function(n){return (n.Entries||[]).some(function(e){return e.Egress})});
   var ingressPaths=_findIngressPaths(ctx);
   var egressPaths=_findEgressPaths(ctx);
   var bastions=_detectBastions(ctx);
   var bastionChains=_findBastionChains(bastions,ctx);
   var accessTiers=_classifyAllResources(ctx,ingressPaths,bastionChains);
-  return {ingressPaths:ingressPaths,egressPaths:egressPaths,accessTiers:accessTiers,bastionChains:bastionChains,bastions:bastions};
+  return {ingressPaths:ingressPaths,egressPaths:egressPaths,accessTiers:accessTiers,bastionChains:bastionChains,bastions:bastions,hasSgData:hasSgData,hasNaclEgress:hasNaclEgress};
 }
 
 function _findIngressPaths(ctx){
@@ -14631,7 +14645,7 @@ function _findIngressPaths(ctx){
       (ctx.instBySub[sub.SubnetId]||[]).forEach(function(inst){
         // Check common ports
         [443,80,22].forEach(function(port){
-          var r=_traceInternetToResource({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:port},ctx);
+          var r=_traceInternetToResource({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:port},ctx,{discovery:true});
           if(!r.blocked){
             var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
             paths.push({from:'internet',to:{type:'instance',id:inst.InstanceId},toName:gn3,path:r.path,port:port,type:'direct',vpcId:vpcId});
@@ -14641,7 +14655,7 @@ function _findIngressPaths(ctx){
       // ALBs in this subnet
       (ctx.albBySub[sub.SubnetId]||[]).forEach(function(alb){
         var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
-        var r=_traceInternetToResource({type:'alb',id:albId||alb.LoadBalancerName},{protocol:'tcp',port:443},ctx);
+        var r=_traceInternetToResource({type:'alb',id:albId||alb.LoadBalancerName},{protocol:'tcp',port:443},ctx,{discovery:true});
         if(!r.blocked){
           paths.push({from:'internet',to:{type:'alb',id:albId||alb.LoadBalancerName},toName:alb.LoadBalancerName||albId,path:r.path,port:443,type:'loadbalancer',vpcId:vpcId});
         }
@@ -14657,7 +14671,7 @@ function _findEgressPaths(ctx){
   var checked=new Set();
   (ctx.instances||[]).forEach(function(inst){
     if(checked.has(inst.SubnetId)) return; // one per subnet suffices for egress
-    var r=_traceResourceToInternet({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:443},ctx);
+    var r=_traceResourceToInternet({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:443},ctx,{discovery:true});
     if(!r.blocked){
       checked.add(inst.SubnetId);
       var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
@@ -14669,38 +14683,46 @@ function _findEgressPaths(ctx){
 
 function _detectBastions(ctx){
   var bastions=[];
+  var hasSgData=(ctx.instances||[]).some(function(i){return (i.SecurityGroups||[]).length>0});
   (ctx.instances||[]).forEach(function(inst){
     if(!ctx.pubSubs||!ctx.pubSubs.has(inst.SubnetId)) return;
-    var sgs=(inst.SecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===s.GroupId})}).filter(Boolean);
-    var hasSSH=sgs.some(function(sg){
-      return (sg.IpPermissions||[]).some(function(r){
-        return r.FromPort<=22&&r.ToPort>=22;
-      });
-    });
-    if(!hasSSH) return;
     var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-    // Additional heuristic: name contains bastion/jump
     var nameMatch=/bastion|jump|ssh/i.test(gn3);
-    if(nameMatch||hasSSH){
-      bastions.push({type:'instance',id:inst.InstanceId,name:gn3,subnetId:inst.SubnetId,vpcId:inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId});
+    if(hasSgData){
+      var sgs=(inst.SecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===s.GroupId})}).filter(Boolean);
+      var hasSSH=sgs.some(function(sg){return (sg.IpPermissions||[]).some(function(r){return r.FromPort<=22&&r.ToPort>=22})});
+      if(!hasSSH&&!nameMatch) return;
+    } else {
+      // No SG associations — use name heuristic only
+      if(!nameMatch) return;
     }
+    bastions.push({type:'instance',id:inst.InstanceId,name:gn3,subnetId:inst.SubnetId,vpcId:inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId});
   });
   return bastions;
 }
 
 function _findBastionChains(bastions,ctx){
   var chains=[];
+  var hasSgData=(ctx.instances||[]).some(function(i){return (i.SecurityGroups||[]).length>0});
   bastions.forEach(function(bastion){
     var targets=[];
+    var testedSubs=new Set(); // one trace per subnet to avoid O(n²)
     // Find private resources in same VPC reachable from this bastion
     (ctx.instances||[]).forEach(function(inst){
       if(inst.InstanceId===bastion.id) return;
       var instVpc=inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId;
       if(instVpc!==bastion.vpcId) return;
       if(ctx.pubSubs&&ctx.pubSubs.has(inst.SubnetId)) return; // skip public
-      var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'instance',id:inst.InstanceId},{protocol:'tcp',port:22},ctx);
-      if(!r.blocked){
-        var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+      var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+      if(!hasSgData){
+        // Without SG data, skip trace — just include private-subnet instances (cap at 50)
+        if(targets.length<50) targets.push({type:'instance',id:inst.InstanceId,name:gn3});
+      } else if(!testedSubs.has(inst.SubnetId)){
+        testedSubs.add(inst.SubnetId);
+        var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'instance',id:inst.InstanceId},{protocol:'tcp',port:22},ctx,{discovery:true});
+        if(!r.blocked) targets.push({type:'instance',id:inst.InstanceId,name:gn3});
+      } else {
+        // Same subnet already tested and passed — add without re-tracing
         targets.push({type:'instance',id:inst.InstanceId,name:gn3});
       }
     });
@@ -14711,9 +14733,13 @@ function _findBastionChains(bastions,ctx){
       if(!rSid) return;
       var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
       if(rVpc!==bastion.vpcId) return;
-      var port=(db.Endpoint&&db.Endpoint.Port)||3306;
-      var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'rds',id:db.DBInstanceIdentifier},{protocol:'tcp',port:port},ctx);
-      if(!r.blocked) targets.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
+      if(!hasSgData){
+        targets.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
+      } else {
+        var port=(db.Endpoint&&db.Endpoint.Port)||3306;
+        var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'rds',id:db.DBInstanceIdentifier},{protocol:'tcp',port:port},ctx,{discovery:true});
+        if(!r.blocked) targets.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
+      }
     });
     if(targets.length>0) chains.push({bastion:bastion,targets:targets});
   });
@@ -14772,13 +14798,20 @@ function _renderFlowAnalysisOverlay(mode){
 
 function _renderTierBadges(faG){
   var colors={internetFacing:'#10b981',bastionOnly:'#22d3ee',fullyPrivate:'#8b5cf6',database:'#f59e0b'};
+  // Deduplicate by subnet — one badge per (subnet, tier) to avoid hundreds of overlapping dots
+  var subTierSeen=new Set();
   Object.keys(_flowAnalysisCache.accessTiers).forEach(function(tier){
     (_flowAnalysisCache.accessTiers[tier]||[]).forEach(function(ref){
       var pos=_resolveNetworkPosition(ref.type, ref.id, _rlCtx);
-      if(!pos) return;
+      if(!pos||!pos.subnetId) return;
+      var key=pos.subnetId+':'+tier;
+      if(subTierSeen.has(key)) return;
+      subTierSeen.add(key);
       var c=_getSubnetCenter(pos.subnetId);
       if(!c) return;
-      faG.append('circle').attr('class','tier-badge').attr('cx',c.x+18).attr('cy',c.y-12).attr('r',6)
+      // Offset badges by tier type so they don't overlap
+      var idx=['internetFacing','bastionOnly','fullyPrivate','database'].indexOf(tier);
+      faG.append('circle').attr('class','tier-badge').attr('cx',c.x+12+idx*14).attr('cy',c.y-12).attr('r',6)
         .attr('fill',colors[tier]||'#6b7280').attr('stroke','#1a1a2e').attr('stroke-width',1.5);
     });
   });
@@ -14869,68 +14902,154 @@ function _renderFlowAnalysisPanel(){
   var dpSub=document.getElementById('dpSub');
   var dpBody=document.getElementById('dpBody');
   var d=_flowAnalysisCache;
-  dpTitle.textContent='Traffic Flow Analysis';
+  var mode=_flowAnalysisMode||'all';
+  var modeTitles={tiers:'Access Tiers',ingress:'Ingress Paths',egress:'Egress Paths',bastion:'Bastion Chains',all:'Traffic Flow Analysis'};
+  dpTitle.textContent=modeTitles[mode]||'Traffic Flow Analysis';
   var total=(d.accessTiers.internetFacing.length+d.accessTiers.bastionOnly.length+d.accessTiers.fullyPrivate.length+d.accessTiers.database.length);
-  dpSub.textContent=total+' resources | '+d.ingressPaths.length+' ingress | '+d.bastionChains.length+' bastion chains';
+  var subParts=[];
+  if(mode==='tiers'||mode==='all') subParts.push(total+' resources classified');
+  if(mode==='ingress'||mode==='all') subParts.push(d.ingressPaths.length+' ingress paths');
+  if(mode==='egress'||mode==='all') subParts.push(d.egressPaths.length+' egress paths');
+  if(mode==='bastion'||mode==='all') subParts.push(d.bastionChains.length+' bastion chains');
+  dpSub.textContent=subParts.join(' · ');
   var h='<div class="flow-panel">';
-  // Access Tiers
-  h+='<h4>Access Tiers</h4>';
-  var tierData=[
-    {key:'internetFacing',label:'Internet-Facing',color:'#10b981',icon:'\u{1F310}'},
-    {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:'\u{1F510}'},
-    {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:'\u{1F512}'},
-    {key:'database',label:'Database Tier',color:'#f59e0b',icon:'\u{1F4BE}'}
-  ];
-  tierData.forEach(function(td){
-    var count=d.accessTiers[td.key].length;
-    h+='<div class="fa-tier-row" data-fa-tier="'+td.key+'">';
-    h+='<span class="fa-tier-dot" style="background:'+td.color+'"></span>';
-    h+='<span style="color:var(--text-primary);font-weight:600">'+td.label+'</span>';
-    h+='<span style="margin-left:auto;color:'+td.color+';font-weight:700">'+count+'</span>';
-    h+='</div>';
-    // List resources in this tier (collapsed by default, expand on click)
-    h+='<div class="fa-tier-list" data-tier="'+td.key+'" style="display:none;padding-left:20px;margin-bottom:8px">';
-    d.accessTiers[td.key].forEach(function(ref){
-      h+='<div class="fa-path-item" data-ref-type="'+ref.type+'" data-ref-id="'+_escHtml(ref.id)+'">';
-      h+=_escHtml(ref.name||ref.id)+' <span style="color:var(--text-muted);font-size:9px">('+ref.type+')</span>';
+  // Data quality warning
+  var _warnParts=[];
+  if(!d.hasSgData) _warnParts.push('SG associations');
+  if(!d.hasNaclEgress) _warnParts.push('NACL egress rules');
+  if(_warnParts.length) h+='<div style="padding:6px 8px;margin-bottom:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:4px;font-size:9px;color:#fbbf24;font-family:\'IBM Plex Mono\',monospace">'+_warnParts.join(' & ')+' missing — results based on available topology data</div>';
+  // === TIERS section ===
+  if(mode==='tiers'||mode==='all'){
+    h+='<h4>Access Tiers</h4>';
+    var tierData=[
+      {key:'internetFacing',label:'Internet-Facing',color:'#10b981',icon:'↗'},
+      {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:'🔐'},
+      {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:'🔒'},
+      {key:'database',label:'Database Tier',color:'#f59e0b',icon:'💾'}
+    ];
+    tierData.forEach(function(td){
+      var items=d.accessTiers[td.key]||[];
+      var count=items.length;
+      h+='<div class="fa-tier-row" data-fa-tier="'+td.key+'">';
+      h+='<span class="fa-tier-dot" style="background:'+td.color+'"></span>';
+      h+='<span style="color:var(--text-primary);font-weight:600">'+td.label+'</span>';
+      h+='<span style="margin-left:auto;color:'+td.color+';font-weight:700">'+count+'</span>';
       h+='</div>';
-    });
-    h+='</div>';
-  });
-  // Ingress Paths
-  if(d.ingressPaths.length>0){
-    h+='<h4 style="margin-top:14px">Ingress Paths ('+d.ingressPaths.length+')</h4>';
-    // Deduplicate by target
-    var seen2=new Set();
-    d.ingressPaths.forEach(function(p){
-      var key=p.to.type+':'+p.to.id;
-      if(seen2.has(key)) return;
-      seen2.add(key);
-      h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'">';
-      h+='<span style="color:#10b981">\u2193</span> Internet \u2192 <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
-      h+=' <span style="color:var(--text-muted);font-size:9px">:'+p.port+' ('+p.type+')</span>';
+      // In tiers mode, show first few expanded; in all mode, collapsed
+      var expanded=mode==='tiers'&&count<=20;
+      h+='<div class="fa-tier-list" data-tier="'+td.key+'" style="display:'+(expanded?'block':'none')+';padding-left:20px;margin-bottom:8px">';
+      items.forEach(function(ref){
+        h+='<div class="fa-path-item" data-ref-type="'+ref.type+'" data-ref-id="'+_escHtml(ref.id)+'">';
+        h+=_escHtml(ref.name||ref.id)+' <span style="color:var(--text-muted);font-size:9px">('+ref.type+')</span>';
+        h+='</div>';
+      });
       h+='</div>';
     });
   }
-  // Bastion Chains
-  if(d.bastionChains.length>0){
-    h+='<h4 style="margin-top:14px">Bastion Chains ('+d.bastionChains.length+')</h4>';
-    d.bastionChains.forEach(function(ch){
-      h+='<div class="fa-path-item">';
-      h+='<span style="color:#22d3ee">\u{1F510}</span> '+_escHtml(ch.bastion.name||ch.bastion.id);
-      h+=' \u2192 <span style="color:var(--text-muted)">'+ch.targets.length+' target'+(ch.targets.length>1?'s':'')+'</span>';
-      h+='</div>';
-      ch.targets.forEach(function(tgt){
-        h+='<div class="fa-path-item" style="padding-left:24px" data-ref-type="'+tgt.type+'" data-ref-id="'+_escHtml(tgt.id)+'">';
-        h+='\u2514 '+_escHtml(tgt.name||tgt.id);
+  // === INGRESS section ===
+  if(mode==='ingress'||mode==='all'){
+    var inPaths=d.ingressPaths||[];
+    if(inPaths.length>0){
+      if(mode!=='ingress') h+='<h4 style="margin-top:14px">Ingress Paths ('+inPaths.length+')</h4>';
+      // In ingress mode, group by port
+      if(mode==='ingress'){
+        var byPort={};
+        var seen2=new Set();
+        inPaths.forEach(function(p){
+          var key=p.to.type+':'+p.to.id+':'+p.port;
+          if(seen2.has(key)) return;
+          seen2.add(key);
+          var pk=p.port||'other';
+          if(!byPort[pk]) byPort[pk]=[];
+          byPort[pk].push(p);
+        });
+        var portKeys=Object.keys(byPort).sort(function(a,b){return (byPort[b].length-byPort[a].length)});
+        portKeys.forEach(function(pk){
+          var portLabel=pk==='443'?'HTTPS (443)':pk==='80'?'HTTP (80)':pk==='22'?'SSH (22)':'Port '+pk;
+          h+='<h4 style="margin-top:10px;color:#10b981">'+portLabel+' <span style="color:var(--text-muted);font-weight:400">('+byPort[pk].length+' targets)</span></h4>';
+          byPort[pk].forEach(function(p){
+            h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'">';
+            h+='<span style="color:#10b981">↓</span> Internet → <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
+            h+=' <span style="color:var(--text-muted);font-size:9px">('+p.type+')</span>';
+            h+='</div>';
+          });
+        });
+      } else {
+        // All mode: compact deduplicated list
+        var seen3=new Set();
+        inPaths.forEach(function(p){
+          var key=p.to.type+':'+p.to.id;
+          if(seen3.has(key)) return;
+          seen3.add(key);
+          h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'">';
+          h+='<span style="color:#10b981">↓</span> Internet → <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
+          h+=' <span style="color:var(--text-muted);font-size:9px">:'+p.port+' ('+p.type+')</span>';
+          h+='</div>';
+        });
+      }
+    } else if(mode==='ingress'){
+      h+='<div style="padding:12px;color:var(--text-muted);font-size:10px;text-align:center">No ingress paths discovered</div>';
+    }
+  }
+  // === EGRESS section ===
+  if(mode==='egress'||mode==='all'){
+    var egPaths=d.egressPaths||[];
+    if(egPaths.length>0){
+      h+='<h4 style="margin-top:14px">Egress Paths ('+egPaths.length+')</h4>';
+      if(mode==='egress'){
+        // Group by via type (IGW vs NAT)
+        var byVia={igw:[],nat:[]};
+        egPaths.forEach(function(p){byVia[p.via||'igw'].push(p)});
+        ['igw','nat'].forEach(function(via){
+          if(!byVia[via].length) return;
+          var viaLabel=via==='igw'?'via Internet Gateway':'via NAT Gateway';
+          h+='<h4 style="margin-top:10px;color:#f97316">'+viaLabel+' <span style="color:var(--text-muted);font-weight:400">('+byVia[via].length+' subnets)</span></h4>';
+          byVia[via].forEach(function(p){
+            h+='<div class="fa-path-item" data-ref-type="'+p.from.type+'" data-ref-id="'+_escHtml(p.from.id)+'">';
+            h+='<span style="color:#f97316">↑</span> <span style="color:var(--accent-cyan)">'+_escHtml(p.fromName||p.from.id)+'</span> → Internet';
+            h+='</div>';
+          });
+        });
+      } else {
+        // All mode: compact list
+        egPaths.forEach(function(p){
+          h+='<div class="fa-path-item" data-ref-type="'+p.from.type+'" data-ref-id="'+_escHtml(p.from.id)+'">';
+          h+='<span style="color:#f97316">↑</span> <span style="color:var(--accent-cyan)">'+_escHtml(p.fromName||p.from.id)+'</span> → Internet <span style="color:var(--text-muted);font-size:9px">('+p.via+')</span>';
+          h+='</div>';
+        });
+      }
+    } else if(mode==='egress'){
+      h+='<div style="padding:12px;color:var(--text-muted);font-size:10px;text-align:center">No egress paths discovered</div>';
+    }
+  }
+  // === BASTION section ===
+  if(mode==='bastion'||mode==='all'){
+    var chains=d.bastionChains||[];
+    if(chains.length>0){
+      h+='<h4 style="margin-top:14px">Bastion Chains ('+chains.length+')</h4>';
+      chains.forEach(function(ch){
+        h+='<div class="fa-path-item" data-ref-type="'+ch.bastion.type+'" data-ref-id="'+_escHtml(ch.bastion.id)+'">';
+        h+='<span style="color:#22d3ee">🔐</span> '+_escHtml(ch.bastion.name||ch.bastion.id);
+        h+=' → <span style="color:var(--text-muted)">'+ch.targets.length+' target'+(ch.targets.length>1?'s':'')+'</span>';
+        h+='</div>';
+        // In bastion mode, show targets expanded
+        var showTargets=mode==='bastion';
+        h+='<div class="fa-bastion-targets" style="display:'+(showTargets?'block':'none')+';padding-left:24px;margin-bottom:8px">';
+        ch.targets.forEach(function(tgt){
+          h+='<div class="fa-path-item" data-ref-type="'+tgt.type+'" data-ref-id="'+_escHtml(tgt.id)+'">';
+          h+='└ '+_escHtml(tgt.name||tgt.id);
+          h+='</div>';
+        });
         h+='</div>';
       });
-    });
+    } else if(mode==='bastion'){
+      h+='<div style="padding:12px;color:var(--text-muted);font-size:10px;text-align:center">No bastion hosts detected</div>';
+    }
   }
   h+='</div>';
   dpBody.innerHTML=h;
   dp.classList.add('open');
-  // Wire tier row clicks
+  // Wire tier row clicks (expand/collapse resource list)
   dpBody.querySelectorAll('.fa-tier-row').forEach(function(row){
     row.addEventListener('click',function(){
       var tier=row.getAttribute('data-fa-tier');
@@ -14938,16 +15057,27 @@ function _renderFlowAnalysisPanel(){
       if(list) list.style.display=list.style.display==='none'?'block':'none';
     });
   });
-  // Wire resource clicks → highlight on map
+  // Wire bastion chain expand/collapse (in all mode)
   dpBody.querySelectorAll('.fa-path-item[data-ref-type]').forEach(function(item){
-    item.addEventListener('click',function(){
-      var refType=item.getAttribute('data-ref-type');
-      var refId=item.getAttribute('data-ref-id');
-      if(refType&&refId){
-        _clearFlowHighlights();
-        _highlightFlowNode({type:refType,id:refId},'source');
-      }
-    });
+    // Check if this is a bastion header with a sibling targets div
+    var next=item.nextElementSibling;
+    if(next&&next.classList.contains('fa-bastion-targets')){
+      item.addEventListener('click',function(e){
+        e.stopPropagation();
+        next.style.display=next.style.display==='none'?'block':'none';
+        // Also highlight on map
+        var refType=item.getAttribute('data-ref-type');
+        var refId=item.getAttribute('data-ref-id');
+        if(refType&&refId){_clearFlowHighlights();_highlightFlowNode({type:refType,id:refId},'source')}
+      });
+    } else {
+      // Regular resource click → highlight on map
+      item.addEventListener('click',function(){
+        var refType=item.getAttribute('data-ref-type');
+        var refId=item.getAttribute('data-ref-id');
+        if(refType&&refId){_clearFlowHighlights();_highlightFlowNode({type:refType,id:refId},'source')}
+      });
+    }
   });
 }
 
@@ -14988,6 +15118,7 @@ function exitFlowAnalysis(){
 function _setFlowAnalysisMode(mode){
   _flowAnalysisMode=mode;
   _renderFlowAnalysisOverlay(mode);
+  _renderFlowAnalysisPanel();
   document.querySelectorAll('.fa-mode-pill').forEach(function(p){
     p.classList.toggle('active',p.getAttribute('data-fa-mode')===mode);
   });
@@ -16643,13 +16774,14 @@ var _XLSX_COLORS={
   protectedFg:'065F46',protectedBg:'D1FAE5',
   partialFg:'92400E',partialBg:'FEF3C7',
   atRiskFg:'991B1B',atRiskBg:'FEE2E2',
-  effortQuickFg:'065F46',effortQuickBg:'DCFCE7',
-  effortModFg:'92400E',effortModBg:'FEF3C7',
-  effortProjFg:'991B1B',effortProjBg:'FEE2E2',
+  effortLowFg:'065F46',effortLowBg:'DCFCE7',
+  effortMedFg:'92400E',effortMedBg:'FEF3C7',
+  effortHighFg:'991B1B',effortHighBg:'FEE2E2',
   stripeBg:'F8FAFC',borderClr:'D1D5DB',
-  tierFixBg:'FEE2E2',tierFixFg:'991B1B',
-  tierSprintBg:'FEF3C7',tierSprintFg:'92400E',
-  tierBacklogBg:'DBEAFE',tierBacklogFg:'1E40AF',
+  tierCritBg:'FEE2E2',tierCritFg:'991B1B',
+  tierHighBg:'FED7AA',tierHighFg:'9A3412',
+  tierMedBg:'FEF3C7',tierMedFg:'92400E',
+  tierLowBg:'DBEAFE',tierLowFg:'1E40AF',
   titleFg:'0F172A',subtitleFg:'64748B',
   labelFg:'475569',valueFg:'0F172A',
   linkFg:'2563EB'
@@ -16681,9 +16813,10 @@ function _xlsxSevStyle(sev){
 function _xlsxTierStyle(tier){
   var norm=String(tier).toLowerCase().replace(/ /g,'_');
   var map={
-    fix_now:{fg:_XLSX_COLORS.tierFixFg,bg:_XLSX_COLORS.tierFixBg},
-    'this_sprint':{fg:_XLSX_COLORS.tierSprintFg,bg:_XLSX_COLORS.tierSprintBg},
-    backlog:{fg:_XLSX_COLORS.tierBacklogFg,bg:_XLSX_COLORS.tierBacklogBg},
+    critical:{fg:_XLSX_COLORS.tierCritFg,bg:_XLSX_COLORS.tierCritBg},
+    high:{fg:_XLSX_COLORS.tierHighFg,bg:_XLSX_COLORS.tierHighBg},
+    medium:{fg:_XLSX_COLORS.tierMedFg,bg:_XLSX_COLORS.tierMedBg},
+    low:{fg:_XLSX_COLORS.tierLowFg,bg:_XLSX_COLORS.tierLowBg},
     protected:{fg:_XLSX_COLORS.protectedFg,bg:_XLSX_COLORS.protectedBg},
     partial:{fg:_XLSX_COLORS.partialFg,bg:_XLSX_COLORS.partialBg},
     at_risk:{fg:_XLSX_COLORS.atRiskFg,bg:_XLSX_COLORS.atRiskBg}
@@ -16697,10 +16830,9 @@ function _xlsxTierStyle(tier){
 function _xlsxEffortStyle(effort){
   var norm=String(effort).toLowerCase().replace(/ /g,'');
   var map={
-    quickfix:{fg:_XLSX_COLORS.effortQuickFg,bg:_XLSX_COLORS.effortQuickBg},
-    quick:{fg:_XLSX_COLORS.effortQuickFg,bg:_XLSX_COLORS.effortQuickBg},
-    moderate:{fg:_XLSX_COLORS.effortModFg,bg:_XLSX_COLORS.effortModBg},
-    project:{fg:_XLSX_COLORS.effortProjFg,bg:_XLSX_COLORS.effortProjBg}
+    low:{fg:_XLSX_COLORS.effortLowFg,bg:_XLSX_COLORS.effortLowBg},
+    med:{fg:_XLSX_COLORS.effortMedFg,bg:_XLSX_COLORS.effortMedBg},
+    high:{fg:_XLSX_COLORS.effortHighFg,bg:_XLSX_COLORS.effortHighBg}
   };
   var m=map[norm]||{fg:'000000',bg:'FFFFFF'};
   return {font:{color:{rgb:m.fg},name:'Calibri',sz:10},
@@ -16950,12 +17082,12 @@ function _rptBuildXlsxCompliance(wb){
   var headers=['Priority','Effort','Severity','Framework','Control','CKV','Resource','Finding','Remediation'];
   var sorted=f.slice().sort(function(a,b){
     var ta=_classifyTier(a),tb=_classifyTier(b);
-    if(ta!==tb) return ta-tb;
+    if(ta!==tb) return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);
     return (_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);
   });
   var rows=sorted.map(function(x){
     var tier=_classifyTier(x);
-    var effort=_EFFORT_LABELS[_getEffort(x)]||'Moderate';
+    var effort=_EFFORT_LABELS[_getEffort(x)]||'Med';
     return [_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
       x.ckv||'',x.resourceName||x.resource,x.message,x.remediation];
   });
@@ -17021,13 +17153,13 @@ function _rptBuildXlsxActionPlan(wb){
     'Remediation','Owner','Target Date','Status'];
   var tiers=_getTierGroups(all);
   var rows=[];
-  [1,2,3].forEach(function(t){
+  _PRIORITY_KEYS.forEach(function(t){
     var rgs=tiers[t];
     if(!rgs) return;
     var tierName=_TIER_META[t].name;
     rgs.forEach(function(rg){
       rg.findings.forEach(function(f){
-        var effort=_EFFORT_MAP[f.control]||'moderate';
+        var effort=_EFFORT_MAP[f.control]||'med';
         rows.push([tierName,f.severity,_EFFORT_LABELS[effort]||effort,
           _FW_LABELS[f.framework]||f.framework||'',f.control,
           f.resourceName||f.resource,f.message,f.remediation,'','','Open']);
