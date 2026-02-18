@@ -517,6 +517,11 @@
   .rpt-meta{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
   .rpt-meta label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
   .rpt-meta input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 10px}
+  .rpt-logo-upload{display:flex;align-items:center;gap:8px}
+  .rpt-logo-btn,.rpt-logo-clear{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 12px;cursor:pointer;transition:all .15s}
+  .rpt-logo-btn:hover,.rpt-logo-clear:hover{border-color:var(--accent-cyan);background:var(--bg-secondary)}
+  .rpt-logo-preview{width:40px;height:40px;border:1px solid var(--border);border-radius:4px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .rpt-logo-preview img{max-width:100%;max-height:100%;object-fit:contain}
   .rpt-modules{flex:1;overflow-y:auto;padding:8px}
   .rpt-mod-card{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:4px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;cursor:grab;transition:all .15s;user-select:none}
   .rpt-mod-card:hover{border-color:rgba(255,255,255,.12)}
@@ -1581,6 +1586,13 @@
           <input type="text" id="rptAuthor" placeholder="Your name or org">
           <label>Date</label>
           <input type="date" id="rptDate">
+          <label>Company Logo <span style="opacity:.5">(optional)</span></label>
+          <div class="rpt-logo-upload">
+            <input type="file" id="rptLogoInput" accept="image/png,image/jpeg,image/jpg" style="display:none">
+            <button type="button" id="rptLogoBtn" class="rpt-logo-btn">Upload Logo</button>
+            <button type="button" id="rptLogoClear" class="rpt-logo-clear" style="display:none">Clear</button>
+            <div id="rptLogoPreview" class="rpt-logo-preview" style="display:none"></div>
+          </div>
         </div>
         <div class="rpt-modules" id="rptModules"></div>
       </div>
@@ -3044,7 +3056,7 @@ const _RPT_MODULES=[
    desc:function(){return 'Terraform/CF snippets'},
    render:function(ctx,opts){return _rptIaCRecs(ctx,opts)}}
 ];
-var _rptState={order:null,title:'AWS Infrastructure Assessment',author:'',date:new Date().toISOString().slice(0,10)};
+var _rptState={order:null,title:'AWS Infrastructure Assessment',author:'',date:new Date().toISOString().slice(0,10),logo:null};
 
 // === REPORT RENDER FUNCTIONS ===
 
@@ -15073,6 +15085,7 @@ function openReportBuilder(){
   document.getElementById('rptDate').value=_rptState.date;
   if(_rptState.title)document.getElementById('rptTitle').value=_rptState.title;
   if(_rptState.author)document.getElementById('rptAuthor').value=_rptState.author;
+  if(typeof _updateLogoPreview==='function') _updateLogoPreview();
   _renderRptPicker();
   _renderRptPreview();
   rb.classList.add('open');
@@ -15968,9 +15981,74 @@ function _rptBuildXlsxActionPlan(wb){
     minWidths:[14,12,14,20,14,28,40,40,14,14,12]});
 }
 
-// Post-process XLSX zip to inject freeze panes (xlsx-js-style doesn't support !views)
-async function _xlsxInjectFreezePanes(wbBuf,sheetNames){
+// Inject company logo into XLSX zip (Summary sheet, top-right corner)
+async function _xlsxInjectLogo(zip){
+  var logo=_rptState.logo;
+  if(!logo) return;
+  try{
+    var base64=logo.dataUri.split(',')[1];
+    var binary=atob(base64);
+    var bytes=new Uint8Array(binary.length);
+    for(var i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    var ext=logo.ext==='jpeg'?'png':logo.ext; // normalize
+    zip.file('xl/media/image1.'+ext,bytes);
+    // Register image content type
+    var ctXml=await zip.file('[Content_Types].xml').async('string');
+    if(ctXml.indexOf('Extension="'+ext+'"')===-1){
+      ctXml=ctXml.replace('</Types>','<Default Extension="'+ext+'" ContentType="image/'+ext+'"/></Types>');
+    }
+    // Register drawing content type
+    if(ctXml.indexOf('/drawing+xml')===-1){
+      ctXml=ctXml.replace('</Types>','<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
+    }
+    zip.file('[Content_Types].xml',ctXml);
+    // Calculate size in EMUs (1 inch = 914400 EMUs), max 1.5" x 0.75"
+    var maxW=1371600,maxH=685800;
+    var aspect=logo.width/logo.height;
+    var w=maxW,h=maxW/aspect;
+    if(h>maxH){h=maxH;w=maxH*aspect;}
+    // Drawing XML — twoCellAnchor at top-right (col 3, row 0)
+    var drawXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+
+      '<xdr:twoCellAnchor editAs="oneCell">'+
+      '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'+
+      '<xdr:to><xdr:col>4</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>2</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>'+
+      '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr/></xdr:nvPicPr>'+
+      '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/>'+
+      '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
+      '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/></a:xfrm>'+
+      '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'+
+      '</xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>';
+    zip.file('xl/drawings/drawing1.xml',drawXml);
+    // Drawing rels — link image
+    zip.file('xl/drawings/_rels/drawing1.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.'+ext+'"/>'+
+      '</Relationships>');
+    // Sheet1 rels — link drawing
+    var wsRelsPath='xl/worksheets/_rels/sheet1.xml.rels';
+    var wsRels;
+    try{wsRels=await zip.file(wsRelsPath).async('string');}catch(e){wsRels=null;}
+    if(!wsRels) wsRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+    wsRels=wsRels.replace('</Relationships>',
+      '<Relationship Id="rId99" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>');
+    zip.file(wsRelsPath,wsRels);
+    // Add <drawing> ref to sheet1.xml
+    var s1=await zip.file('xl/worksheets/sheet1.xml').async('string');
+    if(s1.indexOf('<drawing')===-1){
+      s1=s1.replace('</worksheet>','<drawing r:id="rId99" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/></worksheet>');
+      zip.file('xl/worksheets/sheet1.xml',s1);
+    }
+  }catch(e){console.warn('Logo injection failed:',e);}
+}
+
+// Post-process XLSX zip: logo injection + freeze panes
+async function _xlsxPostProcess(wbBuf,sheetNames){
   var zip=await JSZip.loadAsync(wbBuf);
+  // Logo on Summary sheet
+  if(_rptState.logo) await _xlsxInjectLogo(zip);
+  // Freeze panes on data sheets
   for(var i=0;i<sheetNames.length;i++){
     var path='xl/worksheets/sheet'+(i+1)+'.xml';
     var f=zip.file(path);
@@ -15984,7 +16062,6 @@ async function _xlsxInjectFreezePanes(wbBuf,sheetNames){
       '<sheetView workbookViewId="0"/>',
       '<sheetView tabSelected="'+(i===1?'1':'0')+'" workbookViewId="0">'+paneXml+'</sheetView>'
     );
-    // Also try the non-self-closing variant
     xml=xml.replace(
       /<sheetView workbookViewId="0"><\/sheetView>/,
       '<sheetView tabSelected="'+(i===1?'1':'0')+'" workbookViewId="0">'+paneXml+'</sheetView>'
@@ -15992,7 +16069,7 @@ async function _xlsxInjectFreezePanes(wbBuf,sheetNames){
     zip.file(path,xml);
   }
   var result=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  zip=null; // release decompressed ZIP tree
+  zip=null;
   return result;
 }
 
@@ -16018,7 +16095,7 @@ async function _generateXlsx(){
     var wbBuf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
     wb=null; // release workbook (can be large with thousands of styled cells)
     await new Promise(function(r){setTimeout(r,0)}); // yield for GC
-    var blob=await _xlsxInjectFreezePanes(wbBuf,sheetNames);
+    var blob=await _xlsxPostProcess(wbBuf,sheetNames);
     wbBuf=null; // release raw buffer
     downloadBlob(blob,fname);
     blob=null;
@@ -16057,16 +16134,64 @@ document.getElementById('rptTitle').addEventListener('input',function(){_rptStat
 document.getElementById('rptAuthor').addEventListener('input',function(){_rptState.author=this.value;_rptDebouncedPreview()});
 document.getElementById('rptDate').addEventListener('change',function(){_rptState.date=this.value;_renderRptPreview()});
 
+// Logo upload handlers
+document.getElementById('rptLogoBtn').addEventListener('click',function(){document.getElementById('rptLogoInput').click()});
+document.getElementById('rptLogoInput').addEventListener('change',function(e){
+  var file=e.target.files[0];
+  if(!file) return;
+  if(file.size>500000){_showToast('Logo too large (max 500 KB)');this.value='';return;}
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var ext=file.type.split('/')[1]||'png';
+      _rptState.logo={dataUri:ev.target.result,ext:ext,width:img.width,height:img.height};
+      _updateLogoPreview();
+      _rptDebouncedPreview();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('rptLogoClear').addEventListener('click',function(){
+  _rptState.logo=null;
+  document.getElementById('rptLogoInput').value='';
+  _updateLogoPreview();
+  _rptDebouncedPreview();
+});
+function _updateLogoPreview(){
+  var preview=document.getElementById('rptLogoPreview');
+  var clearBtn=document.getElementById('rptLogoClear');
+  var uploadBtn=document.getElementById('rptLogoBtn');
+  if(_rptState.logo){
+    preview.innerHTML='';
+    var img=document.createElement('img');
+    img.src=_rptState.logo.dataUri;
+    img.alt='Logo';
+    preview.appendChild(img);
+    preview.style.display='flex';
+    clearBtn.style.display='inline-block';
+    uploadBtn.textContent='Change';
+  }else{
+    preview.style.display='none';
+    preview.innerHTML='';
+    clearBtn.style.display='none';
+    uploadBtn.textContent='Upload Logo';
+  }
+}
+
 // === AUTO-SAVE / CRASH RECOVERY ===
 const _SAVE_KEY='aws_mapper_session';const _SAVE_INTERVAL=30000;
 function _autoSaveSession(){try{const data={};document.querySelectorAll('.ji').forEach(el=>{if(el.value.trim())data[el.id]=el.value});
-  data._accountLabel=(document.getElementById('accountLabel')||{}).value||'';data._layout=(document.getElementById('layoutMode')||{}).value||'grid';data._ts=Date.now();
+  data._accountLabel=(document.getElementById('accountLabel')||{}).value||'';data._layout=(document.getElementById('layoutMode')||{}).value||'grid';
+  if(_rptState.logo)data._rptLogo=_rptState.logo;data._ts=Date.now();
   localStorage.setItem(_SAVE_KEY,JSON.stringify(data))}catch(e){}}
 function _restoreSession(){try{const raw=localStorage.getItem(_SAVE_KEY);if(!raw)return false;const data=JSON.parse(raw);if(!data._ts)return false;
   if(Date.now()-data._ts>7*24*60*60*1000){localStorage.removeItem(_SAVE_KEY);return false}
   let hasData=false;Object.entries(data).forEach(([k,v])=>{if(k.startsWith('_'))return;const el=document.getElementById(k);if(el){el.value=v;el.className='ji valid';hasData=true}});
   if(data._accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=data._accountLabel}
   if(data._layout){const lm=document.getElementById('layoutMode');if(lm)lm.value=data._layout}
+  if(data._rptLogo){_rptState.logo=data._rptLogo}
   return hasData}catch(e){return false}}
 setInterval(()=>{if(_rlCtx)_autoSaveSession()},_SAVE_INTERVAL);
 (function(){try{const raw=localStorage.getItem(_SAVE_KEY);if(!raw)return;const data=JSON.parse(raw);if(!data._ts||Date.now()-data._ts>7*24*60*60*1000)return;
