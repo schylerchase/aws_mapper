@@ -772,8 +772,46 @@
   .flow-step .fs-rule{font-size:9px;color:var(--accent-cyan);margin-top:2px;padding:3px 6px;background:rgba(6,182,212,.06);border-radius:3px;display:inline-block}
   .flow-step .fs-suggestion{font-size:9px;color:var(--accent-orange);margin-top:4px}
   @keyframes flow-dash{0%{stroke-dashoffset:24}100%{stroke-dashoffset:0}}
-  .flow-selecting .subnet-node,.flow-selecting .res-node,.flow-selecting .gw-node,.flow-selecting .lz-gw-node{cursor:crosshair !important}
+  .flow-selecting .subnet-node,.flow-selecting .res-node,.flow-selecting .gw-node,.flow-selecting .lz-gw-node,.flow-selecting .internet-node{cursor:crosshair !important}
   .flow-selecting .subnet-node:hover rect,.flow-selecting .res-node:hover rect{filter:drop-shadow(0 0 6px #22d3ee) !important}
+  .flow-selecting .internet-node:hover circle{filter:drop-shadow(0 0 8px #22d3ee) !important}
+  .flow-path-leg{fill:none;stroke-width:3;stroke-dasharray:8 4;animation:flow-dash 1s linear infinite;pointer-events:none}
+  .flow-path-leg.allowed{stroke:#22d3ee}
+  .flow-path-leg.blocked{stroke:#ef4444;stroke-dasharray:4 4}
+  .flow-path-leg.skipped{stroke:#4b5563;stroke-dasharray:3 6;opacity:.4}
+  .flow-waypoint-marker{pointer-events:none}
+  .flow-waypoint-marker circle{fill:#f59e0b;stroke:#fff;stroke-width:2}
+  .flow-leg{margin-bottom:6px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .flow-leg-hdr{padding:8px 10px;background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-primary);font-weight:600}
+  .flow-leg-hdr:hover{background:rgba(255,255,255,.06)}
+  .flow-leg-hdr .leg-status{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:700}
+  .flow-leg-hdr .leg-status.allowed{background:rgba(16,185,129,.15);color:#10b981}
+  .flow-leg-hdr .leg-status.blocked{background:rgba(239,68,68,.15);color:#ef4444}
+  .flow-leg-hdr .leg-status.skipped{background:rgba(75,85,99,.2);color:#9ca3af}
+  .flow-leg-body{padding:8px 10px;display:none}
+  .flow-leg.expanded .flow-leg-body{display:block}
+  .flow-suggestion{padding:8px 10px;margin-top:4px;background:rgba(34,211,238,.04);border:1px solid rgba(34,211,238,.15);border-radius:6px;font-size:10px;color:var(--text-secondary);cursor:pointer;transition:all .15s;font-family:'IBM Plex Mono',monospace}
+  .flow-suggestion:hover{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3)}
+  .flow-suggestion .sug-name{color:var(--accent-cyan);font-weight:600}
+  .flow-apply-sug{background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 8px;font-size:9px;font-family:'IBM Plex Mono',monospace;cursor:pointer;font-weight:600;margin-left:6px}
+  .flow-wp-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;font-size:9px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace}
+  .flow-wp-chip .wp-arrow{color:var(--text-muted);font-size:11px}
+  .flow-wp-chip .wp-remove{cursor:pointer;color:var(--text-muted);font-size:11px;line-height:1;margin-left:2px}
+  .flow-wp-chip .wp-remove:hover{color:var(--accent-red)}
+  .fa-mode-pill{background:rgba(0,0,0,.3);border:1px solid rgba(34,211,238,.2);color:var(--text-muted);padding:2px 10px;border-radius:12px;cursor:pointer;font-size:9px;font-family:'IBM Plex Mono',monospace;transition:all .15s}
+  .fa-mode-pill:hover{background:rgba(34,211,238,.1);color:#22d3ee}
+  .fa-mode-pill.active{background:rgba(34,211,238,.2);color:#22d3ee;border-color:rgba(34,211,238,.5);font-weight:600}
+  .flow-analysis-layer .fa-path{fill:none;stroke-width:2.5;pointer-events:none}
+  .flow-analysis-layer .fa-path.ingress{stroke:#10b981;stroke-dasharray:6 3;animation:flow-dash 1.5s linear infinite}
+  .flow-analysis-layer .fa-path.egress{stroke:#fb923c;stroke-dasharray:4 4}
+  .flow-analysis-layer .fa-path.bastion{stroke:#22d3ee;stroke-dasharray:none}
+  .flow-analysis-layer .fa-arrow{pointer-events:none}
+  .tier-badge{pointer-events:none;transition:opacity .2s}
+  .fa-tier-row{padding:6px 10px;border-radius:4px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;font-size:10px;font-family:'IBM Plex Mono',monospace;margin-bottom:3px}
+  .fa-tier-row:hover{background:rgba(255,255,255,.05)}
+  .fa-tier-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .fa-path-item{padding:5px 8px;margin-bottom:2px;border-radius:4px;cursor:pointer;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-secondary);background:rgba(255,255,255,.02);border-left:2px solid var(--border);transition:all .15s}
+  .fa-path-item:hover{background:rgba(255,255,255,.06);border-left-color:var(--accent-cyan)}
   /* Multi-Account Panel */
   .account-panel{position:fixed;top:0;right:-320px;width:320px;height:100vh;background:var(--bg-secondary);border-left:1px solid var(--border);z-index:50;display:flex;flex-direction:column;transition:right .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4)}
   .account-panel.open{right:0}
@@ -1357,6 +1395,7 @@
     <div class="dock-group">
       <span class="dock-label">NETWORK</span>
       <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace</button>
+      <button id="flowAnalysisBtn" class="dock-btn green" title="Auto-discover traffic flows (Shift+F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Flows</button>
       <button id="firewallBtn" class="dock-btn red" title="Open firewall editor (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
     </div>
     <div class="dock-group">
@@ -1464,6 +1503,15 @@
     <button id="flowStepFwd" title="Next hop">Next &rarr;</button>
     <button id="flowExitBtn" title="Exit flow mode (Esc)">Exit</button>
   </div>
+  <!-- Flow Analysis Banner -->
+  <div class="flow-banner" id="flowAnalysisBanner" style="display:none">
+    <span id="faLabel">FLOW ANALYSIS</span>
+    <button class="fa-mode-pill active" data-fa-mode="tiers">Tiers</button>
+    <button class="fa-mode-pill" data-fa-mode="ingress">Ingress</button>
+    <button class="fa-mode-pill" data-fa-mode="egress">Egress</button>
+    <button class="fa-mode-pill" data-fa-mode="bastion">Bastion</button>
+    <button id="faExitBtn" title="Exit flow analysis (Esc)">Exit</button>
+  </div>
   <!-- Diff Mode Banner -->
   <div class="diff-banner" id="diffBanner" style="display:none">
     <span id="diffLabel">COMPARING</span>
@@ -1503,6 +1551,7 @@
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+C</td><td>Compliance Dashboard</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+R</td><td>Report Builder</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+T</td><td>Traffic Trace</td></tr>
+          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+F</td><td>Flow Analysis</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">F</td><td>Firewall Editor</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">N</td><td>Notes / Annotations</td></tr>
         </table>
@@ -2531,6 +2580,14 @@ const _complianceRefs={
   'IAM-6':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html',ref:'External ID Best Practice'},
   'IAM-7':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#bp-use-aws-defined-policies',ref:'Managed vs Inline Policies'},
   'IAM-8':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html',ref:'Permission Boundaries'},
+  // CKV (standalone Checkov checks)
+  'CKV_AWS_79':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html',ref:'Checkov CKV_AWS_79 — IMDSv2'},
+  'CKV_AWS_126':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',ref:'Checkov CKV_AWS_126 — VPC Flow Logs'},
+  'CKV_AWS_21':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html',ref:'Checkov CKV_AWS_21 — S3 Versioning'},
+  'CKV_AWS_18':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html',ref:'Checkov CKV_AWS_18 — S3 Access Logging'},
+  'CKV_AWS_26':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'Checkov CKV_AWS_26 — RDS Backup Retention'},
+  'CKV_AWS_45':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html',ref:'Checkov CKV_AWS_45 — Lambda Env Encryption'},
+  'CKV_AWS_50':{url:'https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html',ref:'Checkov CKV_AWS_50 — Lambda X-Ray Tracing'},
   // BUDR
   'BUDR-HA-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS Multi-AZ Deployments'},
   'BUDR-HA-2':{url:'https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html',ref:'EC2 Auto Scaling'},
@@ -2545,6 +2602,39 @@ const _complianceRefs={
   'BUDR-BAK-5':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'EBS Snapshot Scheduling'},
   'BUDR-DR-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS DR Strategy'},
   'BUDR-DR-2':{url:'https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/ec2-backup.html',ref:'EC2 DR Strategy'},
+};
+// === CHECKOV (CKV) ID MAPPING ===
+// Maps existing control IDs to their Checkov equivalents for unified compliance view
+const _CKV_MAP={
+  // CIS / NET → Checkov
+  'CIS 5.2':'CKV_AWS_24',   // SSH from 0.0.0.0/0
+  'CIS 5.3':'CKV_AWS_25',   // RDP from 0.0.0.0/0
+  'CIS 5.4':'CKV_AWS_277',  // Default SG restricts all traffic
+  'NET-2':'CKV_AWS_260',    // All traffic from 0.0.0.0/0
+  // ARCH → Checkov
+  'ARCH-C2':'CKV_AWS_189',  // EBS encryption
+  'ARCH-D1':'CKV_AWS_17',   // RDS publicly accessible
+  'ARCH-D2':'CKV_AWS_157',  // RDS Multi-AZ
+  'ARCH-D3':'CKV_AWS_16',   // RDS encryption at rest
+  'ARCH-D5':'CKV_AWS_64',   // Redshift encryption
+  'ARCH-D6':'CKV_AWS_29',   // ElastiCache at-rest encryption
+  'ARCH-D7':'CKV_AWS_142',  // Redshift publicly accessible
+  'ARCH-S1':'CKV_AWS_19',   // S3 default encryption
+  'ARCH-E2':'CKV_AWS_34',   // CloudFront viewer protocol
+  'ARCH-C4':'CKV_AWS_363',  // Lambda deprecated runtime
+  // SOC2 → Checkov
+  'SOC2-CC7.2':'CKV_AWS_126',// VPC flow logs
+  'SOC2-C1.2':'CKV_AWS_3',  // EBS encryption
+  'SOC2-C1.3':'CKV_AWS_30', // ElastiCache transit encryption
+  // PCI → Checkov
+  'PCI-3.4.1':'CKV_AWS_3',  // Encryption at rest (EBS/RDS/S3)
+  'PCI-10.2.1':'CKV_AWS_126',// VPC flow logs
+  'PCI-11.3.1':'CKV_AWS_17',// RDS publicly accessible
+  // IAM → Checkov
+  'IAM-1':'CKV_AWS_274',    // Admin access (*:*)
+  'IAM-3':'CKV_AWS_36',     // MFA for IAM users
+  'IAM-11':'CKV_AWS_273',   // Console without MFA
+  'IAM-13':'CKV_AWS_56',    // Password policy
 };
 
 // Resource list panel - opened by clicking stats bar chips
@@ -2597,6 +2687,47 @@ function runCISChecks(ctx){
   (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
     if(p.IpProtocol==='-1'&&_hasOpenCidr(p))f.push({severity:'CRITICAL',control:'NET-2',framework:'CIS',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows ALL traffic from 0.0.0.0/0',remediation:'Restrict to specific ports and source CIDRs'});
   })});
+  // CKV_AWS_79: EC2 IMDSv2 not enforced
+  (ctx.instances||[]).forEach(inst=>{
+    const mo=inst.MetadataOptions||{};
+    if(mo.HttpTokens!=='required')f.push({severity:'HIGH',control:'CKV_AWS_79',framework:'CIS',resource:inst.InstanceId,resourceName:gn(inst,inst.InstanceId),message:'EC2 instance not enforcing IMDSv2 (HttpTokens != required)',remediation:'Set MetadataOptions.HttpTokens to "required" to enforce IMDSv2'});
+  });
+  // CKV_AWS_126: VPC flow logs not enabled (standalone CKV check)
+  // Note: FlowLogs field requires enrichment (describe-flow-logs); only flag if data is available
+  if((ctx.vpcs||[]).some(v=>v.FlowLogs!==undefined)){
+    (ctx.vpcs||[]).forEach(vpc=>{
+      if(!vpc.FlowLogs||vpc.FlowLogs.length===0)f.push({severity:'MEDIUM',control:'CKV_AWS_126',framework:'CIS',resource:vpc.VpcId,resourceName:gn(vpc,vpc.VpcId),message:'VPC does not have flow logs enabled',remediation:'Enable VPC Flow Logs to CloudWatch or S3'});
+    });
+  }
+  // CKV_AWS_21: S3 versioning not enabled
+  // Note: Versioning field requires per-bucket get-bucket-versioning call
+  if((ctx.s3bk||[]).some(b=>b.Versioning!==undefined)){
+    (ctx.s3bk||[]).forEach(bk=>{
+      if(!bk.Versioning||bk.Versioning.Status!=='Enabled')f.push({severity:'MEDIUM',control:'CKV_AWS_21',framework:'CIS',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket versioning not enabled',remediation:'Enable versioning for data protection and recovery'});
+    });
+  }
+  // CKV_AWS_18: S3 access logging not configured
+  // Note: LoggingConfiguration requires per-bucket get-bucket-logging call
+  if((ctx.s3bk||[]).some(b=>b.LoggingConfiguration!==undefined||b.LoggingEnabled!==undefined)){
+    (ctx.s3bk||[]).forEach(bk=>{
+      if(!bk.LoggingConfiguration&&!bk.LoggingEnabled)f.push({severity:'LOW',control:'CKV_AWS_18',framework:'CIS',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket access logging not configured',remediation:'Enable server access logging to an audit bucket'});
+    });
+  }
+  // CKV_AWS_26: RDS backup retention < 7 days
+  (ctx.rdsInstances||[]).forEach(db=>{
+    if((db.BackupRetentionPeriod||0)<7)f.push({severity:'MEDIUM',control:'CKV_AWS_26',framework:'CIS',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS backup retention is '+(db.BackupRetentionPeriod||0)+' days (should be >=7)',remediation:'Set BackupRetentionPeriod to at least 7 days'});
+  });
+  // CKV_AWS_338: CloudWatch log group retention
+  // CKV_AWS_45: Lambda environment variables not encrypted with KMS
+  (ctx.lambdaFns||[]).forEach(fn=>{
+    if(fn.Environment&&fn.Environment.Variables&&Object.keys(fn.Environment.Variables).length>0&&!fn.KMSKeyArn)
+      f.push({severity:'LOW',control:'CKV_AWS_45',framework:'CIS',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda has environment variables without KMS encryption',remediation:'Set KMSKeyArn to encrypt environment variables at rest'});
+  });
+  // CKV_AWS_50: Lambda X-Ray tracing not enabled
+  (ctx.lambdaFns||[]).forEach(fn=>{
+    if(!fn.TracingConfig||fn.TracingConfig.Mode!=='Active')
+      f.push({severity:'LOW',control:'CKV_AWS_50',framework:'CIS',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda X-Ray tracing not active',remediation:'Enable active tracing for distributed tracing and debugging'});
+  });
   return f;
 }
 function runWAFChecks(ctx){
@@ -2886,6 +3017,8 @@ function runComplianceChecks(ctx){
   _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx)];
   const iamRaw=safeParse(gv('in_iam'));
   if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}
+  // Annotate all findings with Checkov CKV IDs where mapping exists
+  _complianceFindings.forEach(f=>{if(_CKV_MAP[f.control])f.ckv=_CKV_MAP[f.control]});
   return _complianceFindings;
 }
 // === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
@@ -3689,7 +3822,7 @@ function _rptFindingsTable(items){
     h+='<tr data-sev="'+esc(f.severity)+'" data-fw="'+esc(fw)+'">';
     h+='<td><span class="sev-badge sev-'+esc(f.severity)+'">'+esc(f.severity)+'</span></td>';
     h+='<td>'+esc(_FW_LABELS[fw]||fw)+'</td>';
-    h+='<td>'+esc(f.control)+'</td>';
+    h+='<td>'+esc(f.control)+(f.ckv?' <span style="opacity:.5;font-size:9px">('+esc(f.ckv)+')</span>':'')+'</td>';
     h+='<td>'+esc(f.resourceName||f.resource)+'</td>';
     h+='<td>'+esc(f.message)+'</td>';
     h+='<td>'+esc(f.remediation)+'</td>';
@@ -4030,7 +4163,7 @@ function _rptActionTierTable(resourceGroups){
       h+='<tr data-sev="'+esc(f.severity)+'">';
       h+='<td><span class="sev-badge sev-'+esc(f.severity)+'">'+esc(f.severity)+'</span></td>';
       h+='<td>'+esc(_FW_LABELS[f.framework]||f.framework)+'</td>';
-      h+='<td>'+esc(f.control)+'</td>';
+      h+='<td>'+esc(f.control)+(f.ckv?' <span style="opacity:.5;font-size:9px">('+esc(f.ckv)+')</span>':'')+'</td>';
       h+='<td>'+esc(f.resourceName||f.resource)+'</td>';
       h+='<td>'+esc(f.message)+'</td>';
       h+='<td>'+esc(f.remediation)+'</td>';
@@ -4090,6 +4223,9 @@ const _EFFORT_MAP={
   'IAM-1':'moderate','IAM-2':'moderate','IAM-3':'quick','IAM-4':'moderate','IAM-5':'quick',
   'IAM-6':'quick','IAM-7':'quick','IAM-8':'moderate','IAM-9':'quick','IAM-10':'quick',
   'IAM-11':'quick','IAM-12':'moderate','IAM-13':'quick',
+  // CKV (standalone Checkov checks)
+  'CKV_AWS_79':'moderate','CKV_AWS_126':'moderate','CKV_AWS_21':'quick','CKV_AWS_18':'quick',
+  'CKV_AWS_26':'quick','CKV_AWS_45':'quick','CKV_AWS_50':'quick',
   // BUDR
   'BUDR-HA-1':'moderate','BUDR-HA-2':'moderate','BUDR-HA-3':'quick','BUDR-HA-4':'moderate',
   'BUDR-HA-5':'moderate','BUDR-HA-6':'quick',
@@ -4168,7 +4304,7 @@ function _renderCompDash(findings){
   let filtered=[...findings];
   if(_compDashState.sevFilter!=='ALL')filtered=filtered.filter(f=>f.severity===_compDashState.sevFilter);
   if(_compDashState.fwFilter!=='all')filtered=filtered.filter(f=>f.framework===_compDashState.fwFilter);
-  if(_compDashState.search){const q=_compDashState.search.toLowerCase();filtered=filtered.filter(f=>(f.message||'').toLowerCase().includes(q)||(f.resource||'').toLowerCase().includes(q)||(f.resourceName||'').toLowerCase().includes(q)||(f.control||'').toLowerCase().includes(q)||(f.remediation||'').toLowerCase().includes(q))}
+  if(_compDashState.search){const q=_compDashState.search.toLowerCase();filtered=filtered.filter(f=>(f.message||'').toLowerCase().includes(q)||(f.resource||'').toLowerCase().includes(q)||(f.resourceName||'').toLowerCase().includes(q)||(f.control||'').toLowerCase().includes(q)||(f.ckv||'').toLowerCase().includes(q)||(f.remediation||'').toLowerCase().includes(q))}
   if(!_compDashState.showMuted)filtered=filtered.filter(f=>!_isMuted(f));
   filtered.sort((a,b)=>{if(_compDashState.sort==='severity')return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
   // Update view toggle active state
@@ -4181,7 +4317,7 @@ function _renderCompDash(findings){
     h+='<tr class="'+(muted?'muted':'')+'">';
     h+='<td><span class="sev-badge sev-'+f.severity+'">'+f.severity+'</span></td>';
     h+='<td style="color:var(--text-muted);font-size:10px">'+esc(f.framework)+'</td>';
-    h+='<td style="color:var(--accent-cyan);font-size:11px">'+esc(f.control)+(ref?' <a href="'+esc(ref.url)+'" target="_blank" style="color:var(--accent-blue);font-size:9px;text-decoration:none" title="'+esc(ref.ref)+'">[docs]</a>':'')+'</td>';
+    h+='<td style="color:var(--accent-cyan);font-size:11px">'+esc(f.control)+(f.ckv?' <span style="color:var(--text-muted);font-size:9px">('+esc(f.ckv)+')</span>':'')+(ref?' <a href="'+esc(ref.url)+'" target="_blank" style="color:var(--accent-blue);font-size:9px;text-decoration:none" title="'+esc(ref.ref)+'">[docs]</a>':'')+'</td>';
     h+='<td style="font-size:11px">'+(f.resource&&f.resource!=='Multiple'?'<a class="comp-res-link" data-rid="'+esc(f.resource)+'" style="color:var(--accent-cyan);cursor:pointer;text-decoration:none;border-bottom:1px dashed var(--accent-cyan)" title="Jump to resource">'+esc(f.resourceName||f.resource)+'</a>':'<span style="color:var(--text-muted)">'+esc(f.resourceName||f.resource)+'</span>')+'</td>';
     h+='<td><span style="color:var(--text-secondary)">'+esc(f.message)+'</span><div class="comp-remediation">'+esc(f.remediation)+'</div></td>';
     h+='<td><button class="comp-jump-btn" data-rid="'+f.resource+'" title="Zoom to resource on map">Jump</button><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
@@ -4255,7 +4391,7 @@ function _renderActionPlan(filtered,allFindings){
         var effortTime=_EFFORT_TIME[effortClass]||'';
         h+='<div class="comp-finding-row'+(muted?' muted':'')+'">';
         h+='<span class="fr-sev '+f.severity+'">'+f.severity+'</span>';
-        h+='<span class="fr-control">'+esc(f.control);
+        h+='<span class="fr-control">'+esc(f.control)+(f.ckv?' <span style="color:var(--text-muted);font-size:8px">('+esc(f.ckv)+')</span>':'');
         if(ref)h+=' <a href="'+esc(ref.url)+'" target="_blank" style="color:var(--accent-blue);font-size:8px;text-decoration:none" title="'+esc(ref.ref)+'">[docs]</a>';
         h+='</span>';
         h+='<div class="fr-msg">'+esc(f.message);
@@ -4396,9 +4532,9 @@ function _renderExecSummary(){
   wrap.appendChild(resDiv);el.appendChild(wrap);
 }
 function _exportComplianceCSV(){
-  const rows=[['Priority Tier','Effort','Severity','Framework','Control','Resource','Resource Name','Message','Remediation']];
+  const rows=[['Priority Tier','Effort','Severity','Framework','Control','CKV','Resource','Resource Name','Message','Remediation']];
   const sorted=[..._complianceFindings].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return ta-tb;return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
-  sorted.forEach(f=>{rows.push([_TIER_META[_classifyTier(f)].name,_EFFORT_LABELS[_getEffort(f)],f.severity,f.framework,f.control,f.resource,f.resourceName||'',f.message,f.remediation])});
+  sorted.forEach(f=>{rows.push([_TIER_META[_classifyTier(f)].name,_EFFORT_LABELS[_getEffort(f)],f.severity,f.framework,f.control,f.ckv||'',f.resource,f.resourceName||'',f.message,f.remediation])});
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   downloadBlob(new Blob([csv],{type:'text/csv'}),'compliance-report.csv');
 }
@@ -4484,7 +4620,7 @@ function _exportComplianceExcel(findings,options){
     h+='<td style="background:'+(tierBg[tm.name]||'#f1f5f9')+';color:'+tm.color+';font-weight:bold">'+tm.name+'</td>';
     h+='<td style="background:'+(effortBg[efLabel]||'#f1f5f9')+'">'+esc(efLabel)+'</td>';
     h+='<td style="background:'+sevBg[f.severity]+';color:'+sevTxt[f.severity]+';font-weight:bold">'+f.severity+'</td>';
-    h+='<td>'+esc(f.framework)+'</td><td>'+esc(f.control)+'</td><td>'+esc(f.resource)+'</td><td>'+esc(f.resourceName||'')+'</td><td>'+esc(f.message)+'</td>';
+    h+='<td>'+esc(f.framework)+'</td><td>'+esc(f.control)+(f.ckv?' ('+esc(f.ckv)+')':'')+'</td><td>'+esc(f.resource)+'</td><td>'+esc(f.resourceName||'')+'</td><td>'+esc(f.message)+'</td>';
     if(options.includeRemediation)h+='<td>'+esc(f.remediation)+'</td>';
     h+='</tr>';
   });
@@ -4521,12 +4657,12 @@ function _exportComplianceExcel(findings,options){
 }
 function _exportFilteredCSV(findings,options){
   const filtered=_filterCompFindings(options);
-  const cols=['Priority Tier','Effort','Severity','Framework','Control','Resource','Resource Name','Message'];
+  const cols=['Priority Tier','Effort','Severity','Framework','Control','CKV','Resource','Resource Name','Message'];
   if(options.includeRemediation)cols.push('Remediation');
   const rows=[cols];
   const sorted=[...filtered].sort((a,b)=>{const ta=_classifyTier(a),tb=_classifyTier(b);if(ta!==tb)return ta-tb;return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9)});
   sorted.forEach(f=>{
-    const r=[_TIER_META[_classifyTier(f)].name,_EFFORT_LABELS[_getEffort(f)],f.severity,f.framework,f.control,f.resource,f.resourceName||'',f.message];
+    const r=[_TIER_META[_classifyTier(f)].name,_EFFORT_LABELS[_getEffort(f)],f.severity,f.framework,f.control,f.ckv||'',f.resource,f.resourceName||'',f.message];
     if(options.includeRemediation)r.push(f.remediation);
     rows.push(r);
   });
@@ -4694,7 +4830,7 @@ function _exportComplianceHTML(findings,options){
         const effortLabel=_EFFORT_LABELS[effortClass]||effortClass;
         h+='<div class="finding-row">';
         h+='<span class="sev-badge" style="background:'+sc.bg+';color:'+sc.text+'">'+f.severity+'</span>';
-        h+='<span style="font-size:11px;font-weight:600;color:#475569">'+esc(f.control)+'</span>';
+        h+='<span style="font-size:11px;font-weight:600;color:#475569">'+esc(f.control)+(f.ckv?' <span style="font-weight:400;opacity:.5;font-size:9px">('+esc(f.ckv)+')</span>':'')+'</span>';
         h+='<div><span>'+esc(f.message)+'</span>';
         if(f.remediation)h+='<div class="fr-remediation"><strong>Fix:</strong> '+esc(f.remediation)+'</div>';
         h+='</div>';
@@ -4735,7 +4871,7 @@ function _exportComplianceHTML(findings,options){
     h+='<td><span class="effort-tag effort-'+effortClass+'" style="font-size:9px">'+esc(_EFFORT_LABELS[effortClass])+'</span></td>';
     h+='<td><span class="sev-badge" style="background:'+c.bg+';color:'+c.text+'">'+f.severity+'</span></td>';
     h+='<td>'+esc(f.framework)+'</td>';
-    h+='<td>'+esc(f.control)+'</td>';
+    h+='<td>'+esc(f.control)+(f.ckv?' <span style="opacity:.5;font-size:9px">('+esc(f.ckv)+')</span>':'')+'</td>';
     h+='<td class="resource-name">'+esc(f.resourceName||f.resource)+'</td>';
     h+='<td>'+esc(f.message)+'</td>';
     if(options.includeRemediation)h+='<td>'+esc(f.remediation||'')+'</td>';
@@ -5720,7 +5856,7 @@ function generateRemediationCLI(findings){
       const cmd=typeof gen==='function'?gen(f):gen;
       lines.push(cmd,'');
     } else {
-      lines.push('# ['+f.severity+'] '+f.control+': '+f.message+' ('+f.resource+')','# Remediation: '+f.remediation,'');
+      lines.push('# ['+f.severity+'] '+f.control+(f.ckv?' ('+f.ckv+')':'')+': '+f.message+' ('+f.resource+')','# Remediation: '+f.remediation,'');
     }
   });
   lines.push('echo "Remediation script complete. Review output for errors."');
@@ -6934,7 +7070,7 @@ function openSubnetPanel(sub,vpcId,lk){
       subFindings.forEach(f=>{
         cfb+='<div class="dp-row" style="border-left:3px solid '+(f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6')+';padding-left:8px">';
         cfb+='<span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 4px">'+f.severity+'</span> ';
-        cfb+='<span style="color:var(--accent-cyan);font-size:10px">'+f.control+'</span> ';
+        cfb+='<span style="color:var(--accent-cyan);font-size:10px">'+f.control+(f.ckv?' <span style="opacity:.5">('+f.ckv+')</span>':'')+'</span> ';
         cfb+='<span style="color:var(--text-muted);font-size:9px">['+f.framework+']</span><br>';
         cfb+='<span style="color:var(--text-secondary);font-size:10px">'+_escHtml(f.message)+'</span><br>';
         cfb+='<span style="color:var(--text-muted);font-size:9px;font-style:italic">'+_escHtml(f.remediation)+'</span>';
@@ -13240,7 +13376,7 @@ function _fwDashRender(){
         rulesHtml+='<div class="fw-findings-section"><div style="font-size:10px;font-weight:600;color:var(--accent-orange);margin-bottom:6px">Compliance Findings ('+r.comp.count+')</div>';
         r.comp.findings.forEach(function(f){
           rulesHtml+='<div class="fw-finding-item"><span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 4px">'+f.severity+'</span>';
-          rulesHtml+='<span class="fw-finding-ctrl">'+f.control+'</span>';
+          rulesHtml+='<span class="fw-finding-ctrl">'+f.control+(f.ckv?' <span style="opacity:.5;font-size:8px">('+f.ckv+')</span>':'')+'</span>';
           rulesHtml+='<span class="fw-finding-msg">'+_escHtml(f.message)+'</span></div>';
           rulesHtml+='<div class="fw-finding-item" style="padding-left:90px"><span class="fw-finding-rem">Remediation: '+_escHtml(f.remediation)+'</span></div>';
         });
@@ -13305,6 +13441,12 @@ let _flowPath=null;
 let _flowBlocked=null;
 let _flowStepIndex=-1;
 let _flowSelecting=null;
+// Multi-hop waypoint state
+let _flowWaypoints=[];       // [{ref:{type,id}, config:{protocol,port}}]
+let _flowLegs=[];            // [{source,target,config,result:{path,blocked}}]
+let _flowActiveLeg=-1;       // which leg is expanded in detail, -1=all
+let _flowSelectingWaypoint=-1; // insert position for new waypoint
+let _flowSuggestions=[];     // [{via:{type,id,name}, leg1Result, leg2Result, leg1Config}]
 
 function _suggestPort(targetType, targetResource){
   if(targetType==='rds') return (targetResource&&targetResource.Endpoint&&targetResource.Endpoint.Port)||3306;
@@ -13454,6 +13596,7 @@ function evaluateSG(sgs, direction, protocol, port, sourceCidr){
 
 function _resolveNetworkPosition(type, id, ctx){
   if(!ctx) return null;
+  if(type==='internet') return {subnetId:null,vpcId:null,cidr:'0.0.0.0/0',sgs:[],name:'Internet',ip:'0.0.0.0'};
   if(type==='subnet'){
     var sub=(ctx.subnets||[]).find(function(s){return s.SubnetId===id});
     if(!sub) return null;
@@ -13525,6 +13668,9 @@ function _resolveNetworkPosition(type, id, ctx){
 
 function _resolveClickTarget(el){
   if(!_rlCtx) return null;
+  // Internet globe node
+  var inetNode=el.closest('.internet-node');
+  if(inetNode) return {type:'internet',id:'internet'};
   var resNode=el.closest('.res-node');
   var subNode=el.closest('.subnet-node');
   var gwNode=el.closest('.gw-node')||el.closest('.lz-gw-node');
@@ -13547,6 +13693,94 @@ function _resolveClickTarget(el){
     return {type:'subnet',id:subNode.getAttribute('data-subnet-id')};
   }
   return null;
+}
+
+// --- Internet ↔ Resource trace functions ---
+function _traceInternetToResource(target, config, ctx){
+  var path=[];var hopN=1;
+  var tgtPos=_resolveNetworkPosition(target.type, target.id, ctx);
+  if(!tgtPos) return {path:[{hop:1,type:'error',id:'-',action:'block',detail:'Cannot resolve target'}],blocked:{hop:1,reason:'Target not found'}};
+  path.push({hop:hopN++,type:'source',id:'Internet',action:'allow',detail:'Source: Internet (0.0.0.0/0)'});
+  // Check IGW exists for this VPC
+  var vpcId=tgtPos.vpcId;
+  var igw=(ctx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===vpcId})});
+  if(!igw){
+    path.push({hop:hopN++,type:'igw-check',id:'No IGW',action:'block',detail:'No Internet Gateway attached to VPC '+vpcId});
+    path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Target unreachable',subnetId:tgtPos.subnetId});
+    return {path:path,blocked:{hop:2,reason:'No Internet Gateway in target VPC',suggestion:'Attach an Internet Gateway to VPC '+vpcId}};
+  }
+  path.push({hop:hopN++,type:'igw-check',id:igw.InternetGatewayId||'IGW',action:'allow',detail:'Internet Gateway '+igw.InternetGatewayId+' attached to VPC'});
+  // Check target in public subnet (has IGW route)
+  var isPublic=ctx.pubSubs&&ctx.pubSubs.has(tgtPos.subnetId);
+  if(!isPublic){
+    path.push({hop:hopN++,type:'route-table',id:'No IGW route',action:'block',detail:'Target subnet '+tgtPos.subnetId+' has no route to IGW (private subnet)'});
+    path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Target in private subnet',subnetId:tgtPos.subnetId});
+    return {path:path,blocked:{hop:hopN-2,reason:'Target is in a private subnet with no IGW route',suggestion:'Move resource to a public subnet or use an ALB/NAT'}};
+  }
+  path.push({hop:hopN++,type:'route-table',id:'IGW route',action:'allow',detail:'Target subnet has route to Internet Gateway'});
+  // NACL inbound check
+  var tgtNacl=(ctx.subNacl||{})[tgtPos.subnetId];
+  var naclIn=evaluateNACL(tgtNacl,'inbound',config.protocol,config.port,'0.0.0.0/0');
+  path.push({hop:hopN++,type:'nacl-inbound',id:tgtNacl?(tgtNacl.NetworkAclId||'NACL'):'Default NACL',action:naclIn.action,detail:'Target subnet NACL inbound from Internet',rule:naclIn.rule});
+  if(naclIn.action==='deny'){
+    path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by NACL',subnetId:tgtPos.subnetId});
+    return {path:path,blocked:{hop:hopN-2,reason:'NACL denies inbound from Internet',suggestion:'Add NACL inbound rule allowing '+config.protocol+'/'+config.port+' from 0.0.0.0/0'}};
+  }
+  // SG inbound check
+  var sgIn=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,'0.0.0.0/0');
+  path.push({hop:hopN++,type:'sg-inbound',id:'Target SG',action:sgIn.action,detail:'Security Group inbound from Internet',rule:sgIn.rule});
+  if(sgIn.action==='deny'){
+    path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by SG',subnetId:tgtPos.subnetId});
+    return {path:path,blocked:{hop:hopN-2,reason:'Security group denies inbound '+config.protocol+'/'+config.port+' from Internet',suggestion:'Add SG inbound rule allowing '+config.protocol+'/'+config.port+' from 0.0.0.0/0'}};
+  }
+  path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'allow',detail:'Target: '+(tgtPos.name||target.id)+' ('+target.type+')',subnetId:tgtPos.subnetId});
+  return {path:path,blocked:null};
+}
+
+function _traceResourceToInternet(source, config, ctx){
+  var path=[];var hopN=1;
+  var srcPos=_resolveNetworkPosition(source.type, source.id, ctx);
+  if(!srcPos) return {path:[{hop:1,type:'error',id:'-',action:'block',detail:'Cannot resolve source'}],blocked:{hop:1,reason:'Source not found'}};
+  path.push({hop:hopN++,type:'source',id:srcPos.name||source.id,action:'allow',detail:'Source: '+(srcPos.name||source.id)+' ('+source.type+')',subnetId:srcPos.subnetId});
+  // SG outbound check
+  var sgOut=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,'0.0.0.0/0');
+  path.push({hop:hopN++,type:'sg-outbound',id:'Source SG',action:sgOut.action,detail:'SG outbound to Internet',rule:sgOut.rule});
+  if(sgOut.action==='deny'){
+    path.push({hop:hopN++,type:'target',id:'Internet',action:'block',detail:'Blocked by SG'});
+    return {path:path,blocked:{hop:2,reason:'Security group denies outbound',suggestion:'Add SG outbound rule allowing '+config.protocol+'/'+config.port+' to 0.0.0.0/0'}};
+  }
+  // NACL outbound check
+  var srcNacl=(ctx.subNacl||{})[srcPos.subnetId];
+  var naclOut=evaluateNACL(srcNacl,'outbound',config.protocol,config.port,'0.0.0.0/0');
+  path.push({hop:hopN++,type:'nacl-outbound',id:srcNacl?(srcNacl.NetworkAclId||'NACL'):'Default NACL',action:naclOut.action,detail:'Source subnet NACL outbound to Internet',rule:naclOut.rule});
+  if(naclOut.action==='deny'){
+    path.push({hop:hopN++,type:'target',id:'Internet',action:'block',detail:'Blocked by NACL'});
+    return {path:path,blocked:{hop:hopN-2,reason:'NACL denies outbound to Internet',suggestion:'Add NACL outbound rule allowing '+config.protocol+'/'+config.port}};
+  }
+  // Route table check for IGW or NAT route
+  var srcRT=(ctx.subRT||{})[srcPos.subnetId];
+  var hasIgwRoute=false;var hasNatRoute=false;var routeTarget='';
+  if(srcRT&&srcRT.Routes){
+    srcRT.Routes.forEach(function(r){
+      if(r.GatewayId&&r.GatewayId.startsWith('igw-')){hasIgwRoute=true;routeTarget=r.GatewayId}
+      if(r.NatGatewayId){hasNatRoute=true;routeTarget=r.NatGatewayId}
+    });
+  }
+  if(hasIgwRoute||hasNatRoute){
+    path.push({hop:hopN++,type:'route-table',id:srcRT?(srcRT.RouteTableId||'RT'):'RT',action:'allow',detail:'Route to Internet via '+(hasIgwRoute?'IGW':'NAT')+' ('+routeTarget+')',rule:'0.0.0.0/0 → '+routeTarget});
+  } else {
+    path.push({hop:hopN++,type:'route-table',id:'No route',action:'block',detail:'No route to Internet (no IGW or NAT Gateway route in route table)'});
+    path.push({hop:hopN++,type:'target',id:'Internet',action:'block',detail:'No Internet route'});
+    return {path:path,blocked:{hop:hopN-2,reason:'No route to Internet in route table',suggestion:'Add a route 0.0.0.0/0 → IGW or NAT Gateway'}};
+  }
+  path.push({hop:hopN++,type:'target',id:'Internet',action:'allow',detail:'Target: Internet (0.0.0.0/0)'});
+  return {path:path,blocked:null};
+}
+
+function _traceFlowLeg(source, target, config, ctx){
+  if(source.type==='internet') return _traceInternetToResource(target, config, ctx);
+  if(target.type==='internet') return _traceResourceToInternet(source, config, ctx);
+  return traceFlow(source, target, config, ctx);
 }
 
 function traceFlow(source, target, config, ctx){
@@ -13658,6 +13892,7 @@ function enterFlowMode(presetSource){
   _flowPath=null;
   _flowBlocked=null;
   _flowStepIndex=-1;
+  _flowWaypoints=[];_flowLegs=[];_flowActiveLeg=-1;_flowSelectingWaypoint=-1;_flowSuggestions=[];
   var banner=document.getElementById('flowBanner');
   banner.style.display='flex';
   document.getElementById('flowStatus').textContent='';
@@ -13697,6 +13932,7 @@ function exitFlowMode(){
   _flowPath=null;
   _flowBlocked=null;
   _flowStepIndex=-1;
+  _flowWaypoints=[];_flowLegs=[];_flowActiveLeg=-1;_flowSelectingWaypoint=-1;_flowSuggestions=[];
   if(typeof _cancelTracePick==='function') _cancelTracePick();
   var banner=document.getElementById('flowBanner');
   banner.style.display='none';
@@ -13739,15 +13975,34 @@ function _flowClickHandler(event){
     _flowConfig.port=sugPort;
     _highlightFlowNode(target,'target');
     _executeTrace();
+  } else if(_flowSelecting==='waypoint'){
+    // Insert waypoint into chain
+    _flowSelecting=null;
+    var mainEl2=document.querySelector('.main');
+    if(mainEl2) mainEl2.classList.remove('flow-selecting');
+    var wpPos=_resolveNetworkPosition(target.type, target.id, _rlCtx);
+    var wpPort=_suggestPort(target.type, wpPos);
+    var insertAt=_flowSelectingWaypoint>=0?_flowSelectingWaypoint:_flowWaypoints.length-1;
+    _flowWaypoints.splice(insertAt,0,{ref:target,config:{protocol:'tcp',port:wpPort}});
+    // Update the config of the prior waypoint to use the waypoint's suggested port
+    _flowSelectingWaypoint=-1;
+    _highlightFlowNode(target,'waypoint');
+    _executeMultiTrace();
   }
 }
 function _clearFlowHighlights(){
-  d3.select('#mapSvg').selectAll('.subnet-node rect, .res-node rect').each(function(){d3.select(this).style('filter',null)});
+  d3.select('#mapSvg').selectAll('.subnet-node rect, .res-node rect, .internet-node circle').each(function(){d3.select(this).style('filter',null)});
 }
 
 function _highlightFlowNode(ref, role){
   var svg=d3.select('#mapSvg');
-  var color=role==='source'?'#22d3ee':'#f59e0b';
+  var color=role==='source'?'#22d3ee':role==='waypoint'?'#f59e0b':'#f59e0b';
+  if(ref.type==='internet'){
+    svg.selectAll('.internet-node circle').each(function(){
+      d3.select(this).style('filter','drop-shadow(0 0 10px '+color+')');
+    });
+    return;
+  }
   if(ref.type==='subnet'){
     svg.selectAll('.subnet-node[data-subnet-id="'+ref.id+'"] rect').each(function(){
       d3.select(this).style('filter','drop-shadow(0 0 8px '+color+')');
@@ -13757,10 +14012,14 @@ function _highlightFlowNode(ref, role){
 
 function _executeTrace(){
   if(!_flowSource||!_flowTarget||!_rlCtx) return;
-  var result=traceFlow(_flowSource, _flowTarget, _flowConfig, _rlCtx);
+  // Use _traceFlowLeg for internet support
+  var result=_traceFlowLeg(_flowSource, _flowTarget, _flowConfig, _rlCtx);
   _flowPath=result.path;
   _flowBlocked=result.blocked;
   _flowStepIndex=-1;
+  _flowSuggestions=[];
+  // If blocked, find alternate paths via intermediaries
+  if(_flowBlocked) _flowSuggestions=_findAlternatePaths(_flowSource,_flowTarget,_flowConfig,_rlCtx);
   var srcPos=_resolveNetworkPosition(_flowSource.type, _flowSource.id, _rlCtx);
   var tgtPos=_resolveNetworkPosition(_flowTarget.type, _flowTarget.id, _rlCtx);
   var srcName=srcPos?srcPos.name:_flowSource.id;
@@ -13813,15 +14072,32 @@ function _renderFlowPath(){
   });
 }
 
+function _getInternetCoords(){
+  var inetEl=document.querySelector('.internet-node circle');
+  if(!inetEl) return null;
+  return {x:parseFloat(inetEl.getAttribute('cx'))||0,y:parseFloat(inetEl.getAttribute('cy'))||0};
+}
+
 function _getHopCoords(hop){
+  // Internet node hops
+  if(hop.type==='source'&&hop.id==='Internet') return _getInternetCoords();
+  if(hop.type==='target'&&hop.id==='Internet') return _getInternetCoords();
+  if(hop.type==='igw-check'){
+    // Position between internet node and target subnet
+    var ic=_getInternetCoords();
+    var tPos=_flowTarget?_resolveNetworkPosition(_flowTarget.type, _flowTarget.id, _rlCtx):null;
+    var tc=tPos?_getSubnetCenter(tPos.subnetId):null;
+    if(ic&&tc) return {x:ic.x+(tc.x-ic.x)*0.35,y:ic.y+(tc.y-ic.y)*0.35};
+    return ic;
+  }
   var subId=hop.subnetId;
   if(!subId){
     if(hop.type==='route-table'||hop.type==='nacl-outbound'||hop.type==='sg-outbound'){
-      var srcPos=_resolveNetworkPosition(_flowSource.type, _flowSource.id, _rlCtx);
+      var srcPos=_flowSource?_resolveNetworkPosition(_flowSource.type, _flowSource.id, _rlCtx):null;
       subId=srcPos?srcPos.subnetId:null;
     }
     if(hop.type==='nacl-inbound'||hop.type==='sg-inbound'){
-      var tgtPos=_resolveNetworkPosition(_flowTarget.type, _flowTarget.id, _rlCtx);
+      var tgtPos=_flowTarget?_resolveNetworkPosition(_flowTarget.type, _flowTarget.id, _rlCtx):null;
       subId=tgtPos?tgtPos.subnetId:null;
     }
   }
@@ -13898,6 +14174,29 @@ function _renderFlowDetail(){
     h+='<div style="font-size:11px;font-weight:600;color:var(--accent-red);margin-bottom:4px">Blocked at Hop '+_flowBlocked.hop+'</div>';
     h+='<div style="font-size:10px;color:var(--text-secondary)">'+_escHtml(_flowBlocked.reason||'')+'</div>';
     if(_flowBlocked.suggestion) h+='<div style="font-size:9px;color:var(--accent-orange);margin-top:4px">Suggestion: '+_escHtml(_flowBlocked.suggestion)+'</div>';
+    // Alternate path suggestions
+    if(_flowSuggestions&&_flowSuggestions.length>0){
+      h+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(239,68,68,.2)">';
+      h+='<div style="font-size:10px;font-weight:600;color:var(--accent-cyan);margin-bottom:6px">Alternate Paths via Intermediary</div>';
+      _flowSuggestions.forEach(function(sug,si){
+        h+='<div class="flow-suggestion" data-sug-idx="'+si+'">';
+        h+='<span class="sug-name">'+_escHtml(sug.via.name||sug.via.id)+'</span>';
+        h+=' <span style="color:var(--text-muted);font-size:9px">('+sug.via.type+')</span>';
+        h+=' <button class="flow-apply-sug" data-sug-idx="'+si+'">Apply</button>';
+        h+='<div style="font-size:9px;color:var(--text-muted);margin-top:2px">';
+        h+=_escHtml(sug.leg1Config.protocol.toUpperCase()+'/'+sug.leg1Config.port)+' \u2192 '+_escHtml(sug.via.name||sug.via.id);
+        h+=' \u2192 '+_flowConfig.protocol.toUpperCase()+'/'+_flowConfig.port;
+        h+='</div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  // Add Waypoint button (shown when we have a completed trace)
+  if(_flowPath&&_flowPath.length>0){
+    h+='<div style="margin-top:12px;display:flex;gap:6px">';
+    h+='<button id="flowAddWpBtn2" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:4px 12px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">+ Add Waypoint</button>';
     h+='</div>';
   }
   h+='</div>';
@@ -13923,10 +14222,26 @@ function _renderFlowDetail(){
       _renderFlowDetail();
     });
   });
+  // Wire suggestion Apply buttons
+  dpBody.querySelectorAll('.flow-apply-sug').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var si=parseInt(btn.getAttribute('data-sug-idx'),10);
+      _applySuggestion(si);
+    });
+  });
+  // Wire Add Waypoint button
+  var wpBtn=document.getElementById('flowAddWpBtn2');
+  if(wpBtn){
+    wpBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      _addWaypoint();
+    });
+  }
 }
 
 function _hopTypeLabel(type){
-  var labels={'source':'Source','target':'Target','route-table':'Route Table','nacl-outbound':'NACL Outbound','nacl-inbound':'NACL Inbound','sg-outbound':'SG Outbound','sg-inbound':'SG Inbound','peering':'VPC Peering','tgw':'Transit Gateway','cross-vpc':'Cross-VPC','error':'Error'};
+  var labels={'source':'Source','target':'Target','route-table':'Route Table','nacl-outbound':'NACL Outbound','nacl-inbound':'NACL Inbound','sg-outbound':'SG Outbound','sg-inbound':'SG Inbound','peering':'VPC Peering','tgw':'Transit Gateway','cross-vpc':'Cross-VPC','error':'Error','igw-check':'IGW Check'};
   return labels[type]||type;
 }
 
@@ -13950,6 +14265,336 @@ function _stepBack(){
   _renderFlowDetail();
 }
 
+// --- Auto-Suggestion: find alternate paths via intermediaries ---
+function _findAlternatePaths(source, target, config, ctx){
+  if(!ctx) return [];
+  var tgtPos=_resolveNetworkPosition(target.type, target.id, ctx);
+  if(!tgtPos) return [];
+  var vpcId=tgtPos.vpcId;
+  var results=[];
+  // Collect candidates: instances + ALBs in the target VPC (or any VPC if source is internet)
+  var candidates=[];
+  // Public-subnet instances first (bastion pattern)
+  (ctx.instances||[]).forEach(function(inst){
+    var instVpc=inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId;
+    if(instVpc!==vpcId) return;
+    if(inst.InstanceId===(target.type==='instance'?target.id:'')) return;
+    if(inst.InstanceId===(source.type==='instance'?source.id:'')) return;
+    var isPub=ctx.pubSubs&&ctx.pubSubs.has(inst.SubnetId);
+    var gn2=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+    candidates.push({ref:{type:'instance',id:inst.InstanceId},name:gn2,isPub:isPub,defaultPort:22});
+  });
+  // ALBs
+  Object.keys(ctx.albBySub||{}).forEach(function(sid){
+    var sub=(ctx.subnets||[]).find(function(s){return s.SubnetId===sid});
+    if(!sub||sub.VpcId!==vpcId) return;
+    (ctx.albBySub[sid]||[]).forEach(function(alb){
+      var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
+      if(albId===(target.type==='alb'?target.id:'')) return;
+      candidates.push({ref:{type:'alb',id:albId||alb.LoadBalancerName},name:alb.LoadBalancerName||albId,isPub:true,defaultPort:443});
+    });
+  });
+  // Sort: public instances first, then ALBs, then private instances
+  candidates.sort(function(a,b){return (b.isPub?1:0)-(a.isPub?1:0)});
+  // Test each candidate (max 20)
+  var tested=0;
+  for(var i=0;i<candidates.length&&tested<20&&results.length<5;i++){
+    var cand=candidates[i];
+    tested++;
+    var leg1Config={protocol:'tcp',port:cand.defaultPort};
+    var leg1=_traceFlowLeg(source, cand.ref, leg1Config, ctx);
+    if(leg1.blocked) continue;
+    var leg2=_traceFlowLeg(cand.ref, target, config, ctx);
+    if(leg2.blocked) continue;
+    results.push({via:{type:cand.ref.type,id:cand.ref.id,name:cand.name},leg1Result:leg1,leg2Result:leg2,leg1Config:leg1Config});
+  }
+  return results;
+}
+
+function _applySuggestion(idx){
+  if(!_flowSuggestions||!_flowSuggestions[idx]) return;
+  var sug=_flowSuggestions[idx];
+  // Build waypoint chain: source → via → target
+  _flowWaypoints=[
+    {ref:_flowSource,config:sug.leg1Config},
+    {ref:sug.via,config:{protocol:_flowConfig.protocol,port:_flowConfig.port}},
+    {ref:_flowTarget,config:null}
+  ];
+  _executeMultiTrace();
+}
+
+function _addWaypoint(){
+  // Enter waypoint-selection mode: click a resource to insert as waypoint between source and target
+  if(!_flowSource||!_flowTarget) return;
+  // If no waypoints yet, initialize from current source/target
+  if(_flowWaypoints.length===0){
+    _flowWaypoints=[
+      {ref:_flowSource,config:{protocol:_flowConfig.protocol,port:_flowConfig.port}},
+      {ref:_flowTarget,config:null}
+    ];
+  }
+  // Insert waypoint before the last node (target)
+  _flowSelectingWaypoint=_flowWaypoints.length-1;
+  _flowSelecting='waypoint';
+  var mainEl=document.querySelector('.main');
+  if(mainEl) mainEl.classList.add('flow-selecting');
+  document.getElementById('flowLabel').textContent='MULTI-HOP: Click a waypoint resource to insert';
+}
+
+function _removeWaypoint(idx){
+  if(idx<=0||idx>=_flowWaypoints.length-1) return; // can't remove source or target
+  _flowWaypoints.splice(idx,1);
+  if(_flowWaypoints.length<=2){
+    // Back to single-hop mode
+    _flowWaypoints=[];
+    _flowLegs=[];
+    _flowActiveLeg=-1;
+    _executeTrace();
+  } else {
+    _executeMultiTrace();
+  }
+}
+
+function _executeMultiTrace(){
+  if(_flowWaypoints.length<2||!_rlCtx) return;
+  _flowLegs=[];
+  var allBlocked=false;
+  for(var i=0;i<_flowWaypoints.length-1;i++){
+    var src=_flowWaypoints[i];
+    var tgt=_flowWaypoints[i+1];
+    var cfg=src.config||{protocol:'tcp',port:443};
+    if(allBlocked){
+      _flowLegs.push({source:src.ref,target:tgt.ref,config:cfg,result:{path:[],blocked:{hop:0,reason:'Skipped (prior leg blocked)'}},status:'skipped'});
+      continue;
+    }
+    var result=_traceFlowLeg(src.ref, tgt.ref, cfg, _rlCtx);
+    _flowLegs.push({source:src.ref,target:tgt.ref,config:cfg,result:result,status:result.blocked?'blocked':'allowed'});
+    if(result.blocked) allBlocked=true;
+  }
+  // Update banner
+  var anyBlocked=_flowLegs.some(function(l){return l.status==='blocked'});
+  var statusEl=document.getElementById('flowStatus');
+  if(anyBlocked){statusEl.textContent='BLOCKED';statusEl.className='flow-status blocked'}
+  else{statusEl.textContent='ALLOWED';statusEl.className='flow-status allowed'}
+  var names=_flowWaypoints.map(function(wp){
+    var pos=_resolveNetworkPosition(wp.ref.type, wp.ref.id, _rlCtx);
+    return pos?pos.name:wp.ref.id;
+  });
+  document.getElementById('flowLabel').textContent='MULTI-HOP: '+names.join(' \u2192 ')+' | '+_flowLegs.length+' legs';
+  document.getElementById('flowStepBack').style.display='none';
+  document.getElementById('flowStepFwd').style.display='none';
+  _renderMultiFlowPath();
+  _renderMultiFlowDetail();
+}
+
+function _renderMultiFlowPath(){
+  _clearFlowOverlay();
+  if(!_flowLegs||_flowLegs.length===0) return;
+  var g=d3.select('#mapSvg').select('g');
+  if(g.empty()) g=d3.select('#mapSvg');
+  var flowG=g.append('g').attr('class','flow-overlay-g');
+  _flowLegs.forEach(function(leg,legIdx){
+    if(leg.status==='skipped'||!leg.result.path||leg.result.path.length<2) return;
+    var coords=[];
+    leg.result.path.forEach(function(hop){
+      // Need to temporarily set _flowSource/_flowTarget for _getHopCoords
+      var c=_getHopCoordsForLeg(hop, leg);
+      if(c) coords.push({x:c.x,y:c.y,hop:hop});
+    });
+    if(coords.length<2) return;
+    var line=d3.line().x(function(d){return d.x}).y(function(d){return d.y}).curve(d3.curveBasis);
+    var cls='flow-path-leg '+(leg.status==='blocked'?'blocked':leg.status==='skipped'?'skipped':'allowed');
+    flowG.append('path').attr('class',cls).attr('d',line(coords));
+    coords.forEach(function(c,i){
+      var isBlk=c.hop.action==='block'||c.hop.action==='deny';
+      var hopG=flowG.append('g').attr('class','flow-hop '+(isBlk?'flow-hop-block':'flow-hop-allow'));
+      hopG.append('circle').attr('cx',c.x).attr('cy',c.y).attr('r',8);
+      hopG.append('text').attr('x',c.x).attr('y',c.y).text((legIdx+1)+'.'+( i+1)).style('font-size','7px');
+    });
+  });
+  // Waypoint markers
+  _flowWaypoints.forEach(function(wp,i){
+    if(i===0||i===_flowWaypoints.length-1) return; // skip source/target
+    var pos=_resolveNetworkPosition(wp.ref.type, wp.ref.id, _rlCtx);
+    if(!pos) return;
+    var c=wp.ref.type==='internet'?_getInternetCoords():_getSubnetCenter(pos.subnetId);
+    if(!c) return;
+    var wg=flowG.append('g').attr('class','flow-waypoint-marker');
+    wg.append('circle').attr('cx',c.x).attr('cy',c.y).attr('r',14);
+    wg.append('text').attr('x',c.x).attr('y',c.y+1).attr('text-anchor','middle').attr('dominant-baseline','central')
+      .attr('fill','#000').attr('font-size','9px').attr('font-weight','700').attr('font-family','IBM Plex Mono').text('W'+(i));
+  });
+}
+
+function _getHopCoordsForLeg(hop, leg){
+  // Like _getHopCoords but uses leg.source/leg.target instead of globals
+  if(hop.type==='source'&&hop.id==='Internet') return _getInternetCoords();
+  if(hop.type==='target'&&hop.id==='Internet') return _getInternetCoords();
+  if(hop.type==='igw-check'){
+    var ic=_getInternetCoords();
+    var tPos2=_resolveNetworkPosition(leg.target.type, leg.target.id, _rlCtx);
+    var tc2=tPos2?_getSubnetCenter(tPos2.subnetId):null;
+    if(ic&&tc2) return {x:ic.x+(tc2.x-ic.x)*0.35,y:ic.y+(tc2.y-ic.y)*0.35};
+    return ic;
+  }
+  var subId=hop.subnetId;
+  if(!subId){
+    if(hop.type==='route-table'||hop.type==='nacl-outbound'||hop.type==='sg-outbound'){
+      var srcP=_resolveNetworkPosition(leg.source.type, leg.source.id, _rlCtx);
+      subId=srcP?srcP.subnetId:null;
+    }
+    if(hop.type==='nacl-inbound'||hop.type==='sg-inbound'){
+      var tgtP=_resolveNetworkPosition(leg.target.type, leg.target.id, _rlCtx);
+      subId=tgtP?tgtP.subnetId:null;
+    }
+  }
+  if(subId){
+    var subEl=document.querySelector('.subnet-node[data-subnet-id="'+subId+'"] rect');
+    if(subEl){
+      var x=parseFloat(subEl.getAttribute('x'))||0;
+      var y=parseFloat(subEl.getAttribute('y'))||0;
+      var w=parseFloat(subEl.getAttribute('width'))||100;
+      var h=parseFloat(subEl.getAttribute('height'))||60;
+      var ox=0;
+      if(hop.type==='source') ox=-w*0.35;
+      else if(hop.type==='target') ox=w*0.35;
+      else if(hop.type==='route-table') ox=-w*0.2;
+      else if(hop.type==='nacl-outbound') ox=-w*0.05;
+      else if(hop.type==='sg-outbound') ox=w*0.08;
+      else if(hop.type==='sg-inbound') ox=w*0.2;
+      else if(hop.type==='nacl-inbound') ox=w*0.33;
+      return {x:x+w/2+ox,y:y+h/2};
+    }
+  }
+  if(hop.type==='peering'||hop.type==='tgw'||hop.type==='cross-vpc'){
+    var sp3=_resolveNetworkPosition(leg.source.type, leg.source.id, _rlCtx);
+    var tp3=_resolveNetworkPosition(leg.target.type, leg.target.id, _rlCtx);
+    var c1=_getSubnetCenter(sp3?sp3.subnetId:null);
+    var c2=_getSubnetCenter(tp3?tp3.subnetId:null);
+    if(c1&&c2) return {x:(c1.x+c2.x)/2,y:(c1.y+c2.y)/2-20};
+  }
+  return null;
+}
+
+function _renderMultiFlowDetail(){
+  if(!_flowLegs||_flowLegs.length===0) return;
+  var dp=document.getElementById('detailPanel');
+  var dpTitle=document.getElementById('dpTitle');
+  var dpSub=document.getElementById('dpSub');
+  var dpBody=document.getElementById('dpBody');
+  dpTitle.textContent='Multi-Hop Traffic Trace';
+  var anyBlocked=_flowLegs.some(function(l){return l.status==='blocked'});
+  dpSub.textContent=_flowLegs.length+' legs'+(anyBlocked?' \u2014 BLOCKED':' \u2014 ALL ALLOWED');
+  var h='<div class="flow-panel">';
+  // Waypoint chain visualization
+  h+='<div style="margin-bottom:12px">';
+  h+='<div style="font-size:9px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Waypoint Chain</div>';
+  h+='<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
+  _flowWaypoints.forEach(function(wp,i){
+    var pos=_resolveNetworkPosition(wp.ref.type, wp.ref.id, _rlCtx);
+    var name=pos?pos.name:wp.ref.id;
+    h+='<span class="flow-wp-chip">';
+    h+=_escHtml(name);
+    if(i>0&&i<_flowWaypoints.length-1){
+      h+=' <span class="wp-remove" data-wp-idx="'+i+'" title="Remove waypoint">\u00d7</span>';
+    }
+    h+='</span>';
+    if(i<_flowWaypoints.length-1){
+      var legSt=_flowLegs[i]?_flowLegs[i].status:'';
+      h+='<span style="color:'+(legSt==='allowed'?'#10b981':legSt==='blocked'?'#ef4444':'#6b7280')+';font-size:11px">\u2192</span>';
+    }
+  });
+  h+='</div></div>';
+  // Leg accordions
+  _flowLegs.forEach(function(leg,li){
+    var srcPos2=_resolveNetworkPosition(leg.source.type, leg.source.id, _rlCtx);
+    var tgtPos2=_resolveNetworkPosition(leg.target.type, leg.target.id, _rlCtx);
+    var srcN=srcPos2?srcPos2.name:leg.source.id;
+    var tgtN=tgtPos2?tgtPos2.name:leg.target.id;
+    var expanded=_flowActiveLeg===-1||_flowActiveLeg===li;
+    h+='<div class="flow-leg'+(expanded?' expanded':'')+'" data-leg-idx="'+li+'">';
+    h+='<div class="flow-leg-hdr" data-leg-idx="'+li+'">';
+    h+='<span style="color:var(--text-muted);font-size:9px">Leg '+(li+1)+'</span> ';
+    h+=_escHtml(srcN)+' \u2192 '+_escHtml(tgtN);
+    h+=' <span class="leg-status '+leg.status+'">'+leg.status.toUpperCase()+'</span>';
+    h+=' <span style="color:var(--text-muted);font-size:9px;margin-left:auto">'+leg.config.protocol.toUpperCase()+'/'+leg.config.port+'</span>';
+    h+='</div>';
+    h+='<div class="flow-leg-body">';
+    if(leg.status==='skipped'){
+      h+='<div style="font-size:10px;color:var(--text-muted);padding:4px">Skipped (prior leg blocked)</div>';
+    } else {
+      // Per-leg protocol/port controls
+      h+='<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">';
+      h+='<select class="leg-proto-sel" data-leg-idx="'+li+'" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace">';
+      ['tcp','udp','icmp'].forEach(function(p){
+        h+='<option value="'+p+'"'+(p===leg.config.protocol?' selected':'')+'>'+p.toUpperCase()+'</option>';
+      });
+      h+='</select>';
+      h+='<input class="leg-port-inp" data-leg-idx="'+li+'" type="number" min="1" max="65535" value="'+leg.config.port+'" style="width:50px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace">';
+      h+='<button class="leg-retrace-btn" data-leg-idx="'+li+'" style="background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 8px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">Re-trace</button>';
+      h+='</div>';
+      // Hops
+      (leg.result.path||[]).forEach(function(hop,hi){
+        var isBlk=hop.action==='block'||hop.action==='deny';
+        h+='<div class="flow-step'+(isBlk?' blocked':'')+'" style="padding:5px 8px;margin-bottom:2px">';
+        h+='<span class="fs-num '+(isBlk?'block':'allow')+'" style="width:16px;height:16px;line-height:16px;font-size:8px">'+hop.hop+'</span>';
+        h+='<span class="fs-type" style="font-size:9px">'+_hopTypeLabel(hop.type)+'</span>';
+        h+='<div class="fs-detail" style="font-size:9px">'+_escHtml(hop.detail||'')+'</div>';
+        if(hop.rule) h+='<div class="fs-rule" style="font-size:8px">'+_escHtml(hop.rule)+'</div>';
+        h+='</div>';
+      });
+      if(leg.result.blocked){
+        h+='<div style="padding:6px;background:rgba(239,68,68,.06);border-radius:4px;margin-top:4px">';
+        h+='<div style="font-size:9px;color:var(--accent-red)">'+_escHtml(leg.result.blocked.reason||'')+'</div>';
+        h+='</div>';
+      }
+    }
+    h+='</div></div>';
+  });
+  // Actions
+  h+='<div style="margin-top:10px;display:flex;gap:6px">';
+  h+='<button id="mhAddWpBtn" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:4px 12px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">+ Waypoint</button>';
+  h+='<button id="mhClearBtn" style="background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;padding:4px 12px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">Clear All</button>';
+  h+='</div>';
+  h+='</div>';
+  dpBody.innerHTML=h;
+  dp.classList.add('open');
+  // Wire events
+  dpBody.querySelectorAll('.flow-leg-hdr').forEach(function(hdr){
+    hdr.addEventListener('click',function(){
+      var li2=parseInt(hdr.getAttribute('data-leg-idx'),10);
+      _flowActiveLeg=(_flowActiveLeg===li2)?-1:li2;
+      _renderMultiFlowDetail();
+    });
+  });
+  dpBody.querySelectorAll('.wp-remove').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      _removeWaypoint(parseInt(btn.getAttribute('data-wp-idx'),10));
+    });
+  });
+  dpBody.querySelectorAll('.leg-retrace-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var li3=parseInt(btn.getAttribute('data-leg-idx'),10);
+      var proto=dpBody.querySelector('.leg-proto-sel[data-leg-idx="'+li3+'"]');
+      var port=dpBody.querySelector('.leg-port-inp[data-leg-idx="'+li3+'"]');
+      if(proto&&port&&_flowWaypoints[li3]){
+        _flowWaypoints[li3].config={protocol:proto.value,port:parseInt(port.value,10)||443};
+        _executeMultiTrace();
+      }
+    });
+  });
+  var mhAdd=document.getElementById('mhAddWpBtn');
+  if(mhAdd) mhAdd.addEventListener('click',function(e){e.stopPropagation();_addWaypoint()});
+  var mhClear=document.getElementById('mhClearBtn');
+  if(mhClear) mhClear.addEventListener('click',function(e){
+    e.stopPropagation();
+    _flowWaypoints=[];_flowLegs=[];_flowActiveLeg=-1;
+    _executeTrace();
+  });
+}
+
 document.getElementById('flowBtn').addEventListener('click',function(){
   if(_flowMode) exitFlowMode();
   else enterFlowMode();
@@ -13957,6 +14602,408 @@ document.getElementById('flowBtn').addEventListener('click',function(){
 document.getElementById('flowExitBtn').addEventListener('click',exitFlowMode);
 document.getElementById('flowStepBack').addEventListener('click',_stepBack);
 document.getElementById('flowStepFwd').addEventListener('click',_stepForward);
+
+// === FLOW ANALYSIS — AUTO-DISCOVERY ENGINE ===
+let _flowAnalysisMode=null; // null|'tiers'|'ingress'|'egress'|'bastion'|'all'
+let _flowAnalysisCache=null;
+
+function discoverTrafficFlows(ctx){
+  if(!ctx) return null;
+  var ingressPaths=_findIngressPaths(ctx);
+  var egressPaths=_findEgressPaths(ctx);
+  var bastions=_detectBastions(ctx);
+  var bastionChains=_findBastionChains(bastions,ctx);
+  var accessTiers=_classifyAllResources(ctx,ingressPaths,bastionChains);
+  return {ingressPaths:ingressPaths,egressPaths:egressPaths,accessTiers:accessTiers,bastionChains:bastionChains,bastions:bastions};
+}
+
+function _findIngressPaths(ctx){
+  var paths=[];
+  var igws=ctx.igws||[];
+  igws.forEach(function(igw){
+    var vpcId=(igw.Attachments||[])[0]?.VpcId;
+    if(!vpcId) return;
+    // Find public subnets in this VPC
+    (ctx.subnets||[]).forEach(function(sub){
+      if(sub.VpcId!==vpcId) return;
+      if(!ctx.pubSubs||!ctx.pubSubs.has(sub.SubnetId)) return;
+      // Instances in this subnet
+      (ctx.instBySub[sub.SubnetId]||[]).forEach(function(inst){
+        // Check common ports
+        [443,80,22].forEach(function(port){
+          var r=_traceInternetToResource({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:port},ctx);
+          if(!r.blocked){
+            var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+            paths.push({from:'internet',to:{type:'instance',id:inst.InstanceId},toName:gn3,path:r.path,port:port,type:'direct',vpcId:vpcId});
+          }
+        });
+      });
+      // ALBs in this subnet
+      (ctx.albBySub[sub.SubnetId]||[]).forEach(function(alb){
+        var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
+        var r=_traceInternetToResource({type:'alb',id:albId||alb.LoadBalancerName},{protocol:'tcp',port:443},ctx);
+        if(!r.blocked){
+          paths.push({from:'internet',to:{type:'alb',id:albId||alb.LoadBalancerName},toName:alb.LoadBalancerName||albId,path:r.path,port:443,type:'loadbalancer',vpcId:vpcId});
+        }
+      });
+    });
+  });
+  return paths;
+}
+
+function _findEgressPaths(ctx){
+  var paths=[];
+  // Check all resources for egress to internet
+  var checked=new Set();
+  (ctx.instances||[]).forEach(function(inst){
+    if(checked.has(inst.SubnetId)) return; // one per subnet suffices for egress
+    var r=_traceResourceToInternet({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:443},ctx);
+    if(!r.blocked){
+      checked.add(inst.SubnetId);
+      var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+      paths.push({from:{type:'instance',id:inst.InstanceId},fromName:gn3,to:'internet',subnetId:inst.SubnetId,via:r.path.some(function(h){return h.detail&&h.detail.includes('NAT')})?'nat':'igw'});
+    }
+  });
+  return paths;
+}
+
+function _detectBastions(ctx){
+  var bastions=[];
+  (ctx.instances||[]).forEach(function(inst){
+    if(!ctx.pubSubs||!ctx.pubSubs.has(inst.SubnetId)) return;
+    var sgs=(inst.SecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===s.GroupId})}).filter(Boolean);
+    var hasSSH=sgs.some(function(sg){
+      return (sg.IpPermissions||[]).some(function(r){
+        return r.FromPort<=22&&r.ToPort>=22;
+      });
+    });
+    if(!hasSSH) return;
+    var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+    // Additional heuristic: name contains bastion/jump
+    var nameMatch=/bastion|jump|ssh/i.test(gn3);
+    if(nameMatch||hasSSH){
+      bastions.push({type:'instance',id:inst.InstanceId,name:gn3,subnetId:inst.SubnetId,vpcId:inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId});
+    }
+  });
+  return bastions;
+}
+
+function _findBastionChains(bastions,ctx){
+  var chains=[];
+  bastions.forEach(function(bastion){
+    var targets=[];
+    // Find private resources in same VPC reachable from this bastion
+    (ctx.instances||[]).forEach(function(inst){
+      if(inst.InstanceId===bastion.id) return;
+      var instVpc=inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId;
+      if(instVpc!==bastion.vpcId) return;
+      if(ctx.pubSubs&&ctx.pubSubs.has(inst.SubnetId)) return; // skip public
+      var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'instance',id:inst.InstanceId},{protocol:'tcp',port:22},ctx);
+      if(!r.blocked){
+        var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+        targets.push({type:'instance',id:inst.InstanceId,name:gn3});
+      }
+    });
+    // Check RDS
+    (ctx.rdsInstances||[]).forEach(function(db){
+      var rSid=null;
+      Object.keys(ctx.rdsBySub||{}).forEach(function(sid){(ctx.rdsBySub[sid]||[]).forEach(function(d){if(d.DBInstanceIdentifier===db.DBInstanceIdentifier)rSid=sid})});
+      if(!rSid) return;
+      var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
+      if(rVpc!==bastion.vpcId) return;
+      var port=(db.Endpoint&&db.Endpoint.Port)||3306;
+      var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'rds',id:db.DBInstanceIdentifier},{protocol:'tcp',port:port},ctx);
+      if(!r.blocked) targets.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
+    });
+    if(targets.length>0) chains.push({bastion:bastion,targets:targets});
+  });
+  return chains;
+}
+
+function _classifyAllResources(ctx,ingressPaths,bastionChains){
+  var tiers={internetFacing:[],bastionOnly:[],fullyPrivate:[],database:[]};
+  var ingressSet=new Set();
+  ingressPaths.forEach(function(p){ingressSet.add(p.to.type+':'+p.to.id)});
+  var bastionSet=new Set();
+  bastionChains.forEach(function(ch){ch.targets.forEach(function(t){bastionSet.add(t.type+':'+t.id)})});
+  // Classify instances
+  (ctx.instances||[]).forEach(function(inst){
+    var key='instance:'+inst.InstanceId;
+    var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+    var ref={type:'instance',id:inst.InstanceId,name:gn3};
+    if(ingressSet.has(key)){tiers.internetFacing.push(ref);return}
+    if(bastionSet.has(key)){tiers.bastionOnly.push(ref);return}
+    tiers.fullyPrivate.push(ref);
+  });
+  // Classify ALBs
+  Object.keys(ctx.albBySub||{}).forEach(function(sid){
+    (ctx.albBySub[sid]||[]).forEach(function(alb){
+      var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
+      var key='alb:'+(albId||alb.LoadBalancerName);
+      var ref={type:'alb',id:albId||alb.LoadBalancerName,name:alb.LoadBalancerName||albId};
+      if(ingressSet.has(key)){tiers.internetFacing.push(ref);return}
+      tiers.fullyPrivate.push(ref);
+    });
+  });
+  // Classify RDS as database tier
+  (ctx.rdsInstances||[]).forEach(function(db){
+    tiers.database.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
+  });
+  // ElastiCache as database tier
+  (ctx.ecacheClusters||[]).forEach(function(ec){
+    tiers.database.push({type:'ecache',id:ec.CacheClusterId,name:ec.CacheClusterId});
+  });
+  return tiers;
+}
+
+// --- Flow Analysis Visualization ---
+function _renderFlowAnalysisOverlay(mode){
+  var svg=d3.select('#mapSvg');
+  svg.selectAll('.flow-analysis-layer').remove();
+  if(!_flowAnalysisCache||!mode) return;
+  var g=svg.select('g');
+  if(g.empty()) g=svg;
+  var faG=g.append('g').attr('class','flow-analysis-layer');
+  if(mode==='tiers'||mode==='all') _renderTierBadges(faG);
+  if(mode==='ingress'||mode==='all') _renderIngressArrows(faG);
+  if(mode==='egress'||mode==='all') _renderEgressArrows(faG);
+  if(mode==='bastion'||mode==='all') _renderBastionArrows(faG);
+}
+
+function _renderTierBadges(faG){
+  var colors={internetFacing:'#10b981',bastionOnly:'#22d3ee',fullyPrivate:'#8b5cf6',database:'#f59e0b'};
+  Object.keys(_flowAnalysisCache.accessTiers).forEach(function(tier){
+    (_flowAnalysisCache.accessTiers[tier]||[]).forEach(function(ref){
+      var pos=_resolveNetworkPosition(ref.type, ref.id, _rlCtx);
+      if(!pos) return;
+      var c=_getSubnetCenter(pos.subnetId);
+      if(!c) return;
+      faG.append('circle').attr('class','tier-badge').attr('cx',c.x+18).attr('cy',c.y-12).attr('r',6)
+        .attr('fill',colors[tier]||'#6b7280').attr('stroke','#1a1a2e').attr('stroke-width',1.5);
+    });
+  });
+}
+
+function _renderIngressArrows(faG){
+  var ic=_getInternetCoords();
+  if(!ic) return;
+  // Deduplicate: one arrow per unique target
+  var seen=new Set();
+  (_flowAnalysisCache.ingressPaths||[]).forEach(function(p){
+    var key=p.to.type+':'+p.to.id;
+    if(seen.has(key)) return;
+    seen.add(key);
+    var pos=_resolveNetworkPosition(p.to.type, p.to.id, _rlCtx);
+    if(!pos) return;
+    var tc=_getSubnetCenter(pos.subnetId);
+    if(!tc) return;
+    // Curved path
+    var midX=(ic.x+tc.x)/2;
+    var midY=Math.min(ic.y,tc.y)-40;
+    faG.append('path').attr('class','fa-path ingress')
+      .attr('d','M'+ic.x+','+ic.y+' Q'+midX+','+midY+' '+tc.x+','+tc.y)
+      .attr('opacity',.5);
+    // Arrowhead
+    var angle=Math.atan2(tc.y-midY,tc.x-midX);
+    var ax=tc.x-10*Math.cos(angle);var ay=tc.y-10*Math.sin(angle);
+    faG.append('polygon').attr('class','fa-arrow')
+      .attr('points',_arrowPoints(tc.x,tc.y,angle,8))
+      .attr('fill','#10b981').attr('opacity',.6);
+  });
+}
+
+function _renderEgressArrows(faG){
+  var ic=_getInternetCoords();
+  if(!ic) return;
+  var seen=new Set();
+  (_flowAnalysisCache.egressPaths||[]).forEach(function(p){
+    if(seen.has(p.subnetId)) return;
+    seen.add(p.subnetId);
+    var pos=_resolveNetworkPosition(p.from.type, p.from.id, _rlCtx);
+    if(!pos) return;
+    var sc=_getSubnetCenter(pos.subnetId);
+    if(!sc) return;
+    var midX=(sc.x+ic.x)/2;
+    var midY=Math.min(sc.y,ic.y)-30;
+    faG.append('path').attr('class','fa-path egress')
+      .attr('d','M'+sc.x+','+sc.y+' Q'+midX+','+midY+' '+ic.x+','+ic.y)
+      .attr('opacity',.35);
+  });
+}
+
+function _renderBastionArrows(faG){
+  (_flowAnalysisCache.bastionChains||[]).forEach(function(ch){
+    var bPos=_resolveNetworkPosition(ch.bastion.type, ch.bastion.id, _rlCtx);
+    if(!bPos) return;
+    var bc=_getSubnetCenter(bPos.subnetId);
+    if(!bc) return;
+    ch.targets.forEach(function(tgt){
+      var tPos=_resolveNetworkPosition(tgt.type, tgt.id, _rlCtx);
+      if(!tPos) return;
+      var tc=_getSubnetCenter(tPos.subnetId);
+      if(!tc) return;
+      faG.append('path').attr('class','fa-path bastion')
+        .attr('d','M'+bc.x+','+bc.y+' L'+tc.x+','+tc.y)
+        .attr('opacity',.5);
+      var angle=Math.atan2(tc.y-bc.y,tc.x-bc.x);
+      faG.append('polygon').attr('class','fa-arrow')
+        .attr('points',_arrowPoints(tc.x,tc.y,angle,7))
+        .attr('fill','#22d3ee').attr('opacity',.6);
+    });
+  });
+}
+
+function _arrowPoints(x,y,angle,size){
+  var x1=x-size*Math.cos(angle-0.4);
+  var y1=y-size*Math.sin(angle-0.4);
+  var x2=x-size*Math.cos(angle+0.4);
+  var y2=y-size*Math.sin(angle+0.4);
+  return x+','+y+' '+x1+','+y1+' '+x2+','+y2;
+}
+
+// --- Flow Analysis Detail Panel ---
+function _renderFlowAnalysisPanel(){
+  if(!_flowAnalysisCache) return;
+  var dp=document.getElementById('detailPanel');
+  var dpTitle=document.getElementById('dpTitle');
+  var dpSub=document.getElementById('dpSub');
+  var dpBody=document.getElementById('dpBody');
+  var d=_flowAnalysisCache;
+  dpTitle.textContent='Traffic Flow Analysis';
+  var total=(d.accessTiers.internetFacing.length+d.accessTiers.bastionOnly.length+d.accessTiers.fullyPrivate.length+d.accessTiers.database.length);
+  dpSub.textContent=total+' resources | '+d.ingressPaths.length+' ingress | '+d.bastionChains.length+' bastion chains';
+  var h='<div class="flow-panel">';
+  // Access Tiers
+  h+='<h4>Access Tiers</h4>';
+  var tierData=[
+    {key:'internetFacing',label:'Internet-Facing',color:'#10b981',icon:'\u{1F310}'},
+    {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:'\u{1F510}'},
+    {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:'\u{1F512}'},
+    {key:'database',label:'Database Tier',color:'#f59e0b',icon:'\u{1F4BE}'}
+  ];
+  tierData.forEach(function(td){
+    var count=d.accessTiers[td.key].length;
+    h+='<div class="fa-tier-row" data-fa-tier="'+td.key+'">';
+    h+='<span class="fa-tier-dot" style="background:'+td.color+'"></span>';
+    h+='<span style="color:var(--text-primary);font-weight:600">'+td.label+'</span>';
+    h+='<span style="margin-left:auto;color:'+td.color+';font-weight:700">'+count+'</span>';
+    h+='</div>';
+    // List resources in this tier (collapsed by default, expand on click)
+    h+='<div class="fa-tier-list" data-tier="'+td.key+'" style="display:none;padding-left:20px;margin-bottom:8px">';
+    d.accessTiers[td.key].forEach(function(ref){
+      h+='<div class="fa-path-item" data-ref-type="'+ref.type+'" data-ref-id="'+_escHtml(ref.id)+'">';
+      h+=_escHtml(ref.name||ref.id)+' <span style="color:var(--text-muted);font-size:9px">('+ref.type+')</span>';
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  // Ingress Paths
+  if(d.ingressPaths.length>0){
+    h+='<h4 style="margin-top:14px">Ingress Paths ('+d.ingressPaths.length+')</h4>';
+    // Deduplicate by target
+    var seen2=new Set();
+    d.ingressPaths.forEach(function(p){
+      var key=p.to.type+':'+p.to.id;
+      if(seen2.has(key)) return;
+      seen2.add(key);
+      h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'">';
+      h+='<span style="color:#10b981">\u2193</span> Internet \u2192 <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
+      h+=' <span style="color:var(--text-muted);font-size:9px">:'+p.port+' ('+p.type+')</span>';
+      h+='</div>';
+    });
+  }
+  // Bastion Chains
+  if(d.bastionChains.length>0){
+    h+='<h4 style="margin-top:14px">Bastion Chains ('+d.bastionChains.length+')</h4>';
+    d.bastionChains.forEach(function(ch){
+      h+='<div class="fa-path-item">';
+      h+='<span style="color:#22d3ee">\u{1F510}</span> '+_escHtml(ch.bastion.name||ch.bastion.id);
+      h+=' \u2192 <span style="color:var(--text-muted)">'+ch.targets.length+' target'+(ch.targets.length>1?'s':'')+'</span>';
+      h+='</div>';
+      ch.targets.forEach(function(tgt){
+        h+='<div class="fa-path-item" style="padding-left:24px" data-ref-type="'+tgt.type+'" data-ref-id="'+_escHtml(tgt.id)+'">';
+        h+='\u2514 '+_escHtml(tgt.name||tgt.id);
+        h+='</div>';
+      });
+    });
+  }
+  h+='</div>';
+  dpBody.innerHTML=h;
+  dp.classList.add('open');
+  // Wire tier row clicks
+  dpBody.querySelectorAll('.fa-tier-row').forEach(function(row){
+    row.addEventListener('click',function(){
+      var tier=row.getAttribute('data-fa-tier');
+      var list=dpBody.querySelector('.fa-tier-list[data-tier="'+tier+'"]');
+      if(list) list.style.display=list.style.display==='none'?'block':'none';
+    });
+  });
+  // Wire resource clicks → highlight on map
+  dpBody.querySelectorAll('.fa-path-item[data-ref-type]').forEach(function(item){
+    item.addEventListener('click',function(){
+      var refType=item.getAttribute('data-ref-type');
+      var refId=item.getAttribute('data-ref-id');
+      if(refType&&refId){
+        _clearFlowHighlights();
+        _highlightFlowNode({type:refType,id:refId},'source');
+      }
+    });
+  });
+}
+
+// --- Flow Analysis Mode Control ---
+function enterFlowAnalysis(){
+  if(!_rlCtx){alert('Load a map first');return}
+  if(_flowMode) exitFlowMode();
+  _flowAnalysisMode='tiers';
+  // Run discovery
+  _flowAnalysisCache=discoverTrafficFlows(_rlCtx);
+  // Show banner
+  document.getElementById('flowAnalysisBanner').style.display='flex';
+  var mainEl=document.querySelector('.main');
+  if(mainEl) mainEl.classList.add('flow-active');
+  // Render
+  _renderFlowAnalysisOverlay(_flowAnalysisMode);
+  _renderFlowAnalysisPanel();
+  // Set active pill
+  document.querySelectorAll('.fa-mode-pill').forEach(function(p){
+    p.classList.toggle('active',p.getAttribute('data-fa-mode')===_flowAnalysisMode);
+  });
+}
+
+function exitFlowAnalysis(){
+  _flowAnalysisMode=null;
+  document.getElementById('flowAnalysisBanner').style.display='none';
+  var mainEl=document.querySelector('.main');
+  if(mainEl) mainEl.classList.remove('flow-active');
+  d3.select('#mapSvg').selectAll('.flow-analysis-layer').remove();
+  _clearFlowHighlights();
+  var dp=document.getElementById('detailPanel');
+  if(dp.classList.contains('open')){
+    var dpBody=document.getElementById('dpBody');
+    if(dpBody&&dpBody.querySelector('.flow-panel')) dp.classList.remove('open');
+  }
+}
+
+function _setFlowAnalysisMode(mode){
+  _flowAnalysisMode=mode;
+  _renderFlowAnalysisOverlay(mode);
+  document.querySelectorAll('.fa-mode-pill').forEach(function(p){
+    p.classList.toggle('active',p.getAttribute('data-fa-mode')===mode);
+  });
+}
+
+// Wire Flow Analysis controls
+document.getElementById('flowAnalysisBtn').addEventListener('click',function(){
+  if(_flowAnalysisMode) exitFlowAnalysis();
+  else enterFlowAnalysis();
+});
+document.getElementById('faExitBtn').addEventListener('click',exitFlowAnalysis);
+document.querySelectorAll('.fa-mode-pill').forEach(function(pill){
+  pill.addEventListener('click',function(){
+    _setFlowAnalysisMode(pill.getAttribute('data-fa-mode'));
+  });
+});
 
 // === DIFF / CHANGE DETECTION ===
 let _diffMode=false;
@@ -15900,7 +16947,7 @@ function _rptBuildXlsxSummary(wb){
 function _rptBuildXlsxCompliance(wb){
   var f=_complianceFindings;
   if(!f||!f.length) return;
-  var headers=['Priority','Effort','Severity','Framework','Control','Resource','Finding','Remediation'];
+  var headers=['Priority','Effort','Severity','Framework','Control','CKV','Resource','Finding','Remediation'];
   var sorted=f.slice().sort(function(a,b){
     var ta=_classifyTier(a),tb=_classifyTier(b);
     if(ta!==tb) return ta-tb;
@@ -15910,10 +16957,10 @@ function _rptBuildXlsxCompliance(wb){
     var tier=_classifyTier(x);
     var effort=_EFFORT_LABELS[_getEffort(x)]||'Moderate';
     return [_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
-      x.resourceName||x.resource,x.message,x.remediation];
+      x.ckv||'',x.resourceName||x.resource,x.message,x.remediation];
   });
   _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:2,tierCol:0,effortCol:1,
-    minWidths:[14,14,12,20,14,28,40,40]});
+    minWidths:[14,14,12,20,14,14,28,40,40]});
 }
 
 function _rptBuildXlsxBUDR(wb){
@@ -20765,6 +21812,7 @@ document.addEventListener('keydown',function(e){
     if(typeof _hlLocked!=='undefined'){_hlLocked=false;_hlKey=null;_hlType=null}
     const lockInd=document.getElementById('hlLockInd');if(lockInd)lockInd.style.display='none';
     if(_flowMode){exitFlowMode();return}
+    if(_flowAnalysisMode){exitFlowAnalysis();return}
     if(_diffMode){exitDiffMode();return}
     if(_designMode)exitDesignMode();
     return;
@@ -20783,6 +21831,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='-'){d3.select('#zoomOut').dispatch('click');return}
   if(e.key==='f'){d3.select('#zoomFit').dispatch('click');return}
   if(e.key==='T'&&e.shiftKey){if(_flowMode)exitFlowMode();else enterFlowMode();return}
+  if(e.key==='F'&&e.shiftKey){if(_flowAnalysisMode)exitFlowAnalysis();else enterFlowAnalysis();return}
   if(e.key==='R'&&e.shiftKey){var rb=document.getElementById('rptBuilder');if(rb.classList.contains('open'))rb.classList.remove('open');else openReportBuilder();return}
   if(e.key==='B'&&e.shiftKey){const bd=document.getElementById('budrDash');if(bd.classList.contains('open'))bd.classList.remove('open');else openBUDRDash();return}
   if(e.key==='C'&&e.shiftKey){const cd=document.getElementById('compDash');if(cd.classList.contains('open'))cd.classList.remove('open');else document.getElementById('compDashBtn').click();return}
