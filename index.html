@@ -1547,6 +1547,7 @@
       <button onclick="exportPolicies(_complianceFindings,'config')">Export: AWS Config</button>
       <button onclick="exportPolicies(_complianceFindings,'rego')">Export: OPA Rego</button>
       <button onclick="exportPolicies(_complianceFindings,'checkov')">Export: Checkov</button>
+      <button onclick="exportCheckovCfn()">Checkov: CFn Scan</button>
       <button onclick="_openCompExportModal()">Export Report</button>
       <span class="dash-footer-meta" id="compMutedCount"></span>
     </div>
@@ -5733,6 +5734,14 @@ function exportPolicies(findings,format){
   else if(format==='cli'){content=generateRemediationCLI(findings);filename='remediation.sh';mime='text/x-shellscript'}
   else return;
   downloadBlob(new Blob([content],{type:mime}),filename);
+}
+function exportCheckovCfn(){
+  if(!_rlCtx){alert('Render a map first');return;}
+  var json=generateCheckovCfn(_rlCtx,_iamData);
+  if(!json){alert('No data available');return;}
+  var count=Object.keys(JSON.parse(json).Resources||{}).length;
+  downloadBlob(new Blob([json],{type:'application/json'}),'checkov-template.json');
+  _showToast(count+' resources exported. Run: checkov -f checkov-template.json --framework cloudformation');
 }
 
 // === IAM OVERLAY ===
@@ -20231,6 +20240,243 @@ function _cfnSGRuleProps(rule){
   const sgRefs=(rule.UserIdGroupPairs||[]).map(p=>p.GroupId).filter(Boolean);
   if(sgRefs.length)r.SourceSecurityGroupId=sgRefs[0];
   return r;
+}
+
+// === CHECKOV CFN GENERATOR ===
+// Generates a security-property-rich CloudFormation template for Checkov scanning
+function _ckId(name,prefix,seen){
+  var base=(name||prefix||'Res').replace(/[^a-zA-Z0-9]/g,'');
+  if(!base||/^\d/.test(base)) base=(prefix||'R')+base;
+  var id=base,i=2;
+  while(seen.has(id)){id=base+i;i++;}
+  seen.add(id);
+  return id;
+}
+function _ckVpcs(vpcs,res,seen){
+  vpcs.forEach(function(v){
+    var id=_ckId(gn(v,v.VpcId),'VPC',seen);
+    res[id]={Type:'AWS::EC2::VPC',Properties:{
+      CidrBlock:v.CidrBlock||'10.0.0.0/16',
+      EnableDnsSupport:v.EnableDnsSupport!==false,
+      EnableDnsHostnames:v.EnableDnsHostnames===true,
+      Tags:_cfnTags(v)
+    }};
+  });
+}
+function _ckSubnets(subnets,res,seen){
+  subnets.forEach(function(s){
+    var id=_ckId(gn(s,s.SubnetId),'Subnet',seen);
+    res[id]={Type:'AWS::EC2::Subnet',Properties:{
+      VpcId:s.VpcId,CidrBlock:s.CidrBlock,
+      AvailabilityZone:s.AvailabilityZone||'',
+      MapPublicIpOnLaunch:s.MapPublicIpOnLaunch===true,
+      Tags:_cfnTags(s)
+    }};
+  });
+}
+function _ckExpandRules(perms){
+  var rules=[];
+  (perms||[]).forEach(function(p){
+    var base={IpProtocol:p.IpProtocol||'-1'};
+    if(p.FromPort!=null) base.FromPort=p.FromPort;
+    if(p.ToPort!=null) base.ToPort=p.ToPort;
+    (p.IpRanges||[]).forEach(function(r){rules.push(Object.assign({},base,{CidrIp:r.CidrIp}));});
+    (p.Ipv6Ranges||[]).forEach(function(r){rules.push(Object.assign({},base,{CidrIpv6:r.CidrIpv6}));});
+    (p.UserIdGroupPairs||[]).forEach(function(pair){rules.push(Object.assign({},base,{SourceSecurityGroupId:pair.GroupId}));});
+    if(!(p.IpRanges||[]).length&&!(p.Ipv6Ranges||[]).length&&!(p.UserIdGroupPairs||[]).length) rules.push(base);
+  });
+  return rules;
+}
+function _ckSgs(sgs,res,seen){
+  sgs.forEach(function(sg){
+    var id=_ckId(sg.GroupName||sg.GroupId,'SG',seen);
+    res[id]={Type:'AWS::EC2::SecurityGroup',Properties:{
+      GroupDescription:sg.Description||sg.GroupName||'',
+      VpcId:sg.VpcId,
+      SecurityGroupIngress:_ckExpandRules(sg.IpPermissions),
+      SecurityGroupEgress:_ckExpandRules(sg.IpPermissionsEgress),
+      Tags:_cfnTags(sg)
+    }};
+  });
+}
+function _ckNacls(nacls,res,seen){
+  nacls.forEach(function(nacl){
+    var nId=_ckId(gn(nacl,nacl.NetworkAclId),'NACL',seen);
+    res[nId]={Type:'AWS::EC2::NetworkAcl',Properties:{VpcId:nacl.VpcId,Tags:_cfnTags(nacl)}};
+    (nacl.Entries||[]).forEach(function(e){
+      var eId=_ckId(nId+'Rule'+e.RuleNumber+(e.Egress?'E':'I'),'NACLEntry',seen);
+      var props={NetworkAclId:nacl.NetworkAclId,RuleNumber:e.RuleNumber,
+        Protocol:String(e.Protocol),RuleAction:e.RuleAction,Egress:e.Egress===true};
+      if(e.CidrBlock) props.CidrBlock=e.CidrBlock;
+      if(e.Ipv6CidrBlock) props.Ipv6CidrBlock=e.Ipv6CidrBlock;
+      if(e.PortRange) props.PortRange={From:e.PortRange.From,To:e.PortRange.To};
+      res[eId]={Type:'AWS::EC2::NetworkAclEntry',Properties:props};
+    });
+  });
+}
+function _ckRts(rts,res,seen){
+  rts.forEach(function(rt){
+    var rtId=_ckId(gn(rt,rt.RouteTableId),'RT',seen);
+    res[rtId]={Type:'AWS::EC2::RouteTable',Properties:{VpcId:rt.VpcId,Tags:_cfnTags(rt)}};
+    (rt.Routes||[]).forEach(function(r){
+      if(r.GatewayId==='local') return;
+      var rId=_ckId(rtId+(r.DestinationCidrBlock||'').replace(/[^a-zA-Z0-9]/g,''),'Route',seen);
+      var props={RouteTableId:rt.RouteTableId};
+      if(r.DestinationCidrBlock) props.DestinationCidrBlock=r.DestinationCidrBlock;
+      if(r.GatewayId) props.GatewayId=r.GatewayId;
+      if(r.NatGatewayId) props.NatGatewayId=r.NatGatewayId;
+      if(r.VpcEndpointId) props.VpcEndpointId=r.VpcEndpointId;
+      res[rId]={Type:'AWS::EC2::Route',Properties:props};
+    });
+  });
+}
+function _ckEc2(instances,ctx,res,seen){
+  instances.forEach(function(inst){
+    var id=_ckId(gn(inst,inst.InstanceId),'EC2',seen);
+    var props={InstanceType:inst.InstanceType||'t3.micro',SubnetId:inst.SubnetId||'',
+      SecurityGroupIds:(inst.SecurityGroups||[]).map(function(s){return s.GroupId}),
+      ImageId:inst.ImageId||'',Tags:_cfnTags(inst)};
+    // IMDSv2 — Checkov CKV_AWS_79
+    var mo=inst.MetadataOptions||{};
+    props.MetadataOptions={HttpTokens:mo.HttpTokens||'optional',HttpEndpoint:mo.HttpEndpoint||'enabled'};
+    // IAM profile
+    if(inst.IamInstanceProfile) props.IamInstanceProfile=inst.IamInstanceProfile.Arn||'';
+    // EBS encryption
+    if(inst.BlockDeviceMappings&&inst.BlockDeviceMappings.length){
+      props.BlockDeviceMappings=inst.BlockDeviceMappings.map(function(b){
+        var r={DeviceName:b.DeviceName||'/dev/xvda'};
+        if(b.Ebs) r.Ebs={Encrypted:b.Ebs.Encrypted===true,VolumeSize:b.Ebs.VolumeSize||8,VolumeType:b.Ebs.VolumeType||'gp3'};
+        return r;
+      });
+    }
+    res[id]={Type:'AWS::EC2::Instance',Properties:props};
+  });
+}
+function _ckRds(rdsInstances,res,seen){
+  rdsInstances.forEach(function(db){
+    var id=_ckId(db.DBInstanceIdentifier,'RDS',seen);
+    res[id]={Type:'AWS::RDS::DBInstance',Properties:{
+      DBInstanceIdentifier:db.DBInstanceIdentifier,
+      Engine:db.Engine||'',EngineVersion:db.EngineVersion||'',
+      DBInstanceClass:db.DBInstanceClass||'db.t3.micro',
+      StorageEncrypted:db.StorageEncrypted===true,
+      PubliclyAccessible:db.PubliclyAccessible===true,
+      MultiAZ:db.MultiAZ===true,
+      BackupRetentionPeriod:db.BackupRetentionPeriod||0,
+      StorageType:db.StorageType||'gp2',
+      AllocatedStorage:db.AllocatedStorage||20,
+      MasterUsername:'admin'
+    }};
+  });
+}
+function _ckS3(buckets,res,seen){
+  buckets.forEach(function(bk){
+    var id=_ckId(bk.Name,'S3',seen);
+    var props={BucketName:bk.Name};
+    // Omit encryption/versioning — Checkov flags their absence, which is correct
+    if(bk.BucketEncryption) props.BucketEncryption=bk.BucketEncryption;
+    if(bk.VersioningConfiguration) props.VersioningConfiguration=bk.VersioningConfiguration;
+    res[id]={Type:'AWS::S3::Bucket',Properties:props};
+  });
+}
+function _ckAlbs(albs,res,seen){
+  albs.forEach(function(alb){
+    var id=_ckId(alb.LoadBalancerName||alb.LoadBalancerArn,'ALB',seen);
+    var props={Type:alb.Type||'application',Scheme:alb.Scheme||'internet-facing'};
+    if(alb.SecurityGroups) props.SecurityGroups=alb.SecurityGroups;
+    if(alb.Subnets) props.Subnets=alb.Subnets;
+    else if(alb.AvailabilityZones) props.Subnets=alb.AvailabilityZones.map(function(az){return az.SubnetId}).filter(Boolean);
+    res[id]={Type:'AWS::ElasticLoadBalancingV2::LoadBalancer',Properties:props};
+  });
+}
+function _ckLambda(fns,res,seen){
+  fns.forEach(function(fn){
+    var id=_ckId(fn.FunctionName,'Lambda',seen);
+    var props={FunctionName:fn.FunctionName,Runtime:fn.Runtime||'',Handler:fn.Handler||'index.handler',
+      MemorySize:fn.MemorySize||128,Timeout:fn.Timeout||3,
+      Role:fn.Role||'arn:aws:iam::123456789012:role/LambdaRole',
+      Code:{ZipFile:'exports.handler=async()=>({})'}};
+    if(fn.VpcConfig&&fn.VpcConfig.SubnetIds&&fn.VpcConfig.SubnetIds.length){
+      props.VpcConfig={SubnetIds:fn.VpcConfig.SubnetIds,SecurityGroupIds:fn.VpcConfig.SecurityGroupIds||[]};
+    }
+    res[id]={Type:'AWS::Lambda::Function',Properties:props};
+  });
+}
+function _ckIamRoles(roles,res,seen){
+  roles.forEach(function(role){
+    var id=_ckId(role.RoleName,'Role',seen);
+    var props={RoleName:role.RoleName,
+      AssumeRolePolicyDocument:role.AssumeRolePolicyDocument||{Version:'2012-10-17',Statement:[]}};
+    var managed=(role.AttachedManagedPolicies||[]).map(function(p){return p.PolicyArn}).filter(Boolean);
+    if(managed.length) props.ManagedPolicyArns=managed;
+    if(role.RolePolicyList&&role.RolePolicyList.length){
+      props.Policies=role.RolePolicyList.map(function(p){
+        return {PolicyName:p.PolicyName,PolicyDocument:p.PolicyDocument||{}};
+      });
+    }
+    res[id]={Type:'AWS::IAM::Role',Properties:props};
+  });
+}
+function _ckIamUsers(users,res,seen){
+  users.forEach(function(user){
+    var id=_ckId(user.UserName,'User',seen);
+    var props={UserName:user.UserName};
+    var managed=(user.AttachedManagedPolicies||[]).map(function(p){return p.PolicyArn}).filter(Boolean);
+    if(managed.length) props.ManagedPolicyArns=managed;
+    if(user.UserPolicyList&&user.UserPolicyList.length){
+      props.Policies=user.UserPolicyList.map(function(p){
+        return {PolicyName:p.PolicyName,PolicyDocument:p.PolicyDocument||{}};
+      });
+    }
+    res[id]={Type:'AWS::IAM::User',Properties:props};
+  });
+}
+function _ckElastiCache(clusters,res,seen){
+  clusters.forEach(function(c){
+    var id=_ckId(c.CacheClusterId,'Cache',seen);
+    res[id]={Type:'AWS::ElastiCache::CacheCluster',Properties:{
+      Engine:c.Engine||'redis',CacheNodeType:c.CacheNodeType||'cache.t3.micro',
+      NumCacheNodes:c.NumCacheNodes||1,
+      AtRestEncryptionEnabled:c.AtRestEncryptionEnabled===true,
+      TransitEncryptionEnabled:c.TransitEncryptionEnabled===true
+    }};
+  });
+}
+function _ckRedshift(clusters,res,seen){
+  clusters.forEach(function(c){
+    var id=_ckId(c.ClusterIdentifier,'Redshift',seen);
+    res[id]={Type:'AWS::Redshift::Cluster',Properties:{
+      ClusterIdentifier:c.ClusterIdentifier,
+      NodeType:c.NodeType||'dc2.large',NumberOfNodes:c.NumberOfNodes||1,
+      Encrypted:c.Encrypted===true,PubliclyAccessible:c.PubliclyAccessible===true,
+      MasterUsername:'admin',MasterUserPassword:'placeholder',
+      DBName:c.DBName||'dev'
+    }};
+  });
+}
+function generateCheckovCfn(ctx,iamData){
+  if(!ctx||!ctx.vpcs) return null;
+  var template={AWSTemplateFormatVersion:'2010-09-09',
+    Description:'Generated by AWS Mapper for Checkov scanning — '+new Date().toISOString().split('T')[0],
+    Resources:{}};
+  var res=template.Resources,seen=new Set();
+  _ckVpcs(ctx.vpcs||[],res,seen);
+  _ckSubnets(ctx.subnets||[],res,seen);
+  _ckSgs(ctx.sgs||[],res,seen);
+  _ckNacls(ctx.nacls||[],res,seen);
+  _ckRts(ctx.rts||[],res,seen);
+  _ckEc2(ctx.instances||[],ctx,res,seen);
+  _ckRds(ctx.rdsInstances||[],res,seen);
+  _ckS3(ctx.s3bk||[],res,seen);
+  _ckAlbs(ctx.albs||[],res,seen);
+  _ckLambda(ctx.lambdaFns||[],res,seen);
+  _ckElastiCache(ctx.ecacheClusters||[],res,seen);
+  _ckRedshift(ctx.redshiftClusters||[],res,seen);
+  if(iamData){
+    _ckIamRoles(iamData.roles||[],res,seen);
+    _ckIamUsers(iamData.users||[],res,seen);
+  }
+  return JSON.stringify(template,null,2);
 }
 
 // --- Simple YAML serializer for CFN ---
