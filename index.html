@@ -3733,8 +3733,6 @@ function _rptInventory(ctx, opts){
     if(cnt) h+='<a href="#s-inv-'+t.anchor+'" class="rpt-jump-link">'+t.label+'<span class="rpt-jump-ct">'+cnt+'</span></a>';
   });
   h+='</nav>';
-  h+='<div class="rpt-table-wrap" id="rpt-tbl-inventory">';
-  h+=_rptBuildToolbar('rpt-tbl-inventory',{});
   h+=_rptInvVPCs(c);
   h+=_rptInvSubnets(c);
   h+=_rptInvEC2(c);
@@ -3742,7 +3740,7 @@ function _rptInventory(ctx, opts){
   h+=_rptInvALBs(c);
   h+=_rptInvECS(c);
   h+=_rptInvLambda(c);
-  h+='</div></div></section>';
+  h+='</div></section>';
   return h;
 }
 
@@ -3755,6 +3753,8 @@ function _rptInvVPCs(c){
   var items=c.vpcs||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-vpcs">VPCs ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-vpcs">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-vpcs',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>VPC ID</th>';
   h+='<th>CIDR</th><th>State</th></tr></thead><tbody>';
   items.forEach(function(v){
@@ -3763,7 +3763,7 @@ function _rptInvVPCs(c){
     h+='<td>'+esc(v.CidrBlock)+'</td>';
     h+='<td>'+esc(v.State)+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -3771,6 +3771,8 @@ function _rptInvSubnets(c){
   var items=c.subnets||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-subnets">Subnets ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-subnets">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-subnets',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>Subnet ID</th>';
   h+='<th>CIDR</th><th>AZ</th><th>Public</th></tr></thead><tbody>';
   items.forEach(function(s){
@@ -3781,7 +3783,7 @@ function _rptInvSubnets(c){
     h+='<td>'+esc(s.AvailabilityZone)+'</td>';
     h+='<td>'+esc(pub)+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -3789,6 +3791,8 @@ function _rptInvEC2(c){
   var items=c.instances||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-ec2">EC2 Instances ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-ec2">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-ec2',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>Instance ID</th>';
   h+='<th>Type</th><th>State</th><th>AZ</th></tr></thead><tbody>';
   items.forEach(function(i){
@@ -3800,7 +3804,7 @@ function _rptInvEC2(c){
     h+='<td>'+esc(state)+'</td>';
     h+='<td>'+esc(az)+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -3808,6 +3812,8 @@ function _rptInvRDS(c){
   var items=c.rdsInstances||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-rds">RDS Instances ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-rds">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-rds',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Identifier</th><th>Engine</th>';
   h+='<th>Class</th><th>Multi-AZ</th></tr></thead><tbody>';
   items.forEach(function(d){
@@ -3816,7 +3822,7 @@ function _rptInvRDS(c){
     h+='<td>'+esc(d.DBInstanceClass)+'</td>';
     h+='<td>'+esc(d.MultiAZ?'Yes':'No')+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -3824,6 +3830,8 @@ function _rptInvALBs(c){
   var items=c.albs||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-albs">Load Balancers ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-albs">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-albs',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Name</th><th>Type</th>';
   h+='<th>Scheme</th><th>AZs</th></tr></thead><tbody>';
   items.forEach(function(a){
@@ -3833,7 +3841,7 @@ function _rptInvALBs(c){
     h+='<td>'+esc(a.Scheme)+'</td>';
     h+='<td>'+azCount+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -3841,6 +3849,8 @@ function _rptInvECS(c){
   var items=c.ecsServices||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-ecs">ECS Services ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-ecs">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-ecs',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Service</th><th>Desired</th>';
   h+='<th>Running</th><th>Launch Type</th></tr></thead><tbody>';
   items.forEach(function(s){
@@ -3849,7 +3859,7 @@ function _rptInvECS(c){
     h+='<td>'+esc(s.runningCount)+'</td>';
     h+='<td>'+esc(s.launchType||'')+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -3857,6 +3867,8 @@ function _rptInvLambda(c){
   var items=c.lambdaFns||[];
   if(!items.length) return '';
   var h='<h3 id="s-inv-lambda">Lambda Functions ('+items.length+')</h3>';
+  h+='<div class="rpt-table-wrap" id="rpt-tbl-inv-lambda">';
+  h+=_rptBuildToolbar('rpt-tbl-inv-lambda',{});
   h+='<table><thead class="rpt-sticky"><tr><th>Function</th><th>Runtime</th>';
   h+='<th>Memory (MB)</th><th>Timeout (s)</th></tr></thead><tbody>';
   items.forEach(function(fn){
@@ -3865,7 +3877,7 @@ function _rptInvLambda(c){
     h+='<td>'+esc(fn.MemorySize)+'</td>';
     h+='<td>'+esc(fn.Timeout)+'</td></tr>';
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
   return h;
 }
 
@@ -6421,7 +6433,7 @@ function openResourceList(type, pushNav){
           const resCount=ctx.iamRoleResources?ctx.iamRoleResources[r.RoleName]:null;
           const rcText=resCount?(' | '+(resCount.ec2?.length||0)+' EC2, '+(resCount.lambda?.length||0)+' Lambda, '+(resCount.ecs?.length||0)+' ECS'):'';
           const trustSvc=r.AssumeRolePolicyDocument?(typeof r.AssumeRolePolicyDocument==='string'?JSON.parse(r.AssumeRolePolicyDocument):r.AssumeRolePolicyDocument).Statement?.map(s=>{const p=s.Principal||{};return p.Service||p.AWS||''}).flat().join(', '):'';
-          items.push('<div class="dp-row" data-iam-role="'+ri+'" style="border-left:3px solid #f59e0b;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan)">'+esc(r.RoleName)+'</span><br><span class="k">Trust: '+(trustSvc||'?').substring(0,60)+rcText+'</span></div>');
+          items.push('<div class="dp-row" data-iam-role="'+ri+'" style="border-left:3px solid #f59e0b;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan);text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(103,232,249,.3)">'+esc(r.RoleName)+'</span><br><span class="k">Trust: '+(trustSvc||'?').substring(0,60)+rcText+'</span></div>');
         });
       }
       // Users section
@@ -6436,7 +6448,7 @@ function openResourceList(type, pushNav){
           if(!(u.MFADevices||[]).length)badges.push('<span class="sev-badge sev-HIGH">NO MFA</span>');
           else badges.push('<span class="sev-badge sev-LOW" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)">MFA</span>');
           const polCount=(u.UserPolicyList||[]).length+(u.AttachedManagedPolicies||[]).length;
-          items.push('<div class="dp-row" data-iam-user="'+ui+'" style="border-left:3px solid #3b82f6;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan)">'+esc(u.UserName)+'</span><br><span class="k">'+polCount+' policies</span></div>');
+          items.push('<div class="dp-row" data-iam-user="'+ui+'" style="border-left:3px solid #3b82f6;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan);text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(103,232,249,.3)">'+esc(u.UserName)+'</span><br><span class="k">'+polCount+' policies</span></div>');
         });
       }
       // Store iamData for click handlers
