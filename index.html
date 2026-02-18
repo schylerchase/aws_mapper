@@ -276,7 +276,6 @@
   .fw-dash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
   .fw-dash.open{display:flex}
   .fw-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
-  .fw-dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#ef4444;margin:0}
   .fw-dash-pills{display:flex;gap:6px}
   .fw-dash-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);color:var(--text-muted)}
   .fw-dash-pill.active{border-color:currentColor}
@@ -284,8 +283,6 @@
   .fw-dash-pill[data-type="nacl"]{color:#f59e0b}.fw-dash-pill[data-type="nacl"].active{background:rgba(245,158,11,.15)}
   .fw-dash-pill[data-type="route"]{color:#22d3ee}.fw-dash-pill[data-type="route"].active{background:rgba(34,211,238,.15)}
   .fw-dash-pill[data-type="all"]{color:var(--text-secondary)}.fw-dash-pill[data-type="all"].active{background:rgba(255,255,255,.08)}
-  .fw-dash-close{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:12px;padding:4px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-left:auto}
-  .fw-dash-close:hover{color:var(--text-primary);border-color:var(--text-muted)}
   .fw-dash-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
   .fw-dash-toolbar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px}
   .fw-dash-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
@@ -417,8 +414,6 @@
   .comp-dash.open{display:flex}
   .comp-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .comp-dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--accent-cyan);margin:0}
-  .comp-dash-close{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:12px;padding:4px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-left:auto}
-  .comp-dash-close:hover{color:var(--text-primary);border-color:var(--text-muted)}
   .comp-dash-stats{display:flex;gap:8px;padding:10px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
   .comp-sev-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s}
   .comp-sev-pill.active{border-color:currentColor}
@@ -452,8 +447,6 @@
   .budr-dash.open{display:flex}
   .budr-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .budr-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#10b981;margin:0}
-  .budr-close{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:12px;padding:4px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-left:auto}
-  .budr-close:hover{color:var(--text-primary);border-color:var(--text-muted)}
   .budr-pills{display:flex;gap:6px}
   .budr-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s}
   .budr-pill.active{border-color:currentColor}
@@ -513,8 +506,6 @@
   .rpt-builder.open{display:flex}
   .rpt-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .rpt-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#f59e0b;margin:0}
-  .rpt-close{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:12px;padding:4px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-left:auto}
-  .rpt-close:hover{color:var(--text-primary);border-color:var(--text-muted)}
   .rpt-main{flex:1;display:flex;overflow:hidden}
   .rpt-picker{width:320px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
   .rpt-presets{display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
@@ -1069,6 +1060,58 @@
   /* --- SAFE AREA INSETS for notched phones (iPhone X+) ---
        .main already uses height:100svh so bottom:0 = above Safari toolbar.
        env(safe-area-inset-bottom) only adds clearance for the home indicator. */
+  /* === UNIFIED DASHBOARD SYSTEM === */
+  /* Navigation tab bar shared across all full-screen dashboards */
+  .dash-nav{display:flex;gap:2px;padding:0 4px;background:rgba(255,255,255,.03);border-radius:8px;margin-right:auto;margin-left:16px}
+  .dash-nav-btn{background:none;border:1px solid transparent;border-radius:6px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;padding:5px 12px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .dash-nav-btn:hover{color:var(--text-secondary);background:rgba(255,255,255,.04)}
+  .dash-nav-btn.active{color:var(--accent-cyan);background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.2)}
+  .dash-nav-btn.active[data-dash="compliance"]{color:var(--accent-cyan);background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.2)}
+  .dash-nav-btn.active[data-dash="firewall"]{color:var(--accent-red);background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2)}
+  .dash-nav-btn.active[data-dash="budr"]{color:var(--accent-green);background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2)}
+  .dash-nav-btn.active[data-dash="reports"]{color:var(--accent-orange);background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2)}
+  .dash-nav-btn .dn-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .dash-nav-btn[data-dash="compliance"] .dn-dot{background:var(--accent-cyan)}
+  .dash-nav-btn[data-dash="firewall"] .dn-dot{background:var(--accent-red)}
+  .dash-nav-btn[data-dash="budr"] .dn-dot{background:var(--accent-green)}
+  .dash-nav-btn[data-dash="reports"] .dn-dot{background:var(--accent-orange)}
+  /* Smooth open/close for all full-screen dashboards */
+  .comp-dash.open,.fw-dash.open,.budr-dash.open,.rpt-builder.open{animation:dashSlideIn .2s ease both}
+  @keyframes dashSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  /* Unified scrollbar for all dashboard bodies */
+  .comp-body::-webkit-scrollbar,.fw-dash-body::-webkit-scrollbar,.budr-body::-webkit-scrollbar,.rpt-modules::-webkit-scrollbar,.rpt-preview::-webkit-scrollbar{width:6px}
+  .comp-body::-webkit-scrollbar-track,.fw-dash-body::-webkit-scrollbar-track,.budr-body::-webkit-scrollbar-track,.rpt-modules::-webkit-scrollbar-track,.rpt-preview::-webkit-scrollbar-track{background:transparent}
+  .comp-body::-webkit-scrollbar-thumb,.fw-dash-body::-webkit-scrollbar-thumb,.budr-body::-webkit-scrollbar-thumb,.rpt-modules::-webkit-scrollbar-thumb,.rpt-preview::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .comp-body::-webkit-scrollbar-thumb:hover,.fw-dash-body::-webkit-scrollbar-thumb:hover,.budr-body::-webkit-scrollbar-thumb:hover{background:rgba(100,116,139,.5)}
+  /* Unified filter pill base class */
+  .dash-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);color:var(--text-muted);user-select:none}
+  .dash-pill:hover{background:rgba(255,255,255,.1)}
+  .dash-pill.active{border-color:currentColor}
+  /* Unified dashboard close button */
+  .dash-close{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:11px;padding:5px 14px;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .15s;display:flex;align-items:center;gap:5px}
+  .dash-close:hover{color:var(--text-primary);border-color:var(--text-muted);background:rgba(255,255,255,.04)}
+  .dash-close kbd{font-size:9px;padding:1px 4px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:3px;color:var(--text-secondary)}
+  /* Unified dashboard header */
+  .dash-hdr{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+  .dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:15px;margin:0;flex-shrink:0}
+  /* Unified dashboard toolbar */
+  .dash-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
+  .dash-toolbar input[type="text"]{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px;transition:border-color .15s}
+  .dash-toolbar input[type="text"]:focus{border-color:var(--accent-cyan);outline:none}
+  .dash-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
+  .dash-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+  /* Unified dashboard footer */
+  .dash-footer{display:flex;gap:8px;padding:8px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
+  .dash-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;cursor:pointer;transition:all .15s}
+  .dash-footer button:hover{background:rgba(96,165,250,.08);border-color:rgba(96,165,250,.3)}
+  .dash-footer .dash-footer-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
+  /* BUDR toolbar (new) */
+  .budr-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
+  .budr-toolbar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px;transition:border-color .15s}
+  .budr-toolbar input:focus{border-color:var(--accent-green);outline:none}
+  .budr-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+  .budr-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
+
   @supports (padding: env(safe-area-inset-top)){
     @media (max-width:768px){
       .sidebar-header{padding-top:calc(14px + env(safe-area-inset-top))}
@@ -1434,16 +1477,17 @@
     </div>
   </div>
   <div class="comp-dash" id="compDash">
-    <div class="comp-dash-hdr">
-      <h2>Compliance Dashboard</h2>
+    <div class="comp-dash-hdr dash-hdr">
+      <h2 style="color:var(--accent-cyan)">Compliance</h2>
+      <nav class="dash-nav" id="compDashNav"></nav>
       <div id="compSevPills" style="display:flex;gap:6px"></div>
       <div class="comp-view-toggle" id="compViewToggle">
         <button class="comp-view-btn active" data-view="action">Action Plan</button>
         <button class="comp-view-btn" data-view="table">Table</button>
       </div>
-      <button class="comp-dash-close" id="compDashClose">Close [Esc]</button>
+      <button class="dash-close" id="compDashClose">Close <kbd>Esc</kbd></button>
     </div>
-    <div class="comp-toolbar" id="compToolbar">
+    <div class="comp-toolbar dash-toolbar" id="compToolbar">
       <label>Search</label>
       <input id="compSearch" type="text" placeholder="Filter by resource, message, control...">
       <label>Framework</label>
@@ -1455,32 +1499,40 @@
     </div>
     <div id="compExecSummary" style="display:none;padding:16px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);overflow-y:auto;max-height:45vh"></div>
     <div class="comp-body" id="compBody"></div>
-    <div class="comp-dash-footer" id="compFooter">
+    <div class="comp-dash-footer dash-footer" id="compFooter">
       <button onclick="exportPolicies(_complianceFindings,'cli')">Remediation CLI</button>
       <button onclick="exportPolicies(_complianceFindings,'config')">Export: AWS Config</button>
       <button onclick="exportPolicies(_complianceFindings,'rego')">Export: OPA Rego</button>
       <button onclick="exportPolicies(_complianceFindings,'checkov')">Export: Checkov</button>
       <button onclick="_openCompExportModal()">Export Report</button>
-      <span class="muted-count" id="compMutedCount"></span>
+      <span class="dash-footer-meta" id="compMutedCount"></span>
     </div>
   </div>
   <div class="budr-dash" id="budrDash">
-    <div class="budr-hdr">
-      <h2>Backup &amp; DR Assessment</h2>
+    <div class="budr-hdr dash-hdr">
+      <h2 style="color:#10b981">Backup &amp; DR</h2>
+      <nav class="dash-nav" id="budrDashNav"></nav>
       <div class="budr-pills" id="budrPills"></div>
-      <button class="budr-close" id="budrClose">Close [Esc]</button>
+      <button class="dash-close" id="budrClose">Close <kbd>Esc</kbd></button>
+    </div>
+    <div class="budr-toolbar" id="budrToolbar">
+      <label>Search</label>
+      <input id="budrSearch" type="text" placeholder="Filter by resource name, type, ID...">
+      <label>Sort</label>
+      <select id="budrSort"><option value="tier">Tier</option><option value="name">Name</option><option value="type">Type</option></select>
     </div>
     <div class="budr-body" id="budrBody"></div>
-    <div class="budr-footer" id="budrFooter">
+    <div class="budr-footer dash-footer" id="budrFooter">
       <button id="budrExportCSV">Export CSV</button>
       <button id="budrExportJSON">Export JSON</button>
       <button id="budrExportXLSX">Export XLSX</button>
     </div>
   </div>
   <div class="rpt-builder" id="rptBuilder">
-    <div class="rpt-hdr">
-      <h2>Report Builder</h2>
-      <button class="rpt-close" id="rptClose">Close [Esc]</button>
+    <div class="rpt-hdr dash-hdr">
+      <h2 style="color:#f59e0b">Reports</h2>
+      <nav class="dash-nav" id="rptDashNav"></nav>
+      <button class="dash-close" id="rptClose">Close <kbd>Esc</kbd></button>
     </div>
     <div class="rpt-main">
       <div class="rpt-picker">
@@ -1512,12 +1564,13 @@
     </div>
   </div>
   <div class="fw-dash" id="fwDash">
-    <div class="fw-dash-hdr">
-      <h2>Firewall Dashboard</h2>
+    <div class="fw-dash-hdr dash-hdr">
+      <h2 style="color:#ef4444">Firewall</h2>
+      <nav class="dash-nav" id="fwDashNav"></nav>
       <div class="fw-dash-pills" id="fwDashPills"></div>
-      <button class="fw-dash-close" id="fwDashClose">Close [Esc]</button>
+      <button class="dash-close" id="fwDashClose">Close <kbd>Esc</kbd></button>
     </div>
-    <div class="fw-dash-toolbar" id="fwDashToolbar">
+    <div class="fw-dash-toolbar dash-toolbar" id="fwDashToolbar">
       <label>Search</label>
       <input id="fwDashSearch" type="text" placeholder="Filter by name, ID, VPC...">
       <label>VPC</label>
@@ -1527,10 +1580,10 @@
       <label style="margin-left:12px"><input type="checkbox" id="fwDashEditsOnly" style="margin-right:4px">Edits only</label>
     </div>
     <div class="fw-dash-body" id="fwDashBody"></div>
-    <div class="fw-dash-footer" id="fwDashFooter">
+    <div class="fw-dash-footer dash-footer" id="fwDashFooter">
       <button id="fwDashExportAll">Export All CLI</button>
       <button id="fwDashResetAll">Reset All Edits</button>
-      <span class="fw-edit-count" id="fwDashEditCount"></span>
+      <span class="dash-footer-meta" id="fwDashEditCount"></span>
     </div>
   </div>
   <div id="searchOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:90">
@@ -14441,6 +14494,47 @@ document.getElementById('depBlastBtn').addEventListener('click',()=>{});// overr
 document.getElementById('helpBtn').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='flex'});
 document.getElementById('helpClose').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='none'});
 
+// === UNIFIED DASHBOARD NAVIGATION ===
+var _DASH_REGISTRY=[
+  {id:'compliance',label:'Compliance',el:'compDash',nav:'compDashNav',color:'cyan',open:function(){if(typeof _complianceFindings!=='undefined'&&_complianceFindings.length)renderCompliancePanel(_complianceFindings);else _showToast('No compliance data')}},
+  {id:'firewall',label:'Firewall',el:'fwDash',nav:'fwDashNav',color:'red',open:function(){openFirewallDash()}},
+  {id:'budr',label:'BUDR',el:'budrDash',nav:'budrDashNav',color:'green',open:function(){openBUDRDash()}},
+  {id:'reports',label:'Reports',el:'rptBuilder',nav:'rptDashNav',color:'orange',open:function(){openReportBuilder()}}
+];
+function _initDashNav(currentId){
+  _DASH_REGISTRY.forEach(function(d){
+    var nav=document.getElementById(d.nav);if(!nav)return;
+    nav.innerHTML='';
+    _DASH_REGISTRY.forEach(function(t){
+      var btn=document.createElement('button');
+      btn.className='dash-nav-btn'+(t.id===currentId?' active':'');
+      btn.dataset.dash=t.id;
+      btn.innerHTML='<span class="dn-dot"></span>'+t.label;
+      btn.addEventListener('click',function(){
+        if(t.id===currentId)return;
+        // Close current
+        document.getElementById(d.el).classList.remove('open');
+        // Open target after brief delay for transition
+        setTimeout(function(){t.open()},50);
+      });
+      nav.appendChild(btn);
+    });
+  });
+}
+// Patch open functions to initialize nav tabs
+var _origRenderCompPanel=renderCompliancePanel;
+renderCompliancePanel=function(findings){_origRenderCompPanel(findings);if(document.getElementById('compDash').classList.contains('open'))_initDashNav('compliance')};
+var _origOpenFwDash=openFirewallDash;
+openFirewallDash=function(){_origOpenFwDash();if(document.getElementById('fwDash').classList.contains('open'))_initDashNav('firewall')};
+var _origOpenBUDR=openBUDRDash;
+openBUDRDash=function(){_origOpenBUDR();if(document.getElementById('budrDash').classList.contains('open'))_initDashNav('budr')};
+var _origOpenRpt=openReportBuilder;
+openReportBuilder=function(){_origOpenRpt();if(document.getElementById('rptBuilder').classList.contains('open'))_initDashNav('reports')};
+
+// === BUDR SEARCH & SORT ===
+document.getElementById('budrSearch').addEventListener('input',function(){_budrDashState.search=this.value;_renderBUDRDash()});
+document.getElementById('budrSort').addEventListener('change',function(){_budrDashState.sort=this.value;_renderBUDRDash()});
+
 // === COMPLIANCE DASHBOARD CONTROLS ===
 document.getElementById('compDashClose').addEventListener('click',()=>document.getElementById('compDash').classList.remove('open'));
 document.getElementById('compSearch').addEventListener('input',function(){_compDashState.search=this.value;_renderCompDash(_complianceFindings)});
@@ -14455,7 +14549,7 @@ document.getElementById('compToggleSummary').addEventListener('click',function()
 });
 
 // === BUDR DASHBOARD ===
-let _budrDashState={tierFilter:'all'};
+let _budrDashState={tierFilter:'all',search:'',sort:'tier'};
 const _BUDR_TIER_META={
   protected:{name:'Protected',color:'#10b981',icon:''},
   partial:{name:'Partially Protected',color:'#f59e0b',icon:''},
@@ -14481,6 +14575,9 @@ function _renderBUDRDash(){
   // Filter assessments
   let items=_budrAssessments;
   if(_budrDashState.tierFilter!=='all')items=items.filter(a=>a.profile&&a.profile.tier===_budrDashState.tierFilter);
+  if(_budrDashState.search){const q=_budrDashState.search.toLowerCase();items=items.filter(a=>(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q))}
+  if(_budrDashState.sort==='name')items=[...items].sort((a,b)=>(a.name||a.id||'').localeCompare(b.name||b.id||''));
+  else if(_budrDashState.sort==='type')items=[...items].sort((a,b)=>(a.type||'').localeCompare(b.type||''));
   // Summary cards
   let h='<div class="budr-summary">';
   ['protected','partial','at_risk'].forEach(tier=>{
