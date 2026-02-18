@@ -724,6 +724,21 @@
   .diff-field-new{color:#10b981;word-break:break-all}
   .diff-field-added{color:#10b981}
   .diff-field-removed{color:#ef4444;text-decoration:line-through;opacity:.8}
+  .dp-diff-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;margin-left:6px}
+  .dp-diff-badge.added{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+  .dp-diff-badge.removed{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+  .dp-diff-badge.modified{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+  .dp-diff-change{padding:4px 0;border-bottom:1px solid rgba(30,45,74,.3)}
+  .dp-diff-change:last-child{border-bottom:none}
+  .dp-diff-change .dc-field{font-weight:600;color:var(--text-muted);font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1))}
+  .dp-diff-change .dc-kind{font-size:7px;text-transform:uppercase;letter-spacing:.5px;padding:1px 4px;border-radius:2px;margin-left:4px}
+  .dp-diff-change .dc-kind.structural{color:#f59e0b;background:rgba(245,158,11,.1)}
+  .dp-diff-change .dc-kind.metadata{color:var(--text-muted);background:rgba(255,255,255,.05)}
+  .dp-diff-change .dc-vals{margin-top:2px;font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1));line-height:1.6}
+  .dp-diff-change .dc-old{color:#ef4444;text-decoration:line-through;opacity:.8;word-break:break-all}
+  .dp-diff-change .dc-new{color:#10b981;word-break:break-all}
+  .dp-diff-change .dc-arrow{color:var(--text-muted);margin:0 4px;font-size:9px}
+  .dp-diff-json{max-height:300px;overflow:auto;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:4px;padding:8px;font-size:9px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:var(--text-secondary)}
   /* === TRAFFIC FLOW VISUALIZATION === */
   .flow-banner{position:fixed;top:6px;left:50%;transform:translateX(-50%);height:32px;background:linear-gradient(90deg,#0c2d4a,#0a3544);z-index:60;display:flex;align-items:center;justify-content:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#22d3ee;font-weight:600;border-radius:8px;padding:0 16px;border:1px solid rgba(34,211,238,.2);box-shadow:0 4px 12px rgba(0,0,0,.4)}
   .flow-banner button{background:rgba(0,0,0,.3);border:1px solid rgba(34,211,238,.4);color:#22d3ee;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:'IBM Plex Mono',monospace}
@@ -14230,6 +14245,257 @@ function _diffFmtVal(v){
   return s.length>50?'{...}':s;
 }
 
+function _diffFmtValFull(v){
+  if(v===undefined) return '∅';
+  if(v===null) return 'null';
+  if(typeof v==='boolean') return v?'true':'false';
+  if(typeof v==='number') return String(v);
+  if(typeof v==='string') return v;
+  if(Array.isArray(v)) return JSON.stringify(v,null,1);
+  return JSON.stringify(v,null,1);
+}
+
+// Type-aware property renderer for diff detail panel
+// All values are escaped via esc() before insertion — safe for display
+function _diffPropsHtml(type,res){
+  if(!res) return '';
+  var h='';
+  function kv(label,val){
+    if(val===undefined||val===null||val==='') return;
+    h+='<div class="dp-kv"><span class="k">'+esc(label)+'</span><span class="v">'+esc(String(val))+'</span></div>';
+  }
+  function tags(r){
+    var t=r.Tags||r.TagSet||[];
+    if(!t.length) return;
+    var th=t.map(function(tg){return '<span style="background:rgba(255,255,255,.05);padding:1px 5px;border-radius:2px;margin:1px">'+esc(tg.Key)+'='+esc(tg.Value)+'</span>'}).join(' ');
+    h+='<div style="margin-top:4px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted)">Tags: '+th+'</div>';
+  }
+  switch(type){
+    case 'vpcs':
+      kv('VPC ID',res.VpcId);kv('CIDR Block',res.CidrBlock);
+      kv('State',res.State);kv('Is Default',res.IsDefault);
+      kv('Tenancy',res.InstanceTenancy);
+      kv('DHCP Options',res.DhcpOptionsId);
+      if(res.CidrBlockAssociationSet){
+        var cidrs=res.CidrBlockAssociationSet.map(function(c){return c.CidrBlock}).join(', ');
+        kv('All CIDRs',cidrs);
+      }
+      tags(res);break;
+    case 'subnets':
+      kv('Subnet ID',res.SubnetId);kv('CIDR Block',res.CidrBlock);
+      kv('VPC',res.VpcId);kv('Availability Zone',res.AvailabilityZone);
+      kv('Available IPs',res.AvailableIpAddressCount);
+      kv('Auto-assign Public IP',res.MapPublicIpOnLaunch);
+      kv('Default For AZ',res.DefaultForAz);
+      tags(res);break;
+    case 'instances':
+      kv('Instance ID',res.InstanceId);kv('Type',res.InstanceType);
+      kv('State',res.State?res.State.Name:'?');
+      kv('Private IP',res.PrivateIpAddress);kv('Public IP',res.PublicIpAddress);
+      kv('AZ',res.Placement?res.Placement.AvailabilityZone:'');
+      kv('AMI',res.ImageId);kv('Key Name',res.KeyName);
+      kv('Subnet',res.SubnetId);kv('VPC',res.VpcId);
+      if(res.IamInstanceProfile) kv('IAM Role',res.IamInstanceProfile.Arn||res.IamInstanceProfile.Id);
+      var sgs=(res.SecurityGroups||[]).map(function(s){return s.GroupName||s.GroupId}).join(', ');
+      if(sgs) kv('Security Groups',sgs);
+      tags(res);break;
+    case 'sgs':
+      kv('Group ID',res.GroupId);kv('Group Name',res.GroupName);
+      kv('Description',res.Description);kv('VPC',res.VpcId);
+      kv('Inbound Rules',(res.IpPermissions||[]).length);
+      kv('Outbound Rules',(res.IpPermissionsEgress||[]).length);
+      if(res.IpPermissions&&res.IpPermissions.length){
+        h+='<div style="margin-top:6px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:.5px">Inbound Rules</div>';
+        res.IpPermissions.forEach(function(p){
+          var proto=p.IpProtocol==='-1'?'All':p.IpProtocol;
+          var port=p.FromPort===p.ToPort?(p.FromPort||'All'):((p.FromPort||0)+'-'+(p.ToPort||0));
+          var src=(p.IpRanges||[]).map(function(r){return r.CidrIp}).concat((p.UserIdGroupPairs||[]).map(function(g){return g.GroupId})).join(', ')||'N/A';
+          h+='<div class="dp-row" style="border-left:3px solid var(--accent-green);padding-left:8px;margin:2px 0;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1))"><span class="a">'+esc(proto)+':'+esc(String(port))+'</span> ← '+esc(src)+'</div>';
+        });
+      }
+      tags(res);break;
+    case 'rts':
+      kv('Route Table ID',res.RouteTableId);kv('VPC',res.VpcId);
+      kv('Routes',(res.Routes||[]).length);
+      kv('Associations',(res.Associations||[]).length);
+      if(res.Routes&&res.Routes.length){
+        h+='<div style="margin-top:6px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:.5px">Routes</div>';
+        res.Routes.forEach(function(r){
+          var dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
+          var tgt=r.GatewayId||r.NatGatewayId||r.VpcPeeringConnectionId||r.NetworkInterfaceId||r.TransitGatewayId||'local';
+          h+='<div class="dp-row" style="border-left:3px solid var(--accent-blue);padding-left:8px;margin:2px 0;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1))">'+esc(dest)+' → '+esc(tgt)+' <span class="k">'+esc(r.State||'')+'</span></div>';
+        });
+      }
+      tags(res);break;
+    case 'nacls':
+      kv('NACL ID',res.NetworkAclId);kv('VPC',res.VpcId);
+      kv('Is Default',res.IsDefault);
+      var inbound=(res.Entries||[]).filter(function(e){return !e.Egress});
+      var outbound=(res.Entries||[]).filter(function(e){return e.Egress});
+      kv('Inbound Entries',inbound.length);kv('Outbound Entries',outbound.length);
+      tags(res);break;
+    case 'igws':
+      kv('IGW ID',res.InternetGatewayId);
+      var att=(res.Attachments||[])[0];
+      if(att){kv('VPC',att.VpcId);kv('State',att.State);}
+      tags(res);break;
+    case 'nats':
+      kv('NAT Gateway ID',res.NatGatewayId);kv('VPC',res.VpcId);
+      kv('Subnet',res.SubnetId);kv('State',res.State);
+      kv('Connectivity',res.ConnectivityType);
+      var eips=(res.NatGatewayAddresses||[]).map(function(a){return a.PublicIp}).filter(Boolean).join(', ');
+      if(eips) kv('Elastic IPs',eips);
+      tags(res);break;
+    case 'vpces':
+      kv('Endpoint ID',res.VpcEndpointId);kv('VPC',res.VpcId);
+      kv('Service',res.ServiceName);kv('Type',res.VpcEndpointType);
+      kv('State',res.State);
+      tags(res);break;
+    case 'albs':
+      kv('Name',res.LoadBalancerName);kv('Type',res.Type);
+      kv('Scheme',res.Scheme);kv('DNS',res.DNSName);
+      kv('State',res.State?res.State.Code:'');
+      kv('VPC',res.VpcId);
+      var azs=(res.AvailabilityZones||[]).map(function(a){return a.ZoneName}).join(', ');
+      if(azs) kv('AZs',azs);
+      tags(res);break;
+    case 'rdsInstances':
+      kv('DB Instance',res.DBInstanceIdentifier);kv('Engine',res.Engine+' '+(res.EngineVersion||''));
+      kv('Class',res.DBInstanceClass);kv('Storage',res.AllocatedStorage+'GB '+(res.StorageType||''));
+      kv('Multi-AZ',res.MultiAZ);kv('Status',res.DBInstanceStatus);
+      kv('AZ',res.AvailabilityZone);
+      if(res.Endpoint) kv('Endpoint',res.Endpoint.Address+':'+(res.Endpoint.Port||''));
+      kv('VPC',res.DBSubnetGroup?res.DBSubnetGroup.VpcId:'');
+      tags(res);break;
+    case 'lambdaFns':
+      kv('Function',res.FunctionName);kv('Runtime',res.Runtime);
+      kv('Memory',res.MemorySize+'MB');kv('Timeout',res.Timeout+'s');
+      kv('Handler',res.Handler);kv('Code Size',Math.round((res.CodeSize||0)/1024)+'KB');
+      kv('Last Modified',res.LastModified);
+      if(res.VpcConfig&&res.VpcConfig.VpcId) kv('VPC',res.VpcConfig.VpcId);
+      tags(res);break;
+    case 'ecsServices':
+      kv('Service',res.serviceName);kv('Launch Type',res.launchType);
+      kv('Desired',res.desiredCount);kv('Running',res.runningCount);
+      kv('Task Definition',res.taskDefinition);kv('Status',res.status);
+      tags(res);break;
+    case 'ecacheClusters':
+      kv('Cluster ID',res.CacheClusterId);kv('Engine',res.Engine+' '+(res.EngineVersion||''));
+      kv('Node Type',res.CacheNodeType);kv('Nodes',res.NumCacheNodes);
+      kv('Status',res.CacheClusterStatus);
+      kv('AZ',res.PreferredAvailabilityZone);
+      tags(res);break;
+    case 'redshiftClusters':
+      kv('Cluster',res.ClusterIdentifier);kv('Node Type',res.NodeType);
+      kv('Nodes',res.NumberOfNodes);kv('Status',res.ClusterStatus);
+      kv('DB Name',res.DBName);kv('VPC',res.VpcId);
+      if(res.Endpoint) kv('Endpoint',res.Endpoint.Address+':'+(res.Endpoint.Port||''));
+      tags(res);break;
+    case 'peerings':
+      kv('Peering ID',res.VpcPeeringConnectionId);
+      kv('Status',res.Status?res.Status.Code:'');
+      if(res.RequesterVpcInfo) kv('Requester VPC',res.RequesterVpcInfo.VpcId+' ('+res.RequesterVpcInfo.CidrBlock+')');
+      if(res.AccepterVpcInfo) kv('Accepter VPC',res.AccepterVpcInfo.VpcId+' ('+res.AccepterVpcInfo.CidrBlock+')');
+      tags(res);break;
+  }
+  return h;
+}
+
+function _diffTypeLabel(type){
+  var labels={vpcs:'VPC',subnets:'Subnet',instances:'EC2 Instance',sgs:'Security Group',
+    rts:'Route Table',nacls:'NACL',igws:'Internet Gateway',nats:'NAT Gateway',
+    vpces:'VPC Endpoint',albs:'Load Balancer',rdsInstances:'RDS Instance',
+    lambdaFns:'Lambda Function',ecsServices:'ECS Service',ecacheClusters:'ElastiCache Cluster',
+    redshiftClusters:'Redshift Cluster',peerings:'VPC Peering'};
+  return labels[type]||type;
+}
+
+// Opens the detail panel with full diff information for a resource
+// All content is escaped before insertion for safe display
+function _openDiffDetail(item,category){
+  var dp=document.getElementById('detailPanel');
+  var dpTitle=document.getElementById('dpTitle');
+  var dpSub=document.getElementById('dpSub');
+  var dpBody=document.getElementById('dpBody');
+  var badgeCls=category;
+  var badgeText=category.toUpperCase();
+  var res=item.resource||item.baseline||null;
+  var typeLabel=_diffTypeLabel(item.type);
+  dpTitle.textContent='';
+  dpTitle.appendChild(document.createTextNode(item.name+' '));
+  var badge=document.createElement('span');badge.className='dp-diff-badge '+badgeCls;badge.textContent=badgeText;
+  dpTitle.appendChild(badge);
+  dpSub.textContent='';
+  var copySpan=document.createElement('span');copySpan.className='copyable';copySpan.dataset.copy=item.key;copySpan.textContent=item.key;
+  dpSub.appendChild(copySpan);dpSub.appendChild(document.createTextNode(' | '+typeLabel));
+  var h='';
+  function sec(title,count,bodyHtml,startOpen){
+    return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+esc(title)+'</span><span><span class="dp-sec-count">'+esc(count)+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
+  }
+  // CHANGES section (modified only)
+  if(category==='modified'&&item.fields&&item.fields.length){
+    var cb='';
+    item.fields.forEach(function(f){
+      cb+='<div class="dp-diff-change">';
+      cb+='<span class="dc-field">'+_escHtml(f.field)+'</span>';
+      cb+='<span class="dc-kind '+f.kind+'">'+f.kind+'</span>';
+      cb+='<div class="dc-vals">';
+      if(typeof f.old==='undefined'){
+        cb+='<span class="dc-new">+ '+_escHtml(_diffFmtValFull(f.new))+'</span>';
+      } else if(typeof f.new==='undefined'){
+        cb+='<span class="dc-old">- '+_escHtml(_diffFmtValFull(f.old))+'</span>';
+      } else {
+        cb+='<span class="dc-old">'+_escHtml(_diffFmtValFull(f.old))+'</span>';
+        cb+='<span class="dc-arrow">→</span>';
+        cb+='<span class="dc-new">'+_escHtml(_diffFmtValFull(f.new))+'</span>';
+      }
+      cb+='</div></div>';
+    });
+    var structCount=item.fields.filter(function(f){return f.kind==='structural'}).length;
+    var metaCount=item.fields.length-structCount;
+    var countLabel=item.fields.length+' change'+(item.fields.length>1?'s':'')+' ('+structCount+' structural, '+metaCount+' metadata)';
+    h+=sec('Changes',countLabel,cb,true);
+  }
+  // PROPERTIES section
+  if(res){
+    var propsHtml=_diffPropsHtml(item.type,res);
+    if(propsHtml){
+      var propLabel=category==='removed'?'Properties (baseline)':'Properties (current)';
+      h+=sec(propLabel,'',propsHtml,category!=='modified');
+    }
+  }
+  // BASELINE PROPERTIES (modified only — show old state)
+  if(category==='modified'&&item.baseline){
+    var baseProps=_diffPropsHtml(item.type,item.baseline);
+    if(baseProps) h+=sec('Baseline Properties','',baseProps,false);
+  }
+  // RAW JSON section
+  if(res){
+    var jsonHtml='';
+    if(category==='modified'&&item.baseline){
+      jsonHtml='<div style="font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:#ef4444;margin-bottom:2px">BASELINE</div>';
+      jsonHtml+='<div class="dp-diff-json" style="max-height:200px;margin-bottom:8px">'+_escHtml(JSON.stringify(item.baseline,null,2))+'</div>';
+      jsonHtml+='<div style="font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:#10b981;margin-bottom:2px">CURRENT</div>';
+      jsonHtml+='<div class="dp-diff-json" style="max-height:200px">'+_escHtml(JSON.stringify(item.resource,null,2))+'</div>';
+    } else {
+      jsonHtml='<div class="dp-diff-json">'+_escHtml(JSON.stringify(res,null,2))+'</div>';
+    }
+    h+=sec('Raw JSON','',jsonHtml,false);
+  }
+  dpBody.textContent='';
+  dpBody.insertAdjacentHTML('beforeend',h);
+  dp.classList.add('open');
+  if(typeof applyDpScale==='function') applyDpScale();
+  // Copyable elements
+  dpBody.querySelectorAll('.copyable').forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();navigator.clipboard.writeText(this.dataset.copy);
+      var t=document.querySelector('.copy-toast');
+      if(t){t.textContent='Copied!';t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1200)}
+    });
+  });
+}
+
 function _renderDiffSummary(){
   if(!_diffResults) return;
   const panel=document.getElementById('diffSummary');
@@ -14289,11 +14555,22 @@ function _renderDiffSummary(){
     html+='<div style="color:var(--text-muted);padding:12px;text-align:center">No changes detected</div>';
   }
   panel.innerHTML=html;
-  // Click handlers for zoom-to
+  // Build lookup for click handlers
+  var _diffItemMap={};
+  _diffResults.added.forEach(function(item){_diffItemMap[item.key]={item:item,cat:'added'}});
+  _diffResults.removed.forEach(function(item){_diffItemMap[item.key]={item:item,cat:'removed'}});
+  _diffResults.modified.forEach(function(item){_diffItemMap[item.key]={item:item,cat:'modified'}});
+  // Click handlers: open detail panel + zoom to element
   panel.querySelectorAll('.diff-item').forEach(el=>{
     el.addEventListener('click',function(){
       const key=this.dataset.diffKey;
-      if(key&&typeof _zoomToElement==='function') _zoomToElement(key);
+      if(!key) return;
+      var entry=_diffItemMap[key];
+      if(entry){
+        document.getElementById('diffSummary').classList.remove('open');
+        _openDiffDetail(entry.item,entry.cat);
+      }
+      if(typeof _zoomToElement==='function') _zoomToElement(key);
     });
   });
 }
@@ -15881,7 +16158,7 @@ document.getElementById('fwFpCopy').addEventListener('click',function(){
   }
 });
 document.querySelector('.main').addEventListener('click',function(e){
-  if(!e.target.closest('.detail-panel')&&!e.target.closest('.fw-full-panel')&&!e.target.closest('.subnet-node')&&!e.target.closest('.gw-node')&&!e.target.closest('.lz-gw-node')&&!e.target.closest('.lz-tgw-node')&&!e.target.closest('.export-bar')&&!e.target.closest('.zoom-controls')&&!e.target.closest('.stats-bar')){
+  if(!e.target.closest('.detail-panel')&&!e.target.closest('.fw-full-panel')&&!e.target.closest('.subnet-node')&&!e.target.closest('.gw-node')&&!e.target.closest('.lz-gw-node')&&!e.target.closest('.lz-tgw-node')&&!e.target.closest('.export-bar')&&!e.target.closest('.zoom-controls')&&!e.target.closest('.stats-bar')&&!e.target.closest('.diff-summary')&&!e.target.closest('.diff-banner')){
     document.getElementById('detailPanel').classList.remove('open');
     _clearBlastRadius();
   }
