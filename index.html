@@ -183,7 +183,7 @@
   .export-bar.collapsed .export-btn,.export-bar.collapsed .export-btn+.export-btn{display:none}
   .export-bar .eb-toggle{padding:4px 10px;background:rgba(17,24,39,.92);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s}
   .export-bar .eb-toggle:hover{color:var(--text-primary);border-color:var(--accent-blue)}
-  .hl-locked-indicator{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--accent-cyan);border-radius:6px;padding:5px 14px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent-cyan);display:none;z-index:10;cursor:pointer;backdrop-filter:blur(8px)}
+  .hl-locked-indicator{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--accent-cyan);border-radius:6px;padding:5px 14px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent-cyan);display:none;z-index:10;cursor:pointer;backdrop-filter:blur(8px)}
   .hl-locked-indicator:hover{background:rgba(17,24,39,1);border-color:#fff}
   .hl-active .route-label-g:not(.visible){opacity:.08}
   .hl-active .region-boundary{opacity:.08}
@@ -394,6 +394,8 @@
   .main.flow-active .export-bar{top:44px}
   .main.diff-active .export-bar{top:44px}
   .main.diff-active .stats-bar{top:44px}
+  .main.merge-active .stats-bar{top:44px}
+  .main.merge-active .export-bar{top:44px}
   .design-banner .db-title{font-weight:700;letter-spacing:.5px;text-transform:uppercase}
   .design-banner .db-shortcuts{display:flex;gap:10px;color:var(--text-secondary);font-size:9px}
   .design-banner .db-shortcuts kbd{display:inline-block;padding:1px 5px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;margin:0 2px}
@@ -1090,6 +1092,10 @@
   .account-merge-banner{position:fixed;top:6px;left:50%;transform:translateX(-50%);height:32px;background:linear-gradient(90deg,#1a0c3e,#0c2d4a);z-index:55;display:flex;align-items:center;justify-content:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-purple);font-weight:600;border-radius:8px;padding:0 16px;border:1px solid rgba(168,85,247,.2);box-shadow:0 4px 12px rgba(0,0,0,.4)}
   .account-merge-banner button{background:rgba(0,0,0,.3);border:1px solid rgba(139,92,246,.4);color:var(--accent-purple);padding:2px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:'IBM Plex Mono',monospace}
   .account-merge-banner button:hover{background:rgba(139,92,246,.15)}
+  .merge-acct-chip{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:9px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border:1px solid rgba(255,255,255,.15);transition:all .15s;user-select:none}
+  .merge-acct-chip:hover{border-color:rgba(255,255,255,.3)}
+  .merge-acct-chip.hidden-chip{opacity:.35;text-decoration:line-through}
+  .merge-acct-chip .mac-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   /* === TERRAFORM / CLOUDFORMATION EXPORT === */
   .iac-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:120;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center}
   .iac-modal.open{display:flex}
@@ -1295,7 +1301,7 @@
     .dock-label{display:none}
 
     /* Locked indicator */
-    .hl-locked-indicator{font-size:8px;padding:4px 10px;bottom:70px}
+    .hl-locked-indicator{font-size:8px;padding:4px 10px;bottom:100px}
 
     /* Design banner */
     .design-banner{font-size:9px;padding:4px 10px;gap:8px;flex-wrap:wrap}
@@ -1467,7 +1473,7 @@
       .notes-panel{padding-bottom:env(safe-area-inset-bottom)}
       .sidebar-actions{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
       .timeline-bar{bottom:calc(52px + env(safe-area-inset-bottom))}
-      .hl-locked-indicator{bottom:calc(52px + env(safe-area-inset-bottom))}
+      .hl-locked-indicator{bottom:calc(90px + env(safe-area-inset-bottom))}
       .change-log{bottom:calc(52px + env(safe-area-inset-bottom))}
     }
   }
@@ -1792,7 +1798,7 @@
   <!-- Multi-Account Merge Banner -->
   <div class="account-merge-banner" id="mergeBanner" style="display:none">
     <span>MULTI-ACCOUNT VIEW</span>
-    <span id="mergeAcctCount" style="font-size:10px;font-weight:400;color:var(--text-secondary)"></span>
+    <span id="mergeAcctChips" style="display:flex;gap:4px;align-items:center"></span>
     <button id="mergeExitBtn">Exit Merge</button>
   </div>
   <!-- Flow Mode Banner -->
@@ -4680,8 +4686,10 @@ function renderCompliancePanel(findings){
   var si=document.getElementById('compSearch');if(si)si.value='';
   _closeAllDashboards('compDash');
   document.getElementById('compDash').classList.add('open');
-  const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
-  _renderCompDash(findings);
+  requestAnimationFrame(()=>{
+    const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
+    _renderCompDash(findings);
+  });
 }
 function _renderCompDash(findings){
   var cb=document.getElementById('compBody');if(cb)cb.scrollTop=0;
@@ -11925,7 +11933,7 @@ if(_isElectron){
 // Browser folder import (File System Access API — Chrome/Edge, fallback for Safari)
 {
   const bfBtn=document.getElementById('importFolderBrowser');
-  if(_isElectron)bfBtn.style.display='none';
+  if(_isElectron||!window.showDirectoryPicker)bfBtn.style.display='none';
   bfBtn.addEventListener('click',async()=>{
     if(!window.showDirectoryPicker){_showToast('Folder import requires Chrome or Edge. Use Upload JSON to select multiple files.','warn');return}
     try{
@@ -12504,6 +12512,8 @@ function addAccountContext(projectData, label){
   const accountId=accts.size?[...accts][0]:(acctLabel);
   const colorIdx=_loadedContexts.length%_accountColors.length;
   const color=_accountColors[colorIdx];
+  // Sync color to _accountColorMap so VPC stripes match panel cards
+  if(accountId&&accountId!=='default')_accountColorMap[accountId]=color;
 
   _loadedContexts.push({
     accountId:accountId,
@@ -12699,6 +12709,7 @@ function enterMultiView(){
   _singleCtxBackup=_rlCtx;
   _remergeAndRender();
   document.getElementById('mergeBanner').style.display='flex';
+  var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.add('merge-active');
   document.getElementById('mergeViewBtn').textContent='Exit Merge';
   _renderAccountPanel();
 }
@@ -12709,6 +12720,7 @@ function exitMultiView(){
   _mergedCtx=null;
   if(_singleCtxBackup){_rlCtx=_singleCtxBackup;_singleCtxBackup=null}
   document.getElementById('mergeBanner').style.display='none';
+  var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');
   document.getElementById('mergeViewBtn').textContent='Merge View';
   renderMap(()=>{_autoSaveSession()});
   _renderAccountPanel();
@@ -12718,6 +12730,8 @@ function _remergeAndRender(){
   _mergedCtx=mergeContexts(_loadedContexts);
   if(_mergedCtx){
     _rlCtx=_mergedCtx;
+    // Clear dashboard caches so they re-run with merged context
+    _classificationData=[];_budrAssessments=[];_complianceFindings=[];
     // Fill textareas from merged contexts to enable renderMap
     const mergedTA={};
     _loadedContexts.filter(c=>c.visible).forEach(c=>{
@@ -12744,10 +12758,25 @@ function _remergeAndRender(){
     document.querySelectorAll('.ji').forEach(el=>{
       if(mergedTA[el.id]){el.value=mergedTA[el.id];el.className='ji valid'}
     });
-    const visCount=_loadedContexts.filter(c=>c.visible).length;
-    document.getElementById('mergeAcctCount').textContent=visCount+' account'+(visCount!==1?'s':'')+' merged';
+    _renderMergeBannerChips();
     renderMap(()=>{_autoSaveSession()});
   }
+}
+
+function _renderMergeBannerChips(){
+  const box=document.getElementById('mergeAcctChips');if(!box)return;
+  box.innerHTML='';
+  _loadedContexts.forEach((ctx,i)=>{
+    const chip=document.createElement('span');
+    chip.className='merge-acct-chip'+(ctx.visible?'':' hidden-chip');
+    chip.title=(ctx.visible?'Click to hide':'Click to show')+': '+ctx.accountLabel;
+    const dot=document.createElement('span');dot.className='mac-dot';dot.style.background=ctx.color||'var(--text-muted)';
+    const lbl=document.createElement('span');lbl.style.color=ctx.visible?'var(--text-primary)':'var(--text-muted)';
+    lbl.textContent=ctx.accountLabel.length>16?ctx.accountLabel.slice(0,14)+'…':ctx.accountLabel;
+    chip.appendChild(dot);chip.appendChild(lbl);
+    chip.addEventListener('click',()=>{toggleAccountVisibility(i)});
+    box.appendChild(chip);
+  });
 }
 
 function toggleAccountVisibility(index){
@@ -12845,6 +12874,7 @@ document.getElementById('captureCurrentBtn').addEventListener('click',function()
   if(!ctx){_showToast('Render map first before capturing');return}
   const colorIdx=_loadedContexts.length%_accountColors.length;
   ctx.color=_accountColors[colorIdx];
+  if(ctx.accountId&&ctx.accountId!=='default')_accountColorMap[ctx.accountId]=ctx.color;
   _loadedContexts.push(ctx);
   _renderAccountPanel();
   _showToast('Captured current context as account: '+ctx.accountLabel);
@@ -14050,9 +14080,9 @@ function openFirewallDash(){
   (_rlCtx.vpcs||[]).forEach(function(v){
     var o=document.createElement('option');o.value=v.VpcId;o.textContent=gn(v,v.VpcId)+' ('+v.VpcId+')';vpcSel.appendChild(o);
   });
-  _fwDashRender();
   _closeAllDashboards('fwDash');
   document.getElementById('fwDash').classList.add('open');
+  requestAnimationFrame(()=>_fwDashRender());
 }
 
 function closeFirewallDash(){document.getElementById('fwDash').classList.remove('open')}
@@ -17791,7 +17821,7 @@ function openBUDRDash(){
   var so=document.getElementById('budrSort');if(so)so.value='tier';
   _closeAllDashboards('budrDash');
   document.getElementById('budrDash').classList.add('open');
-  _renderBUDRDash();
+  requestAnimationFrame(()=>_renderBUDRDash());
 }
 function _renderBUDRDash(){
   var bb=document.getElementById('budrBody');if(bb)bb.scrollTop=0;
@@ -17963,7 +17993,7 @@ function openGovernanceDashboard(tab){
   _govToolbarTab=null;
   _closeAllDashboardsExcept('govDash');
   document.getElementById('govDash').classList.add('open');
-  _renderGovDash();
+  requestAnimationFrame(()=>_renderGovDash());
 }
 
 var _govToolbarTab=null;
@@ -19828,6 +19858,7 @@ const fileMap=[
   {id:'in_redshift',patterns:['redshift','redshift-cluster']},
   {id:'in_tgwatt',patterns:['transit-gateway-attachment','tgw-attachment','tgw_attachment','tgwattachment']},
   {id:'in_cf',patterns:['cloudfront','cf-distribution','distribution']},
+  {id:'in_iam',patterns:['iam','iam-auth','iam_auth','iamauth','account-authorization']},
 ];
 
 function matchFile(fname, content){
@@ -19880,6 +19911,7 @@ function matchFile(fname, content){
     if(snip.includes('"DistributionList"'))return 'in_cf';
     if(snip.includes('"CacheClusters"'))return 'in_elasticache';
     if(snip.includes('"Clusters"')&&snip.includes('"Redshift"'))return 'in_redshift';
+    if(snip.includes('"UserDetailList"')||snip.includes('"RoleDetailList"')||snip.includes('"GroupDetailList"'))return 'in_iam';
   }
   return null;
 }
