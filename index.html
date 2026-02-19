@@ -2010,7 +2010,7 @@ inputSections.forEach(sec=>{
 });
 document.querySelectorAll('.ji').forEach(el=>{el.addEventListener('input',function(){if(!this.value.trim()){this.className='ji';return}try{JSON.parse(this.value);this.className='ji valid'}catch(e){this.className='ji invalid'}})});
 
-function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim())}catch(e){const b=[];let d=0,s=-1;for(let i=0;i<t.length;i++){if(t[i]==='{'){if(d===0)s=i;d++}if(t[i]==='}'){d--;if(d===0&&s>=0){b.push(t.substring(s,i+1));s=-1}}}return b.length?b.map(x=>JSON.parse(x)):null}}
+function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim())}catch(e){const b=[];let d=0,s=-1;for(let i=0;i<t.length;i++){if(t[i]==='{'){if(d===0)s=i;d++}if(t[i]==='}'){d--;if(d===0&&s>=0){b.push(t.substring(s,i+1));s=-1}}}return b.length?b.map(x=>{try{return JSON.parse(x)}catch(e2){return null}}).filter(Boolean):null}}
 function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
@@ -5155,33 +5155,34 @@ function applyDesignChanges(){
 const _designApplyFns={
   add_vpc(ch){
     const raw=safeParse(gv('in_vpcs'));const vpcs=raw?ext(raw,['Vpcs']):[];
-    const id=ch.params.VpcId||('vpc-design-'+Date.now());
+    const id=ch.params.VpcId||('vpc-design-'+Date.now());ch.params.VpcId=id;
     const vpc={VpcId:id,CidrBlock:ch.params.CidrBlock,State:'available',IsDefault:false,OwnerId:ch.params.AccountId||'design',Tags:[{Key:'Name',Value:ch.params.Name||'New VPC'}]};
     vpcs.push(vpc);
     document.getElementById('in_vpcs').value=JSON.stringify({Vpcs:vpcs});
     ch._addedIds=[id];
     // Create default route table with local route
     const rtRaw=safeParse(gv('in_rts'));const rts=rtRaw?ext(rtRaw,['RouteTables']):[];
-    const rtId='rtb-design-'+Date.now();
+    const rtId=ch.params._rtId||('rtb-design-'+Date.now());ch.params._rtId=rtId;
     rts.push({RouteTableId:rtId,VpcId:id,Associations:[{Main:true,RouteTableId:rtId}],Routes:[{DestinationCidrBlock:ch.params.CidrBlock,GatewayId:'local',State:'active',Origin:'CreateRouteTable'}],Tags:[{Key:'Name',Value:(ch.params.Name||'vpc')+'-main-rt'}]});
     document.getElementById('in_rts').value=JSON.stringify({RouteTables:rts});
     // Create default NACL (allow all)
     const naclRaw=safeParse(gv('in_nacls'));const nacls=naclRaw?ext(naclRaw,['NetworkAcls']):[];
-    const naclId='acl-design-'+Date.now();
+    const naclId=ch.params._naclId||('acl-design-'+Date.now());ch.params._naclId=naclId;
     nacls.push({NetworkAclId:naclId,VpcId:id,IsDefault:true,Entries:[{RuleNumber:100,Protocol:'-1',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0'},{RuleNumber:100,Protocol:'-1',RuleAction:'allow',Egress:true,CidrBlock:'0.0.0.0/0'},{RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:false,CidrBlock:'0.0.0.0/0'},{RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:true,CidrBlock:'0.0.0.0/0'}],Tags:[{Key:'Name',Value:(ch.params.Name||'vpc')+'-default-nacl'}]});
     document.getElementById('in_nacls').value=JSON.stringify({NetworkAcls:nacls});
     // Create default SG
     const sgRaw=safeParse(gv('in_sgs'));const sgs=sgRaw?ext(sgRaw,['SecurityGroups']):[];
-    const sgId='sg-design-'+Date.now();
+    const sgId=ch.params._sgId||('sg-design-'+Date.now());ch.params._sgId=sgId;
     sgs.push({GroupId:sgId,GroupName:'default',VpcId:id,Description:'default VPC security group',IpPermissions:[{IpProtocol:'-1',IpRanges:[],UserIdGroupPairs:[{GroupId:sgId}]}],IpPermissionsEgress:[{IpProtocol:'-1',IpRanges:[{CidrIp:'0.0.0.0/0'}]}],Tags:[{Key:'Name',Value:'default'}]});
     document.getElementById('in_sgs').value=JSON.stringify({SecurityGroups:sgs});
   },
   add_subnet(ch){
     const raw=safeParse(gv('in_subnets'));
     const subs=raw?ext(raw,['Subnets']):[];
-    subs.push({SubnetId:ch.params.SubnetId||('subnet-design-'+Date.now()),VpcId:ch.params.VpcId,CidrBlock:ch.params.CidrBlock,AvailabilityZone:ch.params.AZ,MapPublicIpOnLaunch:ch.params.isPublic||false,Tags:[{Key:'Name',Value:ch.params.Name||'New Subnet'}]});
+    const subId=ch.params.SubnetId||('subnet-design-'+Date.now());ch.params.SubnetId=subId;
+    subs.push({SubnetId:subId,VpcId:ch.params.VpcId,CidrBlock:ch.params.CidrBlock,AvailabilityZone:ch.params.AZ,MapPublicIpOnLaunch:ch.params.isPublic||false,Tags:[{Key:'Name',Value:ch.params.Name||'New Subnet'}]});
     document.getElementById('in_subnets').value=JSON.stringify({Subnets:subs});
-    ch._addedIds=[ch.params.SubnetId||'subnet-design'];
+    ch._addedIds=[subId];
   },
   split_subnet(ch){
     const raw=safeParse(gv('in_subnets'));
@@ -5191,8 +5192,9 @@ const _designApplyFns={
     const orig=subs[idx];
     const halves=splitCIDR(orig.CidrBlock);
     if(!halves)return;
-    const sub1={...orig,SubnetId:ch.params.newIds?.[0]||('subnet-split-a-'+Date.now()),CidrBlock:halves[0],Tags:[{Key:'Name',Value:(ch.params.names?.[0])||gn(orig,'')+'_a'}]};
-    const sub2={...orig,SubnetId:ch.params.newIds?.[1]||('subnet-split-b-'+Date.now()),CidrBlock:halves[1],Tags:[{Key:'Name',Value:(ch.params.names?.[1])||gn(orig,'')+'_b'}]};
+    if(!ch.params.newIds)ch.params.newIds=['subnet-split-a-'+Date.now(),'subnet-split-b-'+Date.now()];
+    const sub1={...orig,SubnetId:ch.params.newIds[0],CidrBlock:halves[0],Tags:[{Key:'Name',Value:(ch.params.names?.[0])||gn(orig,'')+'_a'}]};
+    const sub2={...orig,SubnetId:ch.params.newIds[1],CidrBlock:halves[1],Tags:[{Key:'Name',Value:(ch.params.names?.[1])||gn(orig,'')+'_b'}]};
     subs.splice(idx,1,sub1,sub2);
     document.getElementById('in_subnets').value=JSON.stringify({Subnets:subs});
     ch._removedIds=[ch.target.SubnetId];ch._addedIds=[sub1.SubnetId,sub2.SubnetId];
@@ -5212,19 +5214,19 @@ const _designApplyFns={
     const type=ch.params.GatewayType;
     if(type==='IGW'){
       const raw=safeParse(gv('in_igws'));const igws=raw?ext(raw,['InternetGateways']):[];
-      const id=ch.params.GatewayId||('igw-design-'+Date.now());
+      const id=ch.params.GatewayId||('igw-design-'+Date.now());ch.params.GatewayId=id;
       igws.push({InternetGatewayId:id,Attachments:[{VpcId:ch.params.VpcId,State:'available'}],Tags:[{Key:'Name',Value:ch.params.Name||'New IGW'}]});
       document.getElementById('in_igws').value=JSON.stringify({InternetGateways:igws});
       ch._addedIds=[id];
     } else if(type==='NAT'){
       const raw=safeParse(gv('in_nats'));const nats=raw?ext(raw,['NatGateways']):[];
-      const id=ch.params.GatewayId||('nat-design-'+Date.now());
+      const id=ch.params.GatewayId||('nat-design-'+Date.now());ch.params.GatewayId=id;
       nats.push({NatGatewayId:id,VpcId:ch.params.VpcId,SubnetId:ch.params.SubnetId,State:'available',Tags:[{Key:'Name',Value:ch.params.Name||'New NAT'}]});
       document.getElementById('in_nats').value=JSON.stringify({NatGateways:nats});
       ch._addedIds=[id];
     } else if(type==='VPCE'){
       const raw=safeParse(gv('in_vpces'));const vpces=raw?ext(raw,['VpcEndpoints']):[];
-      const id=ch.params.GatewayId||('vpce-design-'+Date.now());
+      const id=ch.params.GatewayId||('vpce-design-'+Date.now());ch.params.GatewayId=id;
       vpces.push({VpcEndpointId:id,VpcId:ch.params.VpcId,ServiceName:ch.params.ServiceName||'com.amazonaws.region.s3',VpcEndpointType:ch.params.EndpointType||'Gateway',State:'available',Tags:[{Key:'Name',Value:ch.params.Name||'New VPCE'}]});
       document.getElementById('in_vpces').value=JSON.stringify({VpcEndpoints:vpces});
       ch._addedIds=[id];
@@ -5244,37 +5246,37 @@ const _designApplyFns={
     if(type==='EC2'){
       const raw=safeParse(gv('in_ec2'));
       const reservations=raw?ext(raw,['Reservations']):[];
-      const id=ch.params.ResourceId||('i-design-'+Date.now());
+      const id=ch.params.ResourceId||('i-design-'+Date.now());ch.params.ResourceId=id;
       reservations.push({Instances:[{InstanceId:id,SubnetId:ch.params.SubnetId,VpcId:ch.params.VpcId,InstanceType:ch.params.InstanceType||'t3.micro',State:{Name:'running'},PrivateIpAddress:ch.params.PrivateIp||'',Tags:[{Key:'Name',Value:ch.params.Name||'New Instance'}]}]});
       document.getElementById('in_ec2').value=JSON.stringify({Reservations:reservations});
       ch._addedIds=[id];
     } else if(type==='RDS'){
       const raw=safeParse(gv('in_rds'));const rds=raw?ext(raw,['DBInstances']):[];
-      const id=ch.params.ResourceId||('db-design-'+Date.now());
+      const id=ch.params.ResourceId||('db-design-'+Date.now());ch.params.ResourceId=id;
       rds.push({DBInstanceIdentifier:id,DBSubnetGroup:{VpcId:ch.params.VpcId,Subnets:[{SubnetIdentifier:ch.params.SubnetId}]},DBInstanceClass:ch.params.InstanceClass||'db.t3.micro',Engine:ch.params.Engine||'mysql',DBInstanceStatus:'available'});
       document.getElementById('in_rds').value=JSON.stringify({DBInstances:rds});
       ch._addedIds=[id];
     } else if(type==='ElastiCache'){
       const raw=safeParse(gv('in_elasticache'));const clusters=raw?ext(raw,['CacheClusters']):[];
-      const id=ch.params.ResourceId||('cache-design-'+Date.now());
+      const id=ch.params.ResourceId||('cache-design-'+Date.now());ch.params.ResourceId=id;
       clusters.push({CacheClusterId:id,CacheNodeType:ch.params.NodeType||'cache.t3.micro',Engine:ch.params.Engine||'redis',CacheClusterStatus:'available',CacheNodes:[{CacheNodeId:'0001',Endpoint:{Address:id+'.cache.amazonaws.com',Port:6379}}],ConfigurationEndpoint:{Address:id+'.cache.amazonaws.com',Port:6379}});
       document.getElementById('in_elasticache').value=JSON.stringify({CacheClusters:clusters});
       ch._addedIds=[id];
     } else if(type==='Lambda'){
       const raw=safeParse(gv('in_lambda'));const fns=raw?ext(raw,['Functions']):[];
-      const id=ch.params.ResourceId||('lambda-design-'+Date.now());
+      const id=ch.params.ResourceId||('lambda-design-'+Date.now());ch.params.ResourceId=id;
       fns.push({FunctionName:ch.params.Name||'new-function',FunctionArn:'arn:aws:lambda:::function:'+(ch.params.Name||id),VpcConfig:{VpcId:ch.params.VpcId,SubnetIds:[ch.params.SubnetId],SecurityGroupIds:ch.params.SGIds||[]},Runtime:ch.params.Runtime||'nodejs18.x',MemorySize:128});
       document.getElementById('in_lambda').value=JSON.stringify({Functions:fns});
       ch._addedIds=[id];
     } else if(type==='ECS'){
       const raw=safeParse(gv('in_ecs'));const svcs=raw?ext(raw,['services','Services']):[];
-      const id=ch.params.ResourceId||('ecs-svc-design-'+Date.now());
+      const id=ch.params.ResourceId||('ecs-svc-design-'+Date.now());ch.params.ResourceId=id;
       svcs.push({serviceName:ch.params.Name||'new-service',serviceArn:'arn:aws:ecs:::service/'+id,networkConfiguration:{awsvpcConfiguration:{subnets:[ch.params.SubnetId],securityGroups:ch.params.SGIds||[]}},runningCount:ch.params.DesiredCount||1,desiredCount:ch.params.DesiredCount||1,launchType:'FARGATE'});
       document.getElementById('in_ecs').value=JSON.stringify({services:svcs});
       ch._addedIds=[id];
     } else if(type==='Redshift'){
       const raw=safeParse(gv('in_redshift'));const clusters=raw?ext(raw,['Clusters']):[];
-      const id=ch.params.ResourceId||('redshift-design-'+Date.now());
+      const id=ch.params.ResourceId||('redshift-design-'+Date.now());ch.params.ResourceId=id;
       clusters.push({ClusterIdentifier:id,NodeType:ch.params.NodeType||'dc2.large',ClusterStatus:'available',DBName:ch.params.DBName||'dev',Endpoint:{Address:id+'.redshift.amazonaws.com',Port:5439},VpcId:ch.params.VpcId,ClusterSubnetGroupName:'design-subnet-group'});
       document.getElementById('in_redshift').value=JSON.stringify({Clusters:clusters});
       ch._addedIds=[id];
@@ -5282,7 +5284,7 @@ const _designApplyFns={
   },
   add_security_group(ch){
     const raw=safeParse(gv('in_sgs'));const sgs=raw?ext(raw,['SecurityGroups']):[];
-    const id=ch.params.GroupId||('sg-design-'+Date.now());
+    const id=ch.params.GroupId||('sg-design-'+Date.now());ch.params.GroupId=id;
     const sg={GroupId:id,GroupName:ch.params.Name||'new-sg',VpcId:ch.params.VpcId,Description:ch.params.Description||'Design mode security group',IpPermissions:[],IpPermissionsEgress:[],Tags:[{Key:'Name',Value:ch.params.Name||'new-sg'}]};
     if(ch.params.IngressRules){ch.params.IngressRules.forEach(r=>{sg.IpPermissions.push({IpProtocol:r.Protocol||'tcp',FromPort:r.FromPort,ToPort:r.ToPort,IpRanges:[{CidrIp:r.CidrIp||'0.0.0.0/0'}]})})}
     sgs.push(sg);
@@ -7578,7 +7580,7 @@ function buildResTree(subId, ctx){
     const att=(v.Attachments||[])[0];
     res.push({type:'VOL',name:v.Size+'GB '+(v.VolumeType||''),ip:att?att.InstanceId?.slice(-8)||'':'detached',
       col:'#f59e0b',bg:'rgba(245,158,11,.12)',children:[],
-      rid:v.VolumeId,extra:v.State||''+(sc?' · '+sc+' snap':'')});
+      rid:v.VolumeId,extra:(v.State||'')+(sc?' · '+sc+' snap':'')});
   });
   return res;
 }
@@ -7598,7 +7600,7 @@ function renderLandingZoneMap(ctx){
     rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources}=ctx;
 
   // Parse record sets for DNS expanded view
-  const lzAllRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets']);
+  const lzAllRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets','RecordSets']);
   const lzRecsByZone={};
   lzAllRecSets.forEach(r=>{if(r.HostedZoneId)(lzRecsByZone[r.HostedZoneId]=lzRecsByZone[r.HostedZoneId]||[]).push(r)});
 
@@ -8097,7 +8099,8 @@ function renderLandingZoneMap(ctx){
     g.classed('hl-active',false);
     lzHlResetNodes();
   }
-  document.addEventListener('hl-unlock',lzForceClr);
+  if(window._lzHlUnlockHandler)document.removeEventListener('hl-unlock',window._lzHlUnlockHandler);
+  window._lzHlUnlockHandler=lzForceClr;document.addEventListener('hl-unlock',lzForceClr);
   svg.on('click',function(event){
     if(!event.target.closest('.lz-gw-node')&&!event.target.closest('.lz-tgw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.internet-node')&&!event.target.closest('.route-hitarea')){
       lzForceClr();
@@ -9313,7 +9316,7 @@ function _renderMapInner(){
   let snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
   let s3raw=safeParse(gv('in_s3'));let s3bk=s3raw?ext(s3raw,['Buckets']):[];
   let zones=ext(safeParse(gv('in_r53')),['HostedZones']);
-  const allRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets']);
+  const allRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets','RecordSets']);
   const recsByZoneMap={};
   allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZoneMap[r.HostedZoneId]=recsByZoneMap[r.HostedZoneId]||[]).push(r)});
   let wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
@@ -10115,7 +10118,8 @@ function _renderMapInner(){
     ndL.selectAll('.gw-node[data-gwid="'+gid+'"]').classed('gw-hl',true);
     _hlLocked=true;_hlKey=gid;_hlType='gw';showLockInd(true);
   };
-  document.addEventListener('hl-unlock',forceClr);
+  if(window._hlUnlockHandler)document.removeEventListener('hl-unlock',window._hlUnlockHandler);
+  window._hlUnlockHandler=forceClr;document.addEventListener('hl-unlock',forceClr);
   svg.on('click',function(event){
     if(!event.target.closest('.gw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.res-node')&&!event.target.closest('.route-hitarea')&&!event.target.closest('.internet-node')){
       forceClr();
@@ -11907,7 +11911,7 @@ function _buildRlCtxFromTextareas(){
     let snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
     let rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
     let ecsServices=ext(safeParse(gv('in_ecs')),['services','Services']);
-    let lambdaFns=ext(safeParse(gv('in_lambda')),['Functions']);
+    let lambdaFns=ext(safeParse(gv('in_lambda')),['Functions']).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
     let ecacheClusters=ext(safeParse(gv('in_elasticache')),['CacheClusters']);
     let redshiftClusters=ext(safeParse(gv('in_redshift')),['Clusters']);
     // Parse IAM data (grid path)
@@ -11964,12 +11968,13 @@ function _buildRlCtxFromTextareas(){
     const tgwAttachments=[];
     rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
 
+    function m2o(m){const o={};m.forEach((v,k)=>{o[k]=v});return o}
     return {vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,
-      s3bk:[],zones:[],wafAcls:[],wafByAlb:new Map(),tgByAlb:new Map(),cfByAlb:new Map(),
+      s3bk:[],zones:[],wafAcls:[],wafByAlb:{},tgByAlb:{},cfByAlb:{},
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions:[],
-      instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,
-      subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,
-      tgwAttachments,recsByZone:new Map(),_multiAccount,_accounts};
+      instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
+      subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
+      tgwAttachments,recsByZone:{},_multiAccount,_accounts};
   }catch(e){
     console.warn('_buildRlCtxFromTextareas error:',e);
     return null;
@@ -11993,14 +11998,14 @@ function mergeContexts(contexts){
   const merged={vpcs:[],subnets:[],pubSubs:new Set(),rts:[],sgs:[],nacls:[],enis:[],
     igws:[],nats:[],vpces:[],instances:[],albs:[],tgs:[],peerings:[],vpns:[],
     volumes:[],snapshots:[],s3bk:[],zones:[],wafAcls:[],
-    wafByAlb:new Map(),tgByAlb:new Map(),cfByAlb:new Map(),
+    wafByAlb:{},tgByAlb:{},cfByAlb:{},
     rdsInstances:[],ecsServices:[],lambdaFns:[],ecacheClusters:[],redshiftClusters:[],
     cfDistributions:[],
-    instBySub:new Map(),albBySub:new Map(),eniBySub:new Map(),
-    rdsBySub:new Map(),ecsBySub:new Map(),lambdaBySub:new Map(),
-    subRT:new Map(),subNacl:new Map(),sgByVpc:new Map(),
-    volByInst:new Map(),snapByVol:new Map(),ecacheByVpc:new Map(),redshiftByVpc:new Map(),
-    tgwAttachments:[],recsByZone:new Map(),_multiAccount:true,_accounts:new Set()};
+    instBySub:{},albBySub:{},eniBySub:{},
+    rdsBySub:{},ecsBySub:{},lambdaBySub:{},
+    subRT:{},subNacl:{},sgByVpc:{},
+    volByInst:{},snapByVol:{},ecacheByVpc:{},redshiftByVpc:{},
+    tgwAttachments:[],recsByZone:{},_multiAccount:true,_accounts:new Set()};
 
   visible.forEach(ctx=>{
     const c=ctx.rlCtx;if(!c)return;
@@ -12019,21 +12024,23 @@ function mergeContexts(contexts){
     if(c._accounts)c._accounts.forEach(a=>merged._accounts.add(a));
     merged._accounts.add(ctx.accountId);
 
-    // Maps — merge entries
+    // Object lookups — merge entries
     const mapKeys=['instBySub','albBySub','eniBySub','rdsBySub','ecsBySub','lambdaBySub',
       'subRT','subNacl','sgByVpc','volByInst','snapByVol','ecacheByVpc','redshiftByVpc',
       'wafByAlb','tgByAlb','cfByAlb','recsByZone'];
     mapKeys.forEach(k=>{
-      if(c[k]&&c[k].forEach){
-        c[k].forEach((val,key)=>{
-          if(Array.isArray(val)){
-            if(!merged[k].has(key))merged[k].set(key,[]);
-            val.forEach(v=>merged[k].get(key).push(v));
-          }else{
-            if(!merged[k].has(key))merged[k].set(key,val);
-          }
-        });
-      }
+      if(!c[k])return;
+      const src=c[k];
+      const keys=src instanceof Map?[...src.keys()]:Object.keys(src);
+      keys.forEach(key=>{
+        const val=src instanceof Map?src.get(key):src[key];
+        if(Array.isArray(val)){
+          if(!merged[k][key])merged[k][key]=[];
+          val.forEach(v=>merged[k][key].push(v));
+        }else{
+          if(!merged[k][key])merged[k][key]=val;
+        }
+      });
     });
   });
 
@@ -15338,10 +15345,10 @@ const _DIFF_KEYS={
 
 const _DIFF_VOLATILE=new Set([
   'LaunchTime','CreateTime','CreateDate','AttachTime','StartTime',
-  'StatusMessage','State.TransitionReason','LastModifiedTime',
+  'StatusMessage','TransitionReason','LastModifiedTime',
   'InstanceCreateTime','LatestRestorableTime','ReadyDateTime',
-  'ClusterCreateTime','AutomatedSnapshotRetentionPeriod',
-  '_accountId','_accountLabel','_sourceFile'
+  'ClusterCreateTime',
+  '_accountId','_accountLabel','_sourceFile','_vpcId'
 ]);
 
 const _DIFF_STRUCTURAL=new Set([
@@ -15387,8 +15394,7 @@ function normalizeSG(sg){
   }
   if(clone.IpPermissions) clone.IpPermissions=sortPerms(clone.IpPermissions);
   if(clone.IpPermissionsEgress) clone.IpPermissionsEgress=sortPerms(clone.IpPermissionsEgress);
-  Object.keys(clone).forEach(k=>{if(_DIFF_VOLATILE.has(k)) delete clone[k]});
-  return clone;
+  return normalizeResource(clone);
 }
 
 function classifyChange(field){
@@ -15457,13 +15463,18 @@ function computeDiff(baseline,current){
       const sB=JSON.stringify(normB);
       const sC=JSON.stringify(normC);
       if(sB===sC){
-        results.unchanged.push({type,key,name:_diffResName(cRes,key)});
+        results.unchanged.push({type,key,name:_diffResName(cRes,key),resource:cRes});
         results.total.unchanged++;
       } else {
         const fields=_fieldDiff(normB,normC,'');
-        const hasStructural=fields.some(f=>f.kind==='structural');
-        results.modified.push({type,key,name:_diffResName(cRes,key),fields,hasStructural,resource:cRes,baseline:bRes});
-        results.total.modified++;
+        if(fields.length===0){
+          results.unchanged.push({type,key,name:_diffResName(cRes,key),resource:cRes});
+          results.total.unchanged++;
+        } else {
+          const hasStructural=fields.some(f=>f.kind==='structural');
+          results.modified.push({type,key,name:_diffResName(cRes,key),fields,hasStructural,resource:cRes,baseline:bRes});
+          results.total.modified++;
+        }
       }
     });
   });
@@ -19777,7 +19788,7 @@ function buildLucidExport(){
   const snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
   const s3raw=safeParse(gv('in_s3'));const s3bk=s3raw?ext(s3raw,['Buckets']):[];
   const zones=ext(safeParse(gv('in_r53')),['HostedZones']);
-  const allRecordSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets']);
+  const allRecordSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets','RecordSets']);
   const recsByZone={};
   allRecordSets.forEach(r=>{if(r.HostedZoneId)(recsByZone[r.HostedZoneId]=recsByZone[r.HostedZoneId]||[]).push(r)});
   let instances=[];
