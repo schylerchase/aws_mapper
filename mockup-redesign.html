@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS Mapper — Design Review</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg-primary:#0a0e17;--bg-secondary:#111827;--bg-tertiary:#1a2236;
+    --bg-input:#0d1220;--bg-card:#141c2e;--border:#1e2d4a;--border-focus:#3b82f6;
+    --text-primary:#e2e8f0;--text-secondary:#94a3b8;--text-muted:#64748b;
+    --accent-blue:#3b82f6;--accent-cyan:#06b6d4;--accent-green:#10b981;
+    --accent-purple:#8b5cf6;--accent-orange:#f59e0b;--accent-red:#ef4444;
+    --accent-pink:#ec4899;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'IBM Plex Sans',sans-serif;
+    background:var(--bg-primary); color:var(--text-primary);
+    height:100vh; overflow:hidden; display:flex;
+  }
+
+  /* ================================================================
+     SIDEBAR — Polished SaaS sidebar
+     ================================================================ */
+  .sidebar {
+    width:360px; min-width:360px;
+    background:var(--bg-secondary);
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    height:100vh; z-index:10;
+  }
+
+  .sidebar-header {
+    padding:16px;
+    border-bottom:1px solid var(--border);
+    background:var(--bg-tertiary);
+  }
+  .sidebar-header .brand {
+    display:flex; align-items:center; gap:10px; margin-bottom:8px;
+  }
+  .sidebar-header .brand-icon {
+    width:32px; height:32px; border-radius:8px;
+    background:linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; color:#fff; font-weight:600;
+    box-shadow: 0 2px 8px rgba(6,182,212,.3);
+  }
+  .sidebar-header h1 {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px; font-weight:600;
+    letter-spacing:1px; text-transform:uppercase;
+    color:var(--accent-cyan);
+  }
+  .sidebar-header h1 .version {
+    font-size:9px; color:var(--text-muted); font-weight:400;
+    background:var(--bg-primary); padding:1px 6px; border-radius:4px;
+    margin-left:6px; letter-spacing:0;
+  }
+  .sidebar-header p {
+    font-size:11px; color:var(--text-muted);
+    font-family:'IBM Plex Mono',monospace;
+    margin-top:2px;
+  }
+  .sidebar-header .txt-ctrl {
+    display:flex; align-items:center; gap:6px;
+    margin-top:10px; padding-top:10px; border-top:1px solid var(--border);
+  }
+  .sidebar-header .txt-ctrl-label {
+    font-family:'IBM Plex Mono',monospace; font-size:9px;
+    color:var(--text-muted); letter-spacing:.5px; text-transform:uppercase;
+  }
+  .sidebar-header .txt-ctrl-btn {
+    width:26px; height:26px;
+    background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px;
+    color:var(--text-secondary);
+    font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all .15s;
+  }
+  .sidebar-header .txt-ctrl-btn:hover { background:var(--border); color:var(--text-primary); }
+  .sidebar-header .txt-ctrl-val {
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    color:var(--accent-cyan); min-width:36px; text-align:center;
+  }
+
+  /* Upload actions row */
+  .upload-row {
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    display:flex; gap:6px; align-items:center;
+  }
+  .btn-action {
+    flex:1; padding:8px 12px; border:none; border-radius:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    font-weight:600; letter-spacing:.3px; text-transform:uppercase;
+    cursor:pointer; transition:all .2s;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    color:#fff;
+  }
+  .btn-action.upload { background:linear-gradient(135deg, #10b981, #059669); }
+  .btn-action.upload:hover { box-shadow:0 4px 12px rgba(16,185,129,.3); transform:translateY(-1px); }
+  .btn-action.folder { background:linear-gradient(135deg, #f59e0b, #d97706); }
+  .btn-action.folder:hover { box-shadow:0 4px 12px rgba(245,158,11,.3); transform:translateY(-1px); }
+  .btn-action.script { background:linear-gradient(135deg, #6366f1, #4f46e5); font-size:9px; }
+  .btn-action.script:hover { box-shadow:0 4px 12px rgba(99,102,241,.3); transform:translateY(-1px); }
+
+  /* Scrollable body */
+  .sidebar-body { flex:1; overflow-y:auto; padding:0; }
+  .sidebar-body::-webkit-scrollbar { width:5px; }
+  .sidebar-body::-webkit-scrollbar-track { background:transparent; }
+  .sidebar-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* Section headers */
+  .sec-hdr {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px;
+    background:var(--bg-tertiary); border-bottom:1px solid var(--border);
+    cursor:pointer; user-select:none;
+    transition:background .15s;
+  }
+  .sec-hdr:hover { background:rgba(30,45,74,.6); }
+  .sec-hdr .sec-dot {
+    width:4px; height:16px; border-radius:2px;
+    flex-shrink:0;
+  }
+  .sec-hdr span {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px; font-weight:600;
+    color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;
+    flex:1;
+  }
+  .sec-hdr .sec-badge {
+    font-family:'IBM Plex Mono',monospace; font-size:9px;
+    padding:2px 6px; border-radius:4px;
+    background:rgba(16,185,129,.1); color:var(--accent-green);
+    font-weight:500;
+  }
+  .sec-hdr .arr { color:var(--text-muted); font-size:9px; transition:transform .2s; }
+
+  /* Section body */
+  .sec-body {
+    padding:8px 14px;
+    border-bottom:1px solid var(--border);
+    background:rgba(0,0,0,.08);
+  }
+
+  /* Input groups */
+  .ig { margin-bottom:6px; }
+  .ig-lbl {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:3px; padding:0 2px;
+  }
+  .ig-lbl span {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px; font-weight:500;
+    color:var(--text-secondary); letter-spacing:.3px;
+  }
+  .ig-lbl code {
+    font-family:'IBM Plex Mono',monospace; font-size:9px;
+    color:var(--text-muted); background:var(--bg-primary);
+    padding:2px 5px; border-radius:4px;
+  }
+
+  /* Textareas */
+  .ji {
+    width:100%; height:56px;
+    background:var(--bg-input);
+    border:1px solid var(--border); border-radius:6px;
+    color:var(--text-primary);
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    padding:6px 8px; resize:none;
+    transition:border-color .2s; line-height:1.4;
+  }
+  .ji:focus { outline:none; border-color:var(--border-focus); box-shadow:0 0 0 2px rgba(59,130,246,.12); }
+  .ji.valid { border-color:var(--accent-green); }
+  .ji::placeholder { color:var(--text-muted); opacity:.4; font-size:9px; }
+
+  /* Footer actions */
+  .sidebar-actions {
+    padding:12px 14px; border-top:1px solid var(--border);
+    display:flex; gap:8px;
+    background:var(--bg-tertiary);
+  }
+  .btn {
+    flex:1; padding:10px 14px; border:none; border-radius:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+    cursor:pointer; transition:all .2s;
+  }
+  .btn-primary {
+    background:linear-gradient(135deg, #3b82f6, #2563eb);
+    color:#fff;
+    box-shadow:0 2px 8px rgba(59,130,246,.25);
+  }
+  .btn-primary:hover { box-shadow:0 4px 16px rgba(59,130,246,.35); transform:translateY(-1px); }
+  .btn-secondary { background:var(--bg-secondary); color:var(--text-secondary); border:1px solid var(--border); }
+  .btn-secondary:hover { background:var(--border); color:var(--text-primary); }
+  .btn-demo { background:transparent; color:var(--accent-cyan); border:1px solid rgba(6,182,212,.3); }
+  .btn-demo:hover { background:rgba(6,182,212,.08); border-color:var(--accent-cyan); }
+
+
+  /* ================================================================
+     MAIN AREA — Landing Dashboard
+     ================================================================ */
+  .main {
+    flex:1; position:relative; overflow:hidden;
+  }
+  .grid-bg {
+    position:absolute; inset:0;
+    background-image:radial-gradient(circle at 1px 1px, rgba(50,70,100,.25) 1px, transparent 0);
+    background-size:24px 24px;
+    pointer-events:none;
+  }
+
+  .landing {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:40px;
+    overflow-y:auto;
+    z-index:1;
+  }
+
+  /* Hero */
+  .hero {
+    text-align:center;
+    margin-bottom:40px;
+    animation:fadeUp .6s ease-out;
+  }
+  .hero-icon {
+    width:64px; height:64px; border-radius:16px;
+    background:linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+    display:inline-flex; align-items:center; justify-content:center;
+    margin-bottom:16px;
+    box-shadow:0 8px 32px rgba(6,182,212,.2), 0 0 60px rgba(59,130,246,.08);
+  }
+  .hero-icon svg {
+    width:32px; height:32px; fill:none; stroke:#fff; stroke-width:2;
+    stroke-linecap:round; stroke-linejoin:round;
+  }
+  .hero h1 {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:22px; font-weight:600;
+    letter-spacing:2px; text-transform:uppercase;
+    color:var(--text-primary);
+    margin-bottom:8px;
+  }
+  .hero p {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; color:var(--text-muted);
+    max-width:460px; line-height:1.6;
+  }
+
+  /* CTA buttons */
+  .cta-row {
+    display:flex; gap:12px; margin-bottom:48px;
+    animation:fadeUp .6s ease-out .1s both;
+  }
+  .cta-btn {
+    padding:14px 32px; border-radius:10px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px;
+    font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+    cursor:pointer; transition:all .25s;
+    border:none; display:flex; align-items:center; gap:8px;
+  }
+  .cta-btn.primary {
+    background:linear-gradient(135deg, #06b6d4, #3b82f6);
+    color:#fff;
+    box-shadow:0 4px 20px rgba(6,182,212,.3), 0 0 40px rgba(59,130,246,.1);
+  }
+  .cta-btn.primary:hover {
+    box-shadow:0 6px 28px rgba(6,182,212,.4), 0 0 60px rgba(59,130,246,.15);
+    transform:translateY(-2px);
+  }
+  .cta-btn.secondary {
+    background:var(--bg-tertiary); color:var(--text-secondary);
+    border:1px solid var(--border);
+  }
+  .cta-btn.secondary:hover {
+    background:var(--border); color:var(--text-primary);
+    transform:translateY(-2px);
+  }
+
+  /* Feature cards grid */
+  .features-label {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px; font-weight:600; letter-spacing:2px;
+    text-transform:uppercase; color:var(--text-muted);
+    margin-bottom:20px;
+    animation:fadeUp .6s ease-out .2s both;
+  }
+
+  .features-grid {
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:12px;
+    max-width:720px;
+    width:100%;
+    animation:fadeUp .6s ease-out .3s both;
+  }
+
+  .feature-card {
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px;
+    transition:all .25s;
+    cursor:default;
+    position:relative;
+    overflow:hidden;
+  }
+  .feature-card::before {
+    content:'';
+    position:absolute; top:0; left:0; bottom:0; width:3px;
+    border-radius:0 2px 2px 0;
+  }
+  .feature-card:hover {
+    border-color:rgba(255,255,255,.08);
+    transform:translateY(-2px);
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+  }
+  .feature-card .fc-icon {
+    font-size:20px; margin-bottom:8px;
+    display:block;
+    filter:grayscale(0);
+  }
+  .feature-card .fc-title {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; font-weight:600;
+    color:var(--text-primary);
+    margin-bottom:4px;
+  }
+  .feature-card .fc-desc {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px; color:var(--text-muted);
+    line-height:1.5;
+  }
+
+  /* Accent colors per card */
+  .feature-card.topo::before    { background:var(--accent-blue); }
+  .feature-card.comply::before  { background:var(--accent-cyan); }
+  .feature-card.flow::before    { background:var(--accent-green); }
+  .feature-card.design::before  { background:var(--accent-purple); }
+  .feature-card.region::before  { background:var(--accent-orange); }
+  .feature-card.budr::before    { background:var(--accent-red); }
+  .feature-card.report::before  { background:var(--accent-pink); }
+  .feature-card.iac::before     { background:#a78bfa; }
+  .feature-card.gov::before     { background:var(--accent-orange); }
+
+  .feature-card.topo:hover    { border-color:rgba(59,130,246,.2); }
+  .feature-card.comply:hover  { border-color:rgba(6,182,212,.2); }
+  .feature-card.flow:hover    { border-color:rgba(16,185,129,.2); }
+  .feature-card.design:hover  { border-color:rgba(139,92,246,.2); }
+  .feature-card.region:hover  { border-color:rgba(245,158,11,.2); }
+  .feature-card.budr:hover    { border-color:rgba(239,68,68,.2); }
+  .feature-card.report:hover  { border-color:rgba(236,72,153,.2); }
+  .feature-card.iac:hover     { border-color:rgba(167,139,250,.2); }
+  .feature-card.gov:hover     { border-color:rgba(245,158,11,.2); }
+
+  /* Footer */
+  .landing-footer {
+    margin-top:32px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px; color:var(--text-muted);
+    opacity:.5;
+    display:flex; gap:12px; align-items:center;
+    animation:fadeUp .6s ease-out .4s both;
+  }
+  .landing-footer a { color:var(--accent-cyan); text-decoration:none; }
+  .landing-footer a:hover { text-decoration:underline; }
+
+
+  /* ================================================================
+     STATS BAR MOCKUP (post-render state)
+     ================================================================ */
+  .stat-chip {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; font-weight:500;
+    padding:5px 10px; border-radius:8px;
+    background:rgba(17,24,39,.9);
+    border:1px solid var(--border);
+    color:var(--text-secondary);
+    cursor:pointer; transition:all .15s;
+    display:inline-flex; align-items:center; gap:3px;
+  }
+  .stat-chip:hover { border-color:var(--accent-blue); background:rgba(59,130,246,.08); }
+  .stat-chip b { color:var(--text-primary); font-weight:600; }
+
+  .stat-chip.accent-amber  { border-color:rgba(245,158,11,.25); background:rgba(245,158,11,.06); }
+  .stat-chip.accent-amber:hover { border-color:rgba(245,158,11,.5); background:rgba(245,158,11,.12); }
+  .stat-chip.accent-purple { border-color:rgba(139,92,246,.25); background:rgba(139,92,246,.06); }
+  .stat-chip.accent-purple:hover { border-color:rgba(139,92,246,.5); background:rgba(139,92,246,.12); }
+  .stat-chip.accent-blue   { border-color:rgba(59,130,246,.25); background:rgba(59,130,246,.06); }
+  .stat-chip.accent-blue:hover   { border-color:rgba(59,130,246,.5); background:rgba(59,130,246,.12); }
+
+  .compliance-chip {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:5px 10px; border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; font-weight:500;
+    cursor:pointer; transition:all .15s;
+    border:1px solid var(--border);
+  }
+  .compliance-chip.clean    { background:rgba(16,185,129,.08); border-color:rgba(16,185,129,.25); color:#10b981; }
+  .compliance-chip.clean:hover { border-color:rgba(16,185,129,.5); background:rgba(16,185,129,.15); }
+  .compliance-chip.warn     { background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.25); color:#f59e0b; }
+  .compliance-chip.warn:hover { border-color:rgba(245,158,11,.5); background:rgba(245,158,11,.15); }
+  .compliance-chip.critical { background:rgba(220,38,38,.08); border-color:rgba(220,38,38,.25); color:#dc2626; }
+  .compliance-chip.critical:hover { border-color:rgba(220,38,38,.5); background:rgba(220,38,38,.15); }
+
+
+  /* ================================================================
+     DASHBOARD MOCKUP SECTION (unified)
+     ================================================================ */
+  .dash-mockup {
+    position:fixed; inset:0; z-index:100;
+    background:var(--bg-primary);
+    display:none; flex-direction:column;
+  }
+  .dash-mockup.visible { display:flex; }
+
+  .dash-hdr {
+    display:flex; align-items:center; gap:12px;
+    padding:10px 20px;
+    background:var(--bg-secondary);
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .dash-hdr h2 {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px; margin:0; flex-shrink:0;
+    display:flex; align-items:center; gap:8px;
+  }
+  .dash-nav {
+    display:flex; gap:2px; padding:0 4px;
+    background:rgba(255,255,255,.03); border-radius:8px;
+    margin-right:auto; margin-left:16px;
+  }
+  .dash-nav-btn {
+    background:none; border:1px solid transparent; border-radius:6px;
+    color:var(--text-muted);
+    font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600;
+    padding:5px 12px; cursor:pointer; transition:all .15s;
+    text-transform:uppercase; letter-spacing:.5px;
+    display:flex; align-items:center; gap:5px; white-space:nowrap;
+  }
+  .dash-nav-btn:hover { color:var(--text-secondary); background:rgba(255,255,255,.04); }
+  .dash-nav-btn.active { color:var(--accent-cyan); background:rgba(34,211,238,.08); border-color:rgba(34,211,238,.2); }
+  .dash-close {
+    background:none; border:1px solid var(--border); border-radius:6px;
+    color:var(--text-muted); font-size:11px; padding:5px 14px;
+    cursor:pointer; font-family:'IBM Plex Mono',monospace;
+    transition:all .15s; display:flex; align-items:center; gap:5px;
+  }
+  .dash-close:hover { color:var(--text-primary); border-color:var(--text-muted); background:rgba(255,255,255,.04); }
+  .dash-close kbd {
+    font-size:9px; padding:1px 4px;
+    background:rgba(255,255,255,.06); border:1px solid var(--border);
+    border-radius:3px; color:var(--text-secondary);
+  }
+
+  .dash-toolbar {
+    display:flex; gap:8px; padding:8px 20px;
+    background:var(--bg-tertiary);
+    border-bottom:1px solid var(--border);
+    flex-shrink:0; flex-wrap:wrap; align-items:center;
+  }
+  .dash-toolbar input[type="text"] {
+    background:var(--bg-input); border:1px solid var(--border); border-radius:6px;
+    color:var(--text-primary);
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    padding:6px 10px; width:220px; transition:border-color .15s;
+  }
+  .dash-toolbar input:focus { border-color:var(--accent-cyan); outline:none; }
+  .dash-toolbar select {
+    background:var(--bg-input); border:1px solid var(--border); border-radius:6px;
+    color:var(--text-primary);
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    padding:6px 8px; cursor:pointer;
+  }
+  .dash-toolbar label {
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;
+  }
+
+  .dash-body {
+    flex:1; overflow-y:auto; padding:20px;
+    background:var(--bg-primary);
+  }
+
+  .dash-footer {
+    display:flex; gap:8px; padding:8px 20px;
+    background:var(--bg-secondary); border-top:1px solid var(--border);
+    flex-shrink:0; align-items:center; flex-wrap:wrap;
+  }
+  .dash-footer button {
+    background:var(--bg-input); border:1px solid var(--border); border-radius:6px;
+    color:var(--text-primary);
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    padding:6px 14px; cursor:pointer; transition:all .15s;
+  }
+  .dash-footer button:hover { background:rgba(96,165,250,.08); border-color:rgba(96,165,250,.3); }
+  .dash-footer .meta {
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    color:var(--text-muted); margin-left:auto;
+  }
+
+  /* Pill filters */
+  .pill-row { display:flex; gap:4px; }
+  .pill {
+    padding:4px 12px; border-radius:12px;
+    font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:500;
+    background:var(--bg-secondary); border:1px solid var(--border);
+    color:var(--text-muted); cursor:pointer; transition:all .15s;
+  }
+  .pill:hover { color:var(--text-secondary); border-color:var(--text-muted); }
+  .pill.active { color:var(--accent-cyan); background:rgba(6,182,212,.08); border-color:rgba(6,182,212,.25); }
+
+  /* Dashboard table */
+  .dash-table {
+    width:100%; border-collapse:collapse;
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+  }
+  .dash-table th {
+    text-align:left; padding:8px 12px;
+    font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--text-muted);
+    border-bottom:1px solid var(--border);
+    background:var(--bg-tertiary);
+  }
+  .dash-table td {
+    padding:8px 12px; color:var(--text-secondary);
+    border-bottom:1px solid rgba(30,45,74,.5);
+  }
+  .dash-table tr:hover td { background:rgba(59,130,246,.03); }
+
+  /* Severity badges */
+  .sev { font-size:9px; font-weight:600; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:.3px; }
+  .sev.crit { background:rgba(239,68,68,.12); color:#ef4444; }
+  .sev.high { background:rgba(245,158,11,.12); color:#f59e0b; }
+  .sev.med  { background:rgba(59,130,246,.12); color:#3b82f6; }
+  .sev.low  { background:rgba(100,116,139,.12); color:#94a3b8; }
+
+
+  /* ================================================================
+     IAM PANEL MOCKUP
+     ================================================================ */
+  .iam-panel {
+    position:fixed; top:0; right:0; bottom:0;
+    width:400px; background:var(--bg-secondary);
+    border-left:1px solid var(--border);
+    display:none; flex-direction:column;
+    z-index:90;
+    box-shadow:-8px 0 32px rgba(0,0,0,.3);
+  }
+  .iam-panel.visible { display:flex; }
+
+  .iam-panel-hdr {
+    padding:12px 16px; background:var(--bg-tertiary);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:8px;
+  }
+  .iam-panel-hdr h3 {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px; font-weight:600; flex:1;
+  }
+  .iam-close {
+    background:none; border:none; color:var(--text-muted);
+    font-size:16px; cursor:pointer; padding:4px;
+  }
+
+  .iam-dashboard-link {
+    display:flex; align-items:center; gap:8px;
+    margin:10px 14px; padding:10px 14px;
+    background:rgba(139,92,246,.06);
+    border:1px solid rgba(139,92,246,.2);
+    border-radius:8px; cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    color:var(--accent-purple); font-weight:500;
+    transition:all .15s;
+  }
+  .iam-dashboard-link:hover {
+    background:rgba(139,92,246,.1);
+    border-color:rgba(139,92,246,.4);
+  }
+
+  .iam-risk-cards {
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+    padding:12px 14px;
+  }
+  .iam-risk-card {
+    padding:10px 12px; border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+  }
+  .iam-risk-card .irc-val {
+    font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600;
+  }
+  .iam-risk-card .irc-label {
+    font-family:'IBM Plex Mono',monospace; font-size:9px;
+    color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;
+  }
+  .iam-risk-card.crit .irc-val { color:var(--accent-red); }
+  .iam-risk-card.warn .irc-val { color:var(--accent-orange); }
+  .iam-risk-card.ok .irc-val   { color:var(--accent-green); }
+
+  .iam-panel-body { flex:1; overflow-y:auto; padding:0 14px 14px; }
+
+  .iam-item {
+    padding:10px 12px; border-radius:8px;
+    background:var(--bg-card); border:1px solid var(--border);
+    margin-bottom:6px; cursor:pointer; transition:all .15s;
+  }
+  .iam-item:hover { border-color:rgba(255,255,255,.08); }
+  .iam-item .ii-name {
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    color:var(--text-primary); font-weight:500; margin-bottom:3px;
+  }
+  .iam-item .ii-meta {
+    font-family:'IBM Plex Mono',monospace; font-size:9px;
+    color:var(--text-muted); display:flex; gap:8px; align-items:center;
+  }
+
+
+  /* ================================================================
+     VIEW TOGGLE
+     ================================================================ */
+  .view-toggle {
+    position:fixed; bottom:20px; left:50%;
+    transform:translateX(-50%); z-index:200;
+    display:flex; gap:2px;
+    background:var(--bg-secondary); border:1px solid var(--border);
+    border-radius:10px; padding:3px;
+    box-shadow:0 8px 32px rgba(0,0,0,.5);
+  }
+  .vt-btn {
+    padding:8px 16px; border:none; border-radius:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600;
+    color:var(--text-muted); background:none; cursor:pointer;
+    text-transform:uppercase; letter-spacing:.5px;
+    transition:all .15s;
+  }
+  .vt-btn:hover { color:var(--text-secondary); }
+  .vt-btn.active { background:var(--accent-blue); color:#fff; }
+
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(12px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ─────────────────────────────────────────── -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="brand">
+      <div class="brand-icon">&#9700;</div>
+      <div>
+        <h1>AWS Network Map <span class="version">v1.4.0</span></h1>
+        <p>Paste CLI JSON or import folder</p>
+      </div>
+    </div>
+    <div class="txt-ctrl">
+      <span class="txt-ctrl-label">Text Size</span>
+      <button class="txt-ctrl-btn">-</button>
+      <span class="txt-ctrl-val">100%</span>
+      <button class="txt-ctrl-btn">+</button>
+    </div>
+  </div>
+
+  <div class="upload-row">
+    <button class="btn-action upload">&#8593; Upload</button>
+    <button class="btn-action folder">&#128193; Folder</button>
+    <button class="btn-action script">&#8595; Script &#9662;</button>
+  </div>
+
+  <div class="sidebar-body">
+    <!-- Network Section -->
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:var(--accent-blue)"></div>
+      <span>Network</span>
+      <span class="sec-badge">3 loaded</span>
+      <span class="arr">&#9660;</span>
+    </div>
+    <div class="sec-body">
+      <div class="ig">
+        <div class="ig-lbl"><span>VPCs</span><code>describe-vpcs</code></div>
+        <textarea class="ji valid" placeholder="Paste JSON...">[{"VpcId":"vpc-abc123"...}]</textarea>
+      </div>
+      <div class="ig">
+        <div class="ig-lbl"><span>Subnets</span><code>describe-subnets</code></div>
+        <textarea class="ji valid" placeholder="Paste JSON...">[{"SubnetId":"sub-xyz"...}]</textarea>
+      </div>
+      <div class="ig">
+        <div class="ig-lbl"><span>Route Tables</span><code>describe-route-tables</code></div>
+        <textarea class="ji valid" placeholder="Paste JSON...">[{"RouteTableId":"rtb-..."...}]</textarea>
+      </div>
+    </div>
+
+    <!-- Security Section -->
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:var(--accent-red)"></div>
+      <span>Security</span>
+      <span class="arr">&#9654;</span>
+    </div>
+
+    <!-- Compute Section -->
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:var(--accent-green)"></div>
+      <span>Compute</span>
+      <span class="arr">&#9654;</span>
+    </div>
+
+    <!-- Database Section -->
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:var(--accent-orange)"></div>
+      <span>Database</span>
+      <span class="arr">&#9654;</span>
+    </div>
+
+    <!-- Connectivity Section -->
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:var(--accent-pink)"></div>
+      <span>Connectivity</span>
+      <span class="arr">&#9654;</span>
+    </div>
+
+    <!-- Global Section -->
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:var(--accent-cyan)"></div>
+      <span>Global Services</span>
+      <span class="arr">&#9654;</span>
+    </div>
+  </div>
+
+  <div class="sidebar-actions">
+    <button class="btn btn-demo">Demo</button>
+    <button class="btn btn-secondary">Clear</button>
+    <button class="btn btn-primary">Render Map</button>
+  </div>
+</div>
+
+<!-- ─── MAIN AREA: LANDING DASHBOARD ──────────────────── -->
+<div class="main">
+  <div class="grid-bg"></div>
+  <div class="landing" id="landingView">
+    <div class="hero">
+      <div class="hero-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h1>AWS Network Mapper</h1>
+      <p>Interactive topology visualization, compliance auditing, and governance for AWS infrastructure</p>
+    </div>
+
+    <div class="cta-row">
+      <button class="cta-btn primary">&#9654;&ensp;Explore Demo</button>
+      <button class="cta-btn secondary" onclick="toggleView('stats')">&#128193;&ensp;Import Your Data</button>
+    </div>
+
+    <div class="features-label">What You Can Do</div>
+
+    <div class="features-grid">
+      <div class="feature-card topo">
+        <span class="fc-icon">&#9700;</span>
+        <div class="fc-title">Topology Map</div>
+        <div class="fc-desc">Interactive D3.js SVG with VPCs, subnets, gateways, and 25+ resource types</div>
+      </div>
+      <div class="feature-card comply">
+        <span class="fc-icon">&#9888;</span>
+        <div class="fc-title">Compliance Engine</div>
+        <div class="fc-desc">89 controls across CIS, SOC 2, PCI DSS, IAM, and 3 more frameworks</div>
+      </div>
+      <div class="feature-card flow">
+        <span class="fc-icon">&#8644;</span>
+        <div class="fc-title">Flow Analysis</div>
+        <div class="fc-desc">Trace traffic paths through SGs, NACLs, and route tables with blast radius</div>
+      </div>
+      <div class="feature-card design">
+        <span class="fc-icon">&#9998;</span>
+        <div class="fc-title">Design Mode</div>
+        <div class="fc-desc">Build infrastructure from scratch with a drag-and-drop palette</div>
+      </div>
+      <div class="feature-card region">
+        <span class="fc-icon">&#127760;</span>
+        <div class="fc-title">Multi-Region</div>
+        <div class="fc-desc">Import multi-region folders and see region columns side by side</div>
+      </div>
+      <div class="feature-card budr">
+        <span class="fc-icon">&#128737;</span>
+        <div class="fc-title">BUDR Assessment</div>
+        <div class="fc-desc">Backup, uptime, and disaster recovery scoring across all resources</div>
+      </div>
+      <div class="feature-card report">
+        <span class="fc-icon">&#128196;</span>
+        <div class="fc-title">Report Builder</div>
+        <div class="fc-desc">Modular HTML reports with architecture diagrams and compliance data</div>
+      </div>
+      <div class="feature-card iac">
+        <span class="fc-icon">&#128187;</span>
+        <div class="fc-title">IaC Export</div>
+        <div class="fc-desc">Generate Terraform HCL and CloudFormation from your live topology</div>
+      </div>
+      <div class="feature-card gov">
+        <span class="fc-icon">&#9878;</span>
+        <div class="fc-title">Governance</div>
+        <div class="fc-desc">Custom rules engine with asset classification and IAM review</div>
+      </div>
+    </div>
+
+    <div class="landing-footer">
+      <span>v1.4.0</span>
+      <span>&middot;</span>
+      <span>MIT License</span>
+      <span>&middot;</span>
+      <a href="#">GitHub</a>
+    </div>
+  </div>
+
+  <!-- Post-render stats bar mockup (hidden by default) -->
+  <div id="statsView" style="display:none;position:absolute;top:16px;left:16px;right:16px;display:none;flex-wrap:wrap;gap:6px;z-index:5">
+    <div class="stat-chip"><b>3</b> VPCs</div>
+    <div class="stat-chip"><b>12</b> Subnets</div>
+    <div class="stat-chip"><b>4</b> Public</div>
+    <div class="stat-chip"><b>8</b> Private</div>
+    <div class="stat-chip"><b>5</b> Gateways</div>
+    <div class="stat-chip"><b>6</b> SGs</div>
+    <div class="stat-chip"><b>8</b> EC2</div>
+    <div class="stat-chip"><b>2</b> ALBs</div>
+    <div class="stat-chip"><b>3</b> RDS</div>
+    <div class="stat-chip accent-amber"><b>14</b> IAM</div>
+    <div class="stat-chip accent-purple"><b>2</b> Accounts</div>
+    <div class="stat-chip accent-blue"><b>2</b> Regions</div>
+    <div class="compliance-chip warn">&#9888; 12 Findings</div>
+    <div class="compliance-chip clean">&#10003; BUDR 8/10</div>
+  </div>
+</div>
+
+<!-- ─── IAM PANEL MOCKUP ──────────────────────────────── -->
+<div class="iam-panel" id="iamPanel">
+  <div class="iam-panel-hdr">
+    <h3>&#128274; IAM Security</h3>
+    <button class="iam-close" onclick="document.getElementById('iamPanel').classList.remove('visible')">&times;</button>
+  </div>
+  <div class="iam-dashboard-link" onclick="toggleView('dashboard')">
+    &#128200;&ensp;Open Full Governance Dashboard&ensp;&rarr;
+  </div>
+  <div class="iam-risk-cards">
+    <div class="iam-risk-card crit">
+      <div class="irc-val">2</div>
+      <div class="irc-label">Admin Roles</div>
+    </div>
+    <div class="iam-risk-card warn">
+      <div class="irc-val">5</div>
+      <div class="irc-label">Wildcard Perms</div>
+    </div>
+    <div class="iam-risk-card warn">
+      <div class="irc-val">1</div>
+      <div class="irc-label">No MFA</div>
+    </div>
+    <div class="iam-risk-card ok">
+      <div class="irc-val">3</div>
+      <div class="irc-label">With Boundary</div>
+    </div>
+  </div>
+  <div class="iam-panel-body">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 0 6px">Roles</div>
+    <div class="iam-item">
+      <div class="ii-name">EC2-Admin-Role</div>
+      <div class="ii-meta"><span class="sev crit">ADMIN</span><span class="sev high">WILDCARD</span> <span>ec2.amazonaws.com</span></div>
+    </div>
+    <div class="iam-item">
+      <div class="ii-name">Lambda-Execution-Role</div>
+      <div class="ii-meta"><span class="sev high">WILDCARD</span> <span>lambda.amazonaws.com</span></div>
+    </div>
+    <div class="iam-item">
+      <div class="ii-name">ECS-Task-Role</div>
+      <div class="ii-meta"><span class="sev low">BOUNDARY</span> <span>ecs-tasks.amazonaws.com</span></div>
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:12px 0 6px">Users</div>
+    <div class="iam-item">
+      <div class="ii-name">admin-user</div>
+      <div class="ii-meta"><span class="sev crit">ADMIN</span><span class="sev high">NO MFA</span></div>
+    </div>
+    <div class="iam-item">
+      <div class="ii-name">deploy-bot</div>
+      <div class="ii-meta"><span class="sev med">MFA</span> <span>programmatic</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── DASHBOARD MOCKUP ──────────────────────────────── -->
+<div class="dash-mockup" id="dashMockup">
+  <div class="dash-hdr">
+    <h2>&#9888;&ensp;Compliance Dashboard</h2>
+    <div class="dash-nav">
+      <button class="dash-nav-btn active">&#9888; Compliance</button>
+      <button class="dash-nav-btn">&#128737; BUDR</button>
+      <button class="dash-nav-btn">&#128274; Firewall</button>
+      <button class="dash-nav-btn">&#128196; Reports</button>
+    </div>
+    <button class="dash-close" onclick="toggleView('stats')">Close <kbd>Esc</kbd></button>
+  </div>
+  <div class="dash-toolbar">
+    <div class="pill-row">
+      <div class="pill active">All</div>
+      <div class="pill" style="--pc:var(--accent-red)">Critical</div>
+      <div class="pill">High</div>
+      <div class="pill">Medium</div>
+      <div class="pill">Low</div>
+    </div>
+    <select style="margin-left:auto"><option>All Frameworks</option><option>CIS</option><option>SOC 2</option><option>PCI DSS</option><option>IAM</option></select>
+    <input type="text" placeholder="Search findings...">
+  </div>
+  <div class="dash-body">
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Finding</th>
+          <th>Framework</th>
+          <th>Resource</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="sev crit">Critical</span></td><td style="color:var(--text-primary)">Default SG allows all inbound</td><td>CIS 5.4</td><td>sg-abc123</td><td style="color:var(--accent-red)">Open</td></tr>
+        <tr><td><span class="sev crit">Critical</span></td><td style="color:var(--text-primary)">Admin role with no boundary</td><td>IAM-03</td><td>EC2-Admin-Role</td><td style="color:var(--accent-red)">Open</td></tr>
+        <tr><td><span class="sev high">High</span></td><td style="color:var(--text-primary)">S3 bucket without encryption</td><td>PCI 3.4</td><td>my-bucket-prod</td><td style="color:var(--accent-orange)">Open</td></tr>
+        <tr><td><span class="sev high">High</span></td><td style="color:var(--text-primary)">No flow logs on VPC</td><td>SOC2 CC7.2</td><td>vpc-abc123</td><td style="color:var(--accent-orange)">Open</td></tr>
+        <tr><td><span class="sev med">Medium</span></td><td style="color:var(--text-primary)">Overly permissive NACL</td><td>CIS 5.1</td><td>acl-xyz789</td><td style="color:var(--accent-blue)">Review</td></tr>
+        <tr><td><span class="sev med">Medium</span></td><td style="color:var(--text-primary)">RDS not multi-AZ</td><td>ARCH-11</td><td>mydb-production</td><td style="color:var(--accent-blue)">Review</td></tr>
+        <tr><td><span class="sev low">Low</span></td><td style="color:var(--text-primary)">No description on security group</td><td>ARCH-02</td><td>sg-web-prod</td><td style="color:var(--text-muted)">Info</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="dash-footer">
+    <button>&#8595; Export CSV</button>
+    <button>&#8595; Export JSON</button>
+    <button>&#128196; Generate Report</button>
+    <span class="meta">7 findings &middot; 2 critical, 2 high, 2 medium, 1 low</span>
+  </div>
+</div>
+
+<!-- ─── VIEW TOGGLE NAV ───────────────────────────────── -->
+<div class="view-toggle">
+  <button class="vt-btn active" onclick="toggleView('landing')">Landing</button>
+  <button class="vt-btn" onclick="toggleView('stats')">Stats Bar</button>
+  <button class="vt-btn" onclick="toggleView('iam')">IAM Panel</button>
+  <button class="vt-btn" onclick="toggleView('dashboard')">Dashboard</button>
+</div>
+
+<script>
+function toggleView(view) {
+  // Reset all
+  document.getElementById('landingView').style.display = 'none';
+  document.getElementById('statsView').style.display = 'none';
+  document.getElementById('iamPanel').classList.remove('visible');
+  document.getElementById('dashMockup').classList.remove('visible');
+
+  // Update toggle buttons
+  document.querySelectorAll('.vt-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  switch(view) {
+    case 'landing':
+      document.getElementById('landingView').style.display = 'flex';
+      break;
+    case 'stats':
+      document.getElementById('statsView').style.display = 'flex';
+      break;
+    case 'iam':
+      document.getElementById('statsView').style.display = 'flex';
+      document.getElementById('iamPanel').classList.add('visible');
+      break;
+    case 'dashboard':
+      document.getElementById('dashMockup').classList.add('visible');
+      break;
+  }
+}
+</script>
+
+</body>
+</html>
