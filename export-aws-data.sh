@@ -246,7 +246,16 @@ if [ -n "$ALL_REGIONS" ]; then
   REGION_COUNT=$(echo "$REGIONS" | wc -w | tr -d ' ')
   echo "  Found $REGION_COUNT regions"
   echo ""
+  SKIPPED=0
   for REG in $REGIONS; do
+    # Quick check: skip regions with no non-default VPCs
+    REG_FLAGS=("${AWS_PROFILE_FLAGS[@]+"${AWS_PROFILE_FLAGS[@]}"}" --region "$REG")
+    VPC_COUNT=$(aws "${REG_FLAGS[@]}" ec2 describe-vpcs --query 'Vpcs[?IsDefault==`false`].VpcId' --output json 2>/dev/null | python3 -c "import json,sys;print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+    if [ "$VPC_COUNT" = "0" ]; then
+      SKIPPED=$((SKIPPED+1))
+      echo "  Region: $REG — no resources, skipping"
+      continue
+    fi
     echo "╔══════════════════════════════════════════════════════╗"
     echo "║  Region: $REG"
     echo "╚══════════════════════════════════════════════════════╝"
@@ -255,6 +264,7 @@ if [ -n "$ALL_REGIONS" ]; then
     export_region "$REG"
     echo ""
   done
+  if [ "$SKIPPED" -gt 0 ]; then echo "  Skipped $SKIPPED empty regions"; fi
 else
   CURRENT_OUTDIR="$OUTDIR"
   export_region "$REGION"
