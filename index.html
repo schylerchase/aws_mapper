@@ -2270,7 +2270,7 @@ function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim(
 function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
-function _closeAllDashboards(except){var ids=['compDash','fwDash','budrDash','diffDash','notesPanel'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')})}
+function _closeAllDashboards(except){var ids=['compDash','fwDash','budrDash','diffDash','notesPanel','rptBuilder','govDash'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')})}
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
 const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
 const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
@@ -6937,7 +6937,7 @@ function bindZoomButtons(){
     const W=document.querySelector('.main').clientWidth;
     const H=document.querySelector('.main').clientHeight;
     const pad=_isMobile()?.82:.92;
-    const s=pad/Math.max(b.width/W,b.height/H);
+    const s=Math.max(0.25,pad/Math.max(b.width/W,b.height/H));
     svg.transition().duration(500).call(zB.transform,
       d3.zoomIdentity.translate(W/2-s*(b.x+b.width/2),H/2-s*(b.y+b.height/2)).scale(s));
   });
@@ -8550,6 +8550,7 @@ function renderLandingZoneMap(ctx){
   // Add clickable hitareas on all LZ route paths
   const lzHitL=g.insert('g','.lz-overlay').attr('class','lz-hitareas');
   lzAllPaths.forEach(e=>{
+    if(!e.p) return;
     const d=e.p.attr('d');
     if(!d) return;
     // Determine target: single VPC -> that VPC, shared -> 'tgw', gwId -> owning VPC
@@ -8567,6 +8568,7 @@ function renderLandingZoneMap(ctx){
         ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
         const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
         lzAllPaths.forEach(x=>{
+          if(!x.p) return;
           const pd=x.p.attr('d'),ps=x.p.attr('stroke');
           const pp=lzOlL.append('path').attr('d',pd).style('stroke',ps);
           Object.entries(olS).forEach(([k,v])=>pp.style(k,v));
@@ -8583,7 +8585,7 @@ function renderLandingZoneMap(ctx){
         lzOlL.selectAll('*').remove();lzRouteG.style('opacity','0.06');g.classed('hl-active',true);
         ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
         const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
-        lzAllPaths.forEach(x=>{const pd=x.p.attr('d'),ps=x.p.attr('stroke');const pp=lzOlL.append('path').attr('d',pd).style('stroke',ps);Object.entries(olS).forEach(([k,v])=>pp.style(k,v))});
+        lzAllPaths.forEach(x=>{if(!x.p)return;const pd=x.p.attr('d'),ps=x.p.attr('stroke');const pp=lzOlL.append('path').attr('d',pd).style('stroke',ps);Object.entries(olS).forEach(([k,v])=>pp.style(k,v))});
       } else {
         lzHlVpc(hitKey);
       }
@@ -8868,12 +8870,12 @@ function renderLandingZoneMap(ctx){
       const col=gw.type==='IGW'?'var(--igw-color)':'var(--nat-color)';
       const branchY=firstGwY+i*55;
       const branchPath=`M${trunkX},${branchY} L${hubGx-GR},${branchY}`;
-      lzStructG.append('path')
+      const pBranch=lzStructG.append('path')
         .attr('class','route-trunk animated')
         .attr('d',branchPath)
         .attr('stroke',col);
       // Still track for highlight system
-      lzAllPaths.push({p:null,vids:[hubVpc.VpcId],gwId:gw.id});
+      lzAllPaths.push({p:pBranch,vids:[hubVpc.VpcId],gwId:gw.id});
       lzVpcRoutes.get(hubVpc.VpcId).push({d:branchPath,stroke:col});
     });
     // Add NET-to-trunk paths to hub VPC routes so they light up on highlight
@@ -11109,7 +11111,7 @@ function _renderMapInner(){
         rG.append('rect').attr('x',rx).attr('y',ry).attr('width',24).attr('height',iconH)
           .attr('rx',3).attr('fill',res.col).attr('fill-opacity',.3);
         rG.append('text').attr('x',rx+12).attr('y',ry+13).attr('text-anchor','middle')
-          .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('font-weight','700')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(7.5px * var(--txt-scale,1))').attr('font-weight','700')
           .attr('fill',res.col).text(res.type);
         // clip for text overflow
         const nameClip='rc-'+sl.sub.SubnetId.replace(/[^a-zA-Z0-9]/g,'')+'-'+ri;
@@ -11117,12 +11119,12 @@ function _renderMapInner(){
           .attr('x',rx+26).attr('y',ry).attr('width',iconW-28).attr('height',iconH);
         // name
         rG.append('text').attr('x',rx+28).attr('y',ry+10).attr('clip-path',`url(#${nameClip})`)
-          .attr('font-family','IBM Plex Mono').style('font-size','calc(6.5px * var(--txt-scale,1))').attr('font-weight','600')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','600')
           .attr('fill','var(--text-primary)').text(res.name);
         // IP
         if(res.ip){
           rG.append('text').attr('x',rx+28).attr('y',ry+20).attr('clip-path',`url(#${nameClip})`)
-            .attr('font-family','IBM Plex Mono').style('font-size','calc(5.5px * var(--txt-scale,1))')
+            .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))')
             .attr('fill','var(--text-muted)').text(res.ip);
         }
         // state dot
@@ -11138,10 +11140,10 @@ function _renderMapInner(){
             rG.append('rect').attr('x',cx2).attr('y',cy2).attr('width',cw).attr('height',ch2)
               .attr('rx',2).attr('fill',ch.bg).attr('stroke',ch.col).attr('stroke-width',.4);
             rG.append('text').attr('x',cx2+2).attr('y',cy2+ch2/2+2)
-              .attr('font-family','IBM Plex Mono').style('font-size','calc(4.5px * var(--txt-scale,1))').attr('font-weight','600')
+              .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))').attr('font-weight','600')
               .attr('fill',ch.col).text(ch.type);
             rG.append('text').attr('x',cx2+19).attr('y',cy2+ch2/2+2).attr('clip-path',`url(#${nameClip})`)
-              .attr('font-family','IBM Plex Mono').style('font-size','calc(4.5px * var(--txt-scale,1))')
+              .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))')
               .attr('fill','rgba(255,255,255,.5)').text(ch.name+(ch.detail?' '+ch.detail:''));
           });
         }
@@ -12024,7 +12026,7 @@ document.getElementById('searchInput').addEventListener('input',function(){
   (_rlCtx.lambdaFns||[]).forEach(f=>{if(f.FunctionName.toLowerCase().includes(q))add('Lambda',f.FunctionName,f.FunctionName,f.Runtime)});
   (_rlCtx.sgs||[]).forEach(s=>{const n=s.GroupName||s.GroupId;if((n+' '+s.GroupId).toLowerCase().includes(q))add('SG',n,s.GroupId,s.VpcId)});
   _getAllNotes().forEach(n=>{if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))add('Note',n.text.slice(0,50),n.resourceId,n.category)});
-  let h='';matches.forEach(m=>{h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span><span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
+  let h='';matches.forEach(m=>{h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\');_openDetailForSearch(\''+esc(m.type)+'\',\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span><span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
   if(!matches.length)h='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">No results</div>';
   res.innerHTML=h;
 });
@@ -12063,6 +12065,156 @@ function _highlightElement(el,bb){
     .transition().duration(400).attr('stroke-width',5).attr('stroke','#06b6d4')
     .transition().duration(1500).attr('opacity',0)
     .on('end',function(){d3.select(this).remove()});
+}
+
+// === SEARCH → DETAIL PANEL DISPATCH ===
+function _openDetailForSearch(type,id){
+  if(!_rlCtx) return;
+  const dp=document.getElementById('detailPanel');
+  const dpTitle=document.getElementById('dpTitle');
+  const dpSub=document.getElementById('dpSub');
+  const dpBody=document.getElementById('dpBody');
+  _navStack=[];_lastRlType=null;
+
+  if(type==='Subnet'){
+    const sub=(_rlCtx.subnets||[]).find(s=>s.SubnetId===id);
+    if(sub){
+      openSubnetPanel(sub,sub.VpcId,{pubSubs:_rlCtx.pubSubs,subRT:_rlCtx.subRT,subNacl:_rlCtx.subNacl,instBySub:_rlCtx.instBySub,eniBySub:_rlCtx.eniBySub,albBySub:_rlCtx.albBySub,sgByVpc:_rlCtx.sgByVpc,volByInst:_rlCtx.volByInst,enis:_rlCtx.enis,snapByVol:_rlCtx.snapByVol,tgByAlb:_rlCtx.tgByAlb,wafByAlb:_rlCtx.wafByAlb,rdsBySub:_rlCtx.rdsBySub,ecsBySub:_rlCtx.ecsBySub,lambdaBySub:_rlCtx.lambdaBySub,ecacheByVpc:_rlCtx.ecacheByVpc,redshiftByVpc:_rlCtx.redshiftByVpc,cfByAlb:_rlCtx.cfByAlb});
+      return;
+    }
+  }
+  if(type==='IGW'||type==='NAT'||type==='VGW'||type==='VPCE'||type==='TGW'||type==='PCX'){
+    const gwType=type;
+    openGatewayPanel(id,gwType,{gwNames:gwNames,igws:_rlCtx.igws,nats:_rlCtx.nats,vpns:_rlCtx.vpns,vpces:_rlCtx.vpces,peerings:_rlCtx.peerings,rts:_rlCtx.rts,subnets:_rlCtx.subnets,subRT:_rlCtx.subRT,pubSubs:_rlCtx.pubSubs,vpcs:_rlCtx.vpcs,tgwAttachments:_rlCtx.tgwAttachments||[]});
+    return;
+  }
+
+  // Generic detail panel for VPC, EC2, RDS, Lambda, SG, Note
+  let h='';
+  if(type==='VPC'){
+    const vpc=(_rlCtx.vpcs||[]).find(v=>v.VpcId===id);
+    if(!vpc) return;
+    const nm=gn(vpc,vpc.VpcId);
+    const subs=(_rlCtx.subnets||[]).filter(s=>s.VpcId===id);
+    const pubCount=subs.filter(s=>_rlCtx.pubSubs&&_rlCtx.pubSubs.has(s.SubnetId)).length;
+    const gws=[];
+    (_rlCtx.igws||[]).forEach(g=>{if((g.Attachments||[]).some(a=>a.VpcId===id))gws.push({type:'IGW',id:g.InternetGatewayId,name:gn(g,g.InternetGatewayId)})});
+    (_rlCtx.nats||[]).forEach(g=>{if(g.VpcId===id)gws.push({type:'NAT',id:g.NatGatewayId,name:gn(g,g.NatGatewayId)})});
+    const sgs=(_rlCtx.sgs||[]).filter(s=>s.VpcId===id);
+    const insts=(_rlCtx.instances||[]).filter(i=>subs.some(s=>s.SubnetId===i.SubnetId));
+    dpTitle.innerHTML=_escHtml(nm);
+    dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(vpc.CidrBlock||'');
+    h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Overview</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
+    h+='<table class="dp-kv"><tr><td>CIDR</td><td>'+esc(vpc.CidrBlock||'—')+'</td></tr>';
+    h+='<tr><td>Subnets</td><td>'+subs.length+' ('+pubCount+' public, '+(subs.length-pubCount)+' private)</td></tr>';
+    h+='<tr><td>Gateways</td><td>'+gws.length+'</td></tr>';
+    h+='<tr><td>Security Groups</td><td>'+sgs.length+'</td></tr>';
+    h+='<tr><td>Instances</td><td>'+insts.length+'</td></tr>';
+    h+='<tr><td>State</td><td>'+esc(vpc.State||'—')+'</td></tr></table></div></div>';
+    if(subs.length){
+      h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Subnets</span><span><span class="dp-sec-count">'+subs.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body">';
+      subs.forEach(s=>{
+        const sn=gn(s,s.SubnetId);const isPub=_rlCtx.pubSubs&&_rlCtx.pubSubs.has(s.SubnetId);
+        h+='<div style="padding:4px 0;cursor:pointer;color:var(--accent-cyan);font-size:calc(11px * var(--dp-txt-scale,1))" onclick="_openDetailForSearch(\'Subnet\',\''+esc(s.SubnetId)+'\');_zoomToElement(\''+esc(s.SubnetId)+'\')">'+_escHtml(sn)+' <span style="color:var(--text-muted);font-size:9px">'+(isPub?'PUB':'PRV')+' '+esc(s.CidrBlock||'')+'</span></div>';
+      });
+      h+='</div></div>';
+    }
+    if(gws.length){
+      h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Gateways</span><span><span class="dp-sec-count">'+gws.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body">';
+      gws.forEach(g=>{
+        h+='<div style="padding:4px 0;cursor:pointer;color:'+gcv(g.type)+';font-size:calc(11px * var(--dp-txt-scale,1))" onclick="_openDetailForSearch(\''+g.type+'\',\''+esc(g.id)+'\')">'+g.type+': '+_escHtml(g.name)+'</div>';
+      });
+      h+='</div></div>';
+    }
+  } else if(type==='EC2'){
+    const inst=(_rlCtx.instances||[]).find(i=>i.InstanceId===id);
+    if(!inst) return;
+    const nm=gn(inst,inst.InstanceId);
+    dpTitle.innerHTML=_escHtml(nm);
+    dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(inst.InstanceType||'');
+    h+='<table class="dp-kv">';
+    h+='<tr><td>Type</td><td>'+esc(inst.InstanceType||'—')+'</td></tr>';
+    h+='<tr><td>State</td><td>'+esc((inst.State||{}).Name||'—')+'</td></tr>';
+    h+='<tr><td>AZ</td><td>'+esc(inst.Placement&&inst.Placement.AvailabilityZone||'—')+'</td></tr>';
+    h+='<tr><td>Private IP</td><td>'+esc(inst.PrivateIpAddress||'—')+'</td></tr>';
+    h+='<tr><td>Public IP</td><td>'+esc(inst.PublicIpAddress||'—')+'</td></tr>';
+    h+='<tr><td>Subnet</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'Subnet\',\''+esc(inst.SubnetId)+'\');_zoomToElement(\''+esc(inst.SubnetId)+'\')">'+esc(inst.SubnetId||'—')+'</span></td></tr>';
+    h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(inst.VpcId)+'\')">'+esc(inst.VpcId||'—')+'</span></td></tr>';
+    h+='<tr><td>AMI</td><td>'+esc(inst.ImageId||'—')+'</td></tr>';
+    h+='<tr><td>Key</td><td>'+esc(inst.KeyName||'—')+'</td></tr>';
+    const sgIds=(inst.SecurityGroups||[]).map(s=>s.GroupId);
+    if(sgIds.length){h+='<tr><td>SGs</td><td>'+sgIds.map(s=>'<span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'SG\',\''+esc(s)+'\')">'+esc(s)+'</span>').join(', ')+'</td></tr>';}
+    h+='</table>';
+  } else if(type==='RDS'){
+    const db=(_rlCtx.rdsInstances||[]).find(d=>d.DBInstanceIdentifier===id);
+    if(!db) return;
+    dpTitle.innerHTML=_escHtml(db.DBInstanceIdentifier);
+    dpSub.innerHTML=esc(db.Engine||'')+' &middot; '+esc(db.DBInstanceClass||'');
+    h+='<table class="dp-kv">';
+    h+='<tr><td>Engine</td><td>'+esc(db.Engine||'—')+' '+esc(db.EngineVersion||'')+'</td></tr>';
+    h+='<tr><td>Class</td><td>'+esc(db.DBInstanceClass||'—')+'</td></tr>';
+    h+='<tr><td>Status</td><td>'+esc(db.DBInstanceStatus||'—')+'</td></tr>';
+    h+='<tr><td>Multi-AZ</td><td>'+(db.MultiAZ?'Yes':'No')+'</td></tr>';
+    h+='<tr><td>Storage</td><td>'+esc(db.AllocatedStorage||'—')+' GB '+esc(db.StorageType||'')+'</td></tr>';
+    h+='<tr><td>Endpoint</td><td>'+esc(db.Endpoint&&db.Endpoint.Address||'—')+'</td></tr>';
+    h+='<tr><td>Encrypted</td><td>'+(db.StorageEncrypted?'Yes':'No')+'</td></tr>';
+    h+='<tr><td>Backup</td><td>'+esc(db.BackupRetentionPeriod||0)+' days</td></tr>';
+    h+='<tr><td>Del Protection</td><td>'+(db.DeletionProtection?'Yes':'No')+'</td></tr>';
+    h+='</table>';
+  } else if(type==='Lambda'){
+    const fn=(_rlCtx.lambdaFns||[]).find(f=>f.FunctionName===id);
+    if(!fn) return;
+    dpTitle.innerHTML=_escHtml(fn.FunctionName);
+    dpSub.innerHTML=esc(fn.Runtime||'')+ ' &middot; '+esc(fn.Handler||'');
+    h+='<table class="dp-kv">';
+    h+='<tr><td>Runtime</td><td>'+esc(fn.Runtime||'—')+'</td></tr>';
+    h+='<tr><td>Memory</td><td>'+esc(fn.MemorySize||'—')+' MB</td></tr>';
+    h+='<tr><td>Timeout</td><td>'+esc(fn.Timeout||'—')+' sec</td></tr>';
+    h+='<tr><td>Handler</td><td>'+esc(fn.Handler||'—')+'</td></tr>';
+    h+='<tr><td>Code Size</td><td>'+((fn.CodeSize||0)/1024).toFixed(1)+' KB</td></tr>';
+    h+='<tr><td>Last Modified</td><td>'+esc(fn.LastModified||'—')+'</td></tr>';
+    const vpcCfg=fn.VpcConfig;
+    if(vpcCfg&&vpcCfg.VpcId){
+      h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(vpcCfg.VpcId)+'\')">'+esc(vpcCfg.VpcId)+'</span></td></tr>';
+      h+='<tr><td>Subnets</td><td>'+(vpcCfg.SubnetIds||[]).map(s=>'<span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'Subnet\',\''+esc(s)+'\');_zoomToElement(\''+esc(s)+'\')">'+esc(s)+'</span>').join(', ')+'</td></tr>';
+    }
+    h+='</table>';
+  } else if(type==='SG'){
+    const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===id);
+    if(!sg) return;
+    dpTitle.innerHTML=_escHtml(sg.GroupName||sg.GroupId);
+    dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(sg.VpcId||'');
+    h+='<table class="dp-kv"><tr><td>Description</td><td>'+esc(sg.Description||'—')+'</td></tr>';
+    h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(sg.VpcId)+'\')">'+esc(sg.VpcId||'—')+'</span></td></tr></table>';
+    const inRules=sg.IpPermissions||[];const outRules=sg.IpPermissionsEgress||[];
+    if(inRules.length){
+      h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Inbound Rules</span><span><span class="dp-sec-count">'+inRules.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body"><table class="dp-tbl"><tr><th>Proto</th><th>Port</th><th>Source</th></tr>';
+      inRules.forEach(r=>{
+        const proto=r.IpProtocol==='-1'?'All':r.IpProtocol;
+        const port=r.FromPort===r.ToPort?(r.FromPort===-1?'All':r.FromPort):r.FromPort+'-'+r.ToPort;
+        const src=(r.IpRanges||[]).map(x=>x.CidrIp).concat((r.UserIdGroupPairs||[]).map(x=>x.GroupId)).join(', ')||'—';
+        h+='<tr><td>'+esc(proto)+'</td><td>'+esc(port)+'</td><td>'+esc(src)+'</td></tr>';
+      });
+      h+='</table></div></div>';
+    }
+    if(outRules.length){
+      h+='<div class="dp-section"><div class="dp-sec-hdr collapsed" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Outbound Rules</span><span><span class="dp-sec-count">'+outRules.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body hidden"><table class="dp-tbl"><tr><th>Proto</th><th>Port</th><th>Dest</th></tr>';
+      outRules.forEach(r=>{
+        const proto=r.IpProtocol==='-1'?'All':r.IpProtocol;
+        const port=r.FromPort===r.ToPort?(r.FromPort===-1?'All':r.FromPort):r.FromPort+'-'+r.ToPort;
+        const dst=(r.IpRanges||[]).map(x=>x.CidrIp).concat((r.UserIdGroupPairs||[]).map(x=>x.GroupId)).join(', ')||'—';
+        h+='<tr><td>'+esc(proto)+'</td><td>'+esc(port)+'</td><td>'+esc(dst)+'</td></tr>';
+      });
+      h+='</table></div></div>';
+    }
+  } else if(type==='Note'){
+    // For notes, just zoom — no extra panel
+    return;
+  } else {
+    return; // Unknown type, no panel
+  }
+  dpBody.innerHTML=h;
+  dp.classList.add('open');
 }
 
 // === TIME-SERIES SNAPSHOTS ===
@@ -12768,9 +12920,10 @@ function _remergeAndRender(){
         }else{mergedTA[id]=typeof val==='string'?val:JSON.stringify(val,null,2)}
       });
     });
-    // Apply merged textareas
+    // Apply merged textareas — clear first to avoid stale data from hidden accounts
     document.querySelectorAll('.ji').forEach(el=>{
       if(mergedTA[el.id]){el.value=mergedTA[el.id];el.className='ji valid'}
+      else{el.value='';el.className='ji'}
     });
     _renderMergeBannerChips();
     renderMap(()=>{_autoSaveSession()});
@@ -17991,7 +18144,7 @@ document.getElementById('budrExportXLSX').addEventListener('click',async functio
 
 // === GOVERNANCE DASHBOARD ===
 function _closeAllDashboardsExcept(keep){
-  ['compDash','budrDash','rptBuilder','govDash'].forEach(function(id){
+  ['compDash','fwDash','budrDash','diffDash','notesPanel','rptBuilder','govDash'].forEach(function(id){
     if(id!==keep){var el=document.getElementById(id);if(el)el.classList.remove('open')}
   });
 }
@@ -18585,6 +18738,7 @@ document.querySelectorAll('#govDashNav .dash-nav-btn').forEach(function(btn){
 
 // === REPORT BUILDER ===
 function openReportBuilder(){
+  _closeAllDashboards('rptBuilder');
   var rb=document.getElementById('rptBuilder');
   document.getElementById('rptDate').value=_rptState.date;
   if(_rptState.title)document.getElementById('rptTitle').value=_rptState.title;
