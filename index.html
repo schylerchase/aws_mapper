@@ -309,8 +309,6 @@
   .fw-fp-visual{flex:1;overflow-y:auto;padding:8px 12px;border-right:1px solid var(--border)}
   .fw-fp-cli{flex:1;overflow-y:auto;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent-green);white-space:pre-wrap;background:rgba(0,0,0,.3)}
   /* === FIREWALL DASHBOARD === */
-  .fw-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
-  .fw-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .fw-dash-hdr{gap:16px}
   .fw-dash-pills{display:flex;gap:6px}
   .fw-dash-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);color:var(--text-muted)}
@@ -446,8 +444,6 @@
   /* Design highlight pulse */
   @keyframes designHlPulse{0%{opacity:.8;stroke-width:3}50%{opacity:.3;stroke-width:1}100%{opacity:.8;stroke-width:3}}
   /* Full-screen compliance dashboard */
-  .comp-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
-  .comp-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .comp-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .comp-dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--accent-cyan);margin:0}
   .comp-dash-stats{display:flex;gap:8px;padding:10px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
@@ -479,8 +475,6 @@
   .comp-dash-footer button:hover{background:rgba(96,165,250,.1);border-color:var(--accent-cyan)}
   .comp-dash-footer .muted-count{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
   /* === BUDR DASHBOARD === */
-  .budr-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
-  .budr-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .budr-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .budr-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#10b981;margin:0}
   .budr-pills{display:flex;gap:6px}
@@ -523,6 +517,11 @@
   .budr-signal .sig-icon.good{color:#10b981}
   .budr-signal .sig-icon.bad{color:#ef4444}
   .budr-signal .sig-icon.warn{color:#f59e0b}
+  .budr-signals{display:flex;flex-wrap:wrap;gap:4px;padding:6px 0}
+  .budr-sig-badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:8px;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+  .budr-sig-badge.good{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+  .budr-sig-badge.bad{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+  .budr-sig-badge.warn{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
   .budr-findings{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.04)}
   .budr-finding{display:flex;gap:8px;padding:4px 0;font-size:11px;font-family:'IBM Plex Mono',monospace}
   .budr-finding .bf-sev{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;flex-shrink:0}
@@ -538,8 +537,6 @@
   #budrExportXLSX{background:rgba(16,185,129,.15);border-color:#10b981;font-weight:600}
 
   /* === GOVERNANCE DASHBOARD === */
-  .gov-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
-  .gov-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .gov-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .gov-hdr h2{color:var(--accent-purple)}
   .gov-body{flex:1;overflow-y:auto;padding:20px;background:var(--bg-primary)}
@@ -634,8 +631,6 @@
   .gov-preview-delta .same{color:var(--text-muted)}
 
   /* === REPORT BUILDER === */
-  .rpt-builder{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
-  .rpt-builder.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .rpt-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .rpt-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#f59e0b;margin:0}
   .rpt-main{flex:1;display:flex;overflow:hidden}
@@ -1453,6 +1448,21 @@
   .dash-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;cursor:pointer;transition:all .15s}
   .dash-footer button:hover{background:rgba(96,165,250,.08);border-color:rgba(96,165,250,.3)}
   .dash-footer .dash-footer-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
+  /* === UNIFIED DASHBOARD SHELL === */
+  .udash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;background:var(--bg-primary);display:none;flex-direction:column;font-family:'IBM Plex Mono',monospace}
+  .udash.open{display:flex}
+  .udash-hdr{display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-secondary);padding:0 12px;flex-shrink:0;height:42px}
+  .udash-tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+  .udash-tabs::-webkit-scrollbar{display:none}
+  .udash-tab{padding:10px 14px;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border:none;background:transparent;color:var(--text-muted);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:5px}
+  .udash-tab:hover{color:var(--text-secondary);background:rgba(255,255,255,.03)}
+  .udash-tab.active{color:var(--tab-color,var(--accent-cyan));border-bottom-color:var(--tab-color,var(--accent-cyan));font-weight:600}
+  .udash-toolbar{flex-shrink:0;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary);min-height:0}
+  .udash-toolbar:empty{display:none}
+  .udash-body{flex:1;overflow-y:auto;padding:16px;background:var(--bg-primary)}
+  .udash-body.rpt-layout{display:flex;gap:0;padding:0;overflow:hidden}
+  .udash-footer{flex-shrink:0;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);min-height:0}
+  .udash-footer:empty{display:none}
   /* Per-dashboard hover color overrides (must come after .dash-footer) */
   .gov-footer button:hover{background:rgba(139,92,246,.1);border-color:var(--accent-purple)}
   .rpt-footer button:hover{background:rgba(245,158,11,.1);border-color:#f59e0b}
@@ -1927,137 +1937,14 @@
       </div>
     </div>
   </div>
-  <div class="comp-dash" id="compDash">
-    <div class="comp-dash-hdr dash-hdr">
-      <h2 style="color:var(--accent-cyan)">Compliance</h2>
-      <nav class="dash-nav" id="compDashNav"></nav>
-      <div id="compSevPills" style="display:flex;gap:6px"></div>
-      <div class="comp-view-toggle" id="compViewToggle">
-        <button class="comp-view-btn active" data-view="action">Action Plan</button>
-        <button class="comp-view-btn" data-view="table">Table</button>
-      </div>
-      <button class="dash-close" id="compDashClose">Close <kbd>Esc</kbd></button>
+  <div id="udash" class="udash">
+    <div class="udash-hdr">
+      <div id="udashTabs" class="udash-tabs"></div>
+      <button id="udashClose" class="dash-close" title="Close (Esc)">&times;</button>
     </div>
-    <div class="comp-toolbar dash-toolbar" id="compToolbar">
-      <label>Search</label>
-      <input id="compSearch" type="text" placeholder="Filter by resource, message, control...">
-      <label>Framework</label>
-      <select id="compFwFilter"><option value="all">All</option><option value="CIS">CIS</option><option value="WAF">WAF</option><option value="IAM">IAM</option><option value="ARCH">Best Practices</option><option value="SOC2">SOC2</option><option value="PCI">PCI DSS 4</option><option value="BUDR">BUDR</option></select>
-
-      <label>Sort</label>
-      <select id="compSort"><option value="severity">Severity</option><option value="framework">Framework</option><option value="control">Control</option><option value="resource">Resource</option></select>
-      <label style="margin-left:12px"><input type="checkbox" id="compShowMuted" style="margin-right:4px">Show muted</label>
-      <button id="compToggleSummary" style="margin-left:12px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:4px;color:var(--accent-cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;cursor:pointer">Executive Summary</button>
-    </div>
-    <div id="compExecSummary" style="display:none;padding:16px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);overflow-y:auto;max-height:45vh"></div>
-    <div class="comp-body" id="compBody"></div>
-    <div class="comp-dash-footer dash-footer" id="compFooter">
-      <button onclick="exportPolicies(_complianceFindings,'cli')">Remediation CLI</button>
-      <button onclick="exportPolicies(_complianceFindings,'config')">Export: AWS Config</button>
-      <button onclick="exportPolicies(_complianceFindings,'rego')">Export: OPA Rego</button>
-      <button onclick="exportPolicies(_complianceFindings,'checkov')">Export: Checkov</button>
-      <button onclick="exportCheckovCfn()">Checkov: CFn Scan</button>
-      <button onclick="_openCompExportModal()">Export Report</button>
-      <span class="dash-footer-meta" id="compMutedCount"></span>
-    </div>
-  </div>
-  <div class="budr-dash" id="budrDash">
-    <div class="budr-hdr dash-hdr">
-      <h2 style="color:#10b981">Backup &amp; DR</h2>
-      <nav class="dash-nav" id="budrDashNav"></nav>
-      <div class="budr-pills" id="budrPills"></div>
-      <button class="dash-close" id="budrClose">Close <kbd>Esc</kbd></button>
-    </div>
-    <div class="budr-toolbar dash-toolbar" id="budrToolbar">
-      <label>Search</label>
-      <input id="budrSearch" type="text" placeholder="Filter by resource name, type, ID...">
-      <label>Sort</label>
-      <select id="budrSort"><option value="tier">Tier</option><option value="name">Name</option><option value="type">Type</option></select>
-    </div>
-    <div class="budr-body" id="budrBody"></div>
-    <div class="budr-footer dash-footer" id="budrFooter">
-      <button id="budrExportCSV">Export CSV</button>
-      <button id="budrExportJSON">Export JSON</button>
-      <button id="budrExportXLSX">Export XLSX</button>
-    </div>
-  </div>
-  <div class="gov-dash" id="govDash">
-    <div class="gov-hdr dash-hdr">
-      <h2 style="color:#8b5cf6">Governance</h2>
-      <nav class="dash-nav" id="govDashNav">
-        <button class="dash-nav-btn active" data-gov-tab="classification"><span class="dn-dot" style="background:#8b5cf6"></span>Asset Classification</button>
-        <button class="dash-nav-btn" data-gov-tab="iam"><span class="dn-dot" style="background:#8b5cf6"></span>IAM Review</button>
-      </nav>
-      <button class="dash-close" id="govDashClose">Close <kbd>Esc</kbd></button>
-    </div>
-    <div class="gov-toolbar dash-toolbar" id="govToolbar"></div>
-    <div class="gov-body" id="govBody"></div>
-    <div class="gov-footer dash-footer" id="govFooter"></div>
-  </div>
-  <div class="rpt-builder" id="rptBuilder">
-    <div class="rpt-hdr dash-hdr">
-      <h2 style="color:#f59e0b">Reports</h2>
-      <nav class="dash-nav" id="rptDashNav"></nav>
-      <button class="dash-close" id="rptClose">Close <kbd>Esc</kbd></button>
-    </div>
-    <div class="rpt-main">
-      <div class="rpt-picker">
-        <div class="rpt-presets" id="rptPresets"></div>
-        <div class="rpt-meta">
-          <label>Report Title</label>
-          <input type="text" id="rptTitle" value="AWS Infrastructure Assessment">
-          <label>Author / Organization</label>
-          <input type="text" id="rptAuthor" placeholder="Your name or org">
-          <label>Date</label>
-          <input type="date" id="rptDate">
-          <label>Company Logo <span style="opacity:.5">(optional)</span></label>
-          <div class="rpt-logo-upload">
-            <input type="file" id="rptLogoInput" accept="image/png,image/jpeg,image/jpg" style="display:none">
-            <button type="button" id="rptLogoBtn" class="rpt-logo-btn">Upload Logo</button>
-            <button type="button" id="rptLogoClear" class="rpt-logo-clear" style="display:none">Clear</button>
-            <div id="rptLogoPreview" class="rpt-logo-preview" style="display:none"></div>
-          </div>
-        </div>
-        <div class="rpt-modules" id="rptModules"></div>
-      </div>
-      <div class="rpt-preview" id="rptPreview">
-        <div class="rpt-preview-frame">
-          <div class="rpt-preview-content" id="rptPreviewContent">
-            <p style="color:var(--text-muted);text-align:center;padding:60px 20px;font-family:'IBM Plex Mono',monospace">Toggle sections on the left to build your report</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="rpt-footer dash-footer">
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button id="rptExportHTML" class="rpt-generate">Generate HTML Report</button>
-        <button id="rptExportXLSX" class="rpt-generate" style="background:var(--accent-green,#10b981)">Export XLSX</button>
-      </div>
-      <div id="rptFooterStats" style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px"></div>
-    </div>
-  </div>
-  <div class="fw-dash" id="fwDash">
-    <div class="fw-dash-hdr dash-hdr">
-      <h2 style="color:#ef4444">Firewall</h2>
-      <nav class="dash-nav" id="fwDashNav"></nav>
-      <div class="fw-dash-pills" id="fwDashPills"></div>
-      <button class="dash-close" id="fwDashClose">Close <kbd>Esc</kbd></button>
-    </div>
-    <div class="fw-dash-toolbar dash-toolbar" id="fwDashToolbar">
-      <label>Search</label>
-      <input id="fwDashSearch" type="text" placeholder="Filter by name, ID, VPC...">
-      <label>VPC</label>
-      <select id="fwDashVpcFilter"><option value="all">All VPCs</option></select>
-      <label>Sort</label>
-      <select id="fwDashSort"><option value="type">Type</option><option value="name">Name</option><option value="vpc">VPC</option><option value="rules">Rules</option><option value="compliance">Compliance</option></select>
-      <label style="margin-left:12px"><input type="checkbox" id="fwDashEditsOnly" style="margin-right:4px">Edits only</label>
-    </div>
-    <div class="fw-dash-body" id="fwDashBody"></div>
-    <div class="fw-dash-footer dash-footer" id="fwDashFooter">
-      <button id="fwDashExportAll">Export All CLI</button>
-      <button id="fwDashResetAll">Reset All Edits</button>
-      <span class="dash-footer-meta" id="fwDashEditCount"></span>
-    </div>
+    <div id="udashToolbar" class="udash-toolbar"></div>
+    <div id="udashBody" class="udash-body"></div>
+    <div id="udashFooter" class="udash-footer"></div>
   </div>
   <div id="searchOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:90">
     <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5)" id="searchBackdrop"></div>
@@ -2270,7 +2157,7 @@ function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim(
 function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
-function _closeAllDashboards(except){var ids=['compDash','fwDash','budrDash','diffDash','notesPanel','rptBuilder','govDash'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')})}
+function _closeAllDashboards(except){var ids=['udash','diffDash','notesPanel'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')});if(except!=='udash')_udashTab=null}
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
 const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
 const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
@@ -3418,6 +3305,7 @@ const _BUDR_RTO_RPO={
   rds_multi_az:{rto:'~5 min',rpo:'~1 min',tier:'protected',strategy:'warm'},
   rds_single_backup:{rto:'~30 min',rpo:'backup interval',tier:'partial',strategy:'pilot'},
   rds_no_backup:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'},
+  rds_aurora:{rto:'<30s',rpo:'<5 min (PITR)',tier:'protected',strategy:'hot'},
   ec2_asg:{rto:'~3 min',rpo:'~0 (stateless)',tier:'protected',strategy:'warm'},
   ec2_ami_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial',strategy:'pilot'},
   ec2_standalone:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'},
@@ -3433,6 +3321,9 @@ const _BUDR_RTO_RPO={
   alb_multi_az:{rto:'~0',rpo:'N/A',tier:'protected',strategy:'hot'},
   alb_single_az:{rto:'~5 min',rpo:'N/A',tier:'partial',strategy:'warm'},
   s3:{rto:'~0',rpo:'~0',tier:'protected',strategy:'hot'},
+  s3_versioned:{rto:'~0',rpo:'0 (versioned)',tier:'protected',strategy:'hot'},
+  s3_unversioned:{rto:'~0',rpo:'Unrecoverable',tier:'at_risk',strategy:'cold'},
+  s3_mfa_delete:{rto:'~0',rpo:'0 (immutable)',tier:'protected',strategy:'hot'},
   ebs_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial',strategy:'pilot'},
   ebs_no_snap:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'}
 };
@@ -3443,20 +3334,26 @@ function runBUDRChecks(ctx){
   const gn=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
   // RDS
   (ctx.rdsInstances||[]).forEach(db=>{
+    if(db.ReadReplicaSourceDBInstanceIdentifier)return;
     const id=db.DBInstanceIdentifier;const name=id;
     const hasMultiAZ=!!db.MultiAZ;
     const hasBackup=(db.BackupRetentionPeriod||0)>0;
     const encrypted=!!db.StorageEncrypted;
     const isMicro=(db.DBInstanceClass||'').includes('.micro');
+    const hasPITR=!!db.LatestRestorableTime;
+    const isAurora=(db.Engine||'').startsWith('aurora');
     let profile,sev;
     if(hasMultiAZ&&hasBackup){profile=_BUDR_RTO_RPO.rds_multi_az;sev=null}
     else if(hasBackup){profile=_BUDR_RTO_RPO.rds_single_backup;sev=isMicro?null:'MEDIUM';
       f.push({severity:'MEDIUM',control:'BUDR-HA-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS not Multi-AZ — single point of failure',remediation:'Enable Multi-AZ for automatic failover'})}
     else{profile=_BUDR_RTO_RPO.rds_no_backup;sev='CRITICAL';
       f.push({severity:'CRITICAL',control:'BUDR-BAK-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS has no automated backups (retention=0)',remediation:'Set BackupRetentionPeriod to at least 7 days'})}
+    if(isAurora&&hasBackup){profile=_BUDR_RTO_RPO.rds_aurora}
     if(!hasMultiAZ&&!isMicro&&hasBackup)
       f.push({severity:'HIGH',control:'BUDR-DR-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS single-AZ with backups only — extended RTO on AZ failure',remediation:'Enable Multi-AZ or create cross-region read replica'});
-    assessments.push({type:'RDS',id,name,profile,signals:{MultiAZ:hasMultiAZ,Backup:hasBackup,Encrypted:encrypted}});
+    if(!db.DeletionProtection&&!isMicro)
+      f.push({severity:'MEDIUM',control:'BUDR-DEL-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS deletion protection disabled',remediation:'Enable DeletionProtection to prevent accidental deletion'});
+    assessments.push({type:'RDS',id,name,profile,signals:{MultiAZ:hasMultiAZ,Backup:hasBackup,Encrypted:encrypted,DeletionProtection:!!db.DeletionProtection,ReadReplicas:(db.ReadReplicaDBInstanceIdentifiers||[]).length,PITR:hasPITR}});
   });
   // EC2
   const asgInstIds=new Set();
@@ -3470,6 +3367,15 @@ function runBUDRChecks(ctx){
     const inASG=asgInstIds.has(id);
     const vols=(inst.BlockDeviceMappings||[]).map(b=>b.Ebs?.VolumeId).filter(Boolean);
     const hasSnaps=vols.some(vid=>{const s=(ctx.snapByVol||{})[vid];return s&&s.length>0});
+    let newestSnap=null;
+    vols.forEach(vid=>{const ss=(ctx.snapByVol||{})[vid]||[];ss.forEach(s=>{
+      const d=new Date(s.StartTime);if(!newestSnap||d>newestSnap)newestSnap=d;
+    })});
+    const snapAgeDays=newestSnap?Math.floor((Date.now()-newestSnap.getTime())/(864e5)):null;
+    if(hasSnaps&&snapAgeDays!==null&&snapAgeDays>7){
+      f.push({severity:'MEDIUM',control:'BUDR-AGE-1',framework:'BUDR',resource:id,resourceName:name,message:'Newest EBS snapshot is '+snapAgeDays+' days old (>7 days)',remediation:'Configure AWS Backup or DLM to take snapshots at least weekly'});
+    }
+    const encrypted=vols.some(vid=>{const vs=(ctx.volumes||[]).filter(v=>v.VolumeId===vid);return vs.length&&vs[0].Encrypted});
     let profile;
     if(inASG){profile=_BUDR_RTO_RPO.ec2_asg}
     else if(hasSnaps){profile=_BUDR_RTO_RPO.ec2_ami_snap;
@@ -3477,7 +3383,7 @@ function runBUDRChecks(ctx){
     else{profile=_BUDR_RTO_RPO.ec2_standalone;
       f.push({severity:'HIGH',control:'BUDR-BAK-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 standalone with no EBS snapshots — unrecoverable on failure',remediation:'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'});
       if(!inASG)f.push({severity:'MEDIUM',control:'BUDR-DR-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 has no disaster recovery strategy',remediation:'Create AMI, configure ASG with multi-AZ, or use EBS snapshots'})}
-    assessments.push({type:'EC2',id,name,profile,signals:{ASG:inASG,Snapshots:hasSnaps}});
+    assessments.push({type:'EC2',id,name,profile,signals:{ASG:inASG,Snapshots:hasSnaps,SnapAgeDays:snapAgeDays,Encrypted:encrypted}});
   });
   // ECS
   (ctx.ecsServices||[]).forEach(svc=>{
@@ -3499,13 +3405,14 @@ function runBUDRChecks(ctx){
     const id=ec.CacheClusterId;const name=id;
     const multiNode=(ec.NumCacheNodes||1)>1;
     const hasSnap=!!(ec.SnapshotWindow||ec.SnapshotRetentionLimit);
+    const autoFailover=ec.AutomaticFailover==='enabled';
     let profile;
     if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
     else if(hasSnap){profile=_BUDR_RTO_RPO.ecache_single;
       f.push({severity:'MEDIUM',control:'BUDR-HA-4',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node — failover requires manual intervention',remediation:'Add replicas or enable cluster mode for automatic failover'})}
     else{profile=_BUDR_RTO_RPO.ecache_no_snap;
       f.push({severity:'HIGH',control:'BUDR-BAK-3',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node with no snapshots — data loss risk',remediation:'Enable automatic snapshots and add read replicas'})}
-    assessments.push({type:'ElastiCache',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap}});
+    assessments.push({type:'ElastiCache',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap,AutoFailover:autoFailover}});
   });
   // Redshift
   (ctx.redshiftClusters||[]).forEach(rs=>{
@@ -3538,6 +3445,18 @@ function runBUDRChecks(ctx){
     if(snaps.length===0){
       f.push({severity:'MEDIUM',control:'BUDR-BAK-5',framework:'BUDR',resource:id,resourceName:name,message:'In-use EBS volume has no snapshots',remediation:'Create snapshot schedule via AWS Backup or DLM lifecycle policy'});
     }
+  });
+  // S3
+  (ctx.s3bk||[]).forEach(bk=>{
+    const id=bk.Name||'unknown';const name=id;
+    const versioned=bk.Versioning&&bk.Versioning.Status==='Enabled';
+    const mfaDel=bk.Versioning&&bk.Versioning.MFADelete==='Enabled';
+    let profile;
+    if(mfaDel){profile=_BUDR_RTO_RPO.s3_mfa_delete}
+    else if(versioned){profile=_BUDR_RTO_RPO.s3_versioned}
+    else{profile=_BUDR_RTO_RPO.s3_unversioned;
+      f.push({severity:'HIGH',control:'BUDR-S3-1',framework:'BUDR',resource:id,resourceName:name,message:'S3 bucket has no versioning \u2014 data loss risk',remediation:'Enable versioning to protect against accidental deletes and overwrites'})}
+    assessments.push({type:'S3',id,name,profile,signals:{Versioned:versioned,MFADelete:mfaDel}});
   });
   _budrFindings=f;
   _budrAssessments=assessments;
@@ -4680,42 +4599,96 @@ function _saveMuted(){try{localStorage.setItem(_MUTE_KEY,JSON.stringify([..._mut
 function _muteKey(f){return f.control+'::'+f.resource}
 function _isMuted(f){return _mutedFindings.has(_muteKey(f))}
 function _toggleMute(f){const k=_muteKey(f);if(_mutedFindings.has(k))_mutedFindings.delete(k);else _mutedFindings.add(k);_saveMuted()}
-let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,view:'action'};
-function renderCompliancePanel(findings){
-  _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,view:_compDashState.view||'action'};
-  var si=document.getElementById('compSearch');if(si)si.value='';
-  _closeAllDashboards('compDash');
-  var cd=document.getElementById('compDash');
-  cd.classList.add('open');
-  cd.offsetHeight;
-  const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
-  _renderCompDash(findings);
+let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:'action'};
+function renderCompliancePanel(findings,opts){
+  _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:_compDashState.view||'action'};
+  if(opts&&opts.search)_compDashState.search=opts.search;
+  if(opts&&opts.sevFilter)_compDashState.sevFilter=opts.sevFilter;
+  _compToolbarTab=null;
+  if(_udashTab==='compliance'){
+    _renderCompDash();
+  } else {
+    openUnifiedDash('compliance');
+  }
 }
-function _renderCompDash(findings){
-  var cb=document.getElementById('compBody');if(cb)cb.scrollTop=0;
-  const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
-  const crit=findings.filter(f=>f.severity==='CRITICAL').length;const high=findings.filter(f=>f.severity==='HIGH').length;
-  const med=findings.filter(f=>f.severity==='MEDIUM').length;const low=findings.filter(f=>f.severity==='LOW').length;
-  const mutedCount=findings.filter(f=>_isMuted(f)).length;
-  const pillBox=document.getElementById('compSevPills');pillBox.innerHTML='';
-  [{sev:'ALL',label:'All ('+findings.length+')'},{sev:'CRITICAL',label:'Critical ('+crit+')'},{sev:'HIGH',label:'High ('+high+')'},{sev:'MEDIUM',label:'Medium ('+med+')'},{sev:'LOW',label:'Low ('+low+')'}].forEach(p=>{
-    const btn=document.createElement('span');btn.className='comp-sev-pill'+(_compDashState.sevFilter===p.sev?' active':'');
+function _renderCompDash(){
+  var findings=_complianceFindings||[];
+  var tb=document.getElementById('udashToolbar');
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
+  body.scrollTop=0;
+  // Toolbar — only rebuild on tab switch
+  if(_compToolbarTab!=='compliance'){
+    _compToolbarTab='compliance';
+    var th='<div id="compSevPills" style="display:inline-flex;gap:4px;margin-right:12px"></div>';
+    th+='<input id="compSearch" type="text" placeholder="Search findings..." value="'+_escHtml(_compDashState.search||'')+'" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:4px 8px;width:180px">';
+    th+='<select id="compFwFilter" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:4px 6px">';
+    th+='<option value="all">All Frameworks</option>';
+    ['CIS','WAF','IAM','ARCH','SOC2','PCI','BUDR'].forEach(function(fw){th+='<option value="'+fw+'"'+(_compDashState.fwFilter===fw?' selected':'')+'>'+(_FW_LABELS[fw]||fw)+'</option>'});
+    th+='</select>';
+    th+='<select id="compSort" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:4px 6px">';
+    ['severity','framework','control','resource'].forEach(function(v){th+='<option value="'+v+'"'+(_compDashState.sort===v?' selected':'')+'>Sort: '+v.charAt(0).toUpperCase()+v.slice(1)+'</option>'});
+    th+='</select>';
+    th+='<label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer"><input type="checkbox" id="compShowMuted"'+(_compDashState.showMuted?' checked':'')+'>Show muted</label>';
+    th+='<div id="compViewToggle" style="display:inline-flex;gap:2px;margin-left:8px">';
+    th+='<button class="comp-view-btn'+(_compDashState.view==='action'?' active':'')+'" data-view="action" style="font-size:9px;padding:3px 8px;border:1px solid var(--border);border-radius:3px;cursor:pointer;font-family:\'IBM Plex Mono\',monospace;background:'+(_compDashState.view==='action'?'var(--accent-cyan)':'none')+';color:'+(_compDashState.view==='action'?'#000':'var(--text-muted)')+'">Action Plan</button>';
+    th+='<button class="comp-view-btn'+(_compDashState.view==='table'?' active':'')+'" data-view="table" style="font-size:9px;padding:3px 8px;border:1px solid var(--border);border-radius:3px;cursor:pointer;font-family:\'IBM Plex Mono\',monospace;background:'+(_compDashState.view==='table'?'var(--accent-cyan)':'none')+';color:'+(_compDashState.view==='table'?'#000':'var(--text-muted)')+'">Table</button>';
+    th+='</div>';
+    th+='<span id="compMutedCount" style="font-size:9px;color:var(--text-muted);margin-left:8px"></span>';
+    th+='<button id="compToggleSummary" style="margin-left:auto;background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">'+(_compDashState.execSummary?'Hide Summary':'Executive Summary')+'</button>';
+    th+='<button id="compExportBtn" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">Export</button>';
+    tb.innerHTML=th;
+    // Attach toolbar event listeners
+    document.getElementById('compSearch').addEventListener('input',function(){_compDashState.search=this.value;_renderCompDash()});
+    document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_renderCompDash()});
+    document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash()});
+    document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_renderCompDash()});
+    document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(btn){btn.addEventListener('click',function(){_compDashState.view=this.dataset.view;_renderCompDash()})});
+    document.getElementById('compToggleSummary').addEventListener('click',function(){
+      _compDashState.execSummary=!_compDashState.execSummary;
+      this.textContent=_compDashState.execSummary?'Hide Summary':'Executive Summary';
+      _renderCompDash();
+    });
+    document.getElementById('compExportBtn').addEventListener('click',function(){
+      _openCompExportModal();
+    });
+  }
+  // Update severity pills (always refresh counts)
+  var crit=findings.filter(function(f){return f.severity==='CRITICAL'}).length;
+  var high=findings.filter(function(f){return f.severity==='HIGH'}).length;
+  var med=findings.filter(function(f){return f.severity==='MEDIUM'}).length;
+  var low=findings.filter(function(f){return f.severity==='LOW'}).length;
+  var mutedCount=findings.filter(function(f){return _isMuted(f)}).length;
+  var pillBox=document.getElementById('compSevPills');if(pillBox){pillBox.innerHTML='';
+  [{sev:'ALL',label:'All ('+findings.length+')'},{sev:'CRITICAL',label:'Critical ('+crit+')'},{sev:'HIGH',label:'High ('+high+')'},{sev:'MEDIUM',label:'Medium ('+med+')'},{sev:'LOW',label:'Low ('+low+')'}].forEach(function(p){
+    var btn=document.createElement('span');btn.className='comp-sev-pill'+(_compDashState.sevFilter===p.sev?' active':'');
     btn.dataset.sev=p.sev;btn.textContent=p.label;
-    btn.addEventListener('click',()=>{_compDashState.sevFilter=p.sev;_renderCompDash(findings)});pillBox.appendChild(btn);
-  });
-  let filtered=[...findings];
-  if(_compDashState.sevFilter!=='ALL')filtered=filtered.filter(f=>f.severity===_compDashState.sevFilter);
-  if(_compDashState.fwFilter!=='all')filtered=filtered.filter(f=>f.framework===_compDashState.fwFilter);
-  if(_compDashState.search){const q=_compDashState.search.toLowerCase();filtered=filtered.filter(f=>(f.message||'').toLowerCase().includes(q)||(f.resource||'').toLowerCase().includes(q)||(f.resourceName||'').toLowerCase().includes(q)||(f.control||'').toLowerCase().includes(q)||(f.ckv||'').toLowerCase().includes(q)||(f.remediation||'').toLowerCase().includes(q))}
-  if(!_compDashState.showMuted)filtered=filtered.filter(f=>!_isMuted(f));
-  filtered.sort((a,b)=>{if(_compDashState.sort==='severity')return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
+    btn.addEventListener('click',function(){_compDashState.sevFilter=p.sev;_renderCompDash()});pillBox.appendChild(btn);
+  });}
   // Update view toggle active state
-  document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===_compDashState.view)});
-  document.getElementById('compMutedCount').textContent=mutedCount>0?mutedCount+' finding(s) muted':'';
-  if(_compDashState.view==='action'){_renderActionPlan(filtered,findings);return}
-  const body=document.getElementById('compBody');
-  let h='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody>';
-  filtered.forEach((f,i)=>{const muted=_isMuted(f);const ref=_complianceRefs[f.control];
+  document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(b){
+    var isActive=b.dataset.view===_compDashState.view;
+    b.classList.toggle('active',isActive);
+    b.style.background=isActive?'var(--accent-cyan)':'none';
+    b.style.color=isActive?'#000':'var(--text-muted)';
+  });
+  var mcEl=document.getElementById('compMutedCount');if(mcEl)mcEl.textContent=mutedCount>0?mutedCount+' finding(s) muted':'';
+  // Filter
+  var filtered=findings.slice();
+  if(_compDashState.sevFilter!=='ALL')filtered=filtered.filter(function(f){return f.severity===_compDashState.sevFilter});
+  if(_compDashState.fwFilter!=='all')filtered=filtered.filter(function(f){return f.framework===_compDashState.fwFilter});
+  if(_compDashState.search){var q=_compDashState.search.toLowerCase();filtered=filtered.filter(function(f){return(f.message||'').toLowerCase().indexOf(q)!==-1||(f.resource||'').toLowerCase().indexOf(q)!==-1||(f.resourceName||'').toLowerCase().indexOf(q)!==-1||(f.control||'').toLowerCase().indexOf(q)!==-1||(f.ckv||'').toLowerCase().indexOf(q)!==-1||(f.remediation||'').toLowerCase().indexOf(q)!==-1})}
+  if(!_compDashState.showMuted)filtered=filtered.filter(function(f){return !_isMuted(f)});
+  filtered.sort(function(a,b){if(_compDashState.sort==='severity')return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
+  // Executive summary
+  var summaryHtml='';
+  if(_compDashState.execSummary){summaryHtml='<div id="compExecSummary"></div>'}
+  // Action plan view
+  if(_compDashState.view==='action'){body.innerHTML=summaryHtml;if(_compDashState.execSummary)_renderExecSummary();_renderActionPlan(filtered,findings);return}
+  // Table view
+  var h=summaryHtml;
+  h+='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody>';
+  filtered.forEach(function(f,i){var muted=_isMuted(f);var ref=_complianceRefs[f.control];
     h+='<tr class="'+(muted?'muted':'')+'">';
     h+='<td><span class="sev-badge sev-'+f.severity+'">'+f.severity+'</span></td>';
     h+='<td style="color:var(--text-muted);font-size:10px">'+esc(f.framework)+'</td>';
@@ -4726,22 +4699,23 @@ function _renderCompDash(findings){
   });
   if(!filtered.length)h+='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">No findings match current filters</td></tr>';
   h+='</tbody></table>';body.innerHTML=h;
-  body.querySelectorAll('.comp-mute-btn').forEach(btn=>{btn.addEventListener('click',function(e){e.stopPropagation();_toggleMute(filtered[parseInt(this.dataset.fi)]);_renderCompDash(findings)})});
-  body.querySelectorAll('.comp-jump-btn').forEach(btn=>{btn.addEventListener('click',function(e){
-    e.stopPropagation();const rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-    document.getElementById('compDash').classList.remove('open');
-    setTimeout(()=>_zoomToElement(rid),250);
+  if(_compDashState.execSummary)_renderExecSummary();
+  body.querySelectorAll('.comp-mute-btn').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();_toggleMute(filtered[parseInt(this.dataset.fi)]);_renderCompDash()})});
+  body.querySelectorAll('.comp-jump-btn').forEach(function(btn){btn.addEventListener('click',function(e){
+    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
+    closeUnifiedDash();
+    setTimeout(function(){_zoomToElement(rid)},250);
   })});
-  body.querySelectorAll('th[data-col]').forEach(th=>{th.addEventListener('click',()=>{_compDashState.sort=th.dataset.col;_renderCompDash(findings)})});
-  body.querySelectorAll('.comp-res-link').forEach(a=>{a.addEventListener('click',function(e){
-    e.stopPropagation();const rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-    document.getElementById('compDash').classList.remove('open');
-    setTimeout(()=>_zoomToElement(rid),250);
+  body.querySelectorAll('th[data-col]').forEach(function(th){th.addEventListener('click',function(){_compDashState.sort=th.dataset.col;_renderCompDash()})});
+  body.querySelectorAll('.comp-res-link').forEach(function(a){a.addEventListener('click',function(e){
+    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
+    closeUnifiedDash();
+    setTimeout(function(){_zoomToElement(rid)},250);
   })});
 }
 function _renderActionPlan(filtered,allFindings){
   var tiers=_getTierGroups(filtered);
-  var body=document.getElementById('compBody');
+  var body=document.getElementById('udashBody');
   var sevColors={CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#3b82f6'};
   var h='';
   // Action summary cards
@@ -4808,7 +4782,7 @@ function _renderActionPlan(filtered,allFindings){
     h+='</div></div>';
   });
   if(!filtered.length)h+='<div class="comp-no-findings">No findings match current filters</div>';
-  body.innerHTML=h;
+  body.insertAdjacentHTML('beforeend',h);
   // Tier header collapse/expand
   body.querySelectorAll('.comp-tier-header').forEach(function(hdr){
     hdr.addEventListener('click',function(){
@@ -4824,7 +4798,7 @@ function _renderActionPlan(filtered,allFindings){
       if(e.target.classList.contains('rc-jump'))return;
       if(e.target.classList.contains('rc-clickable')){
         e.stopPropagation();var rid=e.target.dataset.rid;if(!rid||rid==='Multiple')return;
-        document.getElementById('compDash').classList.remove('open');
+        closeUnifiedDash();
         setTimeout(function(){_zoomToElement(rid)},250);return;
       }
       this.closest('.comp-resource-card').classList.toggle('expanded');
@@ -4835,7 +4809,7 @@ function _renderActionPlan(filtered,allFindings){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
       var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-      document.getElementById('compDash').classList.remove('open');
+      closeUnifiedDash();
       setTimeout(function(){_zoomToElement(rid)},250);
     });
   });
@@ -4845,7 +4819,7 @@ function _renderActionPlan(filtered,allFindings){
       e.stopPropagation();
       var t=parseInt(this.dataset.tier),ri=parseInt(this.dataset.ri),fi=parseInt(this.dataset.fi);
       var rg=tiers[t]&&tiers[t][ri];
-      if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_renderCompDash(allFindings)}
+      if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_renderCompDash()}
     });
   });
 }
@@ -12565,9 +12539,7 @@ function _renderComplianceBadges(){
     badge.append('text').attr('text-anchor','middle').attr('dy','2').text(data.count>9?'9+':data.count);
     badge.on('click',()=>{
       if(_complianceFindings.length){
-        _compDashState.search=rid;_compDashState.sevFilter='ALL';
-        renderCompliancePanel(_complianceFindings);
-        const si=document.getElementById('compSearch');if(si){si.value=rid;si.dispatchEvent(new Event('input'))}
+        renderCompliancePanel(_complianceFindings,{search:rid});
       }
     });
   });
@@ -12590,9 +12562,7 @@ function _renderComplianceBadges(){
     badge.append('text').attr('text-anchor','middle').attr('dy','2').text(data.count>9?'9+':data.count);
     badge.on('click',()=>{
       if(_complianceFindings.length){
-        _compDashState.search=vpcId;_compDashState.sevFilter='ALL';
-        renderCompliancePanel(_complianceFindings);
-        const si=document.getElementById('compSearch');if(si){si.value=vpcId;si.dispatchEvent(new Event('input'))}
+        renderCompliancePanel(_complianceFindings,{search:vpcId});
       }
     });
   });
@@ -13891,14 +13861,14 @@ function _fwHandleAction(e, sub, vpcId, lk){
   if(action==='undo'){
     _fwUndo();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
   if(action==='reset'){
     _fwResetAll();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -13972,7 +13942,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwEdits.push({type:'nacl',resourceId:dNaclId,direction:dDirection,action:'delete',rule:Object.assign({},dEntry),originalRule:Object.assign({},dEntry)});
     _fwRebuildLookups();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -14036,7 +14006,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwEdits.push(editObj);
     _fwRebuildLookups();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -14077,7 +14047,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwEdits.push({type:'sg',resourceId:dSgId,direction:dDir,action:'delete',rule:dRule,originalRule:dRule});
     _fwRebuildLookups();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -14140,7 +14110,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwEdits.push(sgEdit);
     _fwRebuildLookups();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -14176,7 +14146,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwEdits.push({type:'route',resourceId:dRtId,direction:'egress',action:'delete',rule:dRoute,originalRule:dRoute});
     _fwRebuildLookups();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -14226,7 +14196,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwEdits.push(rtEditObj);
     _fwRebuildLookups();
     if(sub && lk) openSubnetPanel(sub, vpcId, lk);
-    if(typeof _fwDashRender==='function' && document.getElementById('fwDash') && document.getElementById('fwDash').classList.contains('open')) _fwDashRender();
+    if(typeof _fwDashRender==='function' && _udashTab==='firewall' && document.getElementById('udash') && document.getElementById('udash').classList.contains('open')) _fwDashRender();
     if(document.getElementById('fwFullPanel').classList.contains('open')) _fwRefreshFullPanel();
     return;
   }
@@ -14235,21 +14205,40 @@ function _fwHandleAction(e, sub, vpcId, lk){
 // === FIREWALL DASHBOARD ===
 var _fwDashFilter='all';
 var _fwDashExpanded=null;
+var _fwDashState={search:'',vpcFilter:'all',sort:'type',editsOnly:false};
 
 function openFirewallDash(){
-  if(!_rlCtx){alert('Render a map first');return}
-  var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
-  if(!sgs.length&&!nacls.length&&!rts.length){alert('No security groups, NACLs, or route tables loaded');return}
+  _fwDashState={search:'',vpcFilter:'all',sort:'type',editsOnly:false};
   _fwDashFilter='all';_fwDashExpanded=null;
-  var fsi=document.getElementById('fwDashSearch');if(fsi)fsi.value='';
-  var fvf=document.getElementById('fwDashVpcFilter');if(fvf)fvf.value='all';
-  var fso=document.getElementById('fwDashSort');if(fso)fso.value='type';
-  var feo=document.getElementById('fwDashEditsOnly');if(feo)feo.checked=false;
+  openUnifiedDash('firewall');
+}
+
+function _renderFirewallTab(){
+  var tb=document.getElementById('udashToolbar');
+  var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
+  // Build VPC options
+  var vpcOpts='<option value="all">All VPCs</option>';
+  (_rlCtx.vpcs||[]).forEach(function(v){
+    var n=gn(v,v.VpcId);
+    vpcOpts+='<option value="'+esc(v.VpcId)+'">'+n+' ('+esc(v.VpcId)+')</option>';
+  });
+  tb.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+    '<input id="fwDashSearch" type="text" placeholder="Filter rules..." value="'+_escHtml(_fwDashState.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:200px">'+
+    '<select id="fwDashVpcFilter" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+vpcOpts+'</select>'+
+    '<select id="fwDashSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+
+      '<option value="type">Sort: Type</option><option value="severity">Severity</option><option value="group">SG Name</option>'+
+    '</select>'+
+    '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer">'+
+      '<input id="fwDashEditsOnly" type="checkbox"'+(_fwDashState.editsOnly?' checked':'')+'>Edits Only</label>'+
+    '<div id="fwDashPills" style="display:flex;gap:4px;margin-left:8px"></div>'+
+    '</div>';
+  // Set select values
+  document.getElementById('fwDashVpcFilter').value=_fwDashState.vpcFilter;
+  document.getElementById('fwDashSort').value=_fwDashState.sort;
   // Build type pills
   var pills=document.getElementById('fwDashPills');
-  pills.textContent='';
   [{t:'all',l:'All',c:sgs.length+nacls.length+rts.length},{t:'sg',l:'SG',c:sgs.length},{t:'nacl',l:'NACL',c:nacls.length},{t:'route',l:'RT',c:rts.length}].forEach(function(p){
-    var el=document.createElement('span');el.className='fw-dash-pill'+(p.t==='all'?' active':'');
+    var el=document.createElement('span');el.className='fw-dash-pill'+(p.t===_fwDashFilter?' active':'');
     el.dataset.type=p.t;el.textContent=p.c+' '+p.l;
     el.addEventListener('click',function(){
       _fwDashFilter=p.t;pills.querySelectorAll('.fw-dash-pill').forEach(function(x){x.classList.remove('active')});el.classList.add('active');
@@ -14257,29 +14246,29 @@ function openFirewallDash(){
     });
     pills.appendChild(el);
   });
-  // Build VPC filter
-  var vpcSel=document.getElementById('fwDashVpcFilter');
-  vpcSel.textContent='';
-  var allOpt=document.createElement('option');allOpt.value='all';allOpt.textContent='All VPCs';vpcSel.appendChild(allOpt);
-  (_rlCtx.vpcs||[]).forEach(function(v){
-    var o=document.createElement('option');o.value=v.VpcId;o.textContent=gn(v,v.VpcId)+' ('+v.VpcId+')';vpcSel.appendChild(o);
+  // Wire toolbar listeners
+  document.getElementById('fwDashSearch').addEventListener('input',function(){
+    _fwDashState.search=this.value.toLowerCase();_fwDashExpanded=null;_fwDashRender();
   });
-  _closeAllDashboards('fwDash');
-  var fd=document.getElementById('fwDash');
-  fd.classList.add('open');
-  fd.offsetHeight;
+  document.getElementById('fwDashVpcFilter').addEventListener('change',function(){
+    _fwDashState.vpcFilter=this.value;_fwDashExpanded=null;_fwDashRender();
+  });
+  document.getElementById('fwDashSort').addEventListener('change',function(){
+    _fwDashState.sort=this.value;_fwDashExpanded=null;_fwDashRender();
+  });
+  document.getElementById('fwDashEditsOnly').addEventListener('change',function(){
+    _fwDashState.editsOnly=this.checked;_fwDashExpanded=null;_fwDashRender();
+  });
   _fwDashRender();
 }
 
-function closeFirewallDash(){document.getElementById('fwDash').classList.remove('open')}
-
 function _fwDashRender(){
-  var fb=document.getElementById('fwDashBody');if(fb)fb.scrollTop=0;
+  var fb=document.getElementById('udashBody');if(fb)fb.scrollTop=0;
   var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
-  var search=(document.getElementById('fwDashSearch').value||'').toLowerCase();
-  var vpcFilter=document.getElementById('fwDashVpcFilter').value;
-  var sortBy=document.getElementById('fwDashSort').value;
-  var editsOnly=document.getElementById('fwDashEditsOnly').checked;
+  var search=_fwDashState.search;
+  var vpcFilter=_fwDashState.vpcFilter;
+  var sortBy=_fwDashState.sort;
+  var editsOnly=_fwDashState.editsOnly;
   var compLookup=_buildComplianceLookup();
 
   // Build unified rows
@@ -14325,7 +14314,7 @@ function _fwDashRender(){
   });
 
   // Build table
-  var body=document.getElementById('fwDashBody');
+  var body=document.getElementById('udashBody');
   var tbl=document.createElement('table');
   var thead=document.createElement('thead');
   var hRow=document.createElement('tr');
@@ -14431,29 +14420,28 @@ function _fwDashRender(){
 
   // Update footer
   var totalEdits=_fwEdits?_fwEdits.length:0;
-  document.getElementById('fwDashEditCount').textContent=totalEdits?totalEdits+' edit'+(totalEdits>1?'s':'')+' pending':'No pending edits';
+  var footer=document.getElementById('udashFooter');
+  footer.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;width:100%">'+
+    '<span id="fwDashEditCount" style="font-size:10px;color:var(--text-muted)">'+(totalEdits?totalEdits+' edit'+(totalEdits>1?'s':'')+' pending':'No pending edits')+'</span>'+
+    '<div style="display:flex;gap:6px">'+
+      '<button id="fwDashExportAll" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer">Export All CLI</button>'+
+      '<button id="fwDashResetAll" style="background:rgba(239,68,68,.1);border:1px solid var(--accent-red);color:var(--accent-red);padding:4px 10px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer">Reset All</button>'+
+    '</div></div>';
+  document.getElementById('fwDashExportAll').addEventListener('click',function(){
+    if(!_fwEdits||!_fwEdits.length){alert('No edits to export');return}
+    var cmds=_fwGenerateCli(_fwEdits);
+    if(cmds.length&&navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(cmds.join('\n')).then(function(){
+        var btn=document.getElementById('fwDashExportAll');btn.textContent='Copied!';setTimeout(function(){btn.textContent='Export All CLI'},1500);
+      }).catch(function(){var btn=document.getElementById('fwDashExportAll');btn.textContent='Copy failed';setTimeout(function(){btn.textContent='Export All CLI'},1500)});
+    }
+  });
+  document.getElementById('fwDashResetAll').addEventListener('click',function(){
+    if(!_fwEdits||!_fwEdits.length){alert('No edits to reset');return}
+    if(!confirm('Reset all '+_fwEdits.length+' firewall edits?'))return;
+    _fwResetAll();_fwDashRender();
+  });
 }
-
-// Dashboard event handlers
-document.getElementById('fwDashClose').addEventListener('click',closeFirewallDash);
-document.getElementById('fwDashSearch').addEventListener('input',function(){_fwDashExpanded=null;_fwDashRender()});
-document.getElementById('fwDashVpcFilter').addEventListener('change',function(){_fwDashExpanded=null;_fwDashRender()});
-document.getElementById('fwDashSort').addEventListener('change',function(){_fwDashExpanded=null;_fwDashRender()});
-document.getElementById('fwDashEditsOnly').addEventListener('change',function(){_fwDashExpanded=null;_fwDashRender()});
-document.getElementById('fwDashExportAll').addEventListener('click',function(){
-  if(!_fwEdits||!_fwEdits.length){alert('No edits to export');return}
-  var cmds=_fwGenerateCli(_fwEdits);
-  if(cmds.length&&navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(cmds.join('\n')).then(function(){
-      var btn=document.getElementById('fwDashExportAll');btn.textContent='Copied!';setTimeout(function(){btn.textContent='Export All CLI'},1500);
-    }).catch(function(){var btn=document.getElementById('fwDashExportAll');btn.textContent='Copy failed';setTimeout(function(){btn.textContent='Export All CLI'},1500)});
-  }
-});
-document.getElementById('fwDashResetAll').addEventListener('click',function(){
-  if(!_fwEdits||!_fwEdits.length){alert('No edits to reset');return}
-  if(!confirm('Reset all '+_fwEdits.length+' firewall edits?'))return;
-  _fwResetAll();_fwDashRender();
-});
 
 document.getElementById('firewallBtn').addEventListener('click',openFirewallDash);
 
@@ -17938,58 +17926,91 @@ document.getElementById('depBlastBtn').addEventListener('click',()=>{});// overr
 document.getElementById('helpBtn').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='flex'});
 document.getElementById('helpClose').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='none'});
 
-// === UNIFIED DASHBOARD NAVIGATION ===
-var _DASH_REGISTRY=[
-  {id:'compliance',label:'Compliance',el:'compDash',nav:'compDashNav',color:'cyan',open:function(){if(typeof _complianceFindings!=='undefined'&&_complianceFindings.length)renderCompliancePanel(_complianceFindings);else _showToast('No compliance data')}},
-  {id:'firewall',label:'Firewall',el:'fwDash',nav:'fwDashNav',color:'red',open:function(){openFirewallDash()}},
-  {id:'budr',label:'BUDR',el:'budrDash',nav:'budrDashNav',color:'green',open:function(){openBUDRDash()}},
-  {id:'reports',label:'Reports',el:'rptBuilder',nav:'rptDashNav',color:'orange',open:function(){openReportBuilder()}}
+// === UNIFIED DASHBOARD TAB REGISTRY ===
+var _udashTab = null;
+var _UDASH_TABS = [
+  {id:'classification', label:'Classification', color:'#a78bfa', icon:'\u{1F3F7}', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    if(!_classificationData.length) runClassificationEngine(_rlCtx);
+    return true;
+  }, render:function(){ _renderClassificationTab(); }},
+  {id:'iam', label:'IAM Review', color:'#f472b6', icon:'\u{1F510}', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    if(!_iamReviewData.length){
+      var iamRaw=safeParse(gv('in_iam'));
+      if(iamRaw){var p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}
+    }
+    return true;
+  }, render:function(){ _renderIAMTab(); }},
+  {id:'compliance', label:'Compliance', color:'#22d3ee', icon:'\u2713', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    return true;
+  }, render:function(){ _renderCompDash(); }},
+  {id:'firewall', label:'Firewall', color:'#f59e0b', icon:'\u{1F6E1}', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    return true;
+  }, render:function(){ _renderFirewallTab(); }},
+  {id:'budr', label:'BUDR', color:'#10b981', icon:'\u{1F4BE}', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    if(!_budrAssessments||!_budrAssessments.length) runBUDRChecks(_rlCtx);
+    if(!_budrAssessments.length){_showToast('No resources to assess');return false}
+    return true;
+  }, render:function(){ _renderBUDRDash(); }},
+  {id:'reports', label:'Reports', color:'#6366f1', icon:'\u{1F4CA}', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }}
 ];
-function _initDashNav(currentId){
-  _DASH_REGISTRY.forEach(function(d){
-    var nav=document.getElementById(d.nav);if(!nav)return;
-    nav.innerHTML='';
-    _DASH_REGISTRY.forEach(function(t){
-      var btn=document.createElement('button');
-      btn.className='dash-nav-btn'+(t.id===currentId?' active':'');
-      btn.dataset.dash=t.id;
-      btn.innerHTML='<span class="dn-dot"></span>'+t.label;
-      btn.addEventListener('click',function(){
-        if(t.id===currentId)return;
-        // Open target first, then close current (no flash)
-        t.open();
-        document.getElementById(d.el).classList.remove('open');
-      });
-      nav.appendChild(btn);
-    });
+
+function openUnifiedDash(tabId){
+  var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
+  if(!tab) return;
+  if(!tab.prereq()) return;
+  _udashTab=tabId;
+  var el=document.getElementById('udash');
+  el.classList.add('open');
+  el.offsetHeight; // force reflow
+  _renderUdashTabs();
+  tab.render();
+}
+
+function _switchUdashTab(tabId){
+  if(tabId===_udashTab) return;
+  var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
+  if(!tab||!tab.prereq()) return;
+  _udashTab=tabId;
+  _renderUdashTabs();
+  // Clear shared areas
+  document.getElementById('udashToolbar').innerHTML='';
+  document.getElementById('udashBody').innerHTML='';
+  document.getElementById('udashBody').className='udash-body';
+  document.getElementById('udashFooter').innerHTML='';
+  document.getElementById('udashToolbar').style.display='';
+  // Reset toolbar tab guards
+  _govToolbarTab=null;
+  _compToolbarTab=null;
+  tab.render();
+}
+
+function _renderUdashTabs(){
+  var c=document.getElementById('udashTabs');
+  c.innerHTML='';
+  _UDASH_TABS.forEach(function(t){
+    var btn=document.createElement('button');
+    btn.className='udash-tab'+(t.id===_udashTab?' active':'');
+    btn.style.setProperty('--tab-color',t.color);
+    btn.innerHTML=t.icon+' '+t.label;
+    btn.addEventListener('click',function(){_switchUdashTab(t.id)});
+    c.appendChild(btn);
   });
 }
-// Patch open functions to initialize nav tabs
-var _origRenderCompPanel=renderCompliancePanel;
-renderCompliancePanel=function(findings){_origRenderCompPanel(findings);if(document.getElementById('compDash').classList.contains('open'))_initDashNav('compliance')};
-var _origOpenFwDash=openFirewallDash;
-openFirewallDash=function(){_origOpenFwDash();if(document.getElementById('fwDash').classList.contains('open'))_initDashNav('firewall')};
-var _origOpenBUDR=openBUDRDash;
-openBUDRDash=function(){_origOpenBUDR();if(document.getElementById('budrDash').classList.contains('open'))_initDashNav('budr')};
-var _origOpenRpt=openReportBuilder;
-openReportBuilder=function(){_origOpenRpt();if(document.getElementById('rptBuilder').classList.contains('open'))_initDashNav('reports')};
 
-// === BUDR SEARCH & SORT ===
-document.getElementById('budrSearch').addEventListener('input',function(){_budrDashState.search=this.value;_renderBUDRDash()});
-document.getElementById('budrSort').addEventListener('change',function(){_budrDashState.sort=this.value;_renderBUDRDash()});
+function closeUnifiedDash(){
+  document.getElementById('udash').classList.remove('open');
+  _udashTab=null;
+}
+
+document.getElementById('udashClose').addEventListener('click',closeUnifiedDash);
 
 // === COMPLIANCE DASHBOARD CONTROLS ===
-document.getElementById('compDashClose').addEventListener('click',()=>document.getElementById('compDash').classList.remove('open'));
-document.getElementById('compSearch').addEventListener('input',function(){_compDashState.search=this.value;_renderCompDash(_complianceFindings)});
-document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_renderCompDash(_complianceFindings)});
-document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash(_complianceFindings)});
-document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_renderCompDash(_complianceFindings)});
-document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(btn){btn.addEventListener('click',function(){_compDashState.view=this.dataset.view;_renderCompDash(_complianceFindings)})});
-document.getElementById('compToggleSummary').addEventListener('click',function(){
-  const el=document.getElementById('compExecSummary');if(!el)return;
-  if(el.style.display==='none'){el.style.display='block';_renderExecSummary();this.textContent='Hide Summary'}
-  else{el.style.display='none';this.textContent='Executive Summary'}
-});
+// (Toolbar event listeners are now attached dynamically inside _renderCompDash)
 
 // === BUDR DASHBOARD ===
 let _budrDashState={tierFilter:'all',search:'',sort:'tier'};
@@ -17999,40 +18020,46 @@ const _BUDR_TIER_META={
   at_risk:{name:'At Risk',color:'#ef4444',icon:''}
 };
 function openBUDRDash(){
-  if(!_rlCtx){_showToast('Render data first');return}
-  if(!_budrAssessments.length)runBUDRChecks(_rlCtx);
-  if(!_budrAssessments.length){_showToast('No resources to assess');return}
   _budrDashState={tierFilter:'all',search:'',sort:'tier'};
-  var si=document.getElementById('budrSearch');if(si)si.value='';
-  var so=document.getElementById('budrSort');if(so)so.value='tier';
-  _closeAllDashboards('budrDash');
-  var bd=document.getElementById('budrDash');
-  bd.classList.add('open');
-  bd.offsetHeight;
-  _renderBUDRDash();
+  openUnifiedDash('budr');
 }
 function _renderBUDRDash(){
-  var bb=document.getElementById('budrBody');if(bb)bb.scrollTop=0;
-  const counts=_getBUDRTierCounts();
-  const total=_budrAssessments.length;
-  // Pills
-  const pillBox=document.getElementById('budrPills');pillBox.innerHTML='';
-  [{tier:'all',label:'All ('+total+')'},{tier:'protected',label:'Protected ('+counts.protected+')'},{tier:'partial',label:'Partial ('+counts.partial+')'},{tier:'at_risk',label:'At Risk ('+counts.at_risk+')'}].forEach(p=>{
-    const btn=document.createElement('span');btn.className='budr-pill'+(_budrDashState.tierFilter===p.tier?' active':'');
+  var tb=document.getElementById('udashToolbar');
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
+  var st=_budrDashState;
+  var counts=_getBUDRTierCounts();
+  var total=_budrAssessments.length;
+  // Toolbar: search + sort + tier pills
+  var th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:200px">';
+  th+='<select id="budrSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">';
+  th+='<option value="tier"'+(st.sort==='tier'?' selected':'')+'>Sort: Tier</option>';
+  th+='<option value="name"'+(st.sort==='name'?' selected':'')+'>Sort: Name</option>';
+  th+='<option value="type"'+(st.sort==='type'?' selected':'')+'>Sort: Type</option>';
+  th+='</select>';
+  th+='<div id="budrPills" style="display:flex;gap:4px;margin-left:8px"></div>';
+  tb.innerHTML=th;
+  // Build tier pills
+  var pillBox=document.getElementById('budrPills');
+  [{tier:'all',label:'All ('+total+')'},{tier:'protected',label:'Protected ('+counts.protected+')'},{tier:'partial',label:'Partial ('+counts.partial+')'},{tier:'at_risk',label:'At Risk ('+counts.at_risk+')'}].forEach(function(p){
+    var btn=document.createElement('span');btn.className='budr-pill'+(st.tierFilter===p.tier?' active':'');
     btn.dataset.tier=p.tier;btn.textContent=p.label;
-    btn.addEventListener('click',()=>{_budrDashState.tierFilter=p.tier;_renderBUDRDash()});pillBox.appendChild(btn);
+    btn.addEventListener('click',function(){st.tierFilter=p.tier;_renderBUDRDash()});pillBox.appendChild(btn);
   });
+  // Wire toolbar listeners
+  document.getElementById('budrSearch').addEventListener('input',function(){st.search=this.value;_renderBUDRDash()});
+  document.getElementById('budrSort').addEventListener('change',function(){st.sort=this.value;_renderBUDRDash()});
   // Filter assessments
-  let items=_budrAssessments;
-  if(_budrDashState.tierFilter!=='all')items=items.filter(a=>a.profile&&a.profile.tier===_budrDashState.tierFilter);
-  if(_budrDashState.search){const q=_budrDashState.search.toLowerCase();items=items.filter(a=>(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q))}
-  if(_budrDashState.sort==='name')items=[...items].sort((a,b)=>(a.name||a.id||'').localeCompare(b.name||b.id||''));
-  else if(_budrDashState.sort==='type')items=[...items].sort((a,b)=>(a.type||'').localeCompare(b.type||''));
+  var items=_budrAssessments.slice();
+  if(st.tierFilter!=='all')items=items.filter(function(a){return a.profile&&a.profile.tier===st.tierFilter});
+  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(a){return(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q)})}
+  if(st.sort==='name')items.sort(function(a,b){return(a.name||a.id||'').localeCompare(b.name||b.id||'')});
+  else if(st.sort==='type')items.sort(function(a,b){return(a.type||'').localeCompare(b.type||'')});
   // Summary cards
-  let h='<div class="budr-summary">';
-  ['protected','partial','at_risk'].forEach(tier=>{
-    const meta=_BUDR_TIER_META[tier];const c=counts[tier]||0;
-    const pct=total>0?Math.round(c/total*100):0;
+  var h='<div class="budr-summary">';
+  ['protected','partial','at_risk'].forEach(function(tier){
+    var meta=_BUDR_TIER_META[tier];var c=counts[tier]||0;
+    var pct=total>0?Math.round(c/total*100):0;
     h+='<div class="budr-card '+tier+'" data-tier="'+tier+'">';
     h+='<div class="bc-count">'+c+'</div>';
     h+='<div class="bc-label">'+esc(meta.name)+'</div>';
@@ -18041,23 +18068,23 @@ function _renderBUDRDash(){
   });
   h+='</div>';
   // Group by tier
-  const groups={protected:[],partial:[],at_risk:[]};
-  items.forEach(a=>{if(a.profile)groups[a.profile.tier].push(a)});
+  var groups={protected:[],partial:[],at_risk:[]};
+  items.forEach(function(a){if(a.profile)groups[a.profile.tier].push(a)});
   // Render sections
-  ['at_risk','partial','protected'].forEach(tier=>{
-    const grp=groups[tier];if(!grp.length)return;
-    const meta=_BUDR_TIER_META[tier];
-    const collapsed=tier==='protected';
+  ['at_risk','partial','protected'].forEach(function(tier){
+    var grp=groups[tier];if(!grp.length)return;
+    var meta=_BUDR_TIER_META[tier];
+    var collapsed=tier==='protected';
     h+='<div class="budr-section" data-tier="'+tier+'">';
     h+='<div class="budr-section-hdr'+(collapsed?' collapsed':'')+'">';
-    h+='<span class="bs-chevron">▼</span>';
+    h+='<span class="bs-chevron">\u25BC</span>';
     h+='<h3 style="color:'+meta.color+'">'+meta.icon+' '+esc(meta.name)+'</h3>';
     h+='<span class="bs-count">'+grp.length+' resource'+(grp.length!==1?'s':'')+'</span>';
     h+='</div>';
     h+='<div class="budr-section-body"'+(collapsed?' style="display:none"':'')+'>';
-    grp.forEach((a,i)=>{
-      const findings=_budrFindings.filter(f=>f.resource===a.id);
-      const expanded=tier==='at_risk';
+    grp.forEach(function(a,i){
+      var findings=_budrFindings.filter(function(f){return f.resource===a.id});
+      var expanded=tier==='at_risk';
       h+='<div class="budr-res'+(expanded?' expanded':'')+'" data-idx="'+tier+'-'+i+'">';
       h+='<div class="budr-res-hdr">';
       h+='<span class="br-dot '+tier+'"></span>';
@@ -18068,23 +18095,26 @@ function _renderBUDRDash(){
       h+='<div class="budr-res-body">';
       // Signals
       if(a.signals){
-        Object.entries(a.signals).forEach(([k,v])=>{
-          const good=v===true||(typeof v==='number'&&v>1);
-          const bad=v===false||v===0;
-          const cls=good?'good':bad?'bad':'warn';
-          const icon=good?'+':bad?'-':'!';
-          h+='<div class="budr-signal"><span class="sig-icon '+cls+'">'+icon+'</span><span>'+esc(k)+': '+esc(String(v))+'</span></div>';
+        h+='<div class="budr-signals">';
+        Object.entries(a.signals).forEach(function(entry){
+          var k=entry[0],v=entry[1];
+          var good=v===true||(typeof v==='number'&&v>1);
+          var bad=v===false||v===0;
+          var cls=good?'good':bad?'bad':'warn';
+          var icon=good?'✓':bad?'✗':'!';
+          h+='<span class="budr-sig-badge '+cls+'">'+icon+' '+esc(k)+': '+esc(String(v))+'</span>';
         });
+        h+='</div>';
       }
       // Findings for this resource
       if(findings.length){
         h+='<div class="budr-findings">';
-        findings.forEach(f=>{
+        findings.forEach(function(f){
           h+='<div class="budr-finding">';
           h+='<span class="bf-sev '+f.severity+'">'+f.severity+'</span>';
           h+='<span class="bf-msg">'+esc(f.message)+'</span>';
           h+='</div>';
-          if(f.remediation)h+='<div class="budr-finding"><span class="bf-sev" style="visibility:hidden">.</span><span class="bf-fix">↳ '+esc(f.remediation)+'</span></div>';
+          if(f.remediation)h+='<div class="budr-finding"><span class="bf-sev" style="visibility:hidden">.</span><span class="bf-fix">\u21B3 '+esc(f.remediation)+'</span></div>';
         });
         h+='</div>';
       }
@@ -18093,113 +18123,85 @@ function _renderBUDRDash(){
     h+='</div></div>';
   });
   if(!items.length)h+='<div style="padding:40px;text-align:center;color:var(--text-muted);font-family:IBM Plex Mono,monospace">No resources match current filter</div>';
-  document.getElementById('budrBody').innerHTML=h;
+  body.innerHTML=h;
+  body.scrollTop=0;
   // Event: section collapse
-  document.querySelectorAll('#budrBody .budr-section-hdr').forEach(hdr=>{
-    hdr.addEventListener('click',()=>{
-      const body=hdr.nextElementSibling;
-      if(hdr.classList.contains('collapsed')){hdr.classList.remove('collapsed');body.style.display=''}
-      else{hdr.classList.add('collapsed');body.style.display='none'}
+  body.querySelectorAll('.budr-section-hdr').forEach(function(hdr){
+    hdr.addEventListener('click',function(){
+      var bd=hdr.nextElementSibling;
+      if(hdr.classList.contains('collapsed')){hdr.classList.remove('collapsed');bd.style.display=''}
+      else{hdr.classList.add('collapsed');bd.style.display='none'}
     });
   });
   // Event: resource card expand
-  document.querySelectorAll('#budrBody .budr-res-hdr').forEach(hdr=>{
-    hdr.addEventListener('click',()=>{hdr.closest('.budr-res').classList.toggle('expanded')});
+  body.querySelectorAll('.budr-res-hdr').forEach(function(hdr){
+    hdr.addEventListener('click',function(){hdr.closest('.budr-res').classList.toggle('expanded')});
   });
   // Event: summary card click = filter
-  document.querySelectorAll('#budrBody .budr-card').forEach(card=>{
-    card.addEventListener('click',()=>{
-      const t=card.dataset.tier;
-      _budrDashState.tierFilter=_budrDashState.tierFilter===t?'all':t;
+  body.querySelectorAll('.budr-card').forEach(function(card){
+    card.addEventListener('click',function(){
+      var t=card.dataset.tier;
+      st.tierFilter=st.tierFilter===t?'all':t;
       _renderBUDRDash();
     });
   });
-}
-// BUDR close
-document.getElementById('budrClose').addEventListener('click',()=>document.getElementById('budrDash').classList.remove('open'));
-// BUDR button
-document.getElementById('budrBtn').addEventListener('click',openBUDRDash);
-// BUDR CSV export
-document.getElementById('budrExportCSV').addEventListener('click',function(){
-  if(!_budrAssessments.length){_showToast('No BUDR data');return}
-  let csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
-  _budrAssessments.forEach(a=>{
-    const tier=a.profile?a.profile.tier:'unknown';
-    const rto=a.profile?a.profile.rto:'';
-    const rpo=a.profile?a.profile.rpo:'';
-    const sigs=a.signals?Object.entries(a.signals).map(([k,v])=>k+'='+v).join('; '):'';
-    var ce=function(s){return String(s||'').replace(/"/g,'""')};
-    csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
+  // Footer: item count + export buttons
+  var fh='<button id="budrExportCSV">Export CSV</button>';
+  fh+='<button id="budrExportJSON">Export JSON</button>';
+  if(_isElectron) fh+='<button id="budrExportXLSX">Export XLSX</button>';
+  fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+total+' resources</span>';
+  footer.innerHTML=fh;
+  // Wire export listeners
+  document.getElementById('budrExportCSV').addEventListener('click',function(){
+    if(!_budrAssessments.length){_showToast('No BUDR data');return}
+    var csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
+    _budrAssessments.forEach(function(a){
+      var tier=a.profile?a.profile.tier:'unknown';
+      var rto=a.profile?a.profile.rto:'';
+      var rpo=a.profile?a.profile.rpo:'';
+      var sigs=a.signals?Object.entries(a.signals).map(function(e){return e[0]+'='+e[1]}).join('; '):'';
+      var ce=function(s){return String(s||'').replace(/"/g,'""')};
+      csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
+    });
+    downloadBlob(csv,'budr-assessment.csv','text/csv');
   });
-  downloadBlob(csv,'budr-assessment.csv','text/csv');
-});
-// BUDR JSON export
-document.getElementById('budrExportJSON').addEventListener('click',function(){
-  if(!_budrAssessments.length){_showToast('No BUDR data');return}
-  const data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
-  downloadBlob(JSON.stringify(data,null,2),'budr-assessment.json','application/json');
-});
-// BUDR XLSX export
-document.getElementById('budrExportXLSX').addEventListener('click',async function(){
-  if(!_budrAssessments.length){_showToast('No BUDR data');return}
-  const data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
-  const jsonStr=JSON.stringify(data,null,2);
-  if(_isElectron){
-    _showToast('Generating XLSX report…');
+  document.getElementById('budrExportJSON').addEventListener('click',function(){
+    if(!_budrAssessments.length){_showToast('No BUDR data');return}
+    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    downloadBlob(JSON.stringify(data,null,2),'budr-assessment.json','application/json');
+  });
+  var xlsxBtn=document.getElementById('budrExportXLSX');
+  if(xlsxBtn) xlsxBtn.addEventListener('click',async function(){
+    if(!_budrAssessments.length){_showToast('No BUDR data');return}
+    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    var jsonStr=JSON.stringify(data,null,2);
+    _showToast('Generating XLSX report\u2026');
     try{
-      const result=await window.electronAPI.exportBUDRXlsx(jsonStr);
+      var result=await window.electronAPI.exportBUDRXlsx(jsonStr);
       if(!result){_showToast('Export cancelled');return}
       if(result.error){_showToast('Error: '+result.error,'error');return}
       _showToast('Saved: '+result.path);
     }catch(e){_showToast('XLSX export failed: '+e.message,'error')}
-  }else{
-    // Browser fallback: export JSON + instructions
-    downloadBlob(jsonStr,'budr-assessment.json','application/json');
-    _showToast('JSON exported — run: python3 budr_export_xlsx.py budr-assessment.json');
-  }
-});
-
-// === GOVERNANCE DASHBOARD ===
-function _closeAllDashboardsExcept(keep){
-  ['compDash','fwDash','budrDash','diffDash','notesPanel','rptBuilder','govDash'].forEach(function(id){
-    if(id!==keep){var el=document.getElementById(id);if(el)el.classList.remove('open')}
   });
 }
+// BUDR button
+document.getElementById('budrBtn').addEventListener('click',openBUDRDash);
+
+// === GOVERNANCE DASHBOARD ===
+function _closeAllDashboardsExcept(keep){_closeAllDashboards(keep)}
 
 function openGovernanceDashboard(tab){
-  if(!_rlCtx){_showToast('Render map data first','warn');return}
-  if(!_classificationData.length) runClassificationEngine(_rlCtx);
-  // Prepare IAM data if available
-  if(!_iamReviewData.length){
-    var iamRaw=safeParse(gv('in_iam'));
-    if(iamRaw){
-      var iamParsed=parseIAMData(iamRaw);
-      if(iamParsed) prepareIAMReviewData(iamParsed);
-    }
-  }
-  _govDashState={tab:tab||'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
-  _govToolbarTab=null;
-  _closeAllDashboardsExcept('govDash');
-  var gd=document.getElementById('govDash');
-  gd.classList.add('open');
-  gd.offsetHeight;
-  _renderGovDash();
+  if(tab==='iam') openUnifiedDash('iam');
+  else openUnifiedDash('classification');
 }
 
 var _govToolbarTab=null;
-function _renderGovDash(){
-  var tab=_govDashState.tab;
-  document.querySelectorAll('#govDashNav .dash-nav-btn').forEach(function(btn){
-    btn.classList.toggle('active',btn.dataset.govTab===tab);
-  });
-  if(tab==='classification') _renderClassificationTab();
-  else if(tab==='iam') _renderIAMTab();
-}
+var _compToolbarTab=null;
 
 function _renderClassificationTab(){
-  var tb=document.getElementById('govToolbar');
-  var body=document.getElementById('govBody');
-  var footer=document.getElementById('govFooter');
+  var tb=document.getElementById('udashToolbar');
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
   var st=_govDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='classification'){
@@ -18216,9 +18218,9 @@ function _renderClassificationTab(){
     th+='</select>';
     th+='<button id="govRulesBtn" style="margin-left:auto;background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;padding:4px 12px;border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">⚙ Configure Rules</button>';
     tb.innerHTML=th;
-    document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderGovDash()});
-    document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderGovDash()});
-    document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderGovDash()});
+    document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderClassificationTab()});
+    document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderClassificationTab()});
+    document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderClassificationTab()});
     document.getElementById('govRulesBtn').addEventListener('click',_openRulesEditor);
   }
   // Summary cards
@@ -18287,15 +18289,15 @@ function _renderClassificationTab(){
   }
   footer.innerHTML=fh;
   // Wire body/footer events (these get recreated each render)
-  if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderGovDash()});
-  if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderGovDash()});
+  if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderClassificationTab()});
+  if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderClassificationTab()});
   // Sort headers
   body.querySelectorAll('th[data-sort-col]').forEach(function(th){
     th.addEventListener('click',function(){
       var col=this.dataset.sortCol;
       if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
       else{st.sort=col;st.sortDir='asc'}
-      st.page=1;_renderGovDash();
+      st.page=1;_renderClassificationTab();
     });
   });
   // Tier card clicks
@@ -18304,7 +18306,7 @@ function _renderClassificationTab(){
       var tier=this.dataset.govTier;
       st.filter=st.filter===tier?'all':tier;
       document.getElementById('govFilter').value=st.filter;
-      st.page=1;_renderGovDash();
+      st.page=1;_renderClassificationTab();
     });
   });
   // Override selects
@@ -18314,7 +18316,7 @@ function _renderClassificationTab(){
       _classificationOverrides[resId]=newTier;
       var item=_classificationData.find(function(r){return r.id===resId});
       if(item){item.tier=newTier;item.rpo=_TIER_RPO_RTO[newTier].rpo;item.rto=_TIER_RPO_RTO[newTier].rto;item.auto=false}
-      _renderGovDash();
+      _renderClassificationTab();
     });
   });
   // Export
@@ -18330,9 +18332,9 @@ function _renderClassificationTab(){
 }
 
 function _renderIAMTab(){
-  var tb=document.getElementById('govToolbar');
-  var body=document.getElementById('govBody');
-  var footer=document.getElementById('govFooter');
+  var tb=document.getElementById('udashToolbar');
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
   var st=_govDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='iam'){
@@ -18350,9 +18352,9 @@ function _renderIAMTab(){
     [25,50,100,0].forEach(function(v){th+='<option value="'+v+'"'+(st.perPage===v?' selected':'')+'>'+(v||'All')+'</option>'});
     th+='</select>';
     tb.innerHTML=th;
-    document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderGovDash()});
-    document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderGovDash()});
-    document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderGovDash()});
+    document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderIAMTab()});
+    document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderIAMTab()});
+    document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderIAMTab()});
   }
   if(!_iamReviewData.length){
     body.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-muted);font-family:\'IBM Plex Mono\',monospace"><p style="font-size:14px">No IAM data loaded</p><p style="font-size:11px">Paste IAM auth details (from <code>aws iam get-account-authorization-details</code>) in the IAM section of the left panel, then re-render.</p></div>';
@@ -18444,15 +18446,15 @@ function _renderIAMTab(){
   }
   footer.innerHTML=fh;
   // Wire body/footer events (these get recreated each render)
-  if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderGovDash()});
-  if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderGovDash()});
+  if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderIAMTab()});
+  if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderIAMTab()});
   // Sort headers
   body.querySelectorAll('th[data-sort-col]').forEach(function(th){
     th.addEventListener('click',function(){
       var col=this.dataset.sortCol;
       if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
       else{st.sort=col;st.sortDir='asc'}
-      st.page=1;_renderGovDash();
+      st.page=1;_renderIAMTab();
     });
   });
   // Row expand/collapse
@@ -18736,36 +18738,95 @@ function _openRulesEditor(){
     runClassificationEngine(_rlCtx);
     _govToolbarTab=null;
     overlay.remove();
-    _renderGovDash();
+    _renderClassificationTab();
     _showToast('Rules applied — '+_classificationData.length+' resources re-classified');
   });
 }
 
 // Governance event listeners
-document.getElementById('govBtn').addEventListener('click',openGovernanceDashboard);
-document.getElementById('govDashClose').addEventListener('click',function(){document.getElementById('govDash').classList.remove('open')});
-document.querySelectorAll('#govDashNav .dash-nav-btn').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    _govDashState.tab=this.dataset.govTab;
-    _govDashState.filter='all';_govDashState.search='';_govDashState.page=1;
-    _govDashState.sort=_govDashState.tab==='classification'?'tier':'name';
-    _renderGovDash();
-  });
-});
+document.getElementById('govBtn').addEventListener('click',function(){openUnifiedDash('classification')});
 
 // === REPORT BUILDER ===
-function openReportBuilder(){
-  _closeAllDashboards('rptBuilder');
-  var rb=document.getElementById('rptBuilder');
+function _renderReportsTab(){
+  document.getElementById('udashToolbar').style.display='none';
+  var body=document.getElementById('udashBody');
+  body.classList.add('rpt-layout');
+  // Build split-pane layout
+  body.innerHTML=
+    '<div class="rpt-picker">'+
+      '<div class="rpt-meta">'+
+        '<label>Report Date</label>'+
+        '<input type="date" id="rptDate">'+
+        '<label>Report Title</label>'+
+        '<input type="text" id="rptTitle" placeholder="AWS Infrastructure Assessment">'+
+        '<label>Author</label>'+
+        '<input type="text" id="rptAuthor" placeholder="Author name">'+
+        '<label>Logo</label>'+
+        '<div class="rpt-logo-upload">'+
+          '<button class="rpt-logo-btn" id="rptLogoBtn">Upload Logo</button>'+
+          '<input type="file" id="rptLogoInput" accept="image/*" style="display:none">'+
+          '<button class="rpt-logo-clear" id="rptLogoClear" style="display:none">\u2715</button>'+
+          '<div class="rpt-logo-preview" id="rptLogoPreview" style="display:none"></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="rpt-presets" id="rptPresets"></div>'+
+      '<div class="rpt-modules" id="rptModules"></div>'+
+    '</div>'+
+    '<div class="rpt-preview" id="rptPreview">'+
+      '<div class="rpt-preview-frame">'+
+        '<div class="rpt-preview-content" id="rptPreviewContent"></div>'+
+      '</div>'+
+    '</div>';
+  // Build footer
+  var footer=document.getElementById('udashFooter');
+  footer.innerHTML=
+    '<span id="rptFooterStats" style="font-size:11px;color:var(--text-muted);margin-right:auto"></span>'+
+    '<button class="udash-btn rpt-generate" id="rptExportHTML">Generate HTML Report</button>'+
+    '<button class="udash-btn" id="rptExportXLSX">Export XLSX</button>';
+  // Set default values
   document.getElementById('rptDate').value=_rptState.date;
-  if(_rptState.title)document.getElementById('rptTitle').value=_rptState.title;
-  if(_rptState.author)document.getElementById('rptAuthor').value=_rptState.author;
+  if(_rptState.title) document.getElementById('rptTitle').value=_rptState.title;
+  if(_rptState.author) document.getElementById('rptAuthor').value=_rptState.author;
   if(typeof _updateLogoPreview==='function') _updateLogoPreview();
+  // Render dynamic content
   _renderRptPicker();
   _renderRptPreview();
-  rb.classList.add('open');
+  // Wire input listeners
+  document.getElementById('rptTitle').addEventListener('input',function(){_rptState.title=this.value;_rptDebouncedPreview()});
+  document.getElementById('rptAuthor').addEventListener('input',function(){_rptState.author=this.value;_rptDebouncedPreview()});
+  document.getElementById('rptDate').addEventListener('change',function(){_rptState.date=this.value;_renderRptPreview()});
+  // Logo handlers
+  document.getElementById('rptLogoBtn').addEventListener('click',function(){document.getElementById('rptLogoInput').click()});
+  document.getElementById('rptLogoInput').addEventListener('change',function(e){
+    var file=e.target.files[0];
+    if(!file) return;
+    if(file.size>500000){_showToast('Logo too large (max 500 KB)');this.value='';return;}
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var img=new Image();
+      img.onload=function(){
+        var ext=file.type.split('/')[1]||'png';
+        _rptState.logo={dataUri:ev.target.result,ext:ext,width:img.width,height:img.height};
+        _updateLogoPreview();
+        _rptDebouncedPreview();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('rptLogoClear').addEventListener('click',function(){
+    _rptState.logo=null;
+    document.getElementById('rptLogoInput').value='';
+    _updateLogoPreview();
+    _rptDebouncedPreview();
+  });
+  // Export handlers
+  document.getElementById('rptExportHTML').addEventListener('click',function(){_generateReport()});
+  document.getElementById('rptExportXLSX').addEventListener('click',function(){_generateXlsx()});
 }
-document.getElementById('rptClose').addEventListener('click',function(){document.getElementById('rptBuilder').classList.remove('open')});
+function openReportBuilder(){
+  openUnifiedDash('reports');
+}
 function _renderRptPicker(){
   var presetsEl=document.getElementById('rptPresets');
   var presets=[
@@ -19231,7 +19292,7 @@ async function _generateReport(){
     btn.textContent='Generate HTML Report';btn.disabled=false;
   }
 }
-document.getElementById('rptExportHTML').addEventListener('click',function(){_generateReport()});
+// (rptExportHTML listener now wired in _renderReportsTab)
 
 // === XLSX EXPORT (SheetJS) ===
 var _sheetJSLoaded=false;
@@ -19783,7 +19844,7 @@ async function _generateXlsx(){
     if(btn){btn.textContent='Export XLSX';btn.disabled=false;}
   }
 }
-document.getElementById('rptExportXLSX').addEventListener('click',function(){_generateXlsx()});
+// (rptExportXLSX listener now wired in _renderReportsTab)
 
 // Report footer stats
 function _rptUpdateFooterStats(){
@@ -19806,35 +19867,7 @@ function _rptUpdateFooterStats(){
 
 var _rptInputTimer=0;
 function _rptDebouncedPreview(){clearTimeout(_rptInputTimer);_rptInputTimer=setTimeout(_renderRptPreview,300)}
-document.getElementById('rptTitle').addEventListener('input',function(){_rptState.title=this.value;_rptDebouncedPreview()});
-document.getElementById('rptAuthor').addEventListener('input',function(){_rptState.author=this.value;_rptDebouncedPreview()});
-document.getElementById('rptDate').addEventListener('change',function(){_rptState.date=this.value;_renderRptPreview()});
-
-// Logo upload handlers
-document.getElementById('rptLogoBtn').addEventListener('click',function(){document.getElementById('rptLogoInput').click()});
-document.getElementById('rptLogoInput').addEventListener('change',function(e){
-  var file=e.target.files[0];
-  if(!file) return;
-  if(file.size>500000){_showToast('Logo too large (max 500 KB)');this.value='';return;}
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    var img=new Image();
-    img.onload=function(){
-      var ext=file.type.split('/')[1]||'png';
-      _rptState.logo={dataUri:ev.target.result,ext:ext,width:img.width,height:img.height};
-      _updateLogoPreview();
-      _rptDebouncedPreview();
-    };
-    img.src=ev.target.result;
-  };
-  reader.readAsDataURL(file);
-});
-document.getElementById('rptLogoClear').addEventListener('click',function(){
-  _rptState.logo=null;
-  document.getElementById('rptLogoInput').value='';
-  _updateLogoPreview();
-  _rptDebouncedPreview();
-});
+// (rptTitle/rptAuthor/rptDate/logo listeners are now wired in _renderReportsTab)
 function _updateLogoPreview(){
   var preview=document.getElementById('rptLogoPreview');
   var clearBtn=document.getElementById('rptLogoClear');
@@ -20357,13 +20390,93 @@ document.getElementById('clearBtn').addEventListener('click',()=>{document.query
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
+  // Split demo data into 2 accounts for multi-account view
+  const allVpcs=demo.vpcs?demo.vpcs.Vpcs||[]:[];
+  const allSubs=demo.subnets?demo.subnets.Subnets||[]:[];
+  const allInsts=demo.ec2?demo.ec2.Reservations?demo.ec2.Reservations.flatMap(r=>r.Instances||[]):[]:[];
+  const splitIdx=Math.ceil(allVpcs.length/2);
+  const acct1Vpcs=new Set(allVpcs.slice(0,splitIdx).map(v=>v.VpcId));
+  const acct2Vpcs=new Set(allVpcs.slice(splitIdx).map(v=>v.VpcId));
+  const byVpc=(arr,vpcSet,field)=>arr.filter(r=>vpcSet.has(r[field||'VpcId']));
+  const allRts=demo.rts?demo.rts.RouteTables||[]:[];
+  const allSgs=demo.sgs?demo.sgs.SecurityGroups||[]:[];
+  const allNacls=demo.nacls?demo.nacls.NetworkAcls||[]:[];
+  const allIgws=demo.igws?demo.igws.InternetGateways||[]:[];
+  const allNats=demo.nats?demo.nats.NatGateways||[]:[];
+  const allAlbs=demo.albs?demo.albs.LoadBalancers||[]:[];
+  const allVpces=demo.vpces?demo.vpces.VpcEndpoints||[]:[];
+  const allEnis=demo.enis?demo.enis.NetworkInterfaces||[]:[];
+  const allVols=demo.vols?demo.vols.Volumes||[]:[];
+  const allSnaps=demo.snaps?demo.snaps.Snapshots||[]:[];
+  const allTgs=demo.tgs?demo.tgs.TargetGroups||[]:[];
+  const allRds=demo.rds?demo.rds.DBInstances||[]:[];
+  const allEcs=demo.ecs?demo.ecs.services||[]:[];
+  const allLambda=demo.lambda?demo.lambda.Functions||[]:[];
+  const allEcache=demo.elasticache?demo.elasticache.CacheClusters||[]:[];
+  const allRedshift=demo.redshift?demo.redshift.Clusters||[]:[];
+  // Subnet -> VPC lookup
+  const subVpc={};allSubs.forEach(s=>{subVpc[s.SubnetId]=s.VpcId});
+  // Instance -> subnet VPC
+  const instVpc=(inst)=>{const enis2=(inst.NetworkInterfaces||[]);if(enis2.length)return enis2[0].VpcId||subVpc[enis2[0].SubnetId]||'';return subVpc[inst.SubnetId]||''};
+  // ALB -> VPC via AZs
+  const albVpc=(alb)=>{const azs=alb.AvailabilityZones||[];if(azs.length&&azs[0].SubnetId)return subVpc[azs[0].SubnetId]||'';return alb.VpcId||''};
+  // IGW -> VPC via attachments
+  const igwVpc=(igw)=>{const att=igw.Attachments||[];return att.length?att[0].VpcId||'':''};
+  // Build split textarea objects
+  function buildAcctTextareas(vpcSet){
+    const subs=allSubs.filter(s=>vpcSet.has(s.VpcId));
+    const subIds=new Set(subs.map(s=>s.SubnetId));
+    const insts=allInsts.filter(i=>vpcSet.has(instVpc(i)));
+    const instIds=new Set(insts.map(i=>i.InstanceId));
+    const vols2=allVols.filter(v=>v.Attachments&&v.Attachments.some(a=>instIds.has(a.InstanceId)));
+    const volIds=new Set(vols2.map(v=>v.VolumeId));
+    const snaps2=allSnaps.filter(s=>volIds.has(s.VolumeId));
+    const ta={};
+    ta.in_vpcs=JSON.stringify({Vpcs:allVpcs.filter(v=>vpcSet.has(v.VpcId))});
+    ta.in_subnets=JSON.stringify({Subnets:subs});
+    ta.in_rts=JSON.stringify({RouteTables:byVpc(allRts,vpcSet)});
+    ta.in_sgs=JSON.stringify({SecurityGroups:byVpc(allSgs,vpcSet)});
+    ta.in_nacls=JSON.stringify({NetworkAcls:byVpc(allNacls,vpcSet)});
+    ta.in_igws=JSON.stringify({InternetGateways:allIgws.filter(i=>vpcSet.has(igwVpc(i)))});
+    ta.in_nats=JSON.stringify({NatGateways:byVpc(allNats,vpcSet)});
+    ta.in_ec2=JSON.stringify({Reservations:[{Instances:insts}]});
+    ta.in_albs=JSON.stringify({LoadBalancers:allAlbs.filter(a=>vpcSet.has(albVpc(a)))});
+    ta.in_vpces=JSON.stringify({VpcEndpoints:byVpc(allVpces,vpcSet)});
+    ta.in_enis=JSON.stringify({NetworkInterfaces:allEnis.filter(e=>vpcSet.has(e.VpcId))});
+    ta.in_vols=JSON.stringify({Volumes:vols2});
+    ta.in_snaps=JSON.stringify({Snapshots:snaps2});
+    ta.in_tgs=JSON.stringify({TargetGroups:allTgs.filter(t=>subIds.has(t.TargetGroupArn?.split('/')[1])||true)});
+    ta.in_rds=JSON.stringify({DBInstances:allRds.filter(r=>{const sg=r.DBSubnetGroup;return sg&&sg.Subnets&&sg.Subnets.some(s=>subIds.has(s.SubnetIdentifier))})});
+    ta.in_ecs=JSON.stringify({services:allEcs.filter(s=>{const nc=s.networkConfiguration;if(!nc)return false;const awsVpc=nc.awsvpcConfiguration;return awsVpc&&awsVpc.subnets&&awsVpc.subnets.some(sid=>subIds.has(sid))})});
+    ta.in_lambda=JSON.stringify({Functions:allLambda.filter(f=>f.VpcConfig&&vpcSet.has(f.VpcConfig.VpcId))});
+    ta.in_elasticache=JSON.stringify({CacheClusters:allEcache.filter(e=>e.CacheSubnetGroupName?true:false)});
+    ta.in_redshift=JSON.stringify({Clusters:allRedshift.filter(r=>r.ClusterSubnetGroupName?true:false)});
+    // Shared non-VPC data — give to both accounts
+    if(demo.s3)ta.in_s3=JSON.stringify(demo.s3);
+    if(demo.r53)ta.in_r53=JSON.stringify(demo.r53);
+    if(demo.r53records)ta.in_r53records=JSON.stringify(demo.r53records);
+    if(demo.waf)ta.in_waf=JSON.stringify(demo.waf);
+    if(demo.cf)ta.in_cf=JSON.stringify(demo.cf);
+    if(demo.iam)ta.in_iam=JSON.stringify(demo.iam);
+    if(demo.peer)ta.in_peer=JSON.stringify(demo.peer);
+    if(demo.vpn)ta.in_vpn=JSON.stringify(demo.vpn);
+    if(demo.tgwatt)ta.in_tgwatt=JSON.stringify(demo.tgwatt);
+    return ta;
+  }
+  // Reset any existing multi-account state
+  if(_multiViewMode)exitMultiView();
+  _loadedContexts=[];
+  // Add two account contexts
+  addAccountContext({textareas:buildAcctTextareas(acct1Vpcs),accountLabel:'prod-account (111122223333)'},'prod-account (111122223333)');
+  addAccountContext({textareas:buildAcctTextareas(acct2Vpcs),accountLabel:'security-ops (444455556666)'},'security-ops (444455556666)');
+  // Fill textareas with full demo for single-view fallback
   const m={in_vpcs:'vpcs',in_subnets:'subnets',in_rts:'rts',in_sgs:'sgs',in_nacls:'nacls',in_igws:'igws',in_nats:'nats',in_ec2:'ec2',in_albs:'albs',in_peer:'peer',in_vpn:'vpn',in_vpces:'vpces',in_vols:'vols',in_s3:'s3',in_r53:'r53',in_r53records:'r53records',in_tgs:'tgs',in_snaps:'snaps',in_enis:'enis',in_waf:'waf',in_rds:'rds',in_ecs:'ecs',in_lambda:'lambda',in_elasticache:'elasticache',in_redshift:'redshift',in_tgwatt:'tgwatt',in_cf:'cf',in_iam:'iam'};
   Object.entries(m).forEach(([id,k])=>{if(demo[k])document.getElementById(id).value=JSON.stringify(demo[k],null,2)});
   document.querySelectorAll('.ji').forEach(el=>{if(el.value.trim())el.className='ji valid'});
   document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{h.click()});
   // Load demo annotations
   _annotations={};
-  const dVpcs=demo.vpcs?demo.vpcs.Vpcs||[]:[]; const dInsts=demo.ec2?demo.ec2.Reservations?demo.ec2.Reservations.flatMap(r=>r.Instances||[]):[]:[]; const dSubs=demo.subnets?demo.subnets.Subnets||[]:[];
+  const dVpcs=allVpcs; const dInsts=allInsts; const dSubs=allSubs;
   if(dVpcs[0])addAnnotation(dVpcs[0].VpcId,'Primary production environment - all changes require CAB approval','warning',true);
   if(dVpcs[1])addAnnotation(dVpcs[1].VpcId,'Staging environment - auto-deploy from main branch','status',false);
   if(dVpcs.length>6)addAnnotation(dVpcs[6].VpcId,'Legacy DR environment - migrating to new region Q3 2026','status',false);
@@ -20371,7 +20484,8 @@ document.getElementById('loadDemo').addEventListener('click',()=>{
   if(dInsts[0])addAnnotation(dInsts[0].InstanceId,'CRITICAL: Unpatched since January - CVE-2026-1234','incident',true);
   if(dInsts[0])addAnnotation(dInsts[0].InstanceId,'Scheduled for replacement in Sprint 47','todo',false);
   if(dInsts.length>5)addAnnotation(dInsts[5].InstanceId,'This instance handles payment processing - PCI scope','warning',true);
-  renderMap();
+  // Enter multi-account view
+  enterMultiView();
 });
 
 // store layout data globally for export
@@ -24543,14 +24657,11 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')e.target.blur();
     const fwFp=document.getElementById('fwFullPanel');if(fwFp&&fwFp.classList.contains('open')){fwFp.classList.remove('open');return}
-    const fwd=document.getElementById('fwDash');if(fwd&&fwd.classList.contains('open')){closeFirewallDash();return}
+
     const iacM=document.getElementById('iacModal');if(iacM&&iacM.classList.contains('open')){closeIacModal();return}
     if(document.getElementById('compExportModal').classList.contains('open')){document.getElementById('compExportModal').classList.remove('open');return}
-    var rb=document.getElementById('rptBuilder');if(rb&&rb.classList.contains('open')){rb.classList.remove('open');return}
     var govRO=document.getElementById('govRulesOverlay');if(govRO){govRO.remove();return}
-    var gd=document.getElementById('govDash');if(gd&&gd.classList.contains('open')){gd.classList.remove('open');return}
-    const bd=document.getElementById('budrDash');if(bd&&bd.classList.contains('open')){bd.classList.remove('open');return}
-    const cd=document.getElementById('compDash');if(cd&&cd.classList.contains('open')){cd.classList.remove('open');return}
+    if(document.getElementById('udash').classList.contains('open')){closeUnifiedDash();return}
     const dep=document.getElementById('depOverlay');if(dep&&dep.classList.contains('open')){dep.classList.remove('open');return}
     const np=document.getElementById('notesPanel');if(np&&np.classList.contains('open')){closeNotesPanel();return}
     const ap=document.getElementById('accountPanel');if(ap&&ap.classList.contains('open')){closeAccountPanel();return}
@@ -24581,10 +24692,10 @@ document.addEventListener('keydown',function(e){
   if(e.key==='f'){d3.select('#zoomFit').dispatch('click');return}
   if(e.key==='T'&&e.shiftKey){if(_flowMode)exitFlowMode();else enterFlowMode();return}
   if(e.key==='F'&&e.shiftKey){if(_flowAnalysisMode)exitFlowAnalysis();else enterFlowAnalysis();return}
-  if(e.key==='R'&&e.shiftKey){var rb=document.getElementById('rptBuilder');if(rb.classList.contains('open'))rb.classList.remove('open');else openReportBuilder();return}
-  if(e.key==='G'&&e.shiftKey){var gd=document.getElementById('govDash');if(gd.classList.contains('open'))gd.classList.remove('open');else openGovernanceDashboard();return}
-  if(e.key==='B'&&e.shiftKey){const bd=document.getElementById('budrDash');if(bd.classList.contains('open'))bd.classList.remove('open');else openBUDRDash();return}
-  if(e.key==='C'&&e.shiftKey){const cd=document.getElementById('compDash');if(cd.classList.contains('open'))cd.classList.remove('open');else document.getElementById('compDashBtn').click();return}
+  if(e.key==='R'&&e.shiftKey){if(_udashTab==='reports'){closeUnifiedDash()}else{openUnifiedDash('reports')}return}
+  if(e.key==='G'&&e.shiftKey){if(_udashTab==='classification'){closeUnifiedDash()}else{openUnifiedDash('classification')}return}
+  if(e.key==='B'&&e.shiftKey){if(_udashTab==='budr'){closeUnifiedDash()}else{openUnifiedDash('budr')}return}
+  if(e.key==='C'&&e.shiftKey){if(_udashTab==='compliance'){closeUnifiedDash()}else{openUnifiedDash('compliance')}return}
   if(e.key==='D'&&e.shiftKey){if(_diffMode)exitDiffMode();else document.getElementById('diffFileInput').click();return}
   if(e.key==='d'&&!e.shiftKey){if(_designMode)exitDesignMode();else enterDesignMode();return}
   if(e.key==='z'&&_designMode){undoLastChange();return}
@@ -24593,7 +24704,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='n'){openNotesPanel();return}
   if(e.key==='b'&&!_designMode){if(_blastActive){_clearBlastRadius()}return}
   if(e.key==='h'&&!_designMode){const tb=document.getElementById('timelineBar');if(tb.classList.contains('open'))closeTimeline();else openTimeline();return}
-  if(e.key==='F'&&e.shiftKey){document.getElementById('firewallBtn').click();return}
+
   if(e.key==='A'&&e.shiftKey){_toggleAccountPanel();return}
 });
 
