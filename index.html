@@ -503,6 +503,108 @@
   .budr-footer button:hover{background:rgba(16,185,129,.1);border-color:#10b981}
   #budrExportXLSX{background:rgba(16,185,129,.15);border-color:#10b981;font-weight:600}
 
+  /* === GOVERNANCE DASHBOARD === */
+  .gov-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+  .gov-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
+  .gov-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+  .gov-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#8b5cf6;margin:0}
+  .gov-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
+  .gov-toolbar input{background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;width:240px}
+  .gov-toolbar input:focus{outline:none;border-color:#8b5cf6}
+  .gov-toolbar select{background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace}
+  .gov-toolbar label{font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px}
+  .gov-body{flex:1;overflow-y:auto;padding:20px;background:var(--bg-primary)}
+  .gov-footer{display:flex;gap:8px;padding:8px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
+  .gov-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;cursor:pointer;transition:all .15s}
+  .gov-footer button:hover{background:rgba(139,92,246,.1);border-color:#8b5cf6}
+  .gov-footer button:disabled{opacity:.3;cursor:default}
+  .gov-tier-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+  .gov-tier-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .15s}
+  .gov-tier-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  .gov-tier-card h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace}
+  .gov-tier-count{font-size:32px;font-weight:700;margin-bottom:4px;font-family:'IBM Plex Mono',monospace}
+  .gov-tier-meta{font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace}
+  .gov-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .gov-table thead{background:var(--bg-secondary);position:sticky;top:0;z-index:2}
+  .gov-table th{padding:8px 12px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;text-transform:uppercase;font-size:10px;letter-spacing:.5px}
+  .gov-table th:hover{color:var(--text-primary);background:rgba(255,255,255,.02)}
+  .gov-table th.sort-asc::after{content:' ▲';font-size:8px}
+  .gov-table th.sort-desc::after{content:' ▼';font-size:8px}
+  .gov-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-secondary)}
+  .gov-table tbody tr:hover{background:rgba(255,255,255,.02)}
+  .gov-table tbody tr.expanded{background:rgba(139,92,246,.05)}
+  .gov-tier-badge{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;display:inline-block}
+  .gov-tier-badge.critical{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+  .gov-tier-badge.high{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+  .gov-tier-badge.medium{background:rgba(34,211,238,.15);color:#22d3ee;border:1px solid rgba(34,211,238,.3)}
+  .gov-tier-badge.low{background:rgba(100,116,139,.15);color:#64748b;border:1px solid rgba(100,116,139,.3)}
+  .gov-override-select{background:var(--bg-input);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;cursor:pointer}
+  .gov-override-select:hover{border-color:#8b5cf6}
+  .gov-iam-expand{display:none;padding:12px 16px;background:var(--bg-tertiary);border-left:2px solid #8b5cf6}
+  .gov-iam-expand.open{display:table-cell}
+  .gov-admin-badge{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;text-transform:uppercase}
+  .gov-finding-badge{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600}
+  .gov-rules-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:120;background:rgba(11,17,32,.92);display:flex;align-items:stretch;justify-content:center;padding:24px}
+  .gov-rules-panel{background:var(--bg-primary);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;width:100%;max-width:960px;overflow:hidden}
+  .gov-rules-hdr{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+  .gov-rules-hdr h3{font-family:'IBM Plex Mono',monospace;font-size:14px;color:#8b5cf6;margin:0;flex:1}
+  .gov-rules-hdr-actions{display:flex;gap:6px}
+  .gov-rules-hdr-actions button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted);cursor:pointer;transition:all .15s}
+  .gov-rules-hdr-actions button:hover{border-color:#8b5cf6;color:var(--text-primary)}
+  .gov-rules-content{display:flex;flex:1;overflow:hidden}
+  .gov-rules-left{flex:1;overflow-y:auto;padding:16px 20px;border-right:1px solid var(--border)}
+  .gov-rules-right{width:320px;flex-shrink:0;overflow-y:auto;padding:16px;background:var(--bg-secondary)}
+  .gov-rules-right h4{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px}
+  .gov-rules-foot{display:flex;gap:8px;padding:10px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center}
+  .gov-rules-foot button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:5px 12px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-primary);cursor:pointer;transition:all .15s}
+  .gov-rules-foot button:hover{border-color:#8b5cf6;background:rgba(139,92,246,.08)}
+  .gov-rules-foot .gov-rules-apply{margin-left:auto;background:#8b5cf6;border-color:#8b5cf6;color:#fff;font-weight:600;padding:6px 18px}
+  .gov-rules-foot .gov-rules-apply:hover{background:#7c3aed;border-color:#7c3aed}
+  .gov-rule-group{margin-bottom:16px}
+  .gov-rule-group-hdr{display:flex;align-items:center;gap:8px;padding:6px 0;margin-bottom:6px;border-bottom:1px solid rgba(139,92,246,.15);cursor:pointer;user-select:none}
+  .gov-rule-group-hdr:hover .gov-rule-group-label{color:#8b5cf6}
+  .gov-rule-group-arrow{font-size:8px;color:var(--text-muted);transition:transform .15s;width:12px;text-align:center}
+  .gov-rule-group-arrow.collapsed{transform:rotate(-90deg)}
+  .gov-rule-group-label{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;transition:color .15s}
+  .gov-rule-group-count{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);margin-left:auto;background:var(--bg-input);padding:1px 6px;border-radius:8px}
+  .gov-rule-group-body{overflow:hidden;transition:max-height .2s ease}
+  .gov-rule-group-body.collapsed{max-height:0 !important;overflow:hidden}
+  .gov-rule-row{display:flex;gap:6px;align-items:center;padding:5px 0 5px 4px;border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;font-family:'IBM Plex Mono',monospace;transition:background .1s;border-radius:3px}
+  .gov-rule-row:hover{background:rgba(255,255,255,.02)}
+  .gov-rule-row.disabled{opacity:.35}
+  .gov-rule-row.invalid{border-left:2px solid #ef4444}
+  .gov-rule-drag{cursor:grab;color:var(--text-muted);font-size:10px;width:16px;text-align:center;flex-shrink:0;user-select:none}
+  .gov-rule-drag:active{cursor:grabbing}
+  .gov-rule-toggle{width:28px;height:16px;border-radius:8px;background:var(--bg-input);border:1px solid var(--border);cursor:pointer;position:relative;flex-shrink:0;transition:all .15s}
+  .gov-rule-toggle.on{background:rgba(139,92,246,.3);border-color:#8b5cf6}
+  .gov-rule-toggle::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--text-muted);transition:all .15s}
+  .gov-rule-toggle.on::after{left:14px;background:#8b5cf6}
+  .gov-rule-row input,.gov-rule-row select{background:var(--bg-input);border:1px solid var(--border);border-radius:3px;padding:3px 6px;font-size:10px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace}
+  .gov-rule-row input{flex:1;min-width:0}
+  .gov-rule-row input.pattern{flex:2}
+  .gov-rule-row input.weight{width:44px;flex:none;text-align:center}
+  .gov-rule-row input.invalid-pattern{border-color:#ef4444;background:rgba(239,68,68,.05)}
+  .gov-rule-match-ct{font-size:8px;color:var(--text-muted);background:var(--bg-input);padding:1px 5px;border-radius:8px;flex-shrink:0;min-width:20px;text-align:center}
+  .gov-rule-match-ct.has-matches{color:#10b981;background:rgba(16,185,129,.1)}
+  .gov-rule-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;flex-shrink:0;padding:2px 4px;border-radius:3px;transition:all .1s}
+  .gov-rule-del:hover{color:#ef4444;background:rgba(239,68,68,.1)}
+  .gov-preview-card{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px}
+  .gov-preview-card h5{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.3px}
+  .gov-preview-bars{display:flex;flex-direction:column;gap:4px}
+  .gov-preview-bar{display:flex;align-items:center;gap:6px;font-size:10px;font-family:'IBM Plex Mono',monospace}
+  .gov-preview-bar-label{width:56px;color:var(--text-muted);flex-shrink:0}
+  .gov-preview-bar-track{flex:1;height:14px;background:rgba(255,255,255,.03);border-radius:3px;overflow:hidden;position:relative}
+  .gov-preview-bar-fill{height:100%;border-radius:3px;transition:width .3s ease}
+  .gov-preview-bar-ct{font-size:9px;color:var(--text-secondary);width:30px;text-align:right;flex-shrink:0}
+  .gov-preview-sample{margin-top:8px;max-height:180px;overflow-y:auto}
+  .gov-preview-sample-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:9px;font-family:'IBM Plex Mono',monospace;border-bottom:1px solid rgba(255,255,255,.02)}
+  .gov-preview-sample-row .name{flex:1;color:var(--accent-cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gov-preview-sample-row .type{color:var(--text-muted);width:48px;flex-shrink:0}
+  .gov-preview-delta{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;margin-top:8px;font-size:10px;font-family:'IBM Plex Mono',monospace}
+  .gov-preview-delta .up{color:#10b981}
+  .gov-preview-delta .down{color:#ef4444}
+  .gov-preview-delta .same{color:var(--text-muted)}
+
   /* === REPORT BUILDER === */
   .rpt-builder{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
   .rpt-builder.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
@@ -878,12 +980,13 @@
   .fa-mode-pill{background:rgba(0,0,0,.3);border:1px solid rgba(34,211,238,.2);color:var(--text-muted);padding:2px 10px;border-radius:12px;cursor:pointer;font-size:9px;font-family:'IBM Plex Mono',monospace;transition:all .15s}
   .fa-mode-pill:hover{background:rgba(34,211,238,.1);color:#22d3ee}
   .fa-mode-pill.active{background:rgba(34,211,238,.2);color:#22d3ee;border-color:rgba(34,211,238,.5);font-weight:600}
-  .flow-analysis-layer .fa-path{fill:none;stroke-width:2.5;pointer-events:none}
-  .flow-analysis-layer .fa-path.ingress{stroke:#10b981;stroke-dasharray:6 3;animation:flow-dash 1.5s linear infinite}
-  .flow-analysis-layer .fa-path.egress{stroke:#fb923c;stroke-dasharray:4 4}
-  .flow-analysis-layer .fa-path.bastion{stroke:#22d3ee;stroke-dasharray:8 4;animation:flow-dash 2s linear infinite}
   .flow-analysis-layer .fa-arrow{pointer-events:none}
-  .flow-analysis-layer .bastion-marker{pointer-events:none}
+  /* Flow analysis: dim individual route-line paths, glow highlighted ones */
+  .fa-active .route-group{opacity:.05;transition:opacity .3s}
+  .fa-active .struct-group path{opacity:.08;transition:opacity .3s}
+  .fa-active .nodes-layer{opacity:.35;transition:opacity .3s}
+  .fa-hl-ingress{stroke:#10b981 !important;stroke-width:5px !important;filter:drop-shadow(0 0 8px rgba(16,185,129,.8)) drop-shadow(0 0 3px rgba(16,185,129,.5));opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
+  .fa-hl-egress{stroke:#fb923c !important;stroke-width:5px !important;filter:drop-shadow(0 0 8px rgba(251,146,44,.8)) drop-shadow(0 0 3px rgba(251,146,44,.5));opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
   .tier-badge{pointer-events:none;transition:opacity .2s}
   .fa-tier-row{padding:6px 10px;border-radius:4px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;font-size:10px;font-family:'IBM Plex Mono',monospace;margin-bottom:3px}
   .fa-tier-row:hover{background:rgba(255,255,255,.05)}
@@ -915,6 +1018,22 @@
   .fa-dash-table th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:9px}
   .fa-dash-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-secondary)}
   .fa-dash-table tr:hover td{background:rgba(255,255,255,.02)}
+  .fa-dash-filters{padding:8px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg-secondary)}
+  .fa-dash-filters input{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;width:260px}
+  .fa-dash-filters input:focus{outline:none;border-color:var(--accent-cyan)}
+  .fa-dash-pills{display:flex;gap:4px;flex:1}
+  .fa-dash-pill{padding:3px 10px;border-radius:12px;font-size:10px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border:1px solid var(--border);color:var(--text-muted);background:transparent;transition:all .15s}
+  .fa-dash-pill.active{background:var(--accent-cyan);color:#000;border-color:var(--accent-cyan)}
+  .fa-dash-pill:hover:not(.active){border-color:rgba(34,211,238,.3);color:var(--text-secondary)}
+  .fa-dash-filters select{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:3px 6px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace}
+  .fa-dash-footer{padding:8px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg-secondary);font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted)}
+  .fa-dash-footer button{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:3px 10px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
+  .fa-dash-footer button:disabled{opacity:.3;cursor:default}
+  .fa-dash-table th[data-sort-col]{cursor:pointer;user-select:none}
+  .fa-dash-table th[data-sort-col]:hover{color:var(--accent-cyan)}
+  .fa-dash-table th.dd-sort-asc::after{content:' ▲';font-size:8px}
+  .fa-dash-table th.dd-sort-desc::after{content:' ▼';font-size:8px}
+  .fa-section-badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
   /* Right-click context menu */
   .flow-ctx-menu{position:fixed;z-index:300;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.6);padding:4px 0;min-width:180px;font-family:'IBM Plex Mono',monospace}
   .flow-ctx-item{padding:6px 14px;font-size:11px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s}
@@ -1344,7 +1463,17 @@
   <div class="upload-row">
     <button class="btn-upload" id="uploadBtn">Upload JSON Files</button>
     <button class="btn-upload" id="importFolderBtn" style="display:none;background:linear-gradient(135deg,#f59e0b,#d97706);margin-left:4px">Import Folder</button>
-    <button class="btn-upload" id="dlExportScript" style="background:linear-gradient(135deg,#6366f1,#4f46e5);margin-left:4px;font-size:9px" title="Download the bash script to collect AWS data">Get Export Script</button>
+    <div style="position:relative;display:inline-block;margin-left:4px" id="exportScriptWrap">
+      <button class="btn-upload" id="dlExportScript" style="background:linear-gradient(135deg,#6366f1,#4f46e5);font-size:9px" title="Download export script">Get Export Script ▾</button>
+      <div id="exportScriptMenu" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:4px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-top:4px">
+        <button id="dlBash" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;border-radius:4px">
+          <span style="font-weight:600">Bash</span> <span style="color:var(--text-muted);font-size:9px">— macOS / Linux</span>
+        </button>
+        <button id="dlPowershell" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;border-radius:4px">
+          <span style="font-weight:600">PowerShell</span> <span style="color:var(--text-muted);font-size:9px">— Windows (parallel + multi-region)</span>
+        </button>
+      </div>
+    </div>
     <input type="file" id="fileInput" multiple accept=".json" style="display:none" />
   </div>
   <div class="upload-status" id="uploadStatus"></div>
@@ -1510,6 +1639,7 @@
       <button id="compDashBtn" class="dock-btn cyan" title="Compliance dashboard (Shift+C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Compliance</button>
       <button id="budrBtn" class="dock-btn green" title="Backup & DR assessment (Shift+B)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>BUDR</button>
       <button id="reportsBtn" class="dock-btn amber" title="Report builder (Shift+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reports</button>
+      <button id="govBtn" class="dock-btn purple" title="Governance dashboard (Shift+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Governance</button>
     </div>
     <div class="dock-group">
       <span class="dock-label">NETWORK</span>
@@ -1793,6 +1923,19 @@
       <button id="budrExportJSON">Export JSON</button>
       <button id="budrExportXLSX">Export XLSX</button>
     </div>
+  </div>
+  <div class="gov-dash" id="govDash">
+    <div class="gov-hdr dash-hdr">
+      <h2 style="color:#8b5cf6">Governance</h2>
+      <nav class="dash-nav" id="govDashNav">
+        <button class="dash-nav-btn active" data-gov-tab="classification"><span class="dn-dot" style="background:#8b5cf6"></span>Asset Classification</button>
+        <button class="dash-nav-btn" data-gov-tab="iam"><span class="dn-dot" style="background:#8b5cf6"></span>IAM Review</button>
+      </nav>
+      <button class="dash-close" id="govDashClose">Close <kbd>Esc</kbd></button>
+    </div>
+    <div class="gov-toolbar" id="govToolbar"></div>
+    <div class="gov-body" id="govBody"></div>
+    <div class="gov-footer dash-footer" id="govFooter"></div>
   </div>
   <div class="rpt-builder" id="rptBuilder">
     <div class="rpt-hdr dash-hdr">
@@ -2195,11 +2338,13 @@ function generateDemo(){
           const instId=nid('i');
           const iType=INST_TYPES[Math.floor(Math.random()*INST_TYPES.length)];
           const st=STATES[Math.floor(Math.random()*STATES.length)];
-          const _ec2Entry={InstanceId:instId,SubnetId:subId,InstanceType:iType,
+          const isBastionSlot=isPub&&ii===0&&a===0&&vd.tiers.length>2;
+          const instName=isBastionSlot?vd.name.toLowerCase()+'-bastion':vd.name.toLowerCase()+'-'+tier.replace('private-','')+'-'+String(ii+1).padStart(2,'0');
+          const _ec2Entry={InstanceId:instId,SubnetId:subId,InstanceType:isBastionSlot?'t3.micro':iType,
             PrivateIpAddress:'10.'+Math.floor(Math.random()*255)+'.'+Math.floor(Math.random()*255)+'.'+Math.floor(Math.random()*254+1),
             Placement:{AvailabilityZone:AZS[a]},
-            State:{Name:st,Code:st==='running'?16:80},
-            Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier.replace('private-','')+'-'+String(ii+1).padStart(2,'0')}]};
+            State:{Name:isBastionSlot?'running':st,Code:isBastionSlot?16:(st==='running'?16:80)},
+            Tags:[{Key:'Name',Value:instName}]};
           if(vi===0)_ec2Entry.IamInstanceProfile={Arn:'arn:aws:iam::123456789012:instance-profile/EC2InstanceRole',Id:'AIPA000000001'};
           ec2Instances.push(_ec2Entry);
 
@@ -6227,6 +6372,171 @@ function runIAMChecks(iamData){
   }
   return f;
 }
+
+// === GOVERNANCE: ASSET CLASSIFICATION ENGINE ===
+let _govDashState={tab:'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
+let _classificationData=[];
+let _classificationOverrides={};
+let _iamReviewData=[];
+var _DEFAULT_CLASS_RULES=[
+  {pattern:'prod|production',scope:'vpc',tier:'critical',weight:100},
+  {pattern:'pci|complian',scope:'vpc',tier:'critical',weight:95},
+  {pattern:'dr-|disaster|recovery',scope:'vpc',tier:'critical',weight:90},
+  {pattern:'shared.?serv|data.?platform|security',scope:'vpc',tier:'high',weight:80},
+  {pattern:'edge|proxy|waf|cdn',scope:'vpc',tier:'high',weight:75},
+  {pattern:'staging|stage|qa|uat',scope:'vpc',tier:'medium',weight:50},
+  {pattern:'management|mgmt|monitor',scope:'vpc',tier:'medium',weight:45},
+  {pattern:'dev|develop|sandbox|test|experiment',scope:'vpc',tier:'low',weight:20},
+  {pattern:'rds|database|db|aurora|dynamo',scope:'type',tier:'critical',weight:90},
+  {pattern:'redshift|warehouse',scope:'type',tier:'critical',weight:85},
+  {pattern:'elasticache|redis|memcache|cache',scope:'type',tier:'high',weight:70},
+  {pattern:'alb|elb|loadbalancer|nlb',scope:'type',tier:'high',weight:65},
+  {pattern:'lambda|fargate|ecs',scope:'type',tier:'medium',weight:40},
+  {pattern:'bastion|jump|ssh',scope:'name',tier:'medium',weight:35}
+];
+var _classificationRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+
+var _TIER_RPO_RTO={
+  critical:{rpo:'Hourly',rto:'2-4 hours',priority:1,color:'#ef4444'},
+  high:{rpo:'6 hours',rto:'4-8 hours',priority:2,color:'#f59e0b'},
+  medium:{rpo:'Daily',rto:'12 hours',priority:3,color:'#22d3ee'},
+  low:{rpo:'Weekly',rto:'24 hours',priority:4,color:'#64748b'}
+};
+
+function _scoreClassification(name,type,vpcName,rules){
+  rules=rules||_classificationRules;
+  var bestTier='low';var bestWeight=-1;
+  rules.forEach(function(rule){
+    if(rule.enabled===false) return;
+    var re;try{re=new RegExp(rule.pattern,'i')}catch(e){return}
+    var text='';
+    if(rule.scope==='vpc') text=vpcName||'';
+    else if(rule.scope==='type') text=type||'';
+    else if(rule.scope==='name') text=name||'';
+    else text=(name||'')+' '+(type||'')+' '+(vpcName||'');
+    if(re.test(text)&&rule.weight>bestWeight){bestWeight=rule.weight;bestTier=rule.tier}
+  });
+  return {tier:bestTier,weight:bestWeight};
+}
+
+function runClassificationEngine(ctx){
+  if(!ctx) return[];
+  var results=[];
+  var vpcNameMap={};
+  (ctx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
+  // Classify instances
+  (ctx.instances||[]).forEach(function(inst){
+    var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+    var vpcName=vpcNameMap[inst.VpcId]||'';
+    var sc=_scoreClassification(name,'instance',vpcName);
+    var tier=_classificationOverrides[inst.InstanceId]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:inst.InstanceId,name:name,type:'EC2',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[inst.InstanceId],vpcId:inst.VpcId,vpcName:vpcName});
+  });
+  // Classify RDS
+  (ctx.rdsInstances||[]).forEach(function(db){
+    var name=db.DBInstanceIdentifier;
+    var vpcId=db.DBSubnetGroup?db.DBSubnetGroup.VpcId:'';
+    var vpcName=vpcNameMap[vpcId]||'';
+    var sc=_scoreClassification(name,'rds',vpcName);
+    var tier=_classificationOverrides[name]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'RDS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+  });
+  // Classify ElastiCache
+  (ctx.ecacheClusters||[]).forEach(function(ec){
+    var name=ec.CacheClusterId;
+    var sc=_scoreClassification(name,'elasticache','');
+    var tier=_classificationOverrides[name]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'ElastiCache',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:'',vpcName:''});
+  });
+  // Classify ALBs
+  (ctx.albs||[]).forEach(function(alb){
+    var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
+    var name=alb.LoadBalancerName||albId;
+    var vpcId=alb.VpcId||'';
+    var vpcName=vpcNameMap[vpcId]||'';
+    var sc=_scoreClassification(name,'alb',vpcName);
+    var tier=_classificationOverrides[name]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'ALB',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+  });
+  // Classify Lambda
+  (ctx.lambdaFns||[]).forEach(function(fn){
+    var name=fn.FunctionName;
+    var vpcId=fn.VpcConfig?fn.VpcConfig.VpcId:'';
+    var vpcName=vpcNameMap[vpcId]||'';
+    var sc=_scoreClassification(name,'lambda',vpcName);
+    var tier=_classificationOverrides[name]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'Lambda',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+  });
+  // Classify ECS
+  (ctx.ecsServices||[]).forEach(function(svc){
+    var name=svc.serviceName||'';
+    var sc=_scoreClassification(name,'ecs','');
+    var tier=_classificationOverrides[name]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'ECS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:'',vpcName:''});
+  });
+  // Classify Redshift
+  (ctx.redshiftClusters||[]).forEach(function(rs){
+    var name=rs.ClusterIdentifier;
+    var vpcId=rs.VpcId||'';
+    var vpcName=vpcNameMap[vpcId]||'';
+    var sc=_scoreClassification(name,'redshift',vpcName);
+    var tier=_classificationOverrides[name]||sc.tier;
+    var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'Redshift',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+  });
+  _classificationData=results;
+  return results;
+}
+
+// === GOVERNANCE: IAM REVIEW PREPARATION ===
+function prepareIAMReviewData(iamData){
+  if(!iamData) return[];
+  var items=[];
+  // Process roles
+  (iamData.roles||[]).forEach(function(role){
+    var created=role.CreateDate?new Date(role.CreateDate):null;
+    var lastUsed=role.RoleLastUsed&&role.RoleLastUsed.LastUsedDate?new Date(role.RoleLastUsed.LastUsedDate):null;
+    var trustDoc=role.AssumeRolePolicyDocument;
+    var trustParsed={};
+    if(typeof trustDoc==='string'){try{trustParsed=JSON.parse(trustDoc)}catch(e){}}
+    else if(trustDoc) trustParsed=trustDoc;
+    var crossAccts=[];
+    (trustParsed.Statement||[]).forEach(function(stmt){
+      if(stmt.Effect==='Allow'&&stmt.Principal){
+        var aws=stmt.Principal.AWS;
+        if(aws){(Array.isArray(aws)?aws:[aws]).forEach(function(arn){var m=String(arn).match(/:(\d{12}):/);if(m)crossAccts.push(m[1])})}
+      }
+    });
+    var findings=(_complianceFindings||[]).filter(function(f){return f.framework==='IAM'&&(f.resource===role.RoleName||f.resource===(role.Arn||''))});
+    var policyCount=(role.RolePolicyList||[]).length+(role.AttachedManagedPolicies||[]).length;
+    var policyNames=(role.AttachedManagedPolicies||[]).map(function(p){return p.PolicyName||p.PolicyArn||''});
+    items.push({name:role.RoleName||'',arn:role.Arn||'',type:'Role',created:created,lastUsed:lastUsed,isAdmin:role._isAdmin||false,hasWildcard:role._hasWildcard||false,crossAccounts:crossAccts,policies:policyCount,policyNames:policyNames,permBoundary:role.PermissionsBoundary?role.PermissionsBoundary.PermissionsBoundaryArn:'',findings:findings,_raw:role});
+  });
+  // Process users
+  (iamData.users||[]).forEach(function(user){
+    var created=user.CreateDate?new Date(user.CreateDate):null;
+    var lastUsed=user.PasswordLastUsed?new Date(user.PasswordLastUsed):null;
+    var hasMFA=(user.MFADevices||[]).length>0;
+    var hasConsole=!!user.LoginProfile;
+    var activeKeys=(user.AccessKeys||[]).filter(function(k){return k.Status==='Active'}).length;
+    var findings=(_complianceFindings||[]).filter(function(f){return f.framework==='IAM'&&(f.resource===user.UserName||f.resource===(user.Arn||''))});
+    var policyCount=(user.UserPolicyList||[]).length+(user.AttachedManagedPolicies||[]).length;
+    var policyNames=(user.AttachedManagedPolicies||[]).map(function(p){return p.PolicyName||p.PolicyArn||''});
+    // Detect admin for users inline
+    var uIsAdmin=false;
+    (user.AttachedManagedPolicies||[]).forEach(function(mp){if((mp.PolicyName||'').match(/admin/i))uIsAdmin=true});
+    items.push({name:user.UserName||'',arn:user.Arn||'',type:'User',created:created,lastUsed:lastUsed,isAdmin:uIsAdmin,hasWildcard:false,crossAccounts:[],policies:policyCount,policyNames:policyNames,permBoundary:user.PermissionsBoundary?user.PermissionsBoundary.PermissionsBoundaryArn:'',findings:findings,hasMFA:hasMFA,hasConsole:hasConsole,activeKeys:activeKeys,_raw:user});
+  });
+  _iamReviewData=items;
+  return items;
+}
+
 function renderIAMPanel(vpcId){
   if(!_iamData){
     const raw=safeParse(gv('in_iam'));
@@ -14953,6 +15263,8 @@ document.getElementById('flowStepFwd').addEventListener('click',_stepForward);
 // === FLOW ANALYSIS — AUTO-DISCOVERY ENGINE ===
 let _flowAnalysisMode=null; // null|'tiers'|'ingress'|'egress'|'bastion'|'all'
 let _flowAnalysisCache=null;
+let _faDashState={section:'all',search:'',sort:'name',sortDir:'asc',page:1,perPage:50};
+let _faDashRows=null;
 
 function discoverTrafficFlows(ctx){
   if(!ctx) return null;
@@ -15121,10 +15433,20 @@ function _classifyAllResources(ctx,ingressPaths,bastionChains){
 function _renderFlowAnalysisOverlay(mode){
   var svg=d3.select('#mapSvg');
   svg.selectAll('.flow-analysis-layer').remove();
+  // Clean up previous highlight state
+  var mapRoot=svg.select('g');
+  if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress');
+  });
+  var inetNode=document.querySelector('.internet-node');
+  if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
   if(!_flowAnalysisCache||!mode) return;
-  var g=svg.select('g');
-  if(g.empty()) g=svg;
+  var g=mapRoot.empty()?svg:mapRoot;
   var faG=g.append('g').attr('class','flow-analysis-layer');
+  // Dim map for modes that highlight route lines
+  var needDim=(mode==='ingress'||mode==='egress'||mode==='all');
+  if(needDim&&!mapRoot.empty()) mapRoot.classed('fa-active',true);
   if(mode==='tiers'||mode==='all') _renderTierBadges(faG);
   if(mode==='ingress'||mode==='all') _renderIngressArrows(faG);
   if(mode==='egress'||mode==='all') _renderEgressArrows(faG);
@@ -15153,67 +15475,109 @@ function _renderTierBadges(faG){
 }
 
 function _renderIngressArrows(faG){
-  var ic=_getInternetCoords();
-  if(!ic) return;
-  // Deduplicate: one arrow per unique target
+  if(!_rlCtx) return;
+  var sg=document.querySelector('.struct-group');
+  if(!sg) return;
+  // Collect unique (igwId, subnetId, vpcId) combos from ingress paths
   var seen=new Set();
+  var hlEls=[];
   (_flowAnalysisCache.ingressPaths||[]).forEach(function(p){
-    var key=p.to.type+':'+p.to.id;
+    var pos=_resolveNetworkPosition(p.to.type, p.to.id, _rlCtx);
+    if(!pos||!pos.subnetId||!pos.vpcId) return;
+    var igw=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
+    if(!igw) return;
+    var gid=igw.InternetGatewayId;
+    var key=gid+':'+pos.subnetId;
     if(seen.has(key)) return;
     seen.add(key);
-    var pos=_resolveNetworkPosition(p.to.type, p.to.id, _rlCtx);
-    if(!pos) return;
-    var tc=_getSubnetCenter(pos.subnetId);
-    if(!tc) return;
-    // Curved path
-    var midX=(ic.x+tc.x)/2;
-    var midY=Math.min(ic.y,tc.y)-40;
-    faG.append('path').attr('class','fa-path ingress')
-      .attr('d','M'+ic.x+','+ic.y+' Q'+midX+','+midY+' '+tc.x+','+tc.y)
-      .attr('opacity',.5);
-    // Arrowhead
-    var angle=Math.atan2(tc.y-midY,tc.x-midX);
-    var ax=tc.x-10*Math.cos(angle);var ay=tc.y-10*Math.sin(angle);
-    faG.append('polygon').attr('class','fa-arrow')
-      .attr('points',_arrowPoints(tc.x,tc.y,angle,8))
-      .attr('fill','#10b981').attr('opacity',.6);
+    // Highlight subnet→IGW route lines
+    sg.querySelectorAll('[data-gid="'+gid+'"][data-sid="'+pos.subnetId+'"]').forEach(function(el){hlEls.push(el)});
+    // Highlight trunk/L-bend paths (gateway+VPC, no subnet)
+    sg.querySelectorAll('[data-gid="'+gid+'"][data-vid="'+pos.vpcId+'"]:not([data-sid])').forEach(function(el){hlEls.push(el)});
+    // Highlight gateway-only paths (bus-bar verticals)
+    sg.querySelectorAll('[data-gid="'+gid+'"]:not([data-vid]):not([data-net-vert]):not([data-net-line])').forEach(function(el){hlEls.push(el)});
+    // Highlight NET verticals for this gateway
+    sg.querySelectorAll('[data-net-vert][data-gid="'+gid+'"]').forEach(function(el){hlEls.push(el)});
   });
+  // Highlight the NET horizontal line (shared internet backbone)
+  var netLine=sg.querySelector('[data-net-line]');
+  if(netLine&&hlEls.length>0) hlEls.push(netLine);
+  // Highlight internet node
+  var inetNode=document.querySelector('.internet-node');
+  if(inetNode&&hlEls.length>0) d3.select(inetNode).style('opacity','1').style('filter','drop-shadow(0 0 6px rgba(16,185,129,.6))');
+  // Apply glow class to all collected elements
+  hlEls.forEach(function(el){el.classList.add('fa-hl-ingress')});
 }
 
 function _renderEgressArrows(faG){
-  var ic=_getInternetCoords();
-  if(!ic) return;
+  if(!_rlCtx) return;
+  var sg=document.querySelector('.struct-group');
+  if(!sg) return;
   var seen=new Set();
+  var hlEls=[];
   (_flowAnalysisCache.egressPaths||[]).forEach(function(p){
-    if(seen.has(p.subnetId)) return;
-    seen.add(p.subnetId);
     var pos=_resolveNetworkPosition(p.from.type, p.from.id, _rlCtx);
-    if(!pos) return;
-    var sc=_getSubnetCenter(pos.subnetId);
-    if(!sc) return;
-    var midX=(sc.x+ic.x)/2;
-    var midY=Math.min(sc.y,ic.y)-30;
-    faG.append('path').attr('class','fa-path egress')
-      .attr('d','M'+sc.x+','+sc.y+' Q'+midX+','+midY+' '+ic.x+','+ic.y)
-      .attr('opacity',.35);
+    if(!pos||!pos.subnetId||!pos.vpcId) return;
+    if(seen.has(pos.subnetId)) return;
+    seen.add(pos.subnetId);
+    // Find the gateway used for egress (NAT or IGW)
+    var gid=null;
+    if(p.via==='nat'){
+      var nat=(_rlCtx.nats||[]).find(function(n){
+        var nSub=((_rlCtx.subnets||[]).find(function(s){return s.SubnetId===n.SubnetId})||{});
+        return nSub.VpcId===pos.vpcId;
+      });
+      if(nat) gid=nat.NatGatewayId;
+    }
+    if(!gid){
+      var igw=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
+      if(igw) gid=igw.InternetGatewayId;
+    }
+    if(!gid) return;
+    // Highlight subnet→gateway route lines
+    sg.querySelectorAll('[data-gid="'+gid+'"][data-sid="'+pos.subnetId+'"]').forEach(function(el){hlEls.push(el)});
+    sg.querySelectorAll('[data-gid="'+gid+'"][data-vid="'+pos.vpcId+'"]:not([data-sid])').forEach(function(el){hlEls.push(el)});
+    sg.querySelectorAll('[data-gid="'+gid+'"]:not([data-vid]):not([data-net-vert]):not([data-net-line])').forEach(function(el){hlEls.push(el)});
+    // For NAT egress, also highlight NAT→IGW chain if applicable
+    if(p.via==='nat'){
+      var igw2=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
+      if(igw2){
+        var igwId=igw2.InternetGatewayId;
+        sg.querySelectorAll('[data-net-vert][data-gid="'+igwId+'"]').forEach(function(el){hlEls.push(el)});
+      }
+    } else {
+      sg.querySelectorAll('[data-net-vert][data-gid="'+gid+'"]').forEach(function(el){hlEls.push(el)});
+    }
   });
+  if(hlEls.length>0){
+    var netLine=sg.querySelector('[data-net-line]');
+    if(netLine) hlEls.push(netLine);
+  }
+  hlEls.forEach(function(el){el.classList.add('fa-hl-egress')});
 }
 
 function _renderBastionArrows(faG){
+  var line=d3.line().x(function(d){return d.x}).y(function(d){return d.y}).curve(d3.curveBasis);
   (_flowAnalysisCache.bastionChains||[]).forEach(function(ch){
     var bPos=_resolveNetworkPosition(ch.bastion.type, ch.bastion.id, _rlCtx);
     if(!bPos) return;
     var bc=_getSubnetCenter(bPos.subnetId);
     if(!bc) return;
-    // Bastion marker: pulsing ring on bastion host
-    faG.append('circle').attr('class','bastion-marker')
-      .attr('cx',bc.x).attr('cy',bc.y).attr('r',14)
-      .attr('fill','none').attr('stroke','#22d3ee').attr('stroke-width',2.5)
-      .attr('stroke-dasharray','4 3').attr('opacity',.8);
-    faG.append('circle').attr('class','bastion-marker')
-      .attr('cx',bc.x).attr('cy',bc.y).attr('r',5)
-      .attr('fill','#22d3ee').attr('opacity',.7);
-    // Deduplicate targets by subnet — one arrow per unique target subnet
+    // Bastion waypoint marker (reuses trace waypoint style — orange circle with "B")
+    var wg=faG.append('g').attr('class','flow-waypoint-marker');
+    wg.append('circle').attr('cx',bc.x).attr('cy',bc.y).attr('r',14);
+    wg.append('text').attr('x',bc.x).attr('y',bc.y+1)
+      .attr('text-anchor','middle').attr('dominant-baseline','central')
+      .attr('fill','#000').attr('font-size','9px').attr('font-weight','700')
+      .attr('font-family','IBM Plex Mono').text('B');
+    // Internet → Bastion leg (if internet coords available)
+    var ic=_getInternetCoords();
+    if(ic){
+      var midY=Math.min(ic.y,bc.y)-30;
+      faG.append('path').attr('class','flow-path-leg allowed')
+        .attr('d',line([ic,{x:(ic.x+bc.x)/2,y:midY},bc]));
+    }
+    // Deduplicate targets by subnet
     var subSeen=new Set();
     var uniqueTargets=[];
     ch.targets.forEach(function(tgt){
@@ -15224,36 +15588,27 @@ function _renderBastionArrows(faG){
       var tc=_getSubnetCenter(tPos.subnetId);
       if(tc) uniqueTargets.push({pos:tc,name:tgt.name||tgt.id});
     });
-    // Fan-out offset so arrows to nearby subnets don't overlap
+    // Bastion → Target legs with fan-out offset
     var n=uniqueTargets.length;
     uniqueTargets.forEach(function(ut,idx){
       var tc=ut.pos;
       var dx=tc.x-bc.x,dy=tc.y-bc.y;
       var dist=Math.sqrt(dx*dx+dy*dy);
-      // Curve control point: perpendicular offset, fanned when multiple
       var perpX=n>1?(-dy/dist)*((idx-n/2+0.5)*18):0;
       var perpY=n>1?(dx/dist)*((idx-n/2+0.5)*18):0;
-      var cpx=(bc.x+tc.x)/2+perpX;
-      var cpy=(bc.y+tc.y)/2+perpY-(dist>80?25:10);
-      faG.append('path').attr('class','fa-path bastion')
-        .attr('d','M'+bc.x+','+bc.y+' Q'+cpx+','+cpy+' '+tc.x+','+tc.y)
-        .attr('opacity',.65);
-      // Arrowhead at target end
-      var angle=Math.atan2(tc.y-cpy,tc.x-cpx);
-      faG.append('polygon').attr('class','fa-arrow')
-        .attr('points',_arrowPoints(tc.x,tc.y,angle,8))
-        .attr('fill','#22d3ee').attr('opacity',.7);
+      var mid={x:(bc.x+tc.x)/2+perpX,y:(bc.y+tc.y)/2+perpY-(dist>80?25:10)};
+      faG.append('path').attr('class','flow-path-leg allowed')
+        .attr('d',line([bc,mid,tc]));
+      // Target hop marker (reuses trace hop style — numbered green circle)
+      var hopG=faG.append('g').attr('class','flow-hop flow-hop-allow');
+      hopG.append('circle').attr('cx',tc.x).attr('cy',tc.y).attr('r',8);
+      hopG.append('text').attr('x',tc.x).attr('y',tc.y)
+        .style('font-size','7px').text(idx+1);
     });
   });
 }
 
-function _arrowPoints(x,y,angle,size){
-  var x1=x-size*Math.cos(angle-0.4);
-  var y1=y-size*Math.sin(angle-0.4);
-  var x2=x-size*Math.cos(angle+0.4);
-  var y2=y-size*Math.sin(angle+0.4);
-  return x+','+y+' '+x1+','+y1+' '+x2+','+y2;
-}
+
 
 // --- Flow Analysis Detail Panel ---
 function _renderFlowAnalysisPanel(){
@@ -15477,7 +15832,16 @@ function exitFlowAnalysis(){
   document.getElementById('flowAnalysisBanner').style.display='none';
   var mainEl=document.querySelector('.main');
   if(mainEl) mainEl.classList.remove('flow-active');
-  d3.select('#mapSvg').selectAll('.flow-analysis-layer').remove();
+  var svg=d3.select('#mapSvg');
+  svg.selectAll('.flow-analysis-layer').remove();
+  // Remove route-line highlight classes and fa-active dim
+  var mapRoot=svg.select('g');
+  if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress');
+  });
+  var inetNode=document.querySelector('.internet-node');
+  if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
   _clearFlowHighlights();
   var dp=document.getElementById('detailPanel');
   if(dp.classList.contains('open')){
@@ -15587,138 +15951,210 @@ function _launchTraceFromBtn(btn, preCleanup){
 // --- Full Flow Analysis Dashboard ---
 function _openFlowAnalysisDashboard(d){
   if(!d) return;
-  // Remove existing dashboard if open
   var existing=document.getElementById('faDashOverlay');
   if(existing) existing.remove();
+  // --- Flatten all sections into _faDashRows ---
+  _faDashRows=[];
+  var seenIn=new Set();
+  (d.ingressPaths||[]).forEach(function(p){
+    var key=p.to.type+':'+p.to.id+':'+p.port;
+    if(seenIn.has(key)) return;
+    seenIn.add(key);
+    _faDashRows.push({section:'ingress',name:p.toName||p.to.id,type:p.to.type,id:p.to.id,detail:String(p.port),detail2:p.type||'',via:'',tier:'',tierColor:'',_raw:p});
+  });
+  (d.egressPaths||[]).forEach(function(p){
+    _faDashRows.push({section:'egress',name:p.fromName||p.from.id,type:p.from.type,id:p.from.id,detail:p.via||'igw',detail2:'',via:p.via||'igw',tier:'',tierColor:'',_raw:p});
+  });
+  (d.bastionChains||[]).forEach(function(ch){
+    var tgtStr=ch.targets.map(function(t){return t.name||t.id}).join(', ');
+    _faDashRows.push({section:'bastion',name:ch.bastion.name||ch.bastion.id,type:'bastion',id:ch.bastion.id,detail:ch.targets.length+' targets',detail2:tgtStr,via:'',tier:'',tierColor:'',_raw:ch});
+  });
+  var tierDefs=[
+    {key:'internetFacing',label:'Internet-Facing',color:'#10b981'},
+    {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee'},
+    {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6'},
+    {key:'database',label:'Database Tier',color:'#f59e0b'}
+  ];
+  tierDefs.forEach(function(t){
+    (d.accessTiers[t.key]||[]).forEach(function(ref){
+      _faDashRows.push({section:t.key,name:ref.name||ref.id,type:ref.type,id:ref.id,detail:'',detail2:'',via:'',tier:t.label,tierColor:t.color,_raw:ref});
+    });
+  });
+  // --- Reset state ---
+  _faDashState={section:'all',search:'',sort:'name',sortDir:'asc',page:1,perPage:50};
+  // --- Build overlay shell ---
   var overlay=document.createElement('div');
   overlay.id='faDashOverlay';
   overlay.className='fa-dash-overlay';
-  var h='<div class="fa-dash-header">';
-  h+='<h2>Traffic Flow Analysis Dashboard</h2>';
-  h+='<span style="font-size:10px;color:var(--text-muted)">'+((d.ingressPaths||[]).length)+' ingress · '+((d.egressPaths||[]).length)+' egress · '+((d.bastionChains||[]).length)+' bastion chains</span>';
-  h+='<button class="fa-dash-close" id="faDashClose">✕ Close</button>';
-  h+='</div>';
-  h+='<div class="fa-dash-body">';
-  // --- Summary Cards ---
-  h+='<div class="fa-dash-grid" style="margin-bottom:20px">';
-  var tiers=[
-    {key:'internetFacing',label:'Internet-Facing',color:'#10b981',icon:'↗'},
-    {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:'🔐'},
-    {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:'🔒'},
-    {key:'database',label:'Database Tier',color:'#f59e0b',icon:'💾'}
-  ];
-  tiers.forEach(function(t){
+  var sh='<div class="fa-dash-header">';
+  sh+='<h2>Traffic Flow Analysis Dashboard</h2>';
+  sh+='<span style="font-size:10px;color:var(--text-muted)">'+((d.ingressPaths||[]).length)+' ingress · '+((d.egressPaths||[]).length)+' egress · '+((d.bastionChains||[]).length)+' bastion chains</span>';
+  sh+='<button class="fa-dash-close" id="faDashClose">✕ Close</button>';
+  sh+='</div>';
+  // Filter bar
+  sh+='<div class="fa-dash-filters">';
+  sh+='<input id="faDashSearch" type="text" placeholder="Filter by name, type, port, ID...">';
+  sh+='<div id="faDashPills" class="fa-dash-pills"></div>';
+  sh+='<select id="faDashPerPage"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="0">All</option></select>';
+  sh+='</div>';
+  // Summary cards (static)
+  sh+='<div class="fa-dash-body" id="faDashBody">';
+  sh+='<div class="fa-dash-grid" style="margin-bottom:16px">';
+  tierDefs.forEach(function(t){
     var items=d.accessTiers[t.key]||[];
-    h+='<div class="fa-dash-card">';
-    h+='<h4 style="color:'+t.color+'">'+t.icon+' '+t.label+'</h4>';
-    h+='<div class="fa-dash-stat" style="color:'+t.color+'">'+items.length+'</div>';
-    h+='<div class="fa-dash-sub">resource'+(items.length!==1?'s':'')+'</div>';
-    h+='</div>';
+    sh+='<div class="fa-dash-card"><h4 style="color:'+t.color+'">'+t.label+'</h4>';
+    sh+='<div class="fa-dash-stat" style="color:'+t.color+'">'+items.length+'</div>';
+    sh+='<div class="fa-dash-sub">resource'+(items.length!==1?'s':'')+'</div></div>';
   });
-  // Ingress/Egress summary cards
-  h+='<div class="fa-dash-card">';
-  h+='<h4 style="color:#10b981">↓ Ingress Paths</h4>';
-  h+='<div class="fa-dash-stat" style="color:#10b981">'+((d.ingressPaths||[]).length)+'</div>';
-  h+='<div class="fa-dash-sub">discovered paths from Internet</div>';
-  h+='</div>';
-  h+='<div class="fa-dash-card">';
-  h+='<h4 style="color:#f97316">↑ Egress Paths</h4>';
-  h+='<div class="fa-dash-stat" style="color:#f97316">'+((d.egressPaths||[]).length)+'</div>';
-  h+='<div class="fa-dash-sub">paths to Internet</div>';
-  h+='</div>';
-  h+='</div>';
-  // --- Ingress Table ---
-  var inPaths=d.ingressPaths||[];
-  if(inPaths.length>0){
-    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#10b981;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">Ingress Paths</h3>';
-    h+='<table class="fa-dash-table"><thead><tr>';
-    h+='<th>Target</th><th>Type</th><th>Port</th><th>Path Type</th><th>Action</th>';
-    h+='</tr></thead><tbody>';
-    var seenIn=new Set();
-    inPaths.forEach(function(p){
-      var key=p.to.type+':'+p.to.id+':'+p.port;
-      if(seenIn.has(key)) return;
-      seenIn.add(key);
-      h+='<tr>';
-      h+='<td style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</td>';
-      h+='<td>'+_escHtml(p.to.type)+'</td>';
-      h+='<td>'+p.port+'</td>';
-      h+='<td>'+_escHtml(p.type)+'</td>';
-      h+='<td><button class="fa-trace-btn" data-trace-src-t="internet" data-trace-src-id="internet" data-trace-tgt-t="'+p.to.type+'" data-trace-tgt-id="'+_escHtml(p.to.id)+'" data-trace-port="'+p.port+'">Trace ↗</button></td>';
-      h+='</tr>';
-    });
-    h+='</tbody></table>';
-  }
-  // --- Egress Table ---
-  var egPaths=d.egressPaths||[];
-  if(egPaths.length>0){
-    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#f97316;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">Egress Paths</h3>';
-    h+='<table class="fa-dash-table"><thead><tr>';
-    h+='<th>Source</th><th>Type</th><th>Via</th>';
-    h+='</tr></thead><tbody>';
-    egPaths.forEach(function(p){
-      h+='<tr>';
-      h+='<td style="color:var(--accent-cyan)">'+_escHtml(p.fromName||p.from.id)+'</td>';
-      h+='<td>'+_escHtml(p.from.type)+'</td>';
-      h+='<td>'+_escHtml(p.via||'igw')+'</td>';
-      h+='</tr>';
-    });
-    h+='</tbody></table>';
-  }
-  // --- Bastion Chains Table ---
-  var chains=d.bastionChains||[];
-  if(chains.length>0){
-    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#22d3ee;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">Bastion Chains</h3>';
-    h+='<table class="fa-dash-table"><thead><tr>';
-    h+='<th>Bastion Host</th><th>Targets</th><th>Target Count</th><th>Action</th>';
-    h+='</tr></thead><tbody>';
-    chains.forEach(function(ch){
-      h+='<tr>';
-      h+='<td style="color:var(--accent-cyan)">'+_escHtml(ch.bastion.name||ch.bastion.id)+'</td>';
-      h+='<td>'+ch.targets.map(function(t){return _escHtml(t.name||t.id)}).join(', ')+'</td>';
-      h+='<td>'+ch.targets.length+'</td>';
-      h+='<td>';
-      if(ch.targets.length>0){
-        var firstTgt=ch.targets[0];
-        h+='<button class="fa-trace-btn" data-trace-src-t="'+ch.bastion.type+'" data-trace-src-id="'+_escHtml(ch.bastion.id)+'" data-trace-tgt-t="'+firstTgt.type+'" data-trace-tgt-id="'+_escHtml(firstTgt.id)+'" data-trace-port="22">Trace ↗</button>';
-      }
-      h+='</td>';
-      h+='</tr>';
-    });
-    h+='</tbody></table>';
-  }
-  // --- Access Tier Detail Tables ---
-  tiers.forEach(function(t){
-    var items=d.accessTiers[t.key]||[];
-    if(items.length===0) return;
-    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:'+t.color+';margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">'+t.icon+' '+t.label+' Resources ('+items.length+')</h3>';
-    h+='<table class="fa-dash-table"><thead><tr>';
-    h+='<th>Resource</th><th>Type</th><th>ID</th>';
-    h+='</tr></thead><tbody>';
-    items.forEach(function(ref){
-      h+='<tr>';
-      h+='<td style="color:var(--accent-cyan)">'+_escHtml(ref.name||ref.id)+'</td>';
-      h+='<td>'+_escHtml(ref.type)+'</td>';
-      h+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(ref.id)+'</td>';
-      h+='</tr>';
-    });
-    h+='</tbody></table>';
-  });
-  h+='</div>';
-  overlay.innerHTML=h;
+  sh+='<div class="fa-dash-card"><h4 style="color:#10b981">↓ Ingress</h4>';
+  sh+='<div class="fa-dash-stat" style="color:#10b981">'+((d.ingressPaths||[]).length)+'</div>';
+  sh+='<div class="fa-dash-sub">paths from Internet</div></div>';
+  sh+='<div class="fa-dash-card"><h4 style="color:#f97316">↑ Egress</h4>';
+  sh+='<div class="fa-dash-stat" style="color:#f97316">'+((d.egressPaths||[]).length)+'</div>';
+  sh+='<div class="fa-dash-sub">paths to Internet</div></div>';
+  sh+='</div>';
+  // Table container
+  sh+='<div id="faDashTableWrap"></div>';
+  sh+='</div>';
+  // Pagination footer
+  sh+='<div class="fa-dash-footer">';
+  sh+='<span id="faDashRowCount"></span>';
+  sh+='<button id="faDashPrev">← Prev</button>';
+  sh+='<span id="faDashPageInfo"></span>';
+  sh+='<button id="faDashNext">Next →</button>';
+  sh+='</div>';
+  overlay.innerHTML=sh;
   document.body.appendChild(overlay);
-  // Wire close button
-  document.getElementById('faDashClose').addEventListener('click',function(){
-    overlay.remove();
-  });
-  // Wire Escape key
-  function dashEsc(e){if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',dashEsc)}}
+  // --- Wire static event listeners ---
+  function closeDash(){overlay.remove();document.removeEventListener('keydown',dashEsc)}
+  function dashEsc(e){if(e.key==='Escape') closeDash()}
   document.addEventListener('keydown',dashEsc);
-  // Wire trace buttons inside dashboard
-  overlay.querySelectorAll('.fa-trace-btn').forEach(function(btn){
+  document.getElementById('faDashClose').addEventListener('click',closeDash);
+  document.getElementById('faDashSearch').addEventListener('input',function(){
+    _faDashState.search=this.value.toLowerCase();_faDashState.page=1;_renderFaDash(closeDash);
+  });
+  document.getElementById('faDashPerPage').addEventListener('change',function(){
+    _faDashState.perPage=parseInt(this.value)||0;_faDashState.page=1;_renderFaDash(closeDash);
+  });
+  document.getElementById('faDashPrev').addEventListener('click',function(){
+    if(_faDashState.page>1){_faDashState.page--;_renderFaDash(closeDash)}
+  });
+  document.getElementById('faDashNext').addEventListener('click',function(){
+    _faDashState.page++;_renderFaDash(closeDash);
+  });
+  _renderFaDash(closeDash);
+}
+
+var _FA_TIER_KEYS=['internetFacing','bastionOnly','fullyPrivate','database'];
+var _FA_SECTION_COLORS={ingress:'#10b981',egress:'#f97316',bastion:'#22d3ee',internetFacing:'#10b981',bastionOnly:'#22d3ee',fullyPrivate:'#8b5cf6',database:'#f59e0b'};
+var _FA_SECTION_LABELS={ingress:'Ingress',egress:'Egress',bastion:'Bastion',internetFacing:'Internet-Facing',bastionOnly:'Bastion-Only',fullyPrivate:'Fully Private',database:'Database'};
+
+function _renderFaDash(closeFn){
+  if(!_faDashRows) return;
+  var st=_faDashState;
+  // --- Pills ---
+  var counts={all:_faDashRows.length,ingress:0,egress:0,bastion:0,tiers:0};
+  _faDashRows.forEach(function(r){
+    if(r.section==='ingress') counts.ingress++;
+    else if(r.section==='egress') counts.egress++;
+    else if(r.section==='bastion') counts.bastion++;
+    else counts.tiers++;
+  });
+  var pillBox=document.getElementById('faDashPills');
+  if(pillBox){
+    pillBox.innerHTML='';
+    [{key:'all',label:'All'},{key:'ingress',label:'Ingress'},{key:'egress',label:'Egress'},{key:'bastion',label:'Bastion'},{key:'tiers',label:'Tiers'}].forEach(function(p){
+      var pill=document.createElement('span');
+      pill.className='fa-dash-pill'+(st.section===p.key?' active':'');
+      pill.textContent=p.label+' ('+counts[p.key]+')';
+      pill.addEventListener('click',function(){st.section=p.key;st.page=1;_renderFaDash(closeFn)});
+      pillBox.appendChild(pill);
+    });
+  }
+  // --- Filter ---
+  var sec=st.section;
+  var search=st.search;
+  var filtered=_faDashRows.filter(function(r){
+    if(sec!=='all'){
+      if(sec==='tiers'){if(!_FA_TIER_KEYS.includes(r.section)) return false}
+      else{if(r.section!==sec) return false}
+    }
+    if(search){
+      var hay=[r.name,r.type,r.id,r.detail,r.detail2,r.via,r.tier].filter(Boolean).join(' ').toLowerCase();
+      if(hay.indexOf(search)===-1) return false;
+    }
+    return true;
+  });
+  // --- Sort ---
+  var sortKey=st.sort;
+  var dir=st.sortDir==='asc'?1:-1;
+  filtered.sort(function(a,b){
+    var av=a[sortKey]||'';var bv=b[sortKey]||'';
+    if(sortKey==='detail'){var an=parseFloat(av),bn=parseFloat(bv);if(!isNaN(an)&&!isNaN(bn)) return(an-bn)*dir}
+    return av<bv?-dir:av>bv?dir:0;
+  });
+  // --- Paginate ---
+  var perPage=st.perPage<=0?filtered.length:st.perPage;
+  var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
+  st.page=Math.min(Math.max(1,st.page),totalPages);
+  var start=(st.page-1)*perPage;
+  var pageRows=filtered.slice(start,start+perPage);
+  // --- Row count & pagination ---
+  var rc=document.getElementById('faDashRowCount');
+  if(rc) rc.textContent=filtered.length+' of '+_faDashRows.length;
+  var pi=document.getElementById('faDashPageInfo');
+  if(pi) pi.textContent='Page '+st.page+' of '+totalPages;
+  var pp=document.getElementById('faDashPrev');if(pp) pp.disabled=(st.page<=1);
+  var pn=document.getElementById('faDashNext');if(pn) pn.disabled=(st.page>=totalPages);
+  // --- Build table ---
+  var cols=[{key:'section',label:'Section'},{key:'name',label:'Name'},{key:'type',label:'Type'},{key:'detail',label:'Detail'},{key:'id',label:'ID',nosort:true},{key:'actions',label:'',nosort:true}];
+  var h='<table class="fa-dash-table"><thead><tr>';
+  cols.forEach(function(c){
+    var cls='';
+    if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' dd-sort-asc':' dd-sort-desc';
+    h+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+  if(!pageRows.length){
+    h+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:20px;color:var(--text-muted)">No rows match current filters</td></tr>';
+  } else {
+    pageRows.forEach(function(row){
+      var sc=_FA_SECTION_COLORS[row.section]||'var(--text-muted)';
+      var sl=_FA_SECTION_LABELS[row.section]||row.section;
+      h+='<tr>';
+      h+='<td><span class="fa-section-badge" style="background:'+sc+'22;color:'+sc+'">'+_escHtml(sl)+'</span></td>';
+      h+='<td style="color:var(--accent-cyan)">'+_escHtml(row.name)+'</td>';
+      h+='<td>'+_escHtml(row.type)+'</td>';
+      h+='<td>'+_escHtml(row.detail)+(row.detail2?' <span style="color:var(--text-muted);font-size:9px">'+_escHtml(row.detail2)+'</span>':'')+'</td>';
+      h+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(row.id)+'</td>';
+      h+='<td>';
+      if(row.section==='ingress'){
+        var p=row._raw;
+        h+='<button class="fa-trace-btn" data-trace-src-t="internet" data-trace-src-id="internet" data-trace-tgt-t="'+p.to.type+'" data-trace-tgt-id="'+_escHtml(p.to.id)+'" data-trace-port="'+p.port+'">Trace ↗</button>';
+      } else if(row.section==='bastion'&&row._raw.targets&&row._raw.targets.length>0){
+        var ch=row._raw;var ft=ch.targets[0];
+        h+='<button class="fa-trace-btn" data-trace-src-t="'+ch.bastion.type+'" data-trace-src-id="'+_escHtml(ch.bastion.id)+'" data-trace-tgt-t="'+ft.type+'" data-trace-tgt-id="'+_escHtml(ft.id)+'" data-trace-port="22">Trace ↗</button>';
+      }
+      h+='</td></tr>';
+    });
+  }
+  h+='</tbody></table>';
+  var wrap=document.getElementById('faDashTableWrap');
+  if(wrap) wrap.innerHTML=h;
+  // --- Wire sort headers ---
+  if(wrap) wrap.querySelectorAll('th[data-sort-col]').forEach(function(th){
+    th.addEventListener('click',function(){
+      var col=this.dataset.sortCol;
+      if(st.sort===col){st.sortDir=st.sortDir==='asc'?'desc':'asc'}
+      else{st.sort=col;st.sortDir='asc'}
+      st.page=1;_renderFaDash(closeFn);
+    });
+  });
+  // --- Wire trace buttons ---
+  if(wrap) wrap.querySelectorAll('.fa-trace-btn').forEach(function(btn){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
-      _launchTraceFromBtn(btn,function(){overlay.remove();document.removeEventListener('keydown',dashEsc)});
+      _launchTraceFromBtn(btn,closeFn);
     });
   });
 }
@@ -17222,6 +17658,598 @@ document.getElementById('budrExportXLSX').addEventListener('click',async functio
   }
 });
 
+// === GOVERNANCE DASHBOARD ===
+function _closeAllDashboardsExcept(keep){
+  ['compDash','budrDash','rptBuilder','govDash'].forEach(function(id){
+    if(id!==keep){var el=document.getElementById(id);if(el)el.classList.remove('open')}
+  });
+}
+
+function openGovernanceDashboard(){
+  if(!_rlCtx){_showToast('Render map data first','warn');return}
+  if(!_classificationData.length) runClassificationEngine(_rlCtx);
+  // Prepare IAM data if available
+  if(!_iamReviewData.length){
+    var iamRaw=safeParse(gv('in_iam'));
+    if(iamRaw){
+      var iamParsed=parseIAMData(iamRaw);
+      if(iamParsed) prepareIAMReviewData(iamParsed);
+    }
+  }
+  _govDashState={tab:'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
+  _govToolbarTab=null;
+  _closeAllDashboardsExcept('govDash');
+  document.getElementById('govDash').classList.add('open');
+  _renderGovDash();
+}
+
+var _govToolbarTab=null;
+function _renderGovDash(){
+  var tab=_govDashState.tab;
+  document.querySelectorAll('#govDashNav .dash-nav-btn').forEach(function(btn){
+    btn.classList.toggle('active',btn.dataset.govTab===tab);
+  });
+  if(tab==='classification') _renderClassificationTab();
+  else if(tab==='iam') _renderIAMTab();
+}
+
+function _renderClassificationTab(){
+  var tb=document.getElementById('govToolbar');
+  var body=document.getElementById('govBody');
+  var footer=document.getElementById('govFooter');
+  var st=_govDashState;
+  // Toolbar — only rebuild on tab switch
+  if(_govToolbarTab!=='classification'){
+    _govToolbarTab='classification';
+    var th='<label>Search</label>';
+    th+='<input id="govSearch" type="text" placeholder="Filter by name, type, VPC..." value="'+_escHtml(st.search)+'">';
+    th+='<label>Tier</label>';
+    th+='<select id="govFilter">';
+    ['all','critical','high','medium','low'].forEach(function(v){th+='<option value="'+v+'"'+(st.filter===v?' selected':'')+'>'+v.charAt(0).toUpperCase()+v.slice(1)+'</option>'});
+    th+='</select>';
+    th+='<label>Per page</label>';
+    th+='<select id="govPerPage">';
+    [25,50,100,0].forEach(function(v){th+='<option value="'+v+'"'+(st.perPage===v?' selected':'')+'>'+(v||'All')+'</option>'});
+    th+='</select>';
+    th+='<button id="govRulesBtn" style="margin-left:auto;background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;padding:4px 12px;border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">⚙ Configure Rules</button>';
+    tb.innerHTML=th;
+    document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderGovDash()});
+    document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderGovDash()});
+    document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderGovDash()});
+    document.getElementById('govRulesBtn').addEventListener('click',_openRulesEditor);
+  }
+  // Summary cards
+  var counts={critical:0,high:0,medium:0,low:0};
+  _classificationData.forEach(function(r){counts[r.tier]=(counts[r.tier]||0)+1});
+  var bh='<div class="gov-tier-cards">';
+  [{t:'critical',l:'Critical'},{t:'high',l:'High'},{t:'medium',l:'Medium'},{t:'low',l:'Low'}].forEach(function(d){
+    var meta=_TIER_RPO_RTO[d.t];
+    bh+='<div class="gov-tier-card" data-gov-tier="'+d.t+'" style="border-color:'+meta.color+'">';
+    bh+='<h3 style="color:'+meta.color+'">'+d.l+'</h3>';
+    bh+='<div class="gov-tier-count" style="color:'+meta.color+'">'+(counts[d.t]||0)+'</div>';
+    bh+='<div class="gov-tier-meta">RPO: '+meta.rpo+' · RTO: '+meta.rto+'</div>';
+    bh+='</div>';
+  });
+  bh+='</div>';
+  // Filter + sort
+  var items=_classificationData.slice();
+  if(st.filter!=='all') items=items.filter(function(r){return r.tier===st.filter});
+  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
+  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  items.sort(function(a,b){
+    if(sortKey==='tier') return(_TIER_RPO_RTO[a.tier].priority-_TIER_RPO_RTO[b.tier].priority)*dir;
+    var av=(a[sortKey]||'').toLowerCase();var bv=(b[sortKey]||'').toLowerCase();
+    return av<bv?-dir:av>bv?dir:0;
+  });
+  // Paginate
+  var perPage=st.perPage<=0?items.length:st.perPage;
+  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  st.page=Math.min(Math.max(1,st.page),totalPages);
+  var start=(st.page-1)*perPage;
+  var pageItems=items.slice(start,start+perPage);
+  // Table
+  var cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
+  bh+='<table class="gov-table"><thead><tr>';
+  cols.forEach(function(c){
+    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
+  });
+  bh+='</tr></thead><tbody>';
+  if(!pageItems.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No resources match filters</td></tr>';
+  pageItems.forEach(function(r){
+    bh+='<tr>';
+    bh+='<td style="color:var(--accent-cyan)">'+_escHtml(r.name)+'</td>';
+    bh+='<td>'+_escHtml(r.type)+'</td>';
+    bh+='<td><span class="gov-tier-badge '+r.tier+'">'+r.tier+'</span></td>';
+    bh+='<td>'+_escHtml(r.rpo)+'</td>';
+    bh+='<td>'+_escHtml(r.rto)+'</td>';
+    bh+='<td style="font-size:10px;color:var(--text-muted)">'+_escHtml(r.vpcName||'—')+'</td>';
+    bh+='<td style="font-size:9px;color:var(--text-muted)">'+(r.auto?'Auto':'<span style="color:#8b5cf6">Manual</span>')+'</td>';
+    bh+='<td><select class="gov-override-select" data-res-id="'+_escHtml(r.id)+'">';
+    ['critical','high','medium','low'].forEach(function(t){bh+='<option value="'+t+'"'+(r.tier===t?' selected':'')+'>'+t+'</option>'});
+    bh+='</select></td>';
+    bh+='</tr>';
+  });
+  bh+='</tbody></table>';
+  body.innerHTML=bh;
+  body.scrollTop=0;
+  // Footer
+  var fh='<button id="govExportCSV">Export CSV</button>';
+  fh+='<button id="govExportJSON">Export JSON</button>';
+  fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_classificationData.length+'</span>';
+  if(totalPages>1){
+    fh+='<button id="govPrev"'+(st.page<=1?' disabled':'')+'>← Prev</button>';
+    fh+='<span style="font-size:10px;color:var(--text-muted)">Page '+st.page+' of '+totalPages+'</span>';
+    fh+='<button id="govNext"'+(st.page>=totalPages?' disabled':'')+'>Next →</button>';
+  }
+  footer.innerHTML=fh;
+  // Wire body/footer events (these get recreated each render)
+  if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderGovDash()});
+  if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderGovDash()});
+  // Sort headers
+  body.querySelectorAll('th[data-sort-col]').forEach(function(th){
+    th.addEventListener('click',function(){
+      var col=this.dataset.sortCol;
+      if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
+      else{st.sort=col;st.sortDir='asc'}
+      st.page=1;_renderGovDash();
+    });
+  });
+  // Tier card clicks
+  body.querySelectorAll('.gov-tier-card[data-gov-tier]').forEach(function(card){
+    card.addEventListener('click',function(){
+      var tier=this.dataset.govTier;
+      st.filter=st.filter===tier?'all':tier;
+      document.getElementById('govFilter').value=st.filter;
+      st.page=1;_renderGovDash();
+    });
+  });
+  // Override selects
+  body.querySelectorAll('.gov-override-select').forEach(function(sel){
+    sel.addEventListener('change',function(){
+      var resId=this.dataset.resId;var newTier=this.value;
+      _classificationOverrides[resId]=newTier;
+      var item=_classificationData.find(function(r){return r.id===resId});
+      if(item){item.tier=newTier;item.rpo=_TIER_RPO_RTO[newTier].rpo;item.rto=_TIER_RPO_RTO[newTier].rto;item.auto=false}
+      _renderGovDash();
+    });
+  });
+  // Export
+  document.getElementById('govExportCSV').addEventListener('click',function(){
+    var rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
+    items.forEach(function(r){rows.push([r.name,r.type,r.tier,r.rpo,r.rto,r.auto?'Auto':'Manual',r.vpcName||''])});
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    downloadBlob(new Blob([csv],{type:'text/csv'}),'asset-classification.csv');
+  });
+  document.getElementById('govExportJSON').addEventListener('click',function(){
+    downloadBlob(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}),'asset-classification.json');
+  });
+}
+
+function _renderIAMTab(){
+  var tb=document.getElementById('govToolbar');
+  var body=document.getElementById('govBody');
+  var footer=document.getElementById('govFooter');
+  var st=_govDashState;
+  // Toolbar — only rebuild on tab switch
+  if(_govToolbarTab!=='iam'){
+    _govToolbarTab='iam';
+    var th='<label>Search</label>';
+    th+='<input id="govSearch" type="text" placeholder="Filter by name, ARN, type..." value="'+_escHtml(st.search)+'">';
+    th+='<label>Filter</label>';
+    th+='<select id="govFilter">';
+    [{v:'all',l:'All'},{v:'roles',l:'Roles Only'},{v:'users',l:'Users Only'},{v:'admin',l:'Admin Access'},{v:'findings',l:'With Findings'}].forEach(function(o){
+      th+='<option value="'+o.v+'"'+(st.filter===o.v?' selected':'')+'>'+o.l+'</option>';
+    });
+    th+='</select>';
+    th+='<label>Per page</label>';
+    th+='<select id="govPerPage">';
+    [25,50,100,0].forEach(function(v){th+='<option value="'+v+'"'+(st.perPage===v?' selected':'')+'>'+(v||'All')+'</option>'});
+    th+='</select>';
+    tb.innerHTML=th;
+    document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderGovDash()});
+    document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderGovDash()});
+    document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderGovDash()});
+  }
+  if(!_iamReviewData.length){
+    body.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-muted);font-family:\'IBM Plex Mono\',monospace"><p style="font-size:14px">No IAM data loaded</p><p style="font-size:11px">Paste IAM auth details (from <code>aws iam get-account-authorization-details</code>) in the IAM section of the left panel, then re-render.</p></div>';
+    footer.innerHTML='';
+    return;
+  }
+  // Filter + sort
+  var items=_iamReviewData.slice();
+  if(st.filter==='roles') items=items.filter(function(r){return r.type==='Role'});
+  else if(st.filter==='users') items=items.filter(function(r){return r.type==='User'});
+  else if(st.filter==='admin') items=items.filter(function(r){return r.isAdmin});
+  else if(st.filter==='findings') items=items.filter(function(r){return r.findings.length>0});
+  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.arn||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1})}
+  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  items.sort(function(a,b){
+    if(sortKey==='lastUsed'||sortKey==='created'){return((b[sortKey]||0)-(a[sortKey]||0))*dir}
+    var av=(a[sortKey]||'').toString().toLowerCase();var bv=(b[sortKey]||'').toString().toLowerCase();
+    return av<bv?-dir:av>bv?dir:0;
+  });
+  // Paginate
+  var perPage=st.perPage<=0?items.length:st.perPage;
+  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  st.page=Math.min(Math.max(1,st.page),totalPages);
+  var start=(st.page-1)*perPage;
+  var pageItems=items.slice(start,start+perPage);
+  // Summary
+  var roleCt=_iamReviewData.filter(function(r){return r.type==='Role'}).length;
+  var userCt=_iamReviewData.filter(function(r){return r.type==='User'}).length;
+  var adminCt=_iamReviewData.filter(function(r){return r.isAdmin}).length;
+  var findCt=_iamReviewData.filter(function(r){return r.findings.length>0}).length;
+  var bh='<div class="gov-tier-cards" style="margin-bottom:16px">';
+  [{l:'Roles',c:roleCt,color:'#8b5cf6'},{l:'Users',c:userCt,color:'#22d3ee'},{l:'Admin',c:adminCt,color:'#ef4444'},{l:'With Findings',c:findCt,color:'#f59e0b'}].forEach(function(d){
+    bh+='<div class="gov-tier-card" style="border-color:'+d.color+'"><h3 style="color:'+d.color+'">'+d.l+'</h3><div class="gov-tier-count" style="color:'+d.color+'">'+d.c+'</div></div>';
+  });
+  bh+='</div>';
+  // Table
+  var cols=[{key:'name',label:'Name'},{key:'type',label:'Type'},{key:'created',label:'Created'},{key:'lastUsed',label:'Last Used'},{key:'policies',label:'Policies',nosort:true},{key:'admin',label:'Admin',nosort:true},{key:'findings',label:'Findings',nosort:true},{key:'cross',label:'Cross-Acct',nosort:true}];
+  bh+='<table class="gov-table"><thead><tr>';
+  cols.forEach(function(c){
+    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
+  });
+  bh+='</tr></thead><tbody>';
+  if(!pageItems.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No IAM entities match filters</td></tr>';
+  pageItems.forEach(function(r,idx){
+    var rowId='iam-r-'+idx;
+    bh+='<tr data-iam-row="'+rowId+'" style="cursor:pointer">';
+    bh+='<td style="color:var(--accent-cyan)">'+_escHtml(r.name)+'</td>';
+    bh+='<td>'+_escHtml(r.type)+'</td>';
+    bh+='<td style="font-size:10px">'+(r.created?r.created.toISOString().split('T')[0]:'—')+'</td>';
+    bh+='<td style="font-size:10px">'+(r.lastUsed?r.lastUsed.toISOString().split('T')[0]:'Never')+'</td>';
+    bh+='<td style="text-align:center">'+r.policies+'</td>';
+    bh+='<td>'+(r.isAdmin?'<span class="gov-admin-badge">Admin</span>':'—')+'</td>';
+    bh+='<td>'+(r.findings.length>0?'<span class="gov-finding-badge">'+r.findings.length+'</span>':'—')+'</td>';
+    bh+='<td>'+(r.crossAccounts.length>0?'<span style="color:#f59e0b">'+r.crossAccounts.length+'</span>':'—')+'</td>';
+    bh+='</tr>';
+    // Expandable detail row
+    bh+='<tr><td colspan="'+cols.length+'" class="gov-iam-expand" id="'+rowId+'-exp">';
+    bh+='<div style="margin-bottom:6px"><b>ARN:</b> <code style="font-size:10px;background:var(--bg-input);padding:2px 6px;border-radius:3px">'+_escHtml(r.arn)+'</code></div>';
+    if(r.policyNames&&r.policyNames.length) bh+='<div style="margin-bottom:6px"><b>Policies:</b> '+r.policyNames.map(function(p){return '<code style="font-size:9px;background:var(--bg-input);padding:1px 4px;border-radius:2px;margin-right:3px">'+_escHtml(p)+'</code>'}).join('')+'</div>';
+    if(r.permBoundary) bh+='<div style="margin-bottom:6px"><b>Permission Boundary:</b> <code style="font-size:9px">'+_escHtml(r.permBoundary)+'</code></div>';
+    if(r.crossAccounts.length) bh+='<div style="margin-bottom:6px"><b>Cross-Account Trusts:</b> '+r.crossAccounts.map(function(a){return '<code style="font-size:10px;background:rgba(245,158,11,.1);padding:1px 4px;border-radius:2px;margin-right:3px">'+_escHtml(a)+'</code>'}).join('')+'</div>';
+    if(r.type==='User'){
+      bh+='<div style="margin-bottom:6px"><b>MFA:</b> '+(r.hasMFA?'<span style="color:#10b981">✓ Enabled</span>':'<span style="color:#ef4444">✗ Disabled</span>')+'</div>';
+      if(r.hasConsole) bh+='<div style="margin-bottom:6px"><b>Console Access:</b> <span style="color:#f59e0b">Enabled</span></div>';
+      if(r.activeKeys) bh+='<div style="margin-bottom:6px"><b>Active Access Keys:</b> '+r.activeKeys+'</div>';
+    }
+    if(r.findings.length){
+      bh+='<div><b>Findings ('+r.findings.length+'):</b><ul style="margin:4px 0 0;padding-left:20px;list-style:none">';
+      r.findings.forEach(function(f){
+        var sColor=f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6';
+        bh+='<li style="font-size:10px;color:var(--text-secondary);margin:3px 0"><span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,.2);color:'+sColor+';margin-right:4px">'+f.severity+'</span>'+_escHtml(f.message)+'</li>';
+      });
+      bh+='</ul></div>';
+    }
+    bh+='</td></tr>';
+  });
+  bh+='</tbody></table>';
+  body.innerHTML=bh;
+  body.scrollTop=0;
+  // Footer
+  var fh='<button id="govExportCSV">Export CSV</button>';
+  fh+='<button id="govExportJSON">Export JSON</button>';
+  fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_iamReviewData.length+'</span>';
+  if(totalPages>1){
+    fh+='<button id="govPrev"'+(st.page<=1?' disabled':'')+'>← Prev</button>';
+    fh+='<span style="font-size:10px;color:var(--text-muted)">Page '+st.page+' of '+totalPages+'</span>';
+    fh+='<button id="govNext"'+(st.page>=totalPages?' disabled':'')+'>Next →</button>';
+  }
+  footer.innerHTML=fh;
+  // Wire body/footer events (these get recreated each render)
+  if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderGovDash()});
+  if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderGovDash()});
+  // Sort headers
+  body.querySelectorAll('th[data-sort-col]').forEach(function(th){
+    th.addEventListener('click',function(){
+      var col=this.dataset.sortCol;
+      if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
+      else{st.sort=col;st.sortDir='asc'}
+      st.page=1;_renderGovDash();
+    });
+  });
+  // Row expand/collapse
+  body.querySelectorAll('tr[data-iam-row]').forEach(function(tr){
+    tr.addEventListener('click',function(){
+      var rowId=this.dataset.iamRow;
+      var exp=document.getElementById(rowId+'-exp');
+      if(!exp)return;
+      var isOpen=exp.classList.contains('open');
+      body.querySelectorAll('.gov-iam-expand').forEach(function(e){e.classList.remove('open')});
+      body.querySelectorAll('tr[data-iam-row]').forEach(function(r){r.classList.remove('expanded')});
+      if(!isOpen){exp.classList.add('open');this.classList.add('expanded')}
+    });
+  });
+  // Export
+  document.getElementById('govExportCSV').addEventListener('click',function(){
+    var rows=[['Name','Type','ARN','Created','Last Used','Policies','Admin','Findings','Cross-Account']];
+    items.forEach(function(r){rows.push([r.name,r.type,r.arn,r.created?r.created.toISOString():'',r.lastUsed?r.lastUsed.toISOString():'',r.policies,r.isAdmin?'Yes':'No',r.findings.length,r.crossAccounts.join(';')])});
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    downloadBlob(new Blob([csv],{type:'text/csv'}),'iam-review.csv');
+  });
+  document.getElementById('govExportJSON').addEventListener('click',function(){
+    downloadBlob(new Blob([JSON.stringify(items.map(function(r){return{name:r.name,type:r.type,arn:r.arn,created:r.created,lastUsed:r.lastUsed,isAdmin:r.isAdmin,policies:r.policies,policyNames:r.policyNames,crossAccounts:r.crossAccounts,findingCount:r.findings.length}}),null,2)],{type:'application/json'}),'iam-review.json');
+  });
+}
+
+// Rules editor overlay
+function _openRulesEditor(){
+  var existing=document.getElementById('govRulesOverlay');
+  if(existing) existing.remove();
+  // Working copy of rules
+  var workRules=JSON.parse(JSON.stringify(_classificationRules));
+  workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
+  var groupCollapsed={vpc:false,type:false,name:false};
+  var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
+  var scopeOrder=['vpc','type','name'];
+  var overlay=document.createElement('div');
+  overlay.id='govRulesOverlay';
+  overlay.className='gov-rules-overlay';
+
+  function readRulesFromDom(){
+    var rules=[];
+    overlay.querySelectorAll('.gov-rule-row[data-rule-idx]').forEach(function(row){
+      var idx=parseInt(row.dataset.ruleIdx);
+      var r=workRules[idx];if(!r) return;
+      r.pattern=row.querySelector('[data-field="pattern"]').value;
+      r.scope=row.querySelector('[data-field="scope"]').value;
+      r.tier=row.querySelector('[data-field="tier"]').value;
+      r.weight=parseInt(row.querySelector('[data-field="weight"]').value)||0;
+    });
+    return workRules;
+  }
+  function countMatches(rule){
+    if(!rule.pattern||rule.enabled===false) return 0;
+    var re;try{re=new RegExp(rule.pattern,'i')}catch(e){return -1}
+    var ct=0;
+    (_classificationData||[]).forEach(function(res){
+      var text='';
+      if(rule.scope==='vpc') text=res.vpcName||'';
+      else if(rule.scope==='type') text=res.type||'';
+      else if(rule.scope==='name') text=res.name||'';
+      if(re.test(text)) ct++;
+    });
+    return ct;
+  }
+  function buildPreview(rules){
+    if(!_rlCtx) return {critical:0,high:0,medium:0,low:0,samples:[]};
+    var counts={critical:0,high:0,medium:0,low:0};
+    var samples=[];
+    var vpcNameMap={};
+    (_rlCtx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
+    function classify(name,type,vpcName,id){
+      var tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules).tier);
+      counts[tier]=(counts[tier]||0)+1;
+      if(samples.length<12) samples.push({name:name,type:type,tier:tier});
+    }
+    (_rlCtx.instances||[]).forEach(function(inst){
+      var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+      classify(name,'instance',vpcNameMap[inst.VpcId]||'',inst.InstanceId);
+    });
+    (_rlCtx.rdsInstances||[]).forEach(function(db){classify(db.DBInstanceIdentifier,'rds',vpcNameMap[(db.DBSubnetGroup||{}).VpcId]||'',db.DBInstanceIdentifier)});
+    (_rlCtx.ecacheClusters||[]).forEach(function(ec){classify(ec.CacheClusterId,'elasticache','',ec.CacheClusterId)});
+    (_rlCtx.albs||[]).forEach(function(alb){classify(alb.LoadBalancerName||'','alb',vpcNameMap[alb.VpcId]||'',alb.LoadBalancerName||'')});
+    (_rlCtx.lambdaFns||[]).forEach(function(fn){classify(fn.FunctionName,'lambda',vpcNameMap[(fn.VpcConfig||{}).VpcId]||'',fn.FunctionName)});
+    (_rlCtx.ecsServices||[]).forEach(function(svc){classify(svc.serviceName||'','ecs','',svc.serviceName||'')});
+    (_rlCtx.redshiftClusters||[]).forEach(function(rs){classify(rs.ClusterIdentifier,'redshift',vpcNameMap[rs.VpcId]||'',rs.ClusterIdentifier)});
+    return {critical:counts.critical,high:counts.high,medium:counts.medium,low:counts.low,total:counts.critical+counts.high+counts.medium+counts.low,samples:samples};
+  }
+  function renderPreview(){
+    var el=document.getElementById('govRulesPreview');if(!el) return;
+    var rules=readRulesFromDom();
+    var p=buildPreview(rules);
+    var total=p.total||1;
+    var cur={critical:0,high:0,medium:0,low:0};
+    _classificationData.forEach(function(r){cur[r.tier]=(cur[r.tier]||0)+1});
+    var ph='<div class="gov-preview-card"><h5>Classification Distribution</h5><div class="gov-preview-bars">';
+    [{k:'critical',l:'Critical',c:'#ef4444'},{k:'high',l:'High',c:'#f59e0b'},{k:'medium',l:'Medium',c:'#22d3ee'},{k:'low',l:'Low',c:'#64748b'}].forEach(function(d){
+      var pct=Math.round((p[d.k]/total)*100);
+      ph+='<div class="gov-preview-bar"><span class="gov-preview-bar-label" style="color:'+d.c+'">'+d.l+'</span>';
+      ph+='<div class="gov-preview-bar-track"><div class="gov-preview-bar-fill" style="width:'+pct+'%;background:'+d.c+'"></div></div>';
+      ph+='<span class="gov-preview-bar-ct">'+p[d.k]+'</span></div>';
+    });
+    ph+='</div></div>';
+    // Delta from current
+    var deltas=[];
+    [{k:'critical',l:'Critical',c:'#ef4444'},{k:'high',l:'High',c:'#f59e0b'},{k:'medium',l:'Medium',c:'#22d3ee'},{k:'low',l:'Low',c:'#64748b'}].forEach(function(d){
+      var diff=p[d.k]-(cur[d.k]||0);
+      if(diff!==0) deltas.push('<span style="color:'+d.c+'">'+d.l+': <span class="'+(diff>0?'up':'down')+'">'+(diff>0?'+':'')+diff+'</span></span>');
+    });
+    if(deltas.length) ph+='<div class="gov-preview-delta">'+deltas.join(' &nbsp; ')+'</div>';
+    else ph+='<div class="gov-preview-delta"><span class="same">No changes from current</span></div>';
+    // Sample
+    ph+='<div class="gov-preview-card" style="margin-top:10px"><h5>Sample Resources</h5><div class="gov-preview-sample">';
+    p.samples.forEach(function(s){
+      var tc=_TIER_RPO_RTO[s.tier]||{color:'#64748b'};
+      ph+='<div class="gov-preview-sample-row"><span class="name">'+_escHtml(s.name)+'</span><span class="type">'+_escHtml(s.type)+'</span><span class="gov-tier-badge '+s.tier+'" style="font-size:8px;padding:1px 5px">'+s.tier+'</span></div>';
+    });
+    ph+='</div></div>';
+    el.innerHTML=ph;
+  }
+  function renderRules(){
+    var list=document.getElementById('govRulesList');if(!list) return;
+    var h='';
+    scopeOrder.forEach(function(scope){
+      var rules=[];workRules.forEach(function(r,i){if(r.scope===scope) rules.push({rule:r,idx:i})});
+      if(!rules.length&&scope!=='vpc') return;
+      var collapsed=groupCollapsed[scope];
+      h+='<div class="gov-rule-group" data-scope="'+scope+'">';
+      h+='<div class="gov-rule-group-hdr" data-toggle-scope="'+scope+'"><span class="gov-rule-group-arrow'+(collapsed?' collapsed':'')+'">▼</span>';
+      h+='<span class="gov-rule-group-label">'+(scopeLabels[scope]||scope)+'</span>';
+      h+='<span class="gov-rule-group-count">'+rules.length+' rule'+(rules.length!==1?'s':'')+'</span></div>';
+      h+='<div class="gov-rule-group-body'+(collapsed?' collapsed':'')+'" style="'+(collapsed?'max-height:0':'max-height:9999px')+'">';
+      rules.forEach(function(d){
+        var r=d.rule;var i=d.idx;
+        var isValid=true;try{if(r.pattern) new RegExp(r.pattern,'i')}catch(e){isValid=false}
+        var mc=countMatches(r);
+        h+='<div class="gov-rule-row'+(r.enabled===false?' disabled':'')+((!isValid)?' invalid':'')+'" data-rule-idx="'+i+'">';
+        h+='<span class="gov-rule-drag" title="Drag to reorder">⠿</span>';
+        h+='<div class="gov-rule-toggle'+(r.enabled!==false?' on':'')+'" data-toggle-idx="'+i+'" title="'+(r.enabled!==false?'Enabled — click to disable':'Disabled — click to enable')+'"></div>';
+        h+='<input class="pattern'+((!isValid)?' invalid-pattern':'')+'" type="text" value="'+_escHtml(r.pattern)+'" data-field="pattern" placeholder="regex pattern…" title="'+((!isValid)?'Invalid regex!':'Regex pattern')+'">';
+        h+='<select data-field="scope" style="display:none"><option value="vpc"'+(r.scope==='vpc'?' selected':'')+'>VPC Name</option><option value="type"'+(r.scope==='type'?' selected':'')+'>Type</option><option value="name"'+(r.scope==='name'?' selected':'')+'>Name</option></select>';
+        h+='<select data-field="tier"><option value="critical"'+(r.tier==='critical'?' selected':'')+'>Critical</option><option value="high"'+(r.tier==='high'?' selected':'')+'>High</option><option value="medium"'+(r.tier==='medium'?' selected':'')+'>Medium</option><option value="low"'+(r.tier==='low'?' selected':'')+'>Low</option></select>';
+        h+='<input class="weight" type="number" value="'+r.weight+'" data-field="weight" title="Weight (higher wins)">';
+        h+='<span class="gov-rule-match-ct'+(mc>0?' has-matches':'')+'" title="'+(mc<0?'Invalid regex':mc+' resources match')+'">'+((mc<0)?'!':mc)+'</span>';
+        h+='<button class="gov-rule-del" data-del-idx="'+i+'" title="Delete rule">✕</button>';
+        h+='</div>';
+      });
+      h+='<div style="padding:4px 0 8px 34px"><button class="gov-rule-add-scope" data-add-scope="'+scope+'" style="background:none;border:1px dashed var(--border);border-radius:3px;padding:3px 10px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;color:var(--text-muted);cursor:pointer;transition:all .15s">+ Add '+((scopeLabels[scope]||scope).replace(' Rules',''))+' Rule</button></div>';
+      h+='</div></div>';
+    });
+    list.innerHTML=h;
+    wireRuleEvents();
+  }
+  function wireRuleEvents(){
+    // Toggle enable/disable
+    overlay.querySelectorAll('[data-toggle-idx]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var idx=parseInt(this.dataset.toggleIdx);
+        workRules[idx].enabled=workRules[idx].enabled===false?true:false;
+        renderRules();renderPreview();
+      });
+    });
+    // Delete
+    overlay.querySelectorAll('[data-del-idx]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var idx=parseInt(this.dataset.delIdx);
+        workRules.splice(idx,1);
+        renderRules();renderPreview();
+      });
+    });
+    // Group toggle
+    overlay.querySelectorAll('[data-toggle-scope]').forEach(function(hdr){
+      hdr.addEventListener('click',function(){
+        var scope=this.dataset.toggleScope;
+        groupCollapsed[scope]=!groupCollapsed[scope];
+        renderRules();
+      });
+    });
+    // Add rule per scope
+    overlay.querySelectorAll('[data-add-scope]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        workRules.push({pattern:'',scope:this.dataset.addScope,tier:'medium',weight:50,enabled:true});
+        renderRules();renderPreview();
+      });
+    });
+    // Live preview on input change (debounced)
+    var previewTimer;
+    overlay.querySelectorAll('.gov-rule-row input,.gov-rule-row select').forEach(function(el){
+      el.addEventListener('input',function(){
+        var row=this.closest('.gov-rule-row');
+        var idx=parseInt(row.dataset.ruleIdx);
+        var field=this.dataset.field;
+        if(field==='pattern'){
+          workRules[idx].pattern=this.value;
+          var valid=true;try{if(this.value) new RegExp(this.value,'i')}catch(e){valid=false}
+          this.classList.toggle('invalid-pattern',!valid);
+          row.classList.toggle('invalid',!valid);
+          // Update match count inline
+          var mc=countMatches(workRules[idx]);
+          var mcEl=row.querySelector('.gov-rule-match-ct');
+          if(mcEl){mcEl.textContent=mc<0?'!':mc;mcEl.classList.toggle('has-matches',mc>0)}
+        } else if(field==='tier'){
+          workRules[idx].tier=this.value;
+        } else if(field==='weight'){
+          workRules[idx].weight=parseInt(this.value)||0;
+        }
+        clearTimeout(previewTimer);
+        previewTimer=setTimeout(renderPreview,300);
+      });
+      el.addEventListener('change',function(){
+        var row=this.closest('.gov-rule-row');
+        var idx=parseInt(row.dataset.ruleIdx);
+        var field=this.dataset.field;
+        if(field==='tier') workRules[idx].tier=this.value;
+        else if(field==='weight') workRules[idx].weight=parseInt(this.value)||0;
+        clearTimeout(previewTimer);
+        previewTimer=setTimeout(renderPreview,150);
+      });
+    });
+  }
+
+  // Build shell
+  var h='<div class="gov-rules-panel">';
+  h+='<div class="gov-rules-hdr"><h3>Classification Rules</h3>';
+  h+='<div class="gov-rules-hdr-actions">';
+  h+='<button id="govRulesImport" title="Import rules from JSON">Import</button>';
+  h+='<button id="govRulesExport" title="Export rules as JSON">Export</button>';
+  h+='<button id="govRulesClose">Close</button>';
+  h+='</div></div>';
+  h+='<div class="gov-rules-content">';
+  h+='<div class="gov-rules-left"><p style="font-size:10px;color:var(--text-muted);margin:0 0 12px;line-height:1.5">Regex patterns matched against scope. Higher weight wins when multiple rules match. Toggle rules on/off to test without deleting.</p>';
+  h+='<div id="govRulesList"></div></div>';
+  h+='<div class="gov-rules-right"><h4>Live Preview</h4><div id="govRulesPreview"></div></div>';
+  h+='</div>';
+  h+='<div class="gov-rules-foot">';
+  h+='<button id="govRuleReset">Reset to Defaults</button>';
+  h+='<button class="gov-rules-apply" id="govRuleApply">Apply & Re-classify</button>';
+  h+='</div></div>';
+  overlay.innerHTML=h;
+  document.body.appendChild(overlay);
+  // Render initial state
+  renderRules();
+  renderPreview();
+  // Shell events
+  document.getElementById('govRulesClose').addEventListener('click',function(){overlay.remove()});
+  overlay.addEventListener('click',function(e){if(e.target===overlay) overlay.remove()});
+  document.getElementById('govRuleReset').addEventListener('click',function(){
+    workRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+    workRules.forEach(function(r){r.enabled=true});
+    renderRules();renderPreview();
+  });
+  document.getElementById('govRulesExport').addEventListener('click',function(){
+    readRulesFromDom();
+    var json=JSON.stringify(workRules,null,2);
+    downloadBlob(new Blob([json],{type:'application/json'}),'classification-rules.json');
+    _showToast('Rules exported');
+  });
+  document.getElementById('govRulesImport').addEventListener('click',function(){
+    var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    inp.addEventListener('change',function(){
+      if(!this.files[0]) return;
+      var reader=new FileReader();
+      reader.onload=function(e){
+        try{
+          var imported=JSON.parse(e.target.result);
+          if(!Array.isArray(imported)){_showToast('Invalid rules file','warn');return}
+          workRules=imported;
+          workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
+          renderRules();renderPreview();
+          _showToast(imported.length+' rules imported');
+        }catch(err){_showToast('Failed to parse JSON','warn')}
+      };
+      reader.readAsText(this.files[0]);
+    });
+    inp.click();
+  });
+  document.getElementById('govRuleApply').addEventListener('click',function(){
+    readRulesFromDom();
+    _classificationRules=workRules.filter(function(r){return r.pattern});
+    _classificationOverrides={};
+    runClassificationEngine(_rlCtx);
+    _govToolbarTab=null;
+    overlay.remove();
+    _renderGovDash();
+    _showToast('Rules applied — '+_classificationData.length+' resources re-classified');
+  });
+}
+
+// Governance event listeners
+document.getElementById('govBtn').addEventListener('click',openGovernanceDashboard);
+document.getElementById('govDashClose').addEventListener('click',function(){document.getElementById('govDash').classList.remove('open')});
+document.querySelectorAll('#govDashNav .dash-nav-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    _govDashState.tab=this.dataset.govTab;
+    _govDashState.filter='all';_govDashState.search='';_govDashState.page=1;
+    _govDashState.sort=_govDashState.tab==='classification'?'tier':'name';
+    _renderGovDash();
+  });
+});
+
 // === REPORT BUILDER ===
 function openReportBuilder(){
   var rb=document.getElementById('rptBuilder');
@@ -18574,7 +19602,22 @@ function matchFile(fname, content){
 }
 
 document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
-document.getElementById('dlExportScript').addEventListener('click',function(){
+// Export script dropdown
+(function(){
+  var menu=document.getElementById('exportScriptMenu');
+  document.getElementById('dlExportScript').addEventListener('click',function(e){
+    e.stopPropagation();
+    menu.style.display=menu.style.display==='none'?'block':'none';
+  });
+  document.addEventListener('click',function(){menu.style.display='none'});
+  menu.addEventListener('click',function(e){e.stopPropagation()});
+  ['dlBash','dlPowershell'].forEach(function(id){
+    document.getElementById(id).addEventListener('mouseenter',function(){this.style.background='rgba(99,102,241,.15)'});
+    document.getElementById(id).addEventListener('mouseleave',function(){this.style.background='none'});
+  });
+})();
+document.getElementById('dlBash').addEventListener('click',function(){
+  document.getElementById('exportScriptMenu').style.display='none';
   var script=[
 '#!/usr/bin/env bash',
 '# AWS Network Mapper — Data Export Script',
@@ -18666,7 +19709,116 @@ document.getElementById('dlExportScript').addEventListener('click',function(){
   ].join('\n');
   var blob=new Blob([script],{type:'text/x-shellscript'});
   downloadBlob(blob,'export-aws-data.sh');
-  _showToast('Export script downloaded — run: chmod +x export-aws-data.sh && ./export-aws-data.sh');
+  _showToast('Bash script downloaded — run: chmod +x export-aws-data.sh && ./export-aws-data.sh');
+});
+document.getElementById('dlPowershell').addEventListener('click',function(){
+  document.getElementById('exportScriptMenu').style.display='none';
+  var script=[
+'#Requires -Version 7.0',
+'<#',
+'.SYNOPSIS',
+'    AWS Network Mapper - Data Export Script (PowerShell)',
+'.DESCRIPTION',
+'    Exports all AWS CLI data needed for the web-based mapper tool.',
+'    Supports multi-region sweep and parallel execution.',
+'.PARAMETER Profile',
+'    AWS CLI profile name (optional)',
+'.PARAMETER Region',
+'    AWS region (optional)',
+'.PARAMETER OutputDir',
+'    Output directory (optional)',
+'.PARAMETER AllRegions',
+'    Sweep all enabled regions into subfolders',
+'.PARAMETER MaxParallel',
+'    Max concurrent API calls (default: 6)',
+'.EXAMPLE',
+'    ./export-aws-data.ps1',
+'    ./export-aws-data.ps1 -Profile prod -Region us-west-2',
+'    ./export-aws-data.ps1 -Profile prod -AllRegions -MaxParallel 8',
+'#>',
+'[CmdletBinding()]',
+'param([Alias("p")][string]$Profile,[Alias("r")][string]$Region,[Alias("o")][string]$OutputDir,[switch]$AllRegions,[int]$MaxParallel=6)',
+'$ErrorActionPreference="Stop"',
+'if($Profile -and $Profile -notmatch \'^[a-zA-Z0-9_-]+$\'){Write-Error "Invalid profile";exit 1}',
+'if($Region -and $Region -notmatch \'^[a-zA-Z0-9-]+$\'){Write-Error "Invalid region";exit 1}',
+'if(-not(Get-Command aws -ErrorAction SilentlyContinue)){Write-Error "AWS CLI not found";exit 1}',
+'$awsFlags=@(); if($Profile){$awsFlags+=@("--profile",$Profile)}',
+'function Get-BaseFlags([string]$reg){$f=@();if($Profile){$f+=@("--profile",$Profile)};if($reg){$f+=@("--region",$reg)};return $f}',
+'$exports=@(',
+'  @{Label="VPCs";File="vpcs.json";Cmd=@("ec2","describe-vpcs")},',
+'  @{Label="Subnets";File="subnets.json";Cmd=@("ec2","describe-subnets")},',
+'  @{Label="Route Tables";File="route-tables.json";Cmd=@("ec2","describe-route-tables")},',
+'  @{Label="Security Groups";File="security-groups.json";Cmd=@("ec2","describe-security-groups")},',
+'  @{Label="Network ACLs";File="network-acls.json";Cmd=@("ec2","describe-network-acls")},',
+'  @{Label="ENIs";File="network-interfaces.json";Cmd=@("ec2","describe-network-interfaces")},',
+'  @{Label="Internet GWs";File="internet-gateways.json";Cmd=@("ec2","describe-internet-gateways")},',
+'  @{Label="NAT GWs";File="nat-gateways.json";Cmd=@("ec2","describe-nat-gateways")},',
+'  @{Label="VPC Endpoints";File="vpc-endpoints.json";Cmd=@("ec2","describe-vpc-endpoints")},',
+'  @{Label="EC2 Instances";File="ec2-instances.json";Cmd=@("ec2","describe-instances")},',
+'  @{Label="RDS Instances";File="rds-instances.json";Cmd=@("rds","describe-db-instances")},',
+'  @{Label="Lambda Functions";File="lambda-functions.json";Cmd=@("lambda","list-functions")},',
+'  @{Label="ElastiCache";File="elasticache-clusters.json";Cmd=@("elasticache","describe-cache-clusters","--show-cache-node-info")},',
+'  @{Label="Redshift";File="redshift-clusters.json";Cmd=@("redshift","describe-clusters")},',
+'  @{Label="ALBs/NLBs";File="load-balancers.json";Cmd=@("elbv2","describe-load-balancers")},',
+'  @{Label="Target Groups";File="target-groups.json";Cmd=@("elbv2","describe-target-groups")},',
+'  @{Label="VPC Peering";File="vpc-peering.json";Cmd=@("ec2","describe-vpc-peering-connections")},',
+'  @{Label="VPN Connections";File="vpn-connections.json";Cmd=@("ec2","describe-vpn-connections")},',
+'  @{Label="TGW Attachments";File="tgw-attachments.json";Cmd=@("ec2","describe-transit-gateway-attachments")},',
+'  @{Label="EBS Volumes";File="volumes.json";Cmd=@("ec2","describe-volumes")},',
+'  @{Label="EBS Snapshots";File="snapshots.json";Cmd=@("ec2","describe-snapshots","--owner-ids","self")},',
+'  @{Label="S3 Buckets";File="s3-buckets.json";Cmd=@("s3api","list-buckets")},',
+'  @{Label="Route 53 Zones";File="hosted-zones.json";Cmd=@("route53","list-hosted-zones")},',
+'  @{Label="WAF WebACLs";File="waf-web-acls.json";Cmd=@("wafv2","list-web-acls","--scope","REGIONAL")},',
+'  @{Label="CloudFront";File="cloudfront.json";Cmd=@("cloudfront","list-distributions")},',
+'  @{Label="IAM Auth";File="iam.json";Cmd=@("iam","get-account-authorization-details")}',
+')',
+'function Export-EcsServices{param([string[]]$Flags,[string]$OutPath)',
+'  Write-Host "    ECS Services..." -NoNewline',
+'  try{$raw=& aws @Flags ecs list-clusters --query \'clusterArns[]\' --output json 2>&1',
+'    if($LASTEXITCODE -ne 0 -or -not $raw){Write-Host " SKIP" -ForegroundColor Yellow;return}',
+'    $clusters=$raw|ConvertFrom-Json;$allSvcs=@()',
+'    foreach($c in $clusters){if($c -notmatch \'^arn:aws\'){continue}',
+'      $sa=& aws @Flags ecs list-services --cluster $c --query \'serviceArns[]\' --output json 2>$null',
+'      if($LASTEXITCODE -ne 0 -or -not $sa){continue};$svcArns=$sa|ConvertFrom-Json',
+'      foreach($s in $svcArns){if($s -notmatch \'^arn:aws\'){continue}',
+'        $d=& aws @Flags ecs describe-services --cluster $c --services $s 2>$null',
+'        if($LASTEXITCODE -eq 0 -and $d){$allSvcs+=($d|ConvertFrom-Json).services}}}',
+'    @{services=$allSvcs}|ConvertTo-Json -Depth 10|Out-File(Join-Path $OutPath "ecs-services.json")-Encoding utf8',
+'    Write-Host " OK ($($allSvcs.Count))" -ForegroundColor Green',
+'  }catch{Write-Host " SKIP" -ForegroundColor Yellow}}',
+'function Export-Region{param([string]$RegionName,[string]$OutPath,[int]$Parallel)',
+'  $flags=Get-BaseFlags $RegionName;New-Item -ItemType Directory -Path $OutPath -Force|Out-Null',
+'  $results=$exports|ForEach-Object -ThrottleLimit $Parallel -Parallel{',
+'    $fp=Join-Path $using:OutPath $_.File',
+'    try{$r=& aws @using:flags @($_.Cmd) 2>&1',
+'      if($LASTEXITCODE -eq 0){$r|Out-File -FilePath $fp -Encoding utf8;$sz=(Get-Item $fp).Length;@{L=$_.Label;S="OK";D="${sz} bytes"}}',
+'      else{$m=($r|Out-String).Trim();if($m.Length -gt 60){$m=$m.Substring(0,60)};@{L=$_.Label;S="SKIP";D=$m}}}',
+'    catch{@{L=$_.Label;S="SKIP";D=$_.Exception.Message.Substring(0,[Math]::Min(60,$_.Exception.Message.Length))}}}',
+'  foreach($r in $results){$c=if($r.S -eq "OK"){"Green"}else{"Yellow"};Write-Host("  {0,-30} {1} ({2})" -f $r.L,$r.S,$r.D)-ForegroundColor $c}',
+'  Export-EcsServices -Flags $flags -OutPath $OutPath}',
+'Write-Host "`n  AWS Network Mapper - Data Export (PowerShell)`n" -ForegroundColor Magenta',
+'if($AllRegions){',
+'  Write-Host "  Mode: All Regions (parallel x$MaxParallel)" -ForegroundColor Cyan',
+'  $rr=& aws @awsFlags ec2 describe-regions --query \'Regions[].RegionName\' --output json 2>&1',
+'  if($LASTEXITCODE -ne 0){Write-Error "Failed: $rr";exit 1}',
+'  $regions=$rr|ConvertFrom-Json|Sort-Object',
+'  if(-not $OutputDir){$ts=Get-Date -Format "yyyyMMdd-HHmmss";$lb=if($Profile){$Profile}else{"default"};$OutputDir="./aws-export-${lb}-allregions-${ts}"}',
+'  New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null',
+'  Write-Host "  $($regions.Count) regions -> $OutputDir`n"',
+'  $i=0;foreach($reg in $regions){$i++;Write-Host "  Region $i/$($regions.Count): $reg" -ForegroundColor Cyan',
+'    Export-Region -RegionName $reg -OutPath(Join-Path $OutputDir $reg)-Parallel $MaxParallel}',
+'}else{',
+'  if(-not $OutputDir){$ts=Get-Date -Format "yyyyMMdd-HHmmss";$lb=if($Profile){$Profile}else{"default"};$OutputDir="./aws-export-${lb}-${ts}"}',
+'  Write-Host "  Profile: $($Profile ? $Profile : \'default\')  Region: $($Region ? $Region : \'default\')  Output: $OutputDir`n"',
+'  Export-Region -RegionName $Region -OutPath $OutputDir -Parallel $MaxParallel}',
+'$af=Get-ChildItem -Path $OutputDir -Filter "*.json" -Recurse -ErrorAction SilentlyContinue',
+'$fc=($af|Measure-Object).Count;$tb=($af|Measure-Object -Property Length -Sum).Sum',
+'$ts2=if($tb -gt 1MB){"{0:N1} MB" -f($tb/1MB)}elseif($tb -gt 1KB){"{0:N0} KB" -f($tb/1KB)}else{"$tb bytes"}',
+'Write-Host "`n  Done! $fc files ($ts2) -> $OutputDir`n" -ForegroundColor Green'
+  ].join('\r\n');
+  var blob=new Blob([script],{type:'text/plain'});
+  downloadBlob(blob,'export-aws-data.ps1');
+  _showToast('PowerShell script downloaded — run: ./export-aws-data.ps1');
 });
 document.getElementById('fileInput').addEventListener('change',async function(){
   const files=[...this.files];
@@ -22887,6 +24039,8 @@ document.addEventListener('keydown',function(e){
     const iacM=document.getElementById('iacModal');if(iacM&&iacM.classList.contains('open')){closeIacModal();return}
     if(document.getElementById('compExportModal').classList.contains('open')){document.getElementById('compExportModal').classList.remove('open');return}
     var rb=document.getElementById('rptBuilder');if(rb&&rb.classList.contains('open')){rb.classList.remove('open');return}
+    var govRO=document.getElementById('govRulesOverlay');if(govRO){govRO.remove();return}
+    var gd=document.getElementById('govDash');if(gd&&gd.classList.contains('open')){gd.classList.remove('open');return}
     const bd=document.getElementById('budrDash');if(bd&&bd.classList.contains('open')){bd.classList.remove('open');return}
     const cd=document.getElementById('compDash');if(cd&&cd.classList.contains('open')){cd.classList.remove('open');return}
     const dep=document.getElementById('depOverlay');if(dep&&dep.classList.contains('open')){dep.classList.remove('open');return}
@@ -22920,6 +24074,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='T'&&e.shiftKey){if(_flowMode)exitFlowMode();else enterFlowMode();return}
   if(e.key==='F'&&e.shiftKey){if(_flowAnalysisMode)exitFlowAnalysis();else enterFlowAnalysis();return}
   if(e.key==='R'&&e.shiftKey){var rb=document.getElementById('rptBuilder');if(rb.classList.contains('open'))rb.classList.remove('open');else openReportBuilder();return}
+  if(e.key==='G'&&e.shiftKey){var gd=document.getElementById('govDash');if(gd.classList.contains('open'))gd.classList.remove('open');else openGovernanceDashboard();return}
   if(e.key==='B'&&e.shiftKey){const bd=document.getElementById('budrDash');if(bd.classList.contains('open'))bd.classList.remove('open');else openBUDRDash();return}
   if(e.key==='C'&&e.shiftKey){const cd=document.getElementById('compDash');if(cd.classList.contains('open'))cd.classList.remove('open');else document.getElementById('compDashBtn').click();return}
   if(e.key==='D'&&e.shiftKey){if(_diffMode)exitDiffMode();else document.getElementById('diffFileInput').click();return}
