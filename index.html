@@ -4685,11 +4685,11 @@ function renderCompliancePanel(findings){
   _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,view:_compDashState.view||'action'};
   var si=document.getElementById('compSearch');if(si)si.value='';
   _closeAllDashboards('compDash');
-  document.getElementById('compDash').classList.add('open');
-  requestAnimationFrame(()=>{
-    const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
-    _renderCompDash(findings);
-  });
+  var cd=document.getElementById('compDash');
+  cd.classList.add('open');
+  cd.offsetHeight;
+  const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
+  _renderCompDash(findings);
 }
 function _renderCompDash(findings){
   var cb=document.getElementById('compBody');if(cb)cb.scrollTop=0;
@@ -8414,7 +8414,14 @@ function renderLandingZoneMap(ctx){
       .text(vl.vpc.CidrBlock+(region?' '+region:'')+lzAcctTag);
     if(_multiAccount&&vl.vpc._accountId!=='default'){
       const lzAcCol=getAccountColor(vl.vpc._accountId);
-      if(lzAcCol)vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',3).attr('height',vl.h).attr('fill',lzAcCol).attr('rx',1.5);
+      if(lzAcCol){
+        vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',8).attr('height',vl.h).attr('fill',lzAcCol).attr('rx',2).attr('opacity',.7);
+        const lzAcLbl=vl.vpc._accountLabel||vl.vpc._accountId;
+        const lzMaxCh=Math.floor(vl.h/7);
+        vG.append('text').attr('x',vl.x+5).attr('y',vl.y+vl.h-6).attr('transform','rotate(-90,'+((vl.x+5))+','+((vl.y+vl.h-6))+')')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','#fff').attr('font-weight','600').attr('letter-spacing','.5px')
+          .text(lzAcLbl.length>lzMaxCh?lzAcLbl.slice(0,lzMaxCh-1)+'…':lzAcLbl);
+      }
     }
 
     // VPCE badge - positioned at bottom left of VPC
@@ -11029,7 +11036,14 @@ function _renderMapInner(){
     // Account color stripe for multi-account
     if(_multiAccount&&vl.vpc._accountId!=='default'){
       const acCol=getAccountColor(vl.vpc._accountId);
-      if(acCol)vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',4).attr('height',vl.h).attr('fill',acCol).attr('rx',2);
+      if(acCol){
+        vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',8).attr('height',vl.h).attr('fill',acCol).attr('rx',2).attr('opacity',.7);
+        const acLbl=vl.vpc._accountLabel||vl.vpc._accountId;
+        const maxChars=Math.floor(vl.h/7);
+        vG.append('text').attr('x',vl.x+5).attr('y',vl.y+vl.h-6).attr('transform','rotate(-90,'+((vl.x+5))+','+((vl.y+vl.h-6))+')')
+          .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','#fff').attr('font-weight','600').attr('letter-spacing','.5px')
+          .text(acLbl.length>maxChars?acLbl.slice(0,maxChars-1)+'…':acLbl);
+      }
     }
     // show indicator for VPCs with no subnets
     if(vl.subs.length===0){
@@ -12614,7 +12628,7 @@ function _buildRlCtxFromTextareas(){
     snapshots.forEach(s=>{const vid=s.VolumeId;if(vid){if(!snapByVol.has(vid))snapByVol.set(vid,[]);snapByVol.get(vid).push(s)}});
 
     const ecacheByVpc=new Map(),redshiftByVpc=new Map();
-    ecacheClusters.forEach(c=>{const csg=c.CacheSubnetGroupName;subnets.forEach(s=>{if(s.VpcId){if(!ecacheByVpc.has(s.VpcId))ecacheByVpc.set(s.VpcId,[]);ecacheByVpc.get(s.VpcId).push(c)}})});
+    ecacheClusters.forEach(c=>{const vid=c.VpcId||(c.CacheNodes&&c.CacheNodes[0]&&c.CacheNodes[0].CustomerAvailabilityZone?'':'');if(vid){if(!ecacheByVpc.has(vid))ecacheByVpc.set(vid,[]);ecacheByVpc.get(vid).push(c)}});
     redshiftClusters.forEach(c=>{const v=c.VpcId;if(v){if(!redshiftByVpc.has(v))redshiftByVpc.set(v,[]);redshiftByVpc.get(v).push(c)}});
 
     const tgwAttachments=[];
@@ -14081,8 +14095,10 @@ function openFirewallDash(){
     var o=document.createElement('option');o.value=v.VpcId;o.textContent=gn(v,v.VpcId)+' ('+v.VpcId+')';vpcSel.appendChild(o);
   });
   _closeAllDashboards('fwDash');
-  document.getElementById('fwDash').classList.add('open');
-  requestAnimationFrame(()=>_fwDashRender());
+  var fd=document.getElementById('fwDash');
+  fd.classList.add('open');
+  fd.offsetHeight;
+  _fwDashRender();
 }
 
 function closeFirewallDash(){document.getElementById('fwDash').classList.remove('open')}
@@ -17820,8 +17836,10 @@ function openBUDRDash(){
   var si=document.getElementById('budrSearch');if(si)si.value='';
   var so=document.getElementById('budrSort');if(so)so.value='tier';
   _closeAllDashboards('budrDash');
-  document.getElementById('budrDash').classList.add('open');
-  requestAnimationFrame(()=>_renderBUDRDash());
+  var bd=document.getElementById('budrDash');
+  bd.classList.add('open');
+  bd.offsetHeight;
+  _renderBUDRDash();
 }
 function _renderBUDRDash(){
   var bb=document.getElementById('budrBody');if(bb)bb.scrollTop=0;
@@ -17992,8 +18010,10 @@ function openGovernanceDashboard(tab){
   _govDashState={tab:tab||'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
   _govToolbarTab=null;
   _closeAllDashboardsExcept('govDash');
-  document.getElementById('govDash').classList.add('open');
-  requestAnimationFrame(()=>_renderGovDash());
+  var gd=document.getElementById('govDash');
+  gd.classList.add('open');
+  gd.offsetHeight;
+  _renderGovDash();
 }
 
 var _govToolbarTab=null;
