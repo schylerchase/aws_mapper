@@ -11771,6 +11771,54 @@ function importFolder(result){
     }else{
       _showToast('No valid data found in region folders');
     }
+  }else if(result._structure==='multi-profile'&&result.profiles){
+    const profileNames=Object.keys(result.profiles).sort();
+    let totalLoaded=0;
+    profileNames.forEach(profileName=>{
+      const prof=result.profiles[profileName];
+      const profRegions=prof.regions||{};
+      const profFlat=prof.files||{};
+      const regionNames=Object.keys(profRegions).sort();
+      if(regionNames.length){
+        regionNames.forEach(regionName=>{
+          const regionFiles=profRegions[regionName];
+          const textareas={};
+          Object.entries(regionFiles).forEach(([fname,content])=>{
+            try{JSON.parse(content)}catch(e){return}
+            const inputId=matchFile(fname,content);
+            if(inputId)textareas[inputId]=content;
+          });
+          if(Object.keys(textareas).length){
+            addAccountContext({textareas,accountLabel:profileName+' / '+regionName,_isRegion:true},profileName+' / '+regionName);
+            totalLoaded++;
+          }
+        });
+      }else if(Object.keys(profFlat).length){
+        const textareas={};
+        Object.entries(profFlat).forEach(([fname,content])=>{
+          try{JSON.parse(content)}catch(e){return}
+          const inputId=matchFile(fname,content);
+          if(inputId)textareas[inputId]=content;
+        });
+        if(Object.keys(textareas).length){
+          addAccountContext({textareas,accountLabel:profileName},profileName);
+          totalLoaded++;
+        }
+      }
+    });
+    const globalFiles=result.files||{};
+    Object.entries(globalFiles).forEach(([fname,content])=>{
+      try{JSON.parse(content)}catch(e){return}
+      const inputId=matchFile(fname,content);
+      if(inputId){const el=document.getElementById(inputId);if(el){el.value=content;el.className='ji valid'}}
+    });
+    if(totalLoaded>0){
+      if(!_multiViewMode)enterMultiView();
+      else _remergeAndRender();
+      _showToast(totalLoaded+' context'+(totalLoaded>1?'s':'')+' imported from '+profileNames.length+' profile'+(profileNames.length>1?'s':''));
+    }else{
+      _showToast('No valid data found in profile folders');
+    }
   }else{
     // Flat structure — load into textareas directly
     const files=result.files||result;
@@ -11883,23 +11931,48 @@ if(_isElectron){
     try{
       const dirHandle=await window.showDirectoryPicker({mode:'read'});
       const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
-      const regions={},flatFiles={};
+      const regions={},flatFiles={},profiles={};
       for await(const [name,handle] of dirHandle.entries()){
-        if(handle.kind==='directory'&&regionRe.test(name)){
-          const regionFiles={};
-          for await(const [fname,fhandle] of handle.entries()){
-            if(fhandle.kind==='file'&&fname.endsWith('.json')){
-              const file=await fhandle.getFile();
-              regionFiles[fname]=await file.text();
+        if(handle.kind==='directory'){
+          if(regionRe.test(name)){
+            const regionFiles={};
+            for await(const [fname,fhandle] of handle.entries()){
+              if(fhandle.kind==='file'&&fname.endsWith('.json')){
+                const file=await fhandle.getFile();
+                regionFiles[fname]=await file.text();
+              }
+            }
+            if(Object.keys(regionFiles).length)regions[name]=regionFiles;
+          }else{
+            // Potential profile folder
+            const profRegions={},profFlat={};
+            for await(const [subName,subHandle] of handle.entries()){
+              if(subHandle.kind==='directory'&&regionRe.test(subName)){
+                const regFiles={};
+                for await(const [fname,fhandle] of subHandle.entries()){
+                  if(fhandle.kind==='file'&&fname.endsWith('.json')){
+                    const file=await fhandle.getFile();
+                    regFiles[fname]=await file.text();
+                  }
+                }
+                if(Object.keys(regFiles).length)profRegions[subName]=regFiles;
+              }else if(subHandle.kind==='file'&&subName.endsWith('.json')){
+                const file=await subHandle.getFile();
+                profFlat[subName]=await file.text();
+              }
+            }
+            if(Object.keys(profRegions).length||Object.keys(profFlat).length){
+              profiles[name]={regions:profRegions,files:profFlat};
             }
           }
-          if(Object.keys(regionFiles).length)regions[name]=regionFiles;
         }else if(handle.kind==='file'&&name.endsWith('.json')){
           const file=await handle.getFile();
           flatFiles[name]=await file.text();
         }
       }
-      if(Object.keys(regions).length){
+      if(Object.keys(profiles).length){
+        importFolder({_structure:'multi-profile',profiles,files:flatFiles});
+      }else if(Object.keys(regions).length){
         importFolder({_structure:'multi-region',regions,files:flatFiles});
       }else{
         importFolder({_structure:'flat',files:flatFiles});

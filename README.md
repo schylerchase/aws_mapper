@@ -137,6 +137,7 @@ Two export scripts are included for extracting data from your AWS accounts:
 ```bash
 ./export-aws-data.sh
 ./export-aws-data.sh -p my-profile -r us-west-2
+./export-aws-data.sh -p my-profile -a              # all regions
 ```
 
 **PowerShell** (Windows / Cross-platform):
@@ -144,9 +145,10 @@ Two export scripts are included for extracting data from your AWS accounts:
 .\export-aws-data.ps1
 .\export-aws-data.ps1 -Profile my-profile -Region us-west-2
 .\export-aws-data.ps1 -Profile my-profile -AllRegions
+.\export-aws-data.ps1 -Profiles prod,staging,dev -AllRegions
 ```
 
-The `-AllRegions` flag exports all active regions into subfolders that the mapper auto-detects as a multi-region import.
+The `-AllRegions` flag exports all active regions into subfolders. The PowerShell `-Profiles` flag exports multiple AWS profiles into profile subfolders, each with region subfolders when combined with `-AllRegions`. The mapper auto-detects all folder structures on import.
 
 ---
 
