@@ -340,6 +340,18 @@ function checkForUpdates(manual = false) {
   } catch {}
 }
 
+// ── Navigation Guards ─────────────────────────────────────────────
+
+app.on('web-contents-created', (event, contents) => {
+  contents.on('will-navigate', (ev, url) => {
+    if (!url.startsWith('file://')) ev.preventDefault();
+  });
+  contents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+});
+
 // ── App Lifecycle ─────────────────────────────────────────────────
 
 app.whenReady().then(() => {
