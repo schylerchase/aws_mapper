@@ -150,25 +150,63 @@ ipcMain.handle('file:open-folder', async () => {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   const regions = {};
   const flatFiles = {};
-  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+  const profiles = {};
+  const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
   for (const ent of entries) {
-    if ((ent.isDirectory() || ent.isSymbolicLink()) && regionRe.test(ent.name)) {
-      const regionDir = path.join(dir, ent.name);
-      try { if (!fs.statSync(regionDir).isDirectory()) continue; } catch { continue; }
-      const regionFiles = {};
-      for (const f of fs.readdirSync(regionDir, { withFileTypes: true })) {
-        if (f.isFile() && f.name.endsWith('.json')) {
-          const fp = path.join(regionDir, f.name);
-          try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
-          regionFiles[f.name] = fs.readFileSync(fp, 'utf8');
+    const isDir = ent.isDirectory() || ent.isSymbolicLink();
+    if (isDir) {
+      const subdir = path.join(dir, ent.name);
+      try { if (!fs.statSync(subdir).isDirectory()) continue; } catch { continue; }
+
+      if (regionRe.test(ent.name)) {
+        // Region folder (existing behavior)
+        const regionFiles = {};
+        for (const f of fs.readdirSync(subdir, { withFileTypes: true })) {
+          if (f.isFile() && f.name.endsWith('.json')) {
+            const fp = path.join(subdir, f.name);
+            try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
+            regionFiles[f.name] = fs.readFileSync(fp, 'utf8');
+          }
+        }
+        if (Object.keys(regionFiles).length) regions[ent.name] = regionFiles;
+      } else {
+        // Potential profile folder — scan for region subdirs or flat JSON
+        const profRegions = {};
+        const profFlat = {};
+        for (const sub of fs.readdirSync(subdir, { withFileTypes: true })) {
+          if ((sub.isDirectory() || sub.isSymbolicLink()) && regionRe.test(sub.name)) {
+            const regDir = path.join(subdir, sub.name);
+            try { if (!fs.statSync(regDir).isDirectory()) continue; } catch { continue; }
+            const regFiles = {};
+            for (const f of fs.readdirSync(regDir, { withFileTypes: true })) {
+              if (f.isFile() && f.name.endsWith('.json')) {
+                const fp = path.join(regDir, f.name);
+                try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
+                regFiles[f.name] = fs.readFileSync(fp, 'utf8');
+              }
+            }
+            if (Object.keys(regFiles).length) profRegions[sub.name] = regFiles;
+          } else if (sub.isFile() && sub.name.endsWith('.json')) {
+            const fp = path.join(subdir, sub.name);
+            try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
+            profFlat[sub.name] = fs.readFileSync(fp, 'utf8');
+          }
+        }
+        if (Object.keys(profRegions).length || Object.keys(profFlat).length) {
+          profiles[ent.name] = { regions: profRegions, files: profFlat };
         }
       }
-      if (Object.keys(regionFiles).length) regions[ent.name] = regionFiles;
     } else if (ent.isFile() && ent.name.endsWith('.json')) {
       const fp = path.join(dir, ent.name);
       try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
       flatFiles[ent.name] = fs.readFileSync(fp, 'utf8');
     }
+  }
+
+  // Priority: profiles > regions > flat
+  if (Object.keys(profiles).length) {
+    return { _structure: 'multi-profile', profiles, files: flatFiles };
   }
   if (Object.keys(regions).length) {
     return { _structure: 'multi-region', regions, files: flatFiles };

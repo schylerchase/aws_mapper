@@ -21,6 +21,8 @@
     ./export-aws-data.ps1 -Profile prod -Region us-west-2
     ./export-aws-data.ps1 -Profile prod -AllRegions -MaxParallel 8
     ./export-aws-data.ps1 -Profile prod -Region us-east-1 -OutputDir ./my-export
+    ./export-aws-data.ps1 -Profiles prod,staging,dev -AllRegions
+    ./export-aws-data.ps1 -Profiles prod,staging -Region us-east-1
 #>
 [CmdletBinding()]
 param(
@@ -28,6 +30,7 @@ param(
     [Alias("r")][string]$Region,
     [Alias("o")][string]$OutputDir,
     [switch]$AllRegions,
+    [Alias("P")][string]$Profiles,
     [int]$MaxParallel = 6
 )
 
@@ -41,6 +44,21 @@ if ($Profile -and $Profile -notmatch '^[a-zA-Z0-9_-]+$') {
 if ($Region -and $Region -notmatch '^[a-zA-Z0-9-]+$') {
     Write-Error "Invalid region name. Use only letters, numbers, hyphens."
     exit 1
+}
+
+# Parse -Profiles into array, merge with -Profile for backward compat
+$profileList = @()
+if ($Profiles) {
+    $profileList = $Profiles -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    foreach ($p in $profileList) {
+        if ($p -notmatch '^[a-zA-Z0-9_-]+$') {
+            Write-Error "Invalid profile name '$p'. Use only letters, numbers, hyphens, underscores."
+            exit 1
+        }
+    }
+}
+if ($Profile -and $profileList.Count -eq 0) {
+    $profileList = @($Profile)
 }
 
 # Check AWS CLI
@@ -250,7 +268,61 @@ $banner = @"
 "@
 Write-Host $banner -ForegroundColor Magenta
 
-if ($AllRegions) {
+if ($profileList.Count -gt 1) {
+    # Multi-profile mode
+    Write-Host "  Mode    : Multi-Profile ($($profileList.Count) profiles, parallel x$MaxParallel)" -ForegroundColor Cyan
+    Write-Host "  Profiles: $($profileList -join ', ')"
+    if ($AllRegions) { Write-Host "  Regions : All (auto-discover per profile)" }
+    elseif ($Region) { Write-Host "  Region  : $Region" }
+    else { Write-Host "  Region  : default" }
+    Write-Host ""
+
+    if (-not $OutputDir) {
+        $ts = Get-Date -Format "yyyyMMdd-HHmmss"
+        $OutputDir = "./aws-export-multi-${ts}"
+    }
+    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+    Write-Host "  Output  : $OutputDir"
+    Write-Host ""
+
+    $profIdx = 0
+    foreach ($prof in $profileList) {
+        $profIdx++
+        $Profile = $prof
+        $awsFlags = @("--profile", $prof)
+        $profDir = Join-Path $OutputDir $prof
+
+        Write-Host ""
+        Write-Host "  ╔═ Profile $profIdx/$($profileList.Count): $prof ═══════════════════════" -ForegroundColor Magenta
+
+        if ($AllRegions) {
+            $regRaw = & aws @awsFlags ec2 describe-regions --query 'Regions[].RegionName' --output json 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "  ║ Failed to list regions for profile '$prof': $regRaw" -ForegroundColor Red
+                Write-Host "  ╚═ Skipped" -ForegroundColor Red
+                continue
+            }
+            $regions = $regRaw | ConvertFrom-Json | Sort-Object
+            Write-Host "  ║ Found $($regions.Count) regions" -ForegroundColor Green
+
+            $regionIdx = 0
+            foreach ($reg in $regions) {
+                $regionIdx++
+                $regDir = Join-Path $profDir $reg
+                Write-Host ""
+                Write-Host "  ║ ┌─ Region $regionIdx/$($regions.Count): $reg ─────────────────────" -ForegroundColor Cyan
+                Export-Region -RegionName $reg -OutPath $regDir -Parallel $MaxParallel
+                $fileCount = (Get-ChildItem -Path $regDir -Filter "*.json" -ErrorAction SilentlyContinue | Measure-Object).Count
+                Write-Host "  ║ └─ $fileCount files" -ForegroundColor Cyan
+            }
+        } else {
+            Export-Region -RegionName $Region -OutPath $profDir -Parallel $MaxParallel
+        }
+
+        $profFiles = (Get-ChildItem -Path $profDir -Filter "*.json" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count
+        Write-Host "  ╚═ Profile '$prof' complete: $profFiles files" -ForegroundColor Magenta
+    }
+} elseif ($AllRegions) {
     # Discover enabled regions
     Write-Host "  Mode    : All Regions (parallel x$MaxParallel)" -ForegroundColor Cyan
     Write-Host "  Profile : $($Profile ? $Profile : 'default')"
