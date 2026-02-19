@@ -7961,13 +7961,13 @@ function resTooltipHtml(res,subId,subRT){
 }
 function buildResTree(subId, ctx){
   const res=[];
-  const {instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub}=ctx;
+  const {instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,eniByInst,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub}=ctx;
   const attachedEnis=new Set();
   // EC2 with ENIs + Volumes
   (instBySub[subId]||[]).forEach(inst=>{
     const ch=[];
     if(_showNested){
-      const ie=(enis||[]).filter(e=>e.Attachment&&e.Attachment.InstanceId===inst.InstanceId);
+      const ie=(eniByInst||{})[inst.InstanceId]||[];
       ie.forEach(e=>{attachedEnis.add(e.NetworkInterfaceId);ch.push({type:'ENI',name:e.NetworkInterfaceId.slice(-8),detail:e.PrivateIpAddress||'',col:'#3b82f6',bg:'rgba(59,130,246,.08)'})});
       (volByInst[inst.InstanceId]||[]).forEach(v=>{
         const sc=(snapByVol[v.VolumeId]||[]).length;
@@ -7975,7 +7975,7 @@ function buildResTree(subId, ctx){
       });
     } else {
       // still track attached ENIs even in flat mode
-      const ie=(enis||[]).filter(e=>e.Attachment&&e.Attachment.InstanceId===inst.InstanceId);
+      const ie=(eniByInst||{})[inst.InstanceId]||[];
       ie.forEach(e=>attachedEnis.add(e.NetworkInterfaceId));
     }
     res.push({type:'EC2',name:inst.Tags?.find(t=>t.Key==='Name')?.Value||inst.InstanceId?.slice(-8),state:inst.State?.Name,ip:inst.PrivateIpAddress||'',col:'#10b981',bg:'rgba(16,185,129,.12)',children:ch,
@@ -8048,7 +8048,7 @@ function renderLandingZoneMap(ctx){
   const SPOKE_COL_GAP=200,SPOKE_ROW_GAP=40; // Tighter gaps for flatter layout
   
   // Tree context for buildResTree
-  const lzTreeCtx={instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub};
+  const lzTreeCtx={instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,eniByInst,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub};
   const lzSubTrees={};
   subnets.forEach(s=>{lzSubTrees[s.SubnetId]=buildResTree(s.SubnetId,lzTreeCtx)});
   
@@ -9375,7 +9375,7 @@ function renderLandingZoneMap(ctx){
   });
   
   // Stats bar
-  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb:cfByAlb||{},rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:lzRecsByZone,iamRoleResources,_multiAccount,_accounts};
+  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,eniByInst,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb:cfByAlb||{},rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:lzRecsByZone,iamRoleResources,_multiAccount,_accounts};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
@@ -9714,10 +9714,26 @@ function renderExecutiveOverview(ctx){
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
-function renderMap(){
+var _renderMapTimer=null;
+var _parseCache={};
+function _cachedParse(id){
+  const el=document.getElementById(id);
+  const val=el?el.value:'';
+  if(!val||!val.trim()){delete _parseCache[id];return null}
+  if(_parseCache[id]&&_parseCache[id].raw===val)return _parseCache[id].parsed;
+  const parsed=safeParse(val);
+  _parseCache[id]={raw:val,parsed:parsed};
+  return parsed;
+}
+function invalidateParseCache(){_parseCache={}}
+function renderMap(cb){
+  if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
   const overlay=document.getElementById('loadingOverlay');
   overlay.style.display='flex';
-  requestAnimationFrame(()=>{requestAnimationFrame(()=>{_renderMapInner();overlay.style.display='none'})});
+  _renderMapTimer=setTimeout(()=>{
+    _renderMapTimer=null;
+    requestAnimationFrame(()=>{requestAnimationFrame(()=>{_renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()})});
+  },50);
 }
 function _renderMapInner(){
   try{
@@ -9730,18 +9746,18 @@ function _renderMapInner(){
   document.getElementById('emptyState').style.display='none';
   document.getElementById('landingDash').style.display='none';
 
-  // parse all 18 inputs
-  let vpcs=ext(safeParse(gv('in_vpcs')),['Vpcs']);
-  let subnets=ext(safeParse(gv('in_subnets')),['Subnets']);
-  let rts=ext(safeParse(gv('in_rts')),['RouteTables']);
-  let sgs=ext(safeParse(gv('in_sgs')),['SecurityGroups']);
-  let nacls=ext(safeParse(gv('in_nacls')),['NetworkAcls']);
-  let enis=ext(safeParse(gv('in_enis')),['NetworkInterfaces']);
-  let igws=ext(safeParse(gv('in_igws')),['InternetGateways']);
-  let nats=ext(safeParse(gv('in_nats')),['NatGateways']);
-  let vpces=ext(safeParse(gv('in_vpces')),['VpcEndpoints']);
+  // parse all 18 inputs (cached — skips JSON.parse if textarea unchanged)
+  let vpcs=ext(_cachedParse('in_vpcs'),['Vpcs']);
+  let subnets=ext(_cachedParse('in_subnets'),['Subnets']);
+  let rts=ext(_cachedParse('in_rts'),['RouteTables']);
+  let sgs=ext(_cachedParse('in_sgs'),['SecurityGroups']);
+  let nacls=ext(_cachedParse('in_nacls'),['NetworkAcls']);
+  let enis=ext(_cachedParse('in_enis'),['NetworkInterfaces']);
+  let igws=ext(_cachedParse('in_igws'),['InternetGateways']);
+  let nats=ext(_cachedParse('in_nats'),['NatGateways']);
+  let vpces=ext(_cachedParse('in_vpces'),['VpcEndpoints']);
   let instances=[];
-  const eRaw=safeParse(gv('in_ec2'));
+  const eRaw=_cachedParse('in_ec2');
   if(eRaw){
     const reservations=ext(eRaw,['Reservations']);
     if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
@@ -9752,29 +9768,29 @@ function _renderMapInner(){
       else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}
     }
   }
-  let albs=ext(safeParse(gv('in_albs')),['LoadBalancers']);
-  let tgs=ext(safeParse(gv('in_tgs')),['TargetGroups']);
-  let peerings=ext(safeParse(gv('in_peer')),['VpcPeeringConnections']);
-  let vpns=ext(safeParse(gv('in_vpn')),['VpnConnections']);
-  let volumes=ext(safeParse(gv('in_vols')),['Volumes']);
-  let snapshots=ext(safeParse(gv('in_snaps')),['Snapshots']);
-  let s3raw=safeParse(gv('in_s3'));let s3bk=s3raw?ext(s3raw,['Buckets']):[];
-  let zones=ext(safeParse(gv('in_r53')),['HostedZones']);
-  const allRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets','RecordSets']);
+  let albs=ext(_cachedParse('in_albs'),['LoadBalancers']);
+  let tgs=ext(_cachedParse('in_tgs'),['TargetGroups']);
+  let peerings=ext(_cachedParse('in_peer'),['VpcPeeringConnections']);
+  let vpns=ext(_cachedParse('in_vpn'),['VpnConnections']);
+  let volumes=ext(_cachedParse('in_vols'),['Volumes']);
+  let snapshots=ext(_cachedParse('in_snaps'),['Snapshots']);
+  let s3raw=_cachedParse('in_s3');let s3bk=s3raw?ext(s3raw,['Buckets']):[];
+  let zones=ext(_cachedParse('in_r53'),['HostedZones']);
+  const allRecSets=ext(_cachedParse('in_r53records'),['ResourceRecordSets','RecordSets']);
   const recsByZoneMap={};
   allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZoneMap[r.HostedZoneId]=recsByZoneMap[r.HostedZoneId]||[]).push(r)});
-  let wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
-  let rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
-  let ecsServices=ext(safeParse(gv('in_ecs')),['services','Services']);
-  let lambdaFns=(ext(safeParse(gv('in_lambda')),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
-  let ecacheClusters=ext(safeParse(gv('in_elasticache')),['CacheClusters']);
-  let redshiftClusters=ext(safeParse(gv('in_redshift')),['Clusters']);
-  let tgwAttachments=ext(safeParse(gv('in_tgwatt')),['TransitGatewayAttachments']);
+  let wafAcls=ext(_cachedParse('in_waf'),['WebACLs']);
+  let rdsInstances=ext(_cachedParse('in_rds'),['DBInstances']);
+  let ecsServices=ext(_cachedParse('in_ecs'),['services','Services']);
+  let lambdaFns=(ext(_cachedParse('in_lambda'),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
+  let ecacheClusters=ext(_cachedParse('in_elasticache'),['CacheClusters']);
+  let redshiftClusters=ext(_cachedParse('in_redshift'),['Clusters']);
+  let tgwAttachments=ext(_cachedParse('in_tgwatt'),['TransitGatewayAttachments']);
   let cfDistributions=[];
-  const cfRaw=safeParse(gv('in_cf'));
+  const cfRaw=_cachedParse('in_cf');
   if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[];}
   // Parse IAM data
-  const iamRaw=safeParse(gv('in_iam'));
+  const iamRaw=_cachedParse('in_iam');
   if(iamRaw&&!_iamData)_iamData=parseIAMData(iamRaw);
 
   // Multi-account: tag all resources with account ID
@@ -9880,7 +9896,7 @@ function _renderMapInner(){
     (ecsServices||[]).forEach(svc=>{const ra=svc.taskRoleArn||svc.executionRoleArn;if(ra){const rn=ra.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ecs.push(svc)}});
   }
   const instBySub={};instances.forEach(i=>{if(i.SubnetId)(instBySub[i.SubnetId]=instBySub[i.SubnetId]||[]).push(i)});
-  const eniBySub={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e)});
+  const eniBySub={};const eniByInst={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});
   const albBySub={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(albBySub[az.SubnetId]=albBySub[az.SubnetId]||[]).push(lb)})});
 
   // volumes per instance
@@ -9979,7 +9995,7 @@ function _renderMapInner(){
   const RES_ICON=26,RES_CHILD_H=11,RES_GAP=4,RES_COLS=2,RES_TOP=36,RES_BOT=12;
   
   // Tree context for buildResTree
-  const treeCtx={instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub};
+  const treeCtx={instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,eniByInst,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub};
   
   // Pre-calc resource tree per subnet for sizing
   const subTrees={};
@@ -12016,17 +12032,18 @@ document.getElementById('searchBackdrop').addEventListener('click',closeSearch);
 document.getElementById('searchInput').addEventListener('input',function(){
   const q=this.value.toLowerCase().trim();const res=document.getElementById('searchResults');
   if(!q||!_rlCtx){res.innerHTML='';return}
-  const matches=[];const add=(type,name,id,extra)=>{if(matches.length<30)matches.push({type,name,id,extra})};
-  (_rlCtx.vpcs||[]).forEach(v=>{const n=gn(v,v.VpcId);if((n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase().includes(q))add('VPC',n,v.VpcId,v.CidrBlock)});
-  (_rlCtx.subnets||[]).forEach(s=>{const n=gn(s,s.SubnetId);if((n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase().includes(q))add('Subnet',n,s.SubnetId,s.CidrBlock)});
-  (_rlCtx.instances||[]).forEach(i=>{const n=gn(i,i.InstanceId);if((n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase().includes(q))add('EC2',n,i.InstanceId,i.InstanceType)});
-  (_rlCtx.igws||[]).forEach(g=>{const n=gn(g,g.InternetGatewayId);if((n+' '+g.InternetGatewayId).toLowerCase().includes(q))add('IGW',n,g.InternetGatewayId,'')});
-  (_rlCtx.nats||[]).forEach(g=>{const n=gn(g,g.NatGatewayId);if((n+' '+g.NatGatewayId).toLowerCase().includes(q))add('NAT',n,g.NatGatewayId,'')});
-  (_rlCtx.rdsInstances||[]).forEach(d=>{if(d.DBInstanceIdentifier.toLowerCase().includes(q))add('RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine)});
-  (_rlCtx.lambdaFns||[]).forEach(f=>{if(f.FunctionName.toLowerCase().includes(q))add('Lambda',f.FunctionName,f.FunctionName,f.Runtime)});
-  (_rlCtx.sgs||[]).forEach(s=>{const n=s.GroupName||s.GroupId;if((n+' '+s.GroupId).toLowerCase().includes(q))add('SG',n,s.GroupId,s.VpcId)});
+  const matches=[];const isMA=_rlCtx._multiAccount;
+  const add=(type,name,id,extra,acct)=>{if(matches.length<30)matches.push({type,name,id,extra,acct:acct||''})};
+  (_rlCtx.vpcs||[]).forEach(v=>{const n=gn(v,v.VpcId);if((n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase().includes(q))add('VPC',n,v.VpcId,v.CidrBlock,v._accountLabel||v._accountId)});
+  (_rlCtx.subnets||[]).forEach(s=>{const n=gn(s,s.SubnetId);if((n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase().includes(q))add('Subnet',n,s.SubnetId,s.CidrBlock,s._accountLabel||s._accountId)});
+  (_rlCtx.instances||[]).forEach(i=>{const n=gn(i,i.InstanceId);if((n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase().includes(q))add('EC2',n,i.InstanceId,i.InstanceType,i._accountLabel||i._accountId)});
+  (_rlCtx.igws||[]).forEach(g=>{const n=gn(g,g.InternetGatewayId);if((n+' '+g.InternetGatewayId).toLowerCase().includes(q))add('IGW',n,g.InternetGatewayId,'',g._accountLabel||g._accountId)});
+  (_rlCtx.nats||[]).forEach(g=>{const n=gn(g,g.NatGatewayId);if((n+' '+g.NatGatewayId).toLowerCase().includes(q))add('NAT',n,g.NatGatewayId,'',g._accountLabel||g._accountId)});
+  (_rlCtx.rdsInstances||[]).forEach(d=>{if(d.DBInstanceIdentifier.toLowerCase().includes(q))add('RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine,d._accountLabel||d._accountId)});
+  (_rlCtx.lambdaFns||[]).forEach(f=>{if(f.FunctionName.toLowerCase().includes(q))add('Lambda',f.FunctionName,f.FunctionName,f.Runtime,f._accountLabel||f._accountId)});
+  (_rlCtx.sgs||[]).forEach(s=>{const n=s.GroupName||s.GroupId;if((n+' '+s.GroupId).toLowerCase().includes(q))add('SG',n,s.GroupId,s.VpcId,s._accountLabel||s._accountId)});
   _getAllNotes().forEach(n=>{if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))add('Note',n.text.slice(0,50),n.resourceId,n.category)});
-  let h='';matches.forEach(m=>{h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\');_openDetailForSearch(\''+esc(m.type)+'\',\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span><span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
+  let h='';matches.forEach(m=>{const acctBadge=isMA&&m.acct&&m.acct!=='default'?'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+( getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap">'+esc(m.acct)+'</span>':'';h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\');_openDetailForSearch(\''+esc(m.type)+'\',\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span>'+acctBadge+'<span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
   if(!matches.length)h='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">No results</div>';
   res.innerHTML=h;
 });
@@ -20469,7 +20486,7 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
     (ecsServices||[]).forEach(svc=>{const ra=svc.taskRoleArn||svc.executionRoleArn;if(ra){const rn=ra.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ecs.push(svc)}});
   }
   const instBySub={};instances.forEach(i=>{if(i.SubnetId)(instBySub[i.SubnetId]=instBySub[i.SubnetId]||[]).push(i)});
-  const eniBySub={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e)});
+  const eniBySub={};const eniByInst={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});
   const albBySub={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(albBySub[az.SubnetId]=albBySub[az.SubnetId]||[]).push(lb)})});
   const volByInst={};volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId)(volByInst[a.InstanceId]=volByInst[a.InstanceId]||[]).push(v)})});
   const knownInstIds2=new Set(instances.map(i=>i.InstanceId));
@@ -21869,7 +21886,7 @@ function buildLucidExport(){
   const subRT={};rts.forEach(rt=>(rt.Associations||[]).forEach(a=>{if(a.SubnetId)subRT[a.SubnetId]=rt}));
   subnets.forEach(s=>{if(!subRT[s.SubnetId]&&exMainRT[s.VpcId])subRT[s.SubnetId]=exMainRT[s.VpcId]});
   const instBySub={};instances.forEach(i=>{if(i.SubnetId)(instBySub[i.SubnetId]=instBySub[i.SubnetId]||[]).push(i)});
-  const eniBySub={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e)});
+  const eniBySub={};const eniByInst={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});
   const albBySub={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(albBySub[az.SubnetId]=albBySub[az.SubnetId]||[]).push(lb)})});
   const volByInst={};volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId)(volByInst[a.InstanceId]=volByInst[a.InstanceId]||[]).push(v)})});
   const knownInstIds3=new Set(instances.map(i=>i.InstanceId));
