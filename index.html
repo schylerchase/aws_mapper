@@ -10,7 +10,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
   :root {
-    --bg-primary:#0a0e17;--bg-secondary:#111827;--bg-tertiary:#1a2236;
+    --bg-primary:#0a0e17;--bg-secondary:#111827;--bg-tertiary:#1a2236;--bg-card:#141c2e;
     --bg-input:#0d1220;--border:#1e2d4a;--border-focus:#3b82f6;
     --text-primary:#e2e8f0;--text-secondary:#94a3b8;--text-muted:#64748b;
     --accent-blue:#3b82f6;--accent-cyan:#06b6d4;--accent-green:#10b981;
@@ -32,6 +32,11 @@
   .sidebar-header{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-tertiary)}
   .sidebar-header h1{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-cyan);margin-bottom:3px}
   .sidebar-header p{font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace}
+  .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .brand-icon{width:36px;height:36px;background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(59,130,246,.15));border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .brand-text h1{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent-cyan);margin-bottom:1px}
+  .brand-ver{font-size:9px;font-weight:400;color:var(--text-muted);background:var(--bg-primary);padding:1px 5px;border-radius:8px;margin-left:4px;letter-spacing:0;text-transform:none}
+  .brand-text p{font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace}
   .global-txt-ctrl{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
   .gtc-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase}
   .gtc-btn{width:26px;height:26px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
@@ -41,22 +46,25 @@
   .sidebar-body::-webkit-scrollbar{width:6px}
   .sidebar-body::-webkit-scrollbar-track{background:transparent}
   .sidebar-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-  .sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+  .sec-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
   .sec-hdr:hover{background:rgba(30,45,74,.5)}
   .sec-hdr span{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale));font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px}
   .sec-hdr .arr{color:var(--text-muted);font-size:10px;transition:transform .2s}
   .sec-hdr.collapsed .arr{transform:rotate(-90deg)}
-  .sec-body{padding:6px 10px;border-bottom:1px solid var(--border)}
+  .sec-dot{width:4px;height:16px;border-radius:2px;flex-shrink:0}
+  .sec-badge{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:1px 6px;border-radius:8px;background:rgba(16,185,129,.12);color:#10b981;font-weight:600;margin-left:auto}
+  .sec-hdr .arr{margin-left:0}
+  .sec-body{padding:6px 10px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.08)}
   .sec-body.hidden{display:none}
   .ig{margin-bottom:5px}
   .ig-lbl{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;padding:0 2px}
   .ig-lbl span{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale));font-weight:500;color:var(--text-secondary);letter-spacing:.4px}
-  .ig-lbl code{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--text-muted);background:var(--bg-primary);padding:1px 4px;border-radius:3px}
-  .ji{width:100%;height:48px;background:var(--bg-input);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale));padding:5px 7px;resize:vertical;transition:border-color .2s;line-height:1.4}
+  .ig-lbl code{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);background:var(--bg-primary);padding:1px 4px;border-radius:3px}
+  .ji{width:100%;height:56px;background:var(--bg-input);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale));padding:5px 7px;resize:none;transition:border-color .2s;line-height:1.4}
   .ji:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 2px rgba(59,130,246,.15)}
   .ji.valid{border-color:var(--accent-green)}.ji.invalid{border-color:var(--accent-red)}
-  .sidebar-actions{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px}
-  .btn{flex:1;padding:9px 14px;border:none;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+  .sidebar-actions{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg-tertiary)}
+  .btn{flex:1;padding:9px 14px;border:none;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
   .btn-primary{background:var(--accent-blue);color:#fff}.btn-primary:hover{background:#2563eb}
   .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--border);color:var(--text-primary)}
   .btn-demo{background:transparent;color:var(--accent-cyan);border:1px solid var(--accent-cyan);opacity:.7}.btn-demo:hover{opacity:1;background:rgba(6,182,212,.08)}
@@ -67,11 +75,40 @@
   .empty-state .icon{width:80px;height:80px;border:2px dashed var(--border);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--text-muted);font-size:32px}
   .empty-state h2{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--text-muted);margin-bottom:8px}
   .empty-state p{font-size:12px;color:var(--text-muted);opacity:.6}
+  .landing{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:60px 40px 40px;overflow-y:auto;pointer-events:auto}
+  .landing-hero{text-align:center;margin-bottom:32px}
+  .landing-icon{width:64px;height:64px;background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(59,130,246,.15));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px}
+  .landing-icon svg{width:36px;height:36px}
+  .landing h1{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--text-primary);letter-spacing:1px;margin-bottom:6px}
+  .landing .tagline{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-muted);margin-bottom:24px}
+  .landing-cta{display:flex;gap:10px;justify-content:center;margin-bottom:40px}
+  .landing-cta .btn-cta{padding:10px 24px;border:none;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+  .landing-cta .btn-cta:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  .landing-cta .btn-cta.primary{background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff}
+  .landing-cta .btn-cta.secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border)}
+  .landing-cta .btn-cta.secondary:hover{border-color:var(--accent-cyan);color:var(--text-primary)}
+  .landing-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:860px;width:100%}
+  .landing-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:16px 18px;border-left:3px solid var(--accent-cyan);transition:all .15s;opacity:0;animation:cardUp .4s ease forwards}
+  .landing-card:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.3);border-color:rgba(59,130,246,.3)}
+  .landing-card h3{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .landing-card p{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);line-height:1.5}
+  .landing-card:nth-child(1){border-left-color:#06b6d4}.landing-card:nth-child(2){border-left-color:#3b82f6}.landing-card:nth-child(3){border-left-color:#8b5cf6}
+  .landing-card:nth-child(4){border-left-color:#10b981}.landing-card:nth-child(5){border-left-color:#f59e0b}.landing-card:nth-child(6){border-left-color:#ef4444}
+  .landing-card:nth-child(7){border-left-color:#ec4899}.landing-card:nth-child(8){border-left-color:#a78bfa}.landing-card:nth-child(9){border-left-color:#38bdf8}
+  .landing-card:nth-child(1){animation-delay:.05s}.landing-card:nth-child(2){animation-delay:.1s}.landing-card:nth-child(3){animation-delay:.15s}
+  .landing-card:nth-child(4){animation-delay:.2s}.landing-card:nth-child(5){animation-delay:.25s}.landing-card:nth-child(6){animation-delay:.3s}
+  .landing-card:nth-child(7){animation-delay:.35s}.landing-card:nth-child(8){animation-delay:.4s}.landing-card:nth-child(9){animation-delay:.45s}
+  @keyframes cardUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .landing-footer{margin-top:32px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);opacity:.5}
+  .landing-footer a{color:var(--accent-cyan);text-decoration:none}
   .stats-bar{position:absolute;top:12px;left:0;right:0;display:none;gap:5px;flex-wrap:wrap;z-index:5;justify-content:center;padding:0 440px 0 40px;transition:padding-right .2s}
   .main:has(.detail-panel.open) .stats-bar{padding-right:860px}
   .main:has(.detail-panel.open) .export-bar{right:432px}
-  .stat-chip{font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:500;padding:5px 10px;border-radius:4px;background:rgba(17,24,39,.9);border:1px solid var(--border);backdrop-filter:blur(8px);color:var(--text-secondary);cursor:pointer;transition:border-color .15s,background .15s}
+  .stat-chip{font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:500;padding:5px 10px;border-radius:8px;background:rgba(17,24,39,.9);border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:border-color .15s,background .15s}
   .stat-chip:hover{border-color:var(--accent-blue);background:rgba(59,130,246,.12)}
+  .stat-chip.accent-amber{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08)}
+  .stat-chip.accent-purple{border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.08)}
+  .stat-chip.accent-blue{border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.08)}
   .stat-chip b{color:var(--text-primary);font-weight:600;margin-right:3px}
   .dock-toolbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;align-items:stretch;background:rgba(10,17,30,.92);border:1px solid rgba(255,255,255,.1);border-radius:14px;backdrop-filter:blur(16px);padding:5px 6px 18px;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04) inset}
   .dock-group{display:flex;align-items:center;gap:3px;padding:0 6px;position:relative}
@@ -170,9 +207,12 @@
   .export-btn{padding:8px 12px;background:rgba(17,24,39,.92);border:1px solid var(--border);border-radius:5px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:500;cursor:pointer;backdrop-filter:blur(8px);transition:all .15s;text-align:left;white-space:nowrap}
   .export-btn:hover{background:var(--bg-tertiary);color:var(--text-primary);border-color:var(--accent-blue)}
   .export-btn span{color:var(--text-muted);font-size:7px;display:block;margin-top:1px}
-  .upload-row{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px}
-  .btn-upload{flex:1;padding:9px 14px;border:none;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;background:var(--accent-green);color:#fff;text-align:center}
-  .btn-upload:hover{background:#059669}
+  .upload-row{padding:8px 14px;display:flex;gap:4px;flex-wrap:wrap}
+  .btn-action{padding:6px 12px;border:none;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px;text-transform:uppercase;letter-spacing:.3px;color:#fff}
+  .btn-action:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+  .btn-action.green{background:linear-gradient(135deg,#10b981,#059669)}
+  .btn-action.amber{background:linear-gradient(135deg,#f59e0b,#d97706)}
+  .btn-action.indigo{background:linear-gradient(135deg,#6366f1,#4f46e5)}
   .upload-status{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent-green);padding:4px 12px;display:none;border-bottom:1px solid var(--border)}
   /* Detail panel - right side slide-out */
   .detail-panel{position:absolute;top:0;right:0;width:420px;height:100%;background:rgba(10,14,23,.97);border-left:1px solid var(--border);backdrop-filter:blur(16px);z-index:50;display:none;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.4)}
@@ -275,7 +315,7 @@
   /* === FIREWALL DASHBOARD === */
   .fw-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
   .fw-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
-  .fw-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
+  .fw-dash-hdr{gap:16px}
   .fw-dash-pills{display:flex;gap:6px}
   .fw-dash-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);color:var(--text-muted)}
   .fw-dash-pill.active{border-color:currentColor}
@@ -283,10 +323,7 @@
   .fw-dash-pill[data-type="nacl"]{color:#f59e0b}.fw-dash-pill[data-type="nacl"].active{background:rgba(245,158,11,.15)}
   .fw-dash-pill[data-type="route"]{color:#22d3ee}.fw-dash-pill[data-type="route"].active{background:rgba(34,211,238,.15)}
   .fw-dash-pill[data-type="all"]{color:var(--text-secondary)}.fw-dash-pill[data-type="all"].active{background:rgba(255,255,255,.08)}
-  .fw-dash-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
-  .fw-dash-toolbar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px}
-  .fw-dash-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
-  .fw-dash-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+  .fw-dash-toolbar input{border-radius:6px}
   .fw-dash-body{flex:1;overflow-y:auto;padding:0}
   .fw-dash table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px}
   .fw-dash table th{position:sticky;top:0;background:var(--bg-secondary);padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:2px solid var(--border);user-select:none;white-space:nowrap}
@@ -299,9 +336,6 @@
   .fw-dash .fw-type-badge.route{background:rgba(34,211,238,.15);color:#22d3ee}
   .fw-dash .fw-edit-badge{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(16,185,129,.15);color:#10b981;font-weight:600}
   .fw-dash .fw-expand-row td{padding:8px 16px;background:var(--bg-secondary);border-bottom:2px solid var(--border)}
-  .fw-dash-footer{display:flex;gap:8px;padding:8px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
-  .fw-dash-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;cursor:pointer}
-  .fw-dash-footer button:hover{background:rgba(96,165,250,.1);border-color:var(--accent-cyan)}
   .fw-dash-footer .fw-edit-count{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
   .iam-risk-card{display:inline-flex;flex-direction:column;align-items:center;padding:8px 14px;border-radius:6px;border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;min-width:80px}
   .iam-risk-card .count{font-size:calc(18px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:700}
@@ -310,6 +344,8 @@
   .iam-risk-card.warning{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#f59e0b}
   .iam-risk-card.info{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:#3b82f6}
   .iam-risk-card.clean{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#10b981}
+  .iam-dashboard-link{background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:8px;padding:10px 14px;margin:0 0 10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#a78bfa;display:flex;align-items:center;justify-content:space-between;transition:all .15s}
+  .iam-dashboard-link:hover{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.4)}
   /* region labels on canvas */
   .region-label{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale));font-weight:600;fill:var(--text-muted);letter-spacing:1px;text-transform:uppercase;opacity:.6}
   .copyable{cursor:pointer;position:relative;border-bottom:1px dashed rgba(100,116,139,.4)}
@@ -380,11 +416,11 @@
   .cl-action-badge.modify{background:rgba(245,158,11,.15);color:var(--accent-orange)}
 
   /* === COMPLIANCE ENGINE === */
-  .compliance-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale,1));cursor:pointer;transition:background .15s;border:1px solid var(--border)}
+  .compliance-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale,1));font-weight:500;cursor:pointer;transition:border-color .15s,background .15s;border:1px solid var(--border)}
   .compliance-chip.clean{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#10b981}
   .compliance-chip.warn{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#f59e0b}
   .compliance-chip.critical{background:rgba(220,38,38,.12);border-color:rgba(220,38,38,.3);color:#dc2626}
-  .compliance-chip:hover{filter:brightness(1.2)}
+  .compliance-chip:hover{border-color:currentColor;background:rgba(255,255,255,.04)}
   .compliance-panel{padding:8px 0}
   .compliance-group{margin-bottom:10px}
   .compliance-group-header{font-family:'IBM Plex Mono',monospace;font-size:calc(12px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:var(--text-primary);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
@@ -507,12 +543,7 @@
   .gov-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
   .gov-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .gov-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
-  .gov-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#8b5cf6;margin:0}
-  .gov-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
-  .gov-toolbar input{background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;width:240px}
-  .gov-toolbar input:focus{outline:none;border-color:#8b5cf6}
-  .gov-toolbar select{background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace}
-  .gov-toolbar label{font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px}
+  .gov-hdr h2{color:#8b5cf6}
   .gov-body{flex:1;overflow-y:auto;padding:20px;background:var(--bg-primary)}
   .gov-footer{display:flex;gap:8px;padding:8px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
   .gov-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;cursor:pointer;transition:all .15s}
@@ -638,8 +669,7 @@
   .rpt-preview{flex:1;overflow-y:auto;background:var(--bg-tertiary);padding:20px}
   .rpt-preview-frame{max-width:900px;margin:0 auto;background:#0f172a;border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:400px}
   .rpt-preview-content{padding:30px}
-  .rpt-footer{display:flex;gap:8px;padding:10px 20px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;justify-content:flex-end}
-  .rpt-footer button{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 14px;cursor:pointer}
+  .rpt-footer{justify-content:flex-end}
   .rpt-footer button:hover{background:rgba(245,158,11,.1);border-color:#f59e0b}
   .rpt-generate{background:rgba(245,158,11,.15)!important;border-color:#f59e0b!important;font-weight:600}
   @media(max-width:768px){.rpt-main{flex-direction:column}.rpt-picker{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:40vh}.rpt-preview{min-height:50vh}}
@@ -1144,7 +1174,7 @@
     /* Sidebar actions: pinned at bottom (sidebar is 100svh, so already above toolbar) */
     .sidebar-actions{padding:10px 12px 16px;gap:8px;flex-shrink:0;border-top:1px solid var(--border);background:var(--bg-secondary)}
     .btn{padding:10px 12px;font-size:calc(11px * var(--txt-scale))}
-    .btn-upload{padding:10px 12px;font-size:11px}
+    .btn-action{padding:10px 12px;font-size:11px}
 
     /* Sidebar sections: compact inputs, all collapsed by default (via JS) */
     .ji{height:44px;font-size:calc(10px * var(--txt-scale))}
@@ -1336,7 +1366,7 @@
     .sec-hdr{padding:10px 14px}
     .dp-sec-hdr{padding:12px 16px;min-height:44px}
     .btn{min-height:44px}
-    .btn-upload{min-height:44px}
+    .btn-action{min-height:44px}
     .export-btn{min-height:44px}
     .comp-sev-pill{min-height:36px;display:inline-flex;align-items:center}
     .compliance-filter button{min-height:36px}
@@ -1414,7 +1444,7 @@
   .dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:15px;margin:0;flex-shrink:0}
   /* Unified dashboard toolbar */
   .dash-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
-  .dash-toolbar input[type="text"]{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px;transition:border-color .15s}
+  .dash-toolbar input[type="text"]{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px;transition:border-color .15s}
   .dash-toolbar input[type="text"]:focus{border-color:var(--accent-cyan);outline:none}
   .dash-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
   .dash-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
@@ -1424,11 +1454,6 @@
   .dash-footer button:hover{background:rgba(96,165,250,.08);border-color:rgba(96,165,250,.3)}
   .dash-footer .dash-footer-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
   /* BUDR toolbar (new) */
-  .budr-toolbar{display:flex;gap:8px;padding:8px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
-  .budr-toolbar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;width:220px;transition:border-color .15s}
-  .budr-toolbar input:focus{border-color:var(--accent-green);outline:none}
-  .budr-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
-  .budr-toolbar select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 8px;cursor:pointer}
 
   @supports (padding: env(safe-area-inset-top)){
     @media (max-width:768px){
@@ -1451,8 +1476,10 @@
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1><img src="logo.png" alt="Logo" style="width:28px;height:28px;border-radius:50%;vertical-align:middle;margin-right:6px">AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v33</span></h1>
-    <p>Paste CLI JSON exports or upload folder</p>
+    <div class="brand-row">
+      <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v1.4</span></h1><p>Infrastructure topology & compliance</p></div>
+    </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
       <button class="gtc-btn" id="gTxtDown">-</button>
@@ -1461,10 +1488,11 @@
     </div>
   </div>
   <div class="upload-row">
-    <button class="btn-upload" id="uploadBtn">Upload JSON Files</button>
-    <button class="btn-upload" id="importFolderBtn" style="display:none;background:linear-gradient(135deg,#f59e0b,#d97706);margin-left:4px">Import Folder</button>
+    <button class="btn-action green" id="uploadBtn">&uarr; Upload JSON</button>
+    <button class="btn-action amber" id="importFolderBtn" style="display:none">&#8594; Import Folder</button>
+    <button class="btn-action amber" id="importFolderBrowser">&#8594; Import Folder</button>
     <div style="position:relative;display:inline-block;margin-left:4px" id="exportScriptWrap">
-      <button class="btn-upload" id="dlExportScript" style="background:linear-gradient(135deg,#6366f1,#4f46e5);font-size:9px" title="Download export script">Get Export Script ▾</button>
+      <button class="btn-action indigo" id="dlExportScript" title="Download export script">&darr; Export Script &#9662;</button>
       <div id="exportScriptMenu" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:4px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-top:4px">
         <button id="dlBash" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;border-radius:4px">
           <span style="font-weight:600">Bash</span> <span style="color:var(--text-muted);font-size:9px">— macOS / Linux</span>
@@ -1494,7 +1522,30 @@
   </div>
   <div class="loading-overlay" id="loadingOverlay"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted)">Rendering map...</div></div>
   <div class="copy-toast" id="copyToast">Copied!</div>
-  <div class="empty-state" id="emptyState"><div class="icon">&#9700;</div><h2 id="emptyTitle">No data loaded</h2><p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p><button class="design-btn" id="emptyDesignBtn" style="display:none;margin-top:12px;padding:8px 20px;font-size:11px">Create VPC from Scratch</button></div>
+  <div class="empty-state" id="emptyState" style="display:none"><div class="icon">&#9700;</div><h2 id="emptyTitle">No data loaded</h2><p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p><button class="design-btn" id="emptyDesignBtn" style="display:none;margin-top:12px;padding:8px 20px;font-size:11px">Create VPC from Scratch</button></div>
+<div class="landing" id="landingDash">
+  <div class="landing-hero">
+    <div class="landing-icon"><img src="logo.png" alt="Logo" style="width:48px;height:48px;object-fit:contain"></div>
+    <h1>AWS Network Mapper</h1>
+    <div class="tagline">Visualize, audit &amp; design your AWS infrastructure</div>
+  </div>
+  <div class="landing-cta">
+    <button class="btn-cta primary" id="landingDemo">Explore Demo</button>
+    <button class="btn-cta secondary" id="landingImport">Import Your Data</button>
+  </div>
+  <div class="landing-cards">
+    <div class="landing-card"><h3>Topology Map</h3><p>Interactive VPC, subnet &amp; resource visualization with D3.js rendering</p></div>
+    <div class="landing-card"><h3>Compliance Engine</h3><p>30+ automated checks with remediation CLI, OPA Rego &amp; Checkov export</p></div>
+    <div class="landing-card"><h3>Flow Analysis</h3><p>Trace ingress/egress paths, bastion chains &amp; access tier classification</p></div>
+    <div class="landing-card"><h3>Design Mode</h3><p>Propose infrastructure changes with live preview and AWS CLI export</p></div>
+    <div class="landing-card"><h3>Multi-Region</h3><p>Import multiple regions side-by-side with automatic boundary grouping</p></div>
+    <div class="landing-card"><h3>Backup &amp; DR</h3><p>Audit backup coverage, retention gaps &amp; disaster recovery readiness</p></div>
+    <div class="landing-card"><h3>Report Builder</h3><p>Generate executive, compliance &amp; architecture reports in HTML or XLSX</p></div>
+    <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
+    <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
+  </div>
+  <div class="landing-footer">v1.4.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank">GitHub</a></div>
+</div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
   <div class="legend" id="legend">
@@ -1911,7 +1962,7 @@
       <div class="budr-pills" id="budrPills"></div>
       <button class="dash-close" id="budrClose">Close <kbd>Esc</kbd></button>
     </div>
-    <div class="budr-toolbar" id="budrToolbar">
+    <div class="budr-toolbar dash-toolbar" id="budrToolbar">
       <label>Search</label>
       <input id="budrSearch" type="text" placeholder="Filter by resource name, type, ID...">
       <label>Sort</label>
@@ -1933,7 +1984,7 @@
       </nav>
       <button class="dash-close" id="govDashClose">Close <kbd>Esc</kbd></button>
     </div>
-    <div class="gov-toolbar" id="govToolbar"></div>
+    <div class="gov-toolbar dash-toolbar" id="govToolbar"></div>
     <div class="gov-body" id="govBody"></div>
     <div class="gov-footer dash-footer" id="govFooter"></div>
   </div>
@@ -1971,7 +2022,7 @@
         </div>
       </div>
     </div>
-    <div class="rpt-footer">
+    <div class="rpt-footer dash-footer">
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button id="rptExportHTML" class="rpt-generate">Generate HTML Report</button>
         <button id="rptExportXLSX" class="rpt-generate" style="background:var(--accent-green,#10b981)">Export XLSX</button>
@@ -2164,6 +2215,19 @@ function detectAccountId(resource){
   if(resource.RequesterVpcInfo?.OwnerId)return resource.RequesterVpcInfo.OwnerId;
   return null;
 }
+function detectRegion(resource){
+  if(!resource)return null;
+  // 1. Parse region from ARN
+  const arnFields=['Arn','FunctionArn','LoadBalancerArn','TargetGroupArn','DBInstanceArn','ServiceArn','CacheClusterArn'];
+  for(const f of arnFields){
+    const arn=resource[f];
+    if(arn&&typeof arn==='string'){const m=arn.match(/arn:aws[^:]*:[^:]+:([a-z]{2}-[a-z]+-\d+):/);if(m)return m[1]}
+  }
+  // 2. AvailabilityZone fallback
+  const az=resource.AvailabilityZone||(resource.Placement&&resource.Placement.AvailabilityZone)||null;
+  if(az&&typeof az==='string')return az.replace(/[a-z]$/,'');
+  return null;
+}
 
 // Account colors for multi-account visual differentiation
 const _accountColors=['#60a5fa','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16'];
@@ -2187,7 +2251,8 @@ sb.appendChild(acctDiv);
 inputSections.forEach(sec=>{
   const openByDefault=_isMobile()?false:sec.open;
   const h=document.createElement('div');h.className='sec-hdr'+(openByDefault?'':' collapsed');
-  h.innerHTML=`<span>${sec.t}</span><span class="arr">&#9660;</span>`;
+  const dotColor=sec.t.includes('Network')?'var(--accent-blue)':sec.t.includes('Compute')?'var(--accent-cyan)':sec.t.includes('Security')?'var(--accent-red)':sec.t.includes('DNS')?'var(--accent-purple)':sec.t.includes('Storage')?'var(--accent-green)':sec.t.includes('Database')?'var(--accent-orange)':'var(--text-muted)';
+  h.innerHTML=`<span class="sec-dot" style="background:${dotColor}"></span><span>${sec.t}</span><span class="arr">&#9660;</span>`;
   const b=document.createElement('div');b.className='sec-body'+(openByDefault?'':' hidden');
   sec.inputs.forEach(inp=>{b.innerHTML+=`<div class="ig"><div class="ig-lbl"><span>${inp.l}</span><code>${inp.c}</code></div><textarea id="${inp.id}" class="ji" placeholder="Paste ${inp.c} JSON..."></textarea></div>`});
   h.addEventListener('click',()=>{h.classList.toggle('collapsed');b.classList.toggle('hidden')});
@@ -7178,6 +7243,7 @@ function openResourceList(type, pushNav){
         +'<div class="iam-risk-card clean"><span class="count">'+boundaryCount+'</span><span class="label">Boundary</span></div>'
         +'</div>';
       items.push(riskHtml);
+      items.push('<div class="iam-dashboard-link" data-action="open-gov-dash">Open Full Governance Dashboard <span style="opacity:.6">\u2192</span></div>');
       // Roles section
       if(roles.length){
         items.push('<div style="font-weight:700;color:var(--accent-cyan);margin:8px 0 4px;font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1));text-transform:uppercase;letter-spacing:.5px">ROLES ('+roles.length+')</div>');
@@ -7212,6 +7278,7 @@ function openResourceList(type, pushNav){
         document.querySelectorAll('[data-iam-role]').forEach(el=>{
           el.addEventListener('click',(e)=>{e.stopPropagation();const ri=parseInt(el.dataset.iamRole);const role=(iamData.roles||[])[ri];if(role)openIAMPrincipalPanel(role,iamData,ctx)});
         });
+        document.querySelectorAll('.iam-dashboard-link').forEach(function(el){el.addEventListener('click',function(){document.getElementById('detailPanel').classList.remove('open');openGovernanceDashboard();if(typeof _govDashState!=='undefined')_govDashState.tab='iam'})});
         document.querySelectorAll('[data-iam-user]').forEach(el=>{
           el.addEventListener('click',(e)=>{e.stopPropagation();
             const ui=parseInt(el.dataset.iamUser);const user=(iamData.users||[])[ui];
@@ -9298,7 +9365,7 @@ function renderLandingZoneMap(ctx){
   });
   // Compliance chip (landing zone)
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.style.cssText='border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08)';ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
@@ -9644,6 +9711,7 @@ function _renderMapInner(){
     .append('feComponentTransfer')
     .append('feFuncA').attr('type','table').attr('tableValues','0 1 1 1');
   document.getElementById('emptyState').style.display='none';
+  document.getElementById('landingDash').style.display='none';
 
   // parse all 18 inputs
   let vpcs=ext(safeParse(gv('in_vpcs')),['Vpcs']);
@@ -9702,6 +9770,17 @@ function _renderMapInner(){
   vpcs.forEach(tagAccount);subnets.forEach(tagAccount);igws.forEach(tagAccount);nats.forEach(tagAccount);
   sgs.forEach(tagAccount);instances.forEach(tagAccount);albs.forEach(tagAccount);rdsInstances.forEach(tagAccount);
   ecsServices.forEach(tagAccount);lambdaFns.forEach(tagAccount);peerings.forEach(tagAccount);
+  // Multi-region: tag all resources with region
+  function tagRegion(resource){
+    if(!resource)return resource;
+    resource._region=detectRegion(resource)||'unknown';
+    return resource;
+  }
+  vpcs.forEach(tagRegion);subnets.forEach(tagRegion);igws.forEach(tagRegion);nats.forEach(tagRegion);
+  sgs.forEach(tagRegion);instances.forEach(tagRegion);albs.forEach(tagRegion);rdsInstances.forEach(tagRegion);
+  ecsServices.forEach(tagRegion);lambdaFns.forEach(tagRegion);peerings.forEach(tagRegion);
+  const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
+  const _multiRegion=_regions.size>1;
   // Deduplicate: if same VpcId from same account, keep last pasted
   const seenVpcs=new Map();const vpcDupes=[];
   vpcs.forEach(v=>{const key=v._accountId+':'+v.VpcId;if(seenVpcs.has(key))vpcDupes.push(v.VpcId);seenVpcs.set(key,v)});
@@ -9714,6 +9793,7 @@ function _renderMapInner(){
   if(!vpcs.length&&!subnets.length){
     if(_designMode){
       // Show design-aware empty state
+      document.getElementById('landingDash').style.display='none';
       document.getElementById('emptyState').style.display='flex';
       document.getElementById('emptyTitle').textContent='Design Mode';
       document.getElementById('emptyDesc').textContent='No infrastructure loaded — create your first VPC to start designing';
@@ -9725,7 +9805,7 @@ function _renderMapInner(){
     document.getElementById('emptyTitle').textContent='No data loaded';
     document.getElementById('emptyDesc').textContent='Paste AWS CLI JSON exports and click Render Map';
     document.getElementById('emptyDesignBtn').style.display='none';
-    document.getElementById('emptyState').style.display='flex';svg.style('display','none');return;
+    document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';svg.style('display','none');return;
   }
 
   // lookups
@@ -9927,7 +10007,13 @@ function _renderMapInner(){
   const knownVpcs=vpcs.filter(v=>getVpcRegion(v)!=='unknown');
   const unknownVpcs=vpcs.filter(v=>getVpcRegion(v)==='unknown');
   
-  knownVpcs.sort((a,b)=>getVpcRegion(a).localeCompare(getVpcRegion(b)));
+  knownVpcs.sort((a,b)=>{
+    const rc=getVpcRegion(a).localeCompare(getVpcRegion(b));
+    if(rc!==0)return rc;
+    const ac=(a._accountId||'').localeCompare(b._accountId||'');
+    if(ac!==0)return ac;
+    return (a.VpcId||'').localeCompare(b.VpcId||'');
+  });
 
   const GC_BASE=140;
   const vL=[];let cx=60;
@@ -9962,7 +10048,12 @@ function _renderMapInner(){
     return layouts;
   }
   
+  const REGION_GAP=120;
+  let _prevLayoutRegion=null;
   knownVpcs.forEach((vpc,idx)=>{
+    const _vpcRegion=getVpcRegion(vpc);
+    if(_prevLayoutRegion&&_vpcRegion!==_prevLayoutRegion&&_multiRegion)cx+=REGION_GAP;
+    _prevLayoutRegion=_vpcRegion;
     const ss=subByVpc[vpc.VpcId]||[];
     const sw=vSW[vpc.VpcId]||MSW;
     const vw=sw+VP*2,vh=calcVpcHeight(ss);
@@ -10888,18 +10979,32 @@ function _renderMapInner(){
     const rx=first.x-10;
     const rw=lastRight-first.x+20;
     const rh=Math.max(...rg.vpcs.map(v=>v.h))+50;
-    // Different styling for disconnected region
     const isDisconnected=rg.region==='DISCONNECTED';
+    const mr=_multiRegion&&!isDisconnected;
     ndL.append('rect').attr('class','region-boundary').attr('x',rx).attr('y',ry).attr('width',rw).attr('height',rh)
-      .attr('fill',isDisconnected?'rgba(239,68,68,.06)':'rgba(59,130,246,.06)')
-      .attr('stroke',isDisconnected?'rgba(239,68,68,.3)':'rgba(59,130,246,.15)')
-      .attr('stroke-width',1)
+      .attr('fill',isDisconnected?'rgba(239,68,68,.06)':mr?'rgba(59,130,246,.08)':'rgba(59,130,246,.06)')
+      .attr('stroke',isDisconnected?'rgba(239,68,68,.3)':mr?'rgba(59,130,246,.25)':'rgba(59,130,246,.15)')
+      .attr('stroke-width',mr?1.5:1)
       .attr('stroke-dasharray',isDisconnected?'4 2':'none')
       .attr('rx',12);
-    ndL.append('text').attr('class','region-label')
-      .attr('x',rx+10).attr('y',ry-6)
-      .attr('fill',isDisconnected?'var(--accent-red)':'var(--text-muted)')
-      .text(rg.region);
+    if(mr){
+      // Pill badge label centered at top
+      const labelText=rg.region+' ('+rg.vpcs.length+' VPC'+(rg.vpcs.length>1?'s':'')+')';
+      const pillW=labelText.length*6.5+16;
+      const pillX=rx+rw/2-pillW/2;
+      const pillY=ry-16;
+      ndL.append('rect').attr('x',pillX).attr('y',pillY).attr('width',pillW).attr('height',18)
+        .attr('rx',9).attr('fill','rgba(59,130,246,.12)').attr('stroke','rgba(59,130,246,.3)').attr('stroke-width',1);
+      ndL.append('text').attr('x',pillX+pillW/2).attr('y',pillY+12.5)
+        .attr('text-anchor','middle').attr('fill','#60a5fa')
+        .attr('font-family','IBM Plex Mono').style('font-size','calc(9px * var(--txt-scale,1))')
+        .attr('font-weight','600').text(labelText);
+    }else{
+      ndL.append('text').attr('class','region-label')
+        .attr('x',rx+10).attr('y',ry-6)
+        .attr('fill',isDisconnected?'var(--accent-red)':'var(--text-muted)')
+        .text(rg.region);
+    }
   });
 
   // VPC boxes
@@ -11502,14 +11607,14 @@ function _renderMapInner(){
   }
 
   // stats bar
-  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,iamRoleResources};
+  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
   });
   // Compliance chip (grid layout)
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.style.cssText='border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08)';ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
@@ -11534,6 +11639,13 @@ function _renderMapInner(){
     acC.innerHTML='<b>'+_accounts.size+'</b> Accounts';
     acC.style.cssText='border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.08)';
     sb2.appendChild(acC);
+  }
+  if(_multiRegion){
+    const rgC=document.createElement('div');
+    rgC.className='stat-chip';
+    rgC.innerHTML='<b>'+_regions.size+'</b> Regions';
+    rgC.style.cssText='border:1px solid rgba(59,130,246,.3);background:rgba(59,130,246,.08)';
+    sb2.appendChild(rgC);
   }
   // Diff overlay (grid layout)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){}
@@ -11622,6 +11734,62 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){
   if(_isElectron&&(e.ctrlKey||e.metaKey)&&e.key==='o'){e.preventDefault();document.getElementById('loadProjectBtn').click()}
 });
 
+// === Folder Import (shared by Electron + browser) ===
+function importFolder(result){
+  if(!result)return;
+  // Legacy format: plain object without _structure (old Electron handler)
+  if(!result._structure){
+    result={_structure:'flat',files:result};
+  }
+  if(result._structure==='multi-region'&&result.regions){
+    const regionNames=Object.keys(result.regions).sort();
+    let loaded=0;
+    regionNames.forEach(regionName=>{
+      const regionFiles=result.regions[regionName];
+      const textareas={};
+      Object.entries(regionFiles).forEach(([fname,content])=>{
+        try{JSON.parse(content)}catch(e){return}
+        const inputId=matchFile(fname,content);
+        if(inputId)textareas[inputId]=content;
+      });
+      if(Object.keys(textareas).length){
+        addAccountContext({textareas,accountLabel:regionName,_isRegion:true},regionName);
+        loaded++;
+      }
+    });
+    if(loaded>0){
+      if(!_multiViewMode)enterMultiView();
+      else _remergeAndRender();
+      _showToast(loaded+' region'+(loaded>1?'s':'')+' imported');
+    }else{
+      _showToast('No valid data found in region folders');
+    }
+  }else{
+    // Flat structure — load into textareas directly
+    const files=result.files||result;
+    const entries=Object.entries(files);
+    let matched=0,skipped=[];
+    for(const [fname,content] of entries){
+      try{JSON.parse(content)}catch(e){skipped.push(fname+' (invalid JSON)');continue}
+      const inputId=matchFile(fname,content);
+      if(!inputId){skipped.push(fname);continue}
+      const el=document.getElementById(inputId);
+      if(el){el.value=content;el.className='ji valid';matched++}
+    }
+    document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{
+      const body=h.nextElementSibling;
+      if(body&&body.querySelectorAll('.ji.valid').length)h.click();
+    });
+    const status=document.getElementById('uploadStatus');
+    status.style.display='block';
+    let msg=matched+' of '+entries.length+' files loaded';
+    if(skipped.length)msg+=' | Skipped: '+skipped.join(', ');
+    status.textContent=msg;
+    status.style.color=skipped.length?'var(--accent-orange)':'var(--accent-green)';
+    if(matched>0)renderMap();
+  }
+}
+
 // === ELECTRON: Scan AWS + Menu Listeners ===
 if(_isElectron){
   // Show scan button
@@ -11694,28 +11862,44 @@ if(_isElectron){
   // Import Folder button (native folder picker)
   document.getElementById('importFolderBtn').style.display='inline-block';
   document.getElementById('importFolderBtn').addEventListener('click',async()=>{
-    const files=await window.electronAPI.openFolder();
-    if(!files)return;
-    const entries=Object.entries(files);
-    let matched=0,skipped=[];
-    for(const [fname,content] of entries){
-      try{JSON.parse(content)}catch(e){skipped.push(fname+' (invalid JSON)');continue}
-      const inputId=matchFile(fname,content);
-      if(!inputId){skipped.push(fname);continue}
-      const el=document.getElementById(inputId);
-      if(el){el.value=content;el.className='ji valid';matched++}
+    const result=await window.electronAPI.openFolder();
+    importFolder(result);
+  });
+}
+
+// Browser folder import (File System Access API — Chrome/Edge, fallback for Safari)
+{
+  const bfBtn=document.getElementById('importFolderBrowser');
+  if(_isElectron)bfBtn.style.display='none';
+  bfBtn.addEventListener('click',async()=>{
+    if(!window.showDirectoryPicker){alert('Folder import requires Chrome or Edge. In Safari, use "Upload JSON" to select multiple files.');return}
+    try{
+      const dirHandle=await window.showDirectoryPicker({mode:'read'});
+      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
+      const regions={},flatFiles={};
+      for await(const [name,handle] of dirHandle.entries()){
+        if(handle.kind==='directory'&&regionRe.test(name)){
+          const regionFiles={};
+          for await(const [fname,fhandle] of handle.entries()){
+            if(fhandle.kind==='file'&&fname.endsWith('.json')){
+              const file=await fhandle.getFile();
+              regionFiles[fname]=await file.text();
+            }
+          }
+          if(Object.keys(regionFiles).length)regions[name]=regionFiles;
+        }else if(handle.kind==='file'&&name.endsWith('.json')){
+          const file=await handle.getFile();
+          flatFiles[name]=await file.text();
+        }
+      }
+      if(Object.keys(regions).length){
+        importFolder({_structure:'multi-region',regions});
+      }else{
+        importFolder({_structure:'flat',files:flatFiles});
+      }
+    }catch(e){
+      if(e.name!=='AbortError')console.error('Folder import error:',e);
     }
-    document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{
-      const body=h.nextElementSibling;
-      if(body&&body.querySelectorAll('.ji.valid').length)h.click();
-    });
-    const status=document.getElementById('uploadStatus');
-    status.style.display='block';
-    let msg=matched+' of '+entries.length+' files loaded';
-    if(skipped.length)msg+=' | Skipped: '+skipped.join(', ');
-    status.textContent=msg;
-    status.style.color=skipped.length?'var(--accent-orange)':'var(--accent-green)';
-    if(matched>0)renderMap();
   });
 }
 
@@ -12248,7 +12432,8 @@ function addAccountContext(projectData, label){
     textareas:textareas,
     rlCtx:ctx,
     color:color,
-    visible:true
+    visible:true,
+    _isRegion:!!(projectData._isRegion)
   });
 
   _renderAccountPanel();
@@ -12293,10 +12478,21 @@ function _buildRlCtxFromTextareas(){
     natRaw.forEach(tagAccount);sgs.forEach(tagAccount);instances.forEach(tagAccount);
     albs.forEach(tagAccount);rdsInstances.forEach(tagAccount);
     ecsServices.forEach(tagAccount);lambdaFns.forEach(tagAccount);peerings.forEach(tagAccount);
+    function tagRegion(resource){
+      if(!resource)return resource;
+      resource._region=detectRegion(resource)||'unknown';
+      return resource;
+    }
+    vpcs.forEach(tagRegion);subnets.forEach(tagRegion);igwRaw.forEach(tagRegion);
+    natRaw.forEach(tagRegion);sgs.forEach(tagRegion);instances.forEach(tagRegion);
+    albs.forEach(tagRegion);rdsInstances.forEach(tagRegion);
+    ecsServices.forEach(tagRegion);lambdaFns.forEach(tagRegion);peerings.forEach(tagRegion);
 
     const _accounts=new Set();
     vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
     const _multiAccount=_accounts.size>1;
+    const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
+    const _multiRegion=_regions.size>1;
 
     // Build basic derived maps
     const vpcIds=new Set(vpcs.map(v=>v.VpcId));
@@ -12340,7 +12536,7 @@ function _buildRlCtxFromTextareas(){
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions:[],
       instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
       subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
-      tgwAttachments,recsByZone:{},_multiAccount,_accounts};
+      tgwAttachments,recsByZone:{},_multiAccount,_accounts,_regions,_multiRegion};
   }catch(e){
     console.warn('_buildRlCtxFromTextareas error:',e);
     return null;
@@ -12371,7 +12567,7 @@ function mergeContexts(contexts){
     rdsBySub:{},ecsBySub:{},lambdaBySub:{},
     subRT:{},subNacl:{},sgByVpc:{},
     volByInst:{},snapByVol:{},ecacheByVpc:{},redshiftByVpc:{},
-    tgwAttachments:[],recsByZone:{},_multiAccount:true,_accounts:new Set()};
+    tgwAttachments:[],recsByZone:{},_multiAccount:true,_accounts:new Set(),_regions:new Set(),_multiRegion:false};
 
   visible.forEach(ctx=>{
     const c=ctx.rlCtx;if(!c)return;
@@ -12389,6 +12585,8 @@ function mergeContexts(contexts){
     if(c.pubSubs)c.pubSubs.forEach(s=>merged.pubSubs.add(s));
     if(c._accounts)c._accounts.forEach(a=>merged._accounts.add(a));
     merged._accounts.add(ctx.accountId);
+    if(c._regions)c._regions.forEach(r=>merged._regions.add(r));
+    if(ctx._isRegion&&ctx.region)merged._regions.add(ctx.region);
 
     // Object lookups — merge entries
     const mapKeys=['instBySub','albBySub','eniBySub','rdsBySub','ecsBySub','lambdaBySub',
@@ -12410,6 +12608,7 @@ function mergeContexts(contexts){
     });
   });
 
+  merged._multiRegion=merged._regions.size>1;
   return merged;
 }
 
@@ -12492,9 +12691,13 @@ function _renderAccountPanel(){
     const visClass=ctx.visible?'':'hidden-acct';
     h+='<div class="account-card" style="'+(ctx.visible?'':'opacity:.5')+'">';
     h+='<div class="ac-top">';
-    h+='<div class="account-color-dot" style="background:'+(ctx.color||'var(--text-muted)')+'"></div>';
+    if(ctx._isRegion){
+      h+='<div class="account-color-dot" style="background:rgba(59,130,246,.8);font-size:8px;display:flex;align-items:center;justify-content:center" title="Region context">&#127760;</div>';
+    }else{
+      h+='<div class="account-color-dot" style="background:'+(ctx.color||'var(--text-muted)')+'"></div>';
+    }
     h+='<span class="ac-label" title="'+esc(ctx.accountId)+'">'+esc(ctx.accountLabel)+'</span>';
-    h+='<span class="ac-region">'+esc(ctx.region)+'</span>';
+    h+='<span class="ac-region"'+(ctx._isRegion?' style="color:#60a5fa"':'')+'>'+esc(ctx.region)+'</span>';
     h+='</div>';
     h+='<div class="ac-meta">';
     h+=vpcCount+' VPC'+(vpcCount!==1?'s':'')+' &middot; '+subCount+' Subnet'+(subCount!==1?'s':'')+' &middot; '+instCount+' EC2';
@@ -19847,7 +20050,9 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   this.value='';
   if(matched>0)renderMap();
 });
-document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none'});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none'});
+document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
+document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
   const m={in_vpcs:'vpcs',in_subnets:'subnets',in_rts:'rts',in_sgs:'sgs',in_nacls:'nacls',in_igws:'igws',in_nats:'nats',in_ec2:'ec2',in_albs:'albs',in_peer:'peer',in_vpn:'vpn',in_vpces:'vpces',in_vols:'vols',in_s3:'s3',in_r53:'r53',in_r53records:'r53records',in_tgs:'tgs',in_snaps:'snaps',in_enis:'enis',in_waf:'waf',in_rds:'rds',in_ecs:'ecs',in_lambda:'lambda',in_elasticache:'elasticache',in_redshift:'redshift',in_tgwatt:'tgwatt',in_cf:'cf',in_iam:'iam'};
   Object.entries(m).forEach(([id,k])=>{if(demo[k])document.getElementById(id).value=JSON.stringify(demo[k],null,2)});

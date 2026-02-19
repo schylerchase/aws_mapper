@@ -14,21 +14,36 @@
   <a href="#quick-start">Quick Start</a>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.4.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Browser-lightgrey" alt="Platform">
+</p>
+
 ---
 
 ## What It Does
 
-Paste AWS CLI JSON exports (or scan directly from the desktop app) and get an interactive network map with compliance scoring, traffic tracing, and exportable reports. Zero backend, zero dependencies for the browser version.
+Paste AWS CLI JSON exports (or scan directly from the desktop app) and get an interactive network map with compliance scoring, traffic flow tracing, governance rules, and exportable reports. Zero backend, zero dependencies for the browser version.
+
+---
 
 ## Features
 
 ### Visualization
 - D3.js SVG canvas with VPCs, public/private subnets, gateways, peering, transit gateways, and 25+ resource types
-- Three layout modes: Grid (columns), Landing Zone (hub-spoke), Executive Overview
-- Traffic flow tracing with SG/NACL/route table evaluation
+- Three layout modes: **Grid** (columns), **Landing Zone** (hub-spoke), **Executive Overview**
+- Traffic flow tracing with SG/NACL/route table evaluation and flow analysis dashboard
 - Blast radius analysis for any resource
-- Multi-account / multi-region side-by-side view
-- Design Mode: build infrastructure from scratch with a drag-and-drop palette
+- Multi-account and multi-region side-by-side view with region column gaps and boundary badges
+- **Design Mode**: build infrastructure from scratch with a drag-and-drop palette
+
+### Multi-Region Support
+- Import multi-region AWS export folders (PowerShell `-AllRegions` output) in one click
+- Automatic region detection from folder structure, ARNs, and availability zones
+- Region columns with 120px gaps and pill-badge labels showing VPC counts
+- Works in both the desktop app (native folder picker) and browser (File System Access API)
+- Backward compatible: single-region data renders identically to before
 
 ### Compliance Engine
 89 controls across 7 frameworks, evaluated against every applicable resource:
@@ -45,6 +60,11 @@ Paste AWS CLI JSON exports (or scan directly from the desktop app) and get an in
 
 Full compliance dashboard with severity filtering, framework breakdowns, and remediation guidance.
 
+### Governance Rules Engine
+- Custom governance rules with visual editor
+- Severity levels, auto-fix suggestions, and real-time evaluation
+- Governance dashboard with per-rule pass/fail breakdown
+
 ### Backup & Disaster Recovery (BUDR)
 - RTO/RPO assessment across RDS, EC2, ECS, Lambda, ElastiCache, Redshift, ALB, S3, EBS
 - Three tiers: Protected, Partial, At Risk
@@ -59,6 +79,12 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 - Resource Inventory
 - Action Plan
 - IaC Recommendations
+
+### Flow Analysis
+- Ingress/egress path mapping for all resources
+- Bastion host detection and access tier classification
+- Flow analysis dashboard with filtering, sorting, and pagination
+- One-click trace launch from any flow entry
 
 ### Export Formats
 
@@ -75,10 +101,12 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 
 ### Other Capabilities
 - Snapshot timeline: capture, browse, and compare historical infrastructure states
-- Diff/change detection between snapshots
+- Diff/change detection between snapshots with dashboard
 - Firewall editor dashboard (SG/NACL management)
 - Annotations: pin searchable notes to any resource
 - Auto-save to browser every 30 seconds
+
+---
 
 ## Quick Start
 
@@ -90,29 +118,35 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 
 ### Desktop App (Electron)
 
-```bash
-npm install
-npm start
-```
+Download from [Releases](https://github.com/schylerchase/aws_mapper/releases/latest). Available for macOS (.dmg), Windows (.exe), and Linux (.AppImage).
 
 The desktop app adds:
 - **Scan AWS** button -- runs 29 AWS CLI commands automatically
 - Native file save/open/export dialogs
-- Import folder for bulk JSON loading
-- BUDR XLSX export (via Python/pandas)
+- **Import Folder** for bulk JSON loading (including multi-region folders)
+- BUDR XLSX export
 - Auto-update via GitHub Releases
 
 ### Export AWS Data
 
-```bash
-# Export all supported resources from your AWS account
-./export-aws-data.sh
+Two export scripts are included for extracting data from your AWS accounts:
 
-# With specific profile and region
+**Bash** (macOS / Linux):
+```bash
+./export-aws-data.sh
 ./export-aws-data.sh -p my-profile -r us-west-2
 ```
 
-Creates a timestamped folder with JSON files you can upload directly into the mapper.
+**PowerShell** (Windows / Cross-platform):
+```powershell
+.\export-aws-data.ps1
+.\export-aws-data.ps1 -Profile my-profile -Region us-west-2
+.\export-aws-data.ps1 -Profile my-profile -AllRegions
+```
+
+The `-AllRegions` flag exports all active regions into subfolders that the mapper auto-detects as a multi-region import.
+
+---
 
 ## Supported AWS Resources
 
@@ -127,6 +161,8 @@ Creates a timestamped folder with JSON files you can upload directly into the ma
 | Storage | S3, EBS Volumes, Snapshots |
 | DNS/CDN | Route 53, CloudFront |
 | Security | Security Groups, WAF, IAM |
+
+---
 
 ## Keyboard Shortcuts
 
@@ -145,36 +181,11 @@ Creates a timestamped folder with JSON files you can upload directly into the ma
 | `Shift+R` | Report Builder |
 | `Shift+T` | Traffic Trace |
 | `Shift+F` | Firewall Editor |
+| `Shift+G` | Governance Dashboard |
 | `Ctrl+S` | Save project |
 | `+` / `-` | Zoom in / out |
 
-## Build Desktop App
-
-```bash
-# macOS
-npm run build:mac
-
-# Windows
-npm run build:win
-
-# Linux
-npm run build:linux
-```
-
-Outputs are in `dist/`. macOS builds are unsigned by default -- right-click and Open on first launch.
-
-## Architecture
-
-Single-file HTML app (`index.html`) with embedded CSS and JavaScript. D3.js handles SVG rendering. No build step needed for the browser version.
-
-```
-index.html           # Complete app (~20k lines)
-main.js              # Electron main process
-preload.js           # Secure IPC bridge
-export-aws-data.sh   # AWS CLI export script (29 commands)
-budr_export_xlsx.py  # BUDR Excel export (Python/pandas)
-package.json         # Electron + build config
-```
+---
 
 ## License
 
