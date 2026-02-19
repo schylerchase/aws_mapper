@@ -273,8 +273,8 @@
   .fw-fp-visual{flex:1;overflow-y:auto;padding:8px 12px;border-right:1px solid var(--border)}
   .fw-fp-cli{flex:1;overflow-y:auto;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent-green);white-space:pre-wrap;background:rgba(0,0,0,.3)}
   /* === FIREWALL DASHBOARD === */
-  .fw-dash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
-  .fw-dash.open{display:flex}
+  .fw-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+  .fw-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .fw-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .fw-dash-pills{display:flex;gap:6px}
   .fw-dash-pill{padding:4px 12px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);color:var(--text-muted)}
@@ -412,8 +412,8 @@
   /* Design highlight pulse */
   @keyframes designHlPulse{0%{opacity:.8;stroke-width:3}50%{opacity:.3;stroke-width:1}100%{opacity:.8;stroke-width:3}}
   /* Full-screen compliance dashboard */
-  .comp-dash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
-  .comp-dash.open{display:flex}
+  .comp-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+  .comp-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .comp-dash-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .comp-dash-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--accent-cyan);margin:0}
   .comp-dash-stats{display:flex;gap:8px;padding:10px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
@@ -445,8 +445,8 @@
   .comp-dash-footer button:hover{background:rgba(96,165,250,.1);border-color:var(--accent-cyan)}
   .comp-dash-footer .muted-count{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
   /* === BUDR DASHBOARD === */
-  .budr-dash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
-  .budr-dash.open{display:flex}
+  .budr-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+  .budr-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .budr-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .budr-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#10b981;margin:0}
   .budr-pills{display:flex;gap:6px}
@@ -504,8 +504,8 @@
   #budrExportXLSX{background:rgba(16,185,129,.15);border-color:#10b981;font-weight:600}
 
   /* === REPORT BUILDER === */
-  .rpt-builder{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
-  .rpt-builder.open{display:flex}
+  .rpt-builder{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+  .rpt-builder.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .rpt-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .rpt-hdr h2{font-family:'IBM Plex Mono',monospace;font-size:16px;color:#f59e0b;margin:0}
   .rpt-main{flex:1;display:flex;overflow:hidden}
@@ -745,8 +745,8 @@
   .dp-diff-change .dc-arrow{color:var(--text-muted);margin:0 4px;font-size:9px}
   .dp-diff-json{max-height:300px;overflow:auto;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:4px;padding:8px;font-size:9px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:var(--text-secondary)}
   /* === COMPARE DASHBOARD === */
-  .diff-dash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column}
-  .diff-dash.open{display:flex}
+  .diff-dash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:110;background:var(--bg-primary);overflow:hidden;flex-direction:column;display:flex;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+  .diff-dash.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease,visibility 0s linear 0s}
   .diff-dash-hdr{gap:12px}
   .diff-dash-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
   .diff-dash-select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 8px;cursor:pointer;max-width:200px}
@@ -1239,9 +1239,7 @@
   .dash-nav-btn[data-dash="firewall"] .dn-dot{background:var(--accent-red)}
   .dash-nav-btn[data-dash="budr"] .dn-dot{background:var(--accent-green)}
   .dash-nav-btn[data-dash="reports"] .dn-dot{background:var(--accent-orange)}
-  /* Smooth open/close for all full-screen dashboards */
-  .comp-dash,.fw-dash,.budr-dash,.rpt-builder,.diff-dash{transition:opacity .15s ease,visibility 0s linear .15s}
-  .comp-dash.open,.fw-dash.open,.budr-dash.open,.rpt-builder.open,.diff-dash.open{animation:dashFadeIn .18s ease both;transition:opacity .15s ease,visibility 0s linear 0s}
+  /* dashFadeIn kept for any future use */
   @keyframes dashFadeIn{from{opacity:0}to{opacity:1}}
   /* Unified scrollbar for all dashboard bodies */
   .comp-body::-webkit-scrollbar,.fw-dash-body::-webkit-scrollbar,.budr-body::-webkit-scrollbar,.rpt-modules::-webkit-scrollbar,.rpt-preview::-webkit-scrollbar,.diff-dash-body::-webkit-scrollbar{width:6px}
@@ -4423,11 +4421,15 @@ function _isMuted(f){return _mutedFindings.has(_muteKey(f))}
 function _toggleMute(f){const k=_muteKey(f);if(_mutedFindings.has(k))_mutedFindings.delete(k);else _mutedFindings.add(k);_saveMuted()}
 let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,view:'action'};
 function renderCompliancePanel(findings){
+  _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,view:_compDashState.view||'action'};
+  var si=document.getElementById('compSearch');if(si)si.value='';
   document.getElementById('compDash').classList.add('open');
   const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
   _renderCompDash(findings);
 }
 function _renderCompDash(findings){
+  var cb=document.getElementById('compBody');if(cb)cb.scrollTop=0;
+  const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
   const crit=findings.filter(f=>f.severity==='CRITICAL').length;const high=findings.filter(f=>f.severity==='HIGH').length;
   const med=findings.filter(f=>f.severity==='MEDIUM').length;const low=findings.filter(f=>f.severity==='LOW').length;
   const mutedCount=findings.filter(f=>_isMuted(f)).length;
@@ -4464,13 +4466,13 @@ function _renderCompDash(findings){
   body.querySelectorAll('.comp-jump-btn').forEach(btn=>{btn.addEventListener('click',function(e){
     e.stopPropagation();const rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
     document.getElementById('compDash').classList.remove('open');
-    setTimeout(()=>_zoomToElement(rid),100);
+    setTimeout(()=>_zoomToElement(rid),250);
   })});
   body.querySelectorAll('th[data-col]').forEach(th=>{th.addEventListener('click',()=>{_compDashState.sort=th.dataset.col;_renderCompDash(findings)})});
   body.querySelectorAll('.comp-res-link').forEach(a=>{a.addEventListener('click',function(e){
     e.stopPropagation();const rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
     document.getElementById('compDash').classList.remove('open');
-    setTimeout(()=>_zoomToElement(rid),100);
+    setTimeout(()=>_zoomToElement(rid),250);
   })});
 }
 function _renderActionPlan(filtered,allFindings){
@@ -4559,7 +4561,7 @@ function _renderActionPlan(filtered,allFindings){
       if(e.target.classList.contains('rc-clickable')){
         e.stopPropagation();var rid=e.target.dataset.rid;if(!rid||rid==='Multiple')return;
         document.getElementById('compDash').classList.remove('open');
-        setTimeout(function(){_zoomToElement(rid)},100);return;
+        setTimeout(function(){_zoomToElement(rid)},250);return;
       }
       this.closest('.comp-resource-card').classList.toggle('expanded');
     });
@@ -4570,7 +4572,7 @@ function _renderActionPlan(filtered,allFindings){
       e.stopPropagation();
       var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
       document.getElementById('compDash').classList.remove('open');
-      setTimeout(function(){_zoomToElement(rid)},100);
+      setTimeout(function(){_zoomToElement(rid)},250);
     });
   });
   // Mute buttons
@@ -8193,6 +8195,7 @@ function renderLandingZoneMap(ctx){
         const nCh=(res.children||[]).length;
         const iconH=LZ_RES_ICON+nCh*LZ_CHILD_H;
         const rG=sG.append('g').attr('class','res-node');
+        if(res.rid) rG.attr('data-id',res.rid);
         rG.on('mouseenter',function(event){
           event.stopPropagation();
           if(!_lzLocked) lzHlVpc(vl.vpc.VpcId);
@@ -10604,6 +10607,7 @@ function _renderMapInner(){
         const iconH=RES_ICON+nCh*RES_CHILD_H;
         // wrap in interactive group
         const rG=sG.append('g').attr('class','res-node');
+        if(res.rid) rG.attr('data-id',res.rid);
         const _rx=rx,_ry=ry;
         rG.on('mouseenter',function(event){
           event.stopPropagation();
@@ -11384,7 +11388,12 @@ document.getElementById('searchInput').addEventListener('input',function(){
 });
 function _zoomToElement(id){
   if(!_mapSvg||!_mapZoom||!_mapG)return;
-  const el=_mapG.node().querySelector('[data-vpc-id="'+id+'"],[data-subnet-id="'+id+'"],[data-gwid="'+id+'"],[data-id="'+id+'"]');
+  var el=_mapG.node().querySelector('[data-vpc-id="'+id+'"],[data-subnet-id="'+id+'"],[data-gwid="'+id+'"],[data-id="'+id+'"]');
+  // Fallback: SGs don't have SVG nodes — zoom to their VPC instead
+  if(!el&&id&&_rlCtx){
+    var sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===id});
+    if(sg&&sg.VpcId) el=_mapG.node().querySelector('[data-vpc-id="'+sg.VpcId+'"]');
+  }
   if(!el)return;const bb=el.getBBox();const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
   const svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
   const scale=Math.min(svgW/(bb.width+200),svgH/(bb.height+200),2.5);
@@ -13378,6 +13387,10 @@ function openFirewallDash(){
   var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
   if(!sgs.length&&!nacls.length&&!rts.length){alert('No security groups, NACLs, or route tables loaded');return}
   _fwDashFilter='all';_fwDashExpanded=null;
+  var fsi=document.getElementById('fwDashSearch');if(fsi)fsi.value='';
+  var fvf=document.getElementById('fwDashVpcFilter');if(fvf)fvf.value='all';
+  var fso=document.getElementById('fwDashSort');if(fso)fso.value='type';
+  var feo=document.getElementById('fwDashEditsOnly');if(feo)feo.checked=false;
   // Build type pills
   var pills=document.getElementById('fwDashPills');
   pills.textContent='';
@@ -13404,6 +13417,7 @@ function openFirewallDash(){
 function closeFirewallDash(){document.getElementById('fwDash').classList.remove('open')}
 
 function _fwDashRender(){
+  var fb=document.getElementById('fwDashBody');if(fb)fb.scrollTop=0;
   var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
   var search=(document.getElementById('fwDashSearch').value||'').toLowerCase();
   var vpcFilter=document.getElementById('fwDashVpcFilter').value;
@@ -16037,6 +16051,7 @@ var _CAT_ORDER={added:0,removed:1,modified:2,unchanged:3};
 
 function _renderDiffDash(){
   if(!_diffFlatRows) return;
+  var db=document.getElementById('diffDashBody');if(db)db.scrollTop=0;
   var st=_diffDashState;
   // --- Pills ---
   var counts={all:_diffFlatRows.length,added:0,removed:0,modified:0,unchanged:0};
@@ -16172,7 +16187,7 @@ function _renderDiffDash(){
       var key=this.dataset.ddJump;
       if(!key) return;
       document.getElementById('diffDash').classList.remove('open');
-      setTimeout(function(){_zoomToElement(key)},100);
+      setTimeout(function(){_zoomToElement(key)},250);
     });
   });
   // Detail buttons
@@ -16187,7 +16202,7 @@ function _renderDiffDash(){
       var item={type:row.type,key:row.key,name:row.name,fields:row.fields,hasStructural:row.hasStructural,resource:row.resource,baseline:row.baseline};
       document.getElementById('diffDash').classList.remove('open');
       _openDiffDetail(item,row.category);
-      setTimeout(function(){_zoomToElement(row.key)},100);
+      setTimeout(function(){_zoomToElement(row.key)},250);
     });
   });
   // Row click → expand (for modified rows)
@@ -16663,10 +16678,14 @@ function openBUDRDash(){
   if(!_rlCtx){_showToast('Render data first');return}
   if(!_budrAssessments.length)runBUDRChecks(_rlCtx);
   if(!_budrAssessments.length){_showToast('No resources to assess');return}
+  _budrDashState={tierFilter:'all',search:'',sort:'tier'};
+  var si=document.getElementById('budrSearch');if(si)si.value='';
+  var so=document.getElementById('budrSort');if(so)so.value='tier';
   document.getElementById('budrDash').classList.add('open');
   _renderBUDRDash();
 }
 function _renderBUDRDash(){
+  var bb=document.getElementById('budrBody');if(bb)bb.scrollTop=0;
   const counts=_getBUDRTierCounts();
   const total=_budrAssessments.length;
   // Pills
@@ -16782,7 +16801,8 @@ document.getElementById('budrExportCSV').addEventListener('click',function(){
     const rto=a.profile?a.profile.rto:'';
     const rpo=a.profile?a.profile.rpo:'';
     const sigs=a.signals?Object.entries(a.signals).map(([k,v])=>k+'='+v).join('; '):'';
-    csv+='"'+a.type+'","'+a.id+'","'+(a.name||'').replace(/"/g,'""')+'","'+tier+'","'+rto+'","'+rpo+'","'+sigs+'"\n';
+    var ce=function(s){return String(s||'').replace(/"/g,'""')};
+    csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
   });
   downloadBlob(csv,'budr-assessment.csv','text/csv');
 });
