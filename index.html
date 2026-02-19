@@ -5267,7 +5267,7 @@ const _designApplyFns={
       document.getElementById('in_lambda').value=JSON.stringify({Functions:fns});
       ch._addedIds=[id];
     } else if(type==='ECS'){
-      const raw=safeParse(gv('in_ecs'));const svcs=raw?ext(raw,['services']):[];
+      const raw=safeParse(gv('in_ecs'));const svcs=raw?ext(raw,['services','Services']):[];
       const id=ch.params.ResourceId||('ecs-svc-design-'+Date.now());
       svcs.push({serviceName:ch.params.Name||'new-service',serviceArn:'arn:aws:ecs:::service/'+id,networkConfiguration:{awsvpcConfiguration:{subnets:[ch.params.SubnetId],securityGroups:ch.params.SGIds||[]}},runningCount:ch.params.DesiredCount||1,desiredCount:ch.params.DesiredCount||1,launchType:'FARGATE'});
       document.getElementById('in_ecs').value=JSON.stringify({services:svcs});
@@ -9311,7 +9311,7 @@ function _renderMapInner(){
   allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZoneMap[r.HostedZoneId]=recsByZoneMap[r.HostedZoneId]||[]).push(r)});
   let wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
   let rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
-  let ecsServices=ext(safeParse(gv('in_ecs')),['services']);
+  let ecsServices=ext(safeParse(gv('in_ecs')),['services','Services']);
   let lambdaFns=(ext(safeParse(gv('in_lambda')),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
   let ecacheClusters=ext(safeParse(gv('in_elasticache')),['CacheClusters']);
   let redshiftClusters=ext(safeParse(gv('in_redshift')),['Clusters']);
@@ -19783,7 +19783,7 @@ function buildLucidExport(){
   const enis=ext(safeParse(gv('in_enis')),['NetworkInterfaces']);
   const wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
   const rdsInstances=ext(safeParse(gv('in_rds')),['DBInstances']);
-  const ecsServices=ext(safeParse(gv('in_ecs')),['services']);
+  const ecsServices=ext(safeParse(gv('in_ecs')),['services','Services']);
   const lambdaFns=(ext(safeParse(gv('in_lambda')),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
   const cfDistributions=ext(safeParse(gv('in_cf')),['DistributionList','Items']);
   if(!vpcs.length){alert('Render map first');return null}
