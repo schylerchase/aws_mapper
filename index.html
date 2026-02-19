@@ -15580,7 +15580,7 @@ function _buildCtxFromTextareas(textareas){
     albs:p('in_albs',['LoadBalancers']),
     rdsInstances:p('in_rds',['DBInstances']),
     ecsServices:p('in_ecs',['services','Services']),
-    lambdaFns:p('in_lambda',['Functions']),
+    lambdaFns:p('in_lambda',['Functions']).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId),
     ecacheClusters:p('in_elasticache',['CacheClusters']),
     redshiftClusters:p('in_redshift',['Clusters']),
     peerings:p('in_peer',['VpcPeeringConnections'])
