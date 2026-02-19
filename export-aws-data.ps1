@@ -30,11 +30,16 @@ param(
     [Alias("r")][string]$Region,
     [Alias("o")][string]$OutputDir,
     [switch]$AllRegions,
-    [string]$Profiles,
+    [string[]]$Profiles,
     [int]$MaxParallel = 12
 )
 
 $ErrorActionPreference = "Stop"
+
+# Prevent PowerShell's automatic $PROFILE from being mistaken for user input
+if (-not $PSBoundParameters.ContainsKey('Profile')) {
+    $Profile = $null
+}
 
 # ─── Validation ────────────────────────────────────────────────
 if ($Profile -and $Profile -notmatch '^[a-zA-Z0-9_-]+$') {
@@ -49,7 +54,7 @@ if ($Region -and $Region -notmatch '^[a-zA-Z0-9-]+$') {
 # Parse -Profiles into array, merge with -Profile for backward compat
 $profileList = @()
 if ($Profiles) {
-    $profileList = $Profiles -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    $profileList = @($Profiles | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     foreach ($p in $profileList) {
         if ($p -notmatch '^[a-zA-Z0-9_-]+$') {
             Write-Error "Invalid profile name '$p'. Use only letters, numbers, hyphens, underscores."
@@ -140,7 +145,10 @@ function Invoke-AwsExport {
             return @{ Label=$Label; Status="SKIP"; Detail=$msg }
         }
     } catch {
-        return @{ Label=$Label; Status="SKIP"; Detail=$_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length)) }
+        $errMsg = if ($_.Exception.Message) {
+            $_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length))
+        } else { "Unknown error" }
+        return @{ Label=$Label; Status="SKIP"; Detail=$errMsg }
     }
 }
 
@@ -210,7 +218,8 @@ function Export-EcsServices {
             Out-File -FilePath (Join-Path $OutPath "ecs-services.json") -Encoding utf8
         Write-Host " OK ($($allServices.Count) services)" -ForegroundColor Green
     } catch {
-        Write-Host " SKIP ($($_.Exception.Message.Substring(0,40)))" -ForegroundColor Yellow
+        $errMsg = if ($_.Exception.Message) { $_.Exception.Message.Substring(0, [Math]::Min(40, $_.Exception.Message.Length)) } else { "Unknown error" }
+        Write-Host " SKIP ($errMsg)" -ForegroundColor Yellow
     }
 }
 
@@ -226,10 +235,11 @@ function Export-Region {
 
     # Run all standard exports in parallel
     $results = $exports | ForEach-Object -ThrottleLimit $Parallel -Parallel {
-        # Re-import function in parallel scope
-        $filePath = Join-Path $using:OutPath $_.File
+        $localFlags = $using:flags
+        $localOutPath = $using:OutPath
+        $filePath = Join-Path $localOutPath $_.File
         try {
-            $result = & aws @using:flags @($_.Cmd) 2>&1
+            $result = & aws @localFlags @($_.Cmd) 2>&1
             if ($LASTEXITCODE -eq 0) {
                 $result | Out-File -FilePath $filePath -Encoding utf8
                 $size = (Get-Item $filePath).Length
@@ -240,7 +250,10 @@ function Export-Region {
                 @{ Label=$_.Label; Status="SKIP"; Detail=$msg }
             }
         } catch {
-            @{ Label=$_.Label; Status="SKIP"; Detail=$_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length)) }
+            $errMsg = if ($_.Exception.Message) {
+                $_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length))
+            } else { "Unknown error" }
+            @{ Label=$_.Label; Status="SKIP"; Detail=$errMsg }
         }
     }
 
