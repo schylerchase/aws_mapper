@@ -31,7 +31,7 @@ param(
     [Alias("o")][string]$OutputDir,
     [switch]$AllRegions,
     [string]$Profiles,
-    [int]$MaxParallel = 6
+    [int]$MaxParallel = 12
 )
 
 $ErrorActionPreference = "Stop"
