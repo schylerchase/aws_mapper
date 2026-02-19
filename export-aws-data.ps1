@@ -268,8 +268,8 @@ $banner = @"
 "@
 Write-Host $banner -ForegroundColor Magenta
 
-if ($profileList.Count -gt 1) {
-    # Multi-profile mode
+if ($Profiles) {
+    # Multi-profile mode (even single -Profiles value nests into profile subfolder)
     Write-Host "  Mode    : Multi-Profile ($($profileList.Count) profiles, parallel x$MaxParallel)" -ForegroundColor Cyan
     Write-Host "  Profiles: $($profileList -join ', ')"
     if ($AllRegions) { Write-Host "  Regions : All (auto-discover per profile)" }
