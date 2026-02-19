@@ -83,6 +83,16 @@ function Get-BaseFlags([string]$reg) {
     return $flags
 }
 
+function Test-RegionHasResources([string[]]$Flags) {
+    # Quick check: count non-default VPCs. Skip region if only default VPC or none.
+    try {
+        $raw = & aws @Flags ec2 describe-vpcs --query 'Vpcs[?IsDefault==`false`].VpcId' --output json 2>&1
+        if ($LASTEXITCODE -ne 0) { return $false }
+        $vpcs = $raw | ConvertFrom-Json
+        return ($vpcs.Count -gt 0)
+    } catch { return $false }
+}
+
 # ─── Export definitions ────────────────────────────────────────
 # Each export: [label, filename, aws-service, aws-command, ...extra-args]
 $exports = @(
@@ -319,8 +329,15 @@ if ($Profiles) {
             Write-Host "  ║ Found $($regions.Count) regions" -ForegroundColor Green
 
             $regionIdx = 0
+            $skipped = 0
             foreach ($reg in $regions) {
                 $regionIdx++
+                $regFlags = Get-BaseFlags $reg
+                if (-not (Test-RegionHasResources $regFlags)) {
+                    $skipped++
+                    Write-Host "  ║   Region $regionIdx/$($regions.Count): $reg — no resources, skipping" -ForegroundColor DarkGray
+                    continue
+                }
                 $regDir = Join-Path $profDir $reg
                 Write-Host ""
                 Write-Host "  ║ ┌─ Region $regionIdx/$($regions.Count): $reg ─────────────────────" -ForegroundColor Cyan
@@ -328,6 +345,7 @@ if ($Profiles) {
                 $fileCount = (Get-ChildItem -Path $regDir -Filter "*.json" -ErrorAction SilentlyContinue | Measure-Object).Count
                 Write-Host "  ║ └─ $fileCount files" -ForegroundColor Cyan
             }
+            if ($skipped) { Write-Host "  ║ Skipped $skipped empty regions" -ForegroundColor DarkGray }
         } else {
             Export-Region -RegionName $Region -OutPath $profDir -Parallel $MaxParallel
         }
@@ -360,8 +378,15 @@ if ($Profiles) {
     Write-Host ""
 
     $regionIdx = 0
+    $skipped = 0
     foreach ($reg in $regions) {
         $regionIdx++
+        $regFlags = Get-BaseFlags $reg
+        if (-not (Test-RegionHasResources $regFlags)) {
+            $skipped++
+            Write-Host "    Region $regionIdx/$($regions.Count): $reg — no resources, skipping" -ForegroundColor DarkGray
+            continue
+        }
         $regDir = Join-Path $OutputDir $reg
         Write-Host ""
         Write-Host "  ┌─ Region $regionIdx/$($regions.Count): $reg ─────────────────────" -ForegroundColor Cyan
@@ -369,6 +394,7 @@ if ($Profiles) {
         $fileCount = (Get-ChildItem -Path $regDir -Filter "*.json" -ErrorAction SilentlyContinue | Measure-Object).Count
         Write-Host "  └─ $fileCount files" -ForegroundColor Cyan
     }
+    if ($skipped) { Write-Host "  Skipped $skipped empty regions" -ForegroundColor DarkGray }
 } else {
     # Single region
     $displayRegion = if ($Region) { $Region } else { "default" }
