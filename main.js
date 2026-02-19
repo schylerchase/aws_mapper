@@ -150,22 +150,28 @@ ipcMain.handle('file:open-folder', async () => {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   const regions = {};
   const flatFiles = {};
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
   for (const ent of entries) {
-    if (ent.isDirectory() && regionRe.test(ent.name)) {
+    if ((ent.isDirectory() || ent.isSymbolicLink()) && regionRe.test(ent.name)) {
       const regionDir = path.join(dir, ent.name);
+      try { if (!fs.statSync(regionDir).isDirectory()) continue; } catch { continue; }
       const regionFiles = {};
-      for (const f of fs.readdirSync(regionDir)) {
-        if (f.endsWith('.json')) {
-          regionFiles[f] = fs.readFileSync(path.join(regionDir, f), 'utf8');
+      for (const f of fs.readdirSync(regionDir, { withFileTypes: true })) {
+        if (f.isFile() && f.name.endsWith('.json')) {
+          const fp = path.join(regionDir, f.name);
+          try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
+          regionFiles[f.name] = fs.readFileSync(fp, 'utf8');
         }
       }
       if (Object.keys(regionFiles).length) regions[ent.name] = regionFiles;
     } else if (ent.isFile() && ent.name.endsWith('.json')) {
-      flatFiles[ent.name] = fs.readFileSync(path.join(dir, ent.name), 'utf8');
+      const fp = path.join(dir, ent.name);
+      try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
+      flatFiles[ent.name] = fs.readFileSync(fp, 'utf8');
     }
   }
   if (Object.keys(regions).length) {
-    return { _structure: 'multi-region', regions };
+    return { _structure: 'multi-region', regions, files: flatFiles };
   }
   return { _structure: 'flat', files: flatFiles };
 });
