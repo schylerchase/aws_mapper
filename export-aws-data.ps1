@@ -30,7 +30,7 @@ param(
     [Alias("r")][string]$Region,
     [Alias("o")][string]$OutputDir,
     [switch]$AllRegions,
-    [Alias("P")][string]$Profiles,
+    [string]$Profiles,
     [int]$MaxParallel = 6
 )
 
