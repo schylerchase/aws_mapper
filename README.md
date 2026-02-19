@@ -100,6 +100,8 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 | .awsmap | Full project save/restore |
 
 ### Other Capabilities
+- Landing dashboard with feature overview and quick-start CTAs
+- IAM detail panel links directly to governance dashboard IAM tab
 - Snapshot timeline: capture, browse, and compare historical infrastructure states
 - Diff/change detection between snapshots with dashboard
 - Firewall editor dashboard (SG/NACL management)
@@ -113,8 +115,8 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 ### Browser (no install)
 
 1. Open the [live demo](https://schylerchase.github.io/aws_mapper/) or `index.html` locally
-2. Click **Demo** to load sample data, or paste your own AWS CLI JSON
-3. Click **Render Map**
+2. The landing dashboard shows all features -- click **Load Demo** or **Import Data** to get started
+3. Click **Render Map** after pasting AWS CLI JSON
 
 ### Desktop App (Electron)
 
