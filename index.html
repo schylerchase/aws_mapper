@@ -3018,9 +3018,9 @@ function runSOC2Checks(ctx){
     if(anyOpen)f.push({severity:'MEDIUM',control:'SOC2-CC6.8',framework:'SOC2',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'Public EC2 with unrestricted egress — C2 callback risk',remediation:'Restrict outbound to required ports; use VPC endpoints for AWS services'});
   });
   // CC7.2 – Monitoring: VPC without flow logs indication
-  (ctx.vpcs||[]).forEach(vpc=>{
+  if((ctx.vpcs||[]).some(v=>v.FlowLogs!==undefined)){(ctx.vpcs||[]).forEach(vpc=>{
     if(!vpc.FlowLogs||vpc.FlowLogs.length===0)f.push({severity:'HIGH',control:'SOC2-CC7.2',framework:'SOC2',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC has no flow logs enabled — insufficient monitoring',remediation:'Enable VPC Flow Logs to CloudWatch or S3 for audit trail'});
-  });
+  });}
   // CC8.1 – Change mgmt: resources without Name tags
   let untagged=0;
   (ctx.instances||[]).forEach(inst=>{if(!gn2(inst,null))untagged++});
@@ -3105,8 +3105,8 @@ function runPCIDSSChecks(ctx){
     if(alb.Scheme==='internet-facing'&&!hasHttps)f.push({severity:'CRITICAL',control:'PCI-4.2.1',framework:'PCI',resource:alb.LoadBalancerName,resourceName:alb.LoadBalancerName,message:'Internet-facing ALB without HTTPS — data in transit unencrypted',remediation:'Add HTTPS listener with TLS 1.2+ via ACM certificate; redirect HTTP to HTTPS'});
   });
   // 6.4.1 – Web application firewall: internet-facing ALB without WAF
-  const albsWithWaf=new Set();(ctx.wafAssociations||[]).forEach(a=>{
-    const arn=a.ResourceArn||'';const m=arn.match(/loadbalancer\/app\/([^/]+)/);if(m)albsWithWaf.add(m[1])});
+  const albsWithWaf=new Set();(ctx.wafAcls||[]).forEach(acl=>{
+    (acl.ResourceArns||[]).forEach(arn=>{const m=arn.match(/loadbalancer\/app\/([^/]+)/);if(m)albsWithWaf.add(m[1])})});
   (ctx.albs||[]).forEach(alb=>{if(alb.Scheme!=='internet-facing')return;
     if(!albsWithWaf.has(alb.LoadBalancerName))f.push({severity:'HIGH',control:'PCI-6.4.1',framework:'PCI',resource:alb.LoadBalancerName,resourceName:alb.LoadBalancerName,message:'Internet-facing ALB without WAF — web app firewall required',remediation:'Associate AWS WAF WebACL with ALB; add OWASP Top 10 managed rule group'});
   });
@@ -3116,16 +3116,16 @@ function runPCIDSSChecks(ctx){
       f.push({severity:'HIGH',control:'PCI-7.2.1',framework:'PCI',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows all inbound traffic — violates least privilege',remediation:'Replace with specific port/protocol rules matching business need'})});
   });
   // 10.2.1 – Audit logging: VPC without flow logs
-  (ctx.vpcs||[]).forEach(vpc=>{
+  if((ctx.vpcs||[]).some(v=>v.FlowLogs!==undefined)){(ctx.vpcs||[]).forEach(vpc=>{
     if(!vpc.FlowLogs||vpc.FlowLogs.length===0)f.push({severity:'HIGH',control:'PCI-10.2.1',framework:'PCI',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC flow logs not enabled — insufficient audit logging',remediation:'Enable VPC Flow Logs with at least 1 year retention for PCI compliance'});
-  });
+  });}
   // 11.3.1 – Vulnerability management: publicly accessible RDS
   (ctx.rdsInstances||[]).forEach(db=>{if(db.PubliclyAccessible)
     f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS publicly accessible — immediate vulnerability exposure',remediation:'Set PubliclyAccessible=false; access only via private subnet or VPN'})});
   // 12.10.1 – Incident response: no GuardDuty detection (indicated by no config)
   (ctx.vpcs||[]).forEach(vpc=>{
     const instCount=(ctx.instances||[]).filter(i=>i.VpcId===vpc.VpcId).length;
-    if(instCount>5&&!vpc.FlowLogs)f.push({severity:'MEDIUM',control:'PCI-12.10.1',framework:'PCI',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'Large VPC ('+instCount+' instances) without monitoring — incident response gap',remediation:'Enable GuardDuty, CloudTrail, and VPC Flow Logs; create SNS alerts'});
+    if(instCount>5&&vpc.FlowLogs!==undefined&&!vpc.FlowLogs)f.push({severity:'MEDIUM',control:'PCI-12.10.1',framework:'PCI',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'Large VPC ('+instCount+' instances) without monitoring — incident response gap',remediation:'Enable GuardDuty, CloudTrail, and VPC Flow Logs; create SNS alerts'});
   });
   // PCI-2.3.1 – Encrypt services: ElastiCache without transit encryption
   (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.TransitEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.TransitEncryptionEnabled))
@@ -5772,7 +5772,7 @@ function injectDesignToolbar(container,context){
     const gwType=context.gwType;
     const gwId=context.data;
     if(gwType==='IGW'||gwType==='NAT'||gwType==='VPCE'){
-      tb.innerHTML='<button onclick="addDesignChange({action:\'remove_resource\',target:{ResourceId:\''+gwId+'\',ResourceType:\''+gwType+'\'}})">Remove '+gwType+'</button>';
+      tb.innerHTML='<button onclick="addDesignChange({action:\'remove_resource\',target:{ResourceId:\''+esc(gwId)+'\',ResourceType:\''+esc(gwType)+'\'}})">Remove '+esc(gwType)+'</button>';
     }
   }
   container.insertBefore(tb,container.firstChild);
@@ -6026,6 +6026,8 @@ function parseIAMData(raw){
   else if(raw.Roles)data.roles=raw.Roles;
   if(raw.UserDetailList)data.users=raw.UserDetailList;
   if(raw.Policies)data.policies=raw.Policies;
+  if(raw.PasswordPolicy)data.passwordPolicy=raw.PasswordPolicy;
+  if(raw.AccountPasswordPolicy)data.passwordPolicy=raw.AccountPasswordPolicy;
   // Helper: resolve a policy entry to its document statements
   function _resolvePolicyDoc(p){
     // Inline policy with PolicyDocument
@@ -6048,8 +6050,10 @@ function parseIAMData(raw){
         if(stmt.Effect!=='Allow')return;
         const actions=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
         const resources=Array.isArray(stmt.Resource)?stmt.Resource:[stmt.Resource||''];
-        if(actions.some(a=>a==='*'||a==='*:*'))role._isAdmin=true;
-        if(resources.some(r=>r==='*'))role._hasWildcard=true;
+        const hasWildAction=actions.some(a=>a==='*'||a==='*:*');
+        const hasWildResource=resources.some(r=>r==='*');
+        if(hasWildAction&&hasWildResource)role._isAdmin=true;
+        if(hasWildResource)role._hasWildcard=true;
         // Check for VPC conditions
         const cond=stmt.Condition||{};
         Object.values(cond).forEach(cv=>{
@@ -6078,18 +6082,18 @@ function runIAMChecks(iamData){
   iamData.roles.forEach(role=>{
     if(role._isAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
     if(role._hasWildcard&&!role._isAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
-    // Check for MFA condition
-    const policies=[...(role.RolePolicyList||[]),...(role.AttachedManagedPolicies||[])];
-    const hasMFA=policies.some(p=>{const doc=p.PolicyDocument||{};return JSON.stringify(doc).includes('aws:MultiFactorAuth')});
-    if(!hasMFA&&role.AssumeRolePolicyDocument){
+    // Check for cross-account trust without MFA condition
+    if(role.AssumeRolePolicyDocument){
       const trust=typeof role.AssumeRolePolicyDocument==='string'?JSON.parse(role.AssumeRolePolicyDocument):role.AssumeRolePolicyDocument;
       const stmts=trust.Statement||[];
-      const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>a.includes(':root'))});
-      if(crossAccount)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
+      const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId})});
+      const hasMFA=stmts.some(s=>JSON.stringify(s.Condition||{}).includes('aws:MultiFactorAuth'));
+      if(crossAccount&&!hasMFA)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
     }
-    // IAM-4: Service wildcard actions (s3:*, ec2:* but not *)
+    // IAM-4: Service wildcard actions (s3:*, ec2:* but not *) — scan both inline and managed
     const allStmts4=[];
     (role.RolePolicyList||[]).forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>allStmts4.push(s))});
+    (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=typeof ver.Document==='string'?JSON.parse(ver.Document):ver.Document;(dd.Statement||[]).forEach(s=>allStmts4.push(s))}}});
     allStmts4.forEach(stmt=>{
       if(stmt.Effect!=='Allow')return;
       const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
@@ -6124,8 +6128,10 @@ function runIAMChecks(iamData){
         if(stmt.Effect!=='Allow')return;
         const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
         const res=Array.isArray(stmt.Resource)?stmt.Resource:[stmt.Resource||''];
-        if(acts.some(a=>a==='*'||a==='*:*'))uIsAdmin=true;
-        if(res.some(r=>r==='*'))uHasWildcard=true;
+        const uHasWildAct=acts.some(a=>a==='*'||a==='*:*');
+        const uHasWildRes=res.some(r=>r==='*');
+        if(uHasWildAct&&uHasWildRes)uIsAdmin=true;
+        if(uHasWildRes)uHasWildcard=true;
       });
     });
     // Check managed policies for admin
@@ -6134,7 +6140,7 @@ function runIAMChecks(iamData){
       if(pol){
         const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
         if(ver){const dd=typeof ver.Document==='string'?JSON.parse(ver.Document):ver.Document;(dd.Statement||[]).forEach(s=>{
-          if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))uIsAdmin=true;if(r.some(x=>x==='*'))uHasWildcard=true}
+          if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*')&&r.some(x=>x==='*'))uIsAdmin=true;if(r.some(x=>x==='*'))uHasWildcard=true}
         })}
       }
     });
@@ -6142,8 +6148,9 @@ function runIAMChecks(iamData){
     if(uHasWildcard&&!uIsAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
     if(!(user.MFADevices||[]).length)f.push({severity:'HIGH',control:'IAM-3',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has no MFA device configured',remediation:'Enable MFA for all IAM users'});
     if(user.UserPolicyList?.length>0)f.push({severity:'LOW',control:'IAM-7',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses inline policies instead of managed',remediation:'Convert inline policies to managed policies'});
-    // Service wildcard check for users
+    // Service wildcard check for users — scan both inline and managed
     const uStmts=[];(user.UserPolicyList||[]).forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>uStmts.push(s))});
+    (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=typeof ver.Document==='string'?JSON.parse(ver.Document):ver.Document;(dd.Statement||[]).forEach(s=>uStmts.push(s))}}});
     uStmts.forEach(stmt=>{if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a)))f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}});
     // IAM-9: Access key age >90 days
     (user.AccessKeys||[]).forEach(ak=>{
@@ -7268,12 +7275,12 @@ function openGatewayPanel(gwId,gwType,lk){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+title+'</span><span><span class="dp-sec-count">'+count+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
   }
   dpTitle.innerHTML='<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));font-family:IBM Plex Mono,monospace;margin-right:8px" title="Back">&lt; Back</span><span style="color:'+col+'">'+gwType+'</span>: '+esc(nm);
-  dpSub.innerHTML='<span class="copyable" data-copy="'+gwId+'">'+gwId+'</span>';
+  dpSub.innerHTML='<span class="copyable" data-copy="'+esc(gwId)+'">'+esc(gwId)+'</span>';
   let h='';
 
   // General info
-  let gi='<div class="dp-kv"><span class="k">Type</span><span class="v">'+gwType+'</span></div>';
-  gi+='<div class="dp-kv"><span class="k">ID</span><span class="v">'+gwId+'</span></div>';
+  let gi='<div class="dp-kv"><span class="k">Type</span><span class="v">'+esc(gwType)+'</span></div>';
+  gi+='<div class="dp-kv"><span class="k">ID</span><span class="v">'+esc(gwId)+'</span></div>';
   if(nm&&nm!==gwId) gi+='<div class="dp-kv"><span class="k">Name</span><span class="v">'+esc(nm)+'</span></div>';
 
   // Type-specific info
@@ -13812,7 +13819,9 @@ function _resolveNetworkPosition(type, id, ctx){
     });
     if(!ecs2) return null;
     var eVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===eSid})||{}).VpcId;
-    return {subnetId:eSid,vpcId:eVpc,cidr:null,sgs:[],name:ecs2.serviceName||id};
+    var eNc=(ecs2.networkConfiguration||{}).awsvpcConfiguration||{};
+    var eSgs2=(eNc.securityGroups||[]).map(function(gid){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===gid})}).filter(Boolean);
+    return {subnetId:eSid,vpcId:eVpc,cidr:null,sgs:eSgs2,name:ecs2.serviceName||id};
   }
   return null;
 }

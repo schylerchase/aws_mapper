@@ -61,7 +61,7 @@ jobs:
       - run: npm ci
 
       - name: Build Electron app
-        run: ${{ matrix.build_cmd }} --publish never
+        run: ${{ matrix.build_cmd }} -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
