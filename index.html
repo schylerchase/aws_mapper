@@ -881,14 +881,50 @@
   .flow-analysis-layer .fa-path{fill:none;stroke-width:2.5;pointer-events:none}
   .flow-analysis-layer .fa-path.ingress{stroke:#10b981;stroke-dasharray:6 3;animation:flow-dash 1.5s linear infinite}
   .flow-analysis-layer .fa-path.egress{stroke:#fb923c;stroke-dasharray:4 4}
-  .flow-analysis-layer .fa-path.bastion{stroke:#22d3ee;stroke-dasharray:none}
+  .flow-analysis-layer .fa-path.bastion{stroke:#22d3ee;stroke-dasharray:8 4;animation:flow-dash 2s linear infinite}
   .flow-analysis-layer .fa-arrow{pointer-events:none}
+  .flow-analysis-layer .bastion-marker{pointer-events:none}
   .tier-badge{pointer-events:none;transition:opacity .2s}
   .fa-tier-row{padding:6px 10px;border-radius:4px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;font-size:10px;font-family:'IBM Plex Mono',monospace;margin-bottom:3px}
   .fa-tier-row:hover{background:rgba(255,255,255,.05)}
   .fa-tier-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
   .fa-path-item{padding:5px 8px;margin-bottom:2px;border-radius:4px;cursor:pointer;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-secondary);background:rgba(255,255,255,.02);border-left:2px solid var(--border);transition:all .15s}
   .fa-path-item:hover{background:rgba(255,255,255,.06);border-left-color:var(--accent-cyan)}
+  /* Quick port buttons */
+  .flow-quick-ports{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+  .flow-port-btn{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);color:var(--accent-cyan);padding:2px 8px;border-radius:3px;font-size:9px;font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .15s}
+  .flow-port-btn:hover{background:rgba(34,211,238,.2);border-color:rgba(34,211,238,.5)}
+  .flow-port-btn.active{background:rgba(34,211,238,.25);border-color:#22d3ee;font-weight:700;box-shadow:0 0 6px rgba(34,211,238,.2)}
+  /* Trace bridge button on discovered paths */
+  .fa-trace-btn{background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;padding:1px 6px;border-radius:3px;font-size:8px;font-family:'IBM Plex Mono',monospace;cursor:pointer;font-weight:600;margin-left:auto;flex-shrink:0;transition:all .15s}
+  .fa-trace-btn:hover{background:rgba(34,211,238,.25);border-color:#22d3ee}
+  /* Full analysis dashboard overlay */
+  .fa-dash-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;background:rgba(11,17,32,.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;animation:fadeIn .2s ease}
+  .fa-dash-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg-secondary)}
+  .fa-dash-header h2{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--accent-cyan);letter-spacing:1px;text-transform:uppercase;font-weight:700}
+  .fa-dash-body{flex:1;overflow-y:auto;padding:16px 20px}
+  .fa-dash-close{background:none;border:1px solid var(--border);color:var(--text-secondary);padding:4px 12px;border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;margin-left:auto}
+  .fa-dash-close:hover{border-color:var(--accent-red);color:var(--accent-red)}
+  .fa-dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .fa-dash-card{background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:14px;transition:border-color .15s}
+  .fa-dash-card:hover{border-color:rgba(34,211,238,.3)}
+  .fa-dash-card h4{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-cyan);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+  .fa-dash-stat{font-size:28px;font-weight:700;color:var(--text-primary);font-family:'IBM Plex Mono',monospace}
+  .fa-dash-sub{font-size:10px;color:var(--text-muted);margin-top:2px}
+  .fa-dash-table{width:100%;border-collapse:collapse;font-size:10px;font-family:'IBM Plex Mono',monospace}
+  .fa-dash-table th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:9px}
+  .fa-dash-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-secondary)}
+  .fa-dash-table tr:hover td{background:rgba(255,255,255,.02)}
+  /* Right-click context menu */
+  .flow-ctx-menu{position:fixed;z-index:300;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.6);padding:4px 0;min-width:180px;font-family:'IBM Plex Mono',monospace}
+  .flow-ctx-item{padding:6px 14px;font-size:11px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s}
+  .flow-ctx-item:hover{background:rgba(34,211,238,.1);color:var(--text-primary)}
+  .flow-ctx-item .ctx-icon{font-size:13px;width:18px;text-align:center}
+  .flow-ctx-sep{height:1px;background:var(--border);margin:3px 0}
+  /* Guided banner step styling */
+  .flow-step-num{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(34,211,238,.2);color:#22d3ee;font-size:9px;font-weight:700;margin-right:4px}
+  .flow-step-num.done{background:rgba(16,185,129,.2);color:#10b981}
+  .flow-step-num.active{background:#22d3ee;color:#000}
   /* Multi-Account Panel */
   .account-panel{position:fixed;top:0;right:-320px;width:320px;height:100vh;background:var(--bg-secondary);border-left:1px solid var(--border);z-index:50;display:flex;flex-direction:column;transition:right .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4)}
   .account-panel.open{right:0}
@@ -1296,7 +1332,7 @@
 <body>
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1><img src="logo.png" alt="Logo" style="width:28px;height:28px;border-radius:50%;vertical-align:middle;margin-right:6px">AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v31</span></h1>
+    <h1><img src="logo.png" alt="Logo" style="width:28px;height:28px;border-radius:50%;vertical-align:middle;margin-right:6px">AWS Network Map <span style="font-size:8px;color:var(--text-muted);font-weight:400">v33</span></h1>
     <p>Paste CLI JSON exports or upload folder</p>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -1593,7 +1629,15 @@
     <button class="fa-mode-pill" data-fa-mode="ingress">Ingress</button>
     <button class="fa-mode-pill" data-fa-mode="egress">Egress</button>
     <button class="fa-mode-pill" data-fa-mode="bastion">Bastion</button>
+    <button id="faDashBtn" title="Open full analysis dashboard" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981;padding:2px 10px;border-radius:3px;font-size:9px;font-family:'IBM Plex Mono',monospace;cursor:pointer;font-weight:600">Dashboard</button>
     <button id="faExitBtn" title="Exit flow analysis (Esc)">Exit</button>
+  </div>
+  <!-- Right-Click Context Menu -->
+  <div id="flowContextMenu" class="flow-ctx-menu" style="display:none">
+    <div class="flow-ctx-item" data-ctx-action="trace-from"><span class="ctx-icon">→</span>Trace from here</div>
+    <div class="flow-ctx-item" data-ctx-action="trace-to"><span class="ctx-icon">←</span>Trace to here</div>
+    <div class="flow-ctx-sep"></div>
+    <div class="flow-ctx-item" data-ctx-action="analyze"><span class="ctx-icon">◎</span>Analyze flows</div>
   </div>
   <!-- Diff Mode Banner -->
   <div class="diff-banner" id="diffBanner" style="display:none">
@@ -2012,6 +2056,7 @@ function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim(
 function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
+function _closeAllDashboards(except){var ids=['compDash','fwDash','budrDash','diffDash','notesPanel'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')})}
 function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
 const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
 const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
@@ -4423,6 +4468,7 @@ let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',sho
 function renderCompliancePanel(findings){
   _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,view:_compDashState.view||'action'};
   var si=document.getElementById('compSearch');if(si)si.value='';
+  _closeAllDashboards('compDash');
   document.getElementById('compDash').classList.add('open');
   const sumEl=document.getElementById('compExecSummary');if(sumEl&&sumEl.style.display!=='none')_renderExecSummary();
   _renderCompDash(findings);
@@ -4458,7 +4504,7 @@ function _renderCompDash(findings){
     h+='<td style="color:var(--accent-cyan);font-size:11px">'+esc(f.control)+(f.ckv?' <span style="color:var(--text-muted);font-size:9px">('+esc(f.ckv)+')</span>':'')+(ref?' <a href="'+esc(ref.url)+'" target="_blank" style="color:var(--accent-blue);font-size:9px;text-decoration:none" title="'+esc(ref.ref)+'">[docs]</a>':'')+'</td>';
     h+='<td style="font-size:11px">'+(f.resource&&f.resource!=='Multiple'?'<a class="comp-res-link" data-rid="'+esc(f.resource)+'" style="color:var(--accent-cyan);cursor:pointer;text-decoration:none;border-bottom:1px dashed var(--accent-cyan)" title="Jump to resource">'+esc(f.resourceName||f.resource)+'</a>':'<span style="color:var(--text-muted)">'+esc(f.resourceName||f.resource)+'</span>')+'</td>';
     h+='<td><span style="color:var(--text-secondary)">'+esc(f.message)+'</span><div class="comp-remediation">'+esc(f.remediation)+'</div></td>';
-    h+='<td><button class="comp-jump-btn" data-rid="'+f.resource+'" title="Zoom to resource on map">Jump</button><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
+    h+='<td><button class="comp-jump-btn" data-rid="'+esc(f.resource)+'" title="Zoom to resource on map">Jump</button><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
   });
   if(!filtered.length)h+='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">No findings match current filters</td></tr>';
   h+='</tbody></table>';body.innerHTML=h;
@@ -6548,11 +6594,11 @@ function openResourceList(type, pushNav){
 
   // row builder: action = {t:'vpc'|'sub', id:'...'} or null
   function row(main,details,color,action){
-    const act=action?` data-act="${action.t}" data-id="${action.id}"`:'';
+    const act=action?` data-act="${esc(action.t)}" data-id="${esc(action.id)}"`:'';
     const style=` style="border-left:3px solid ${color||'var(--border)'};padding-left:8px;margin:4px 0${action?';cursor:pointer':''}"`;
-    const navBtn=action?'<span class="dp-nav-btn" data-nav="1" data-nav-t="'+action.t+'" data-nav-id="'+action.id+'" title="Navigate to resource on map">Go to</span>':'';
+    const navBtn=action?'<span class="dp-nav-btn" data-nav="1" data-nav-t="'+esc(action.t)+'" data-nav-id="'+esc(action.id)+'" title="Navigate to resource on map">Go to</span>':'';
     const tog=details?'<span class="dp-tog">&#9660;</span>':'';
-    const det=details?'<span class="dp-det"><br><span class="k">'+details+'</span></span>':'';
+    const det=details?'<span class="dp-det"><br><span class="k">'+esc(details)+'</span></span>':'';
     return '<div class="dp-row"'+act+style+'>'
       +tog+'<span class="i" style="color:'+(color||'var(--text-primary)')+'">'+main+'</span>'+navBtn
       +det+'</div>';
@@ -6833,7 +6879,7 @@ function openResourceList(type, pushNav){
           const resCount=ctx.iamRoleResources?ctx.iamRoleResources[r.RoleName]:null;
           const rcText=resCount?(' | '+(resCount.ec2?.length||0)+' EC2, '+(resCount.lambda?.length||0)+' Lambda, '+(resCount.ecs?.length||0)+' ECS'):'';
           const trustSvc=r.AssumeRolePolicyDocument?(typeof r.AssumeRolePolicyDocument==='string'?JSON.parse(r.AssumeRolePolicyDocument):r.AssumeRolePolicyDocument).Statement?.map(s=>{const p=s.Principal||{};return p.Service||p.AWS||''}).flat().join(', '):'';
-          items.push('<div class="dp-row" data-iam-role="'+ri+'" style="border-left:3px solid #f59e0b;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan);text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(103,232,249,.3)">'+esc(r.RoleName)+'</span><br><span class="k">Trust: '+(trustSvc||'?').substring(0,60)+rcText+'</span></div>');
+          items.push('<div class="dp-row" data-iam-role="'+ri+'" style="border-left:3px solid #f59e0b;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan);text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(103,232,249,.3)">'+esc(r.RoleName)+'</span><br><span class="k">Trust: '+esc((trustSvc||'?').substring(0,60))+esc(rcText)+'</span></div>');
         });
       }
       // Users section
@@ -11633,14 +11679,14 @@ function _renderNotesPanel(){
     all.forEach(n=>{
       const orphaned=_isOrphaned(n.resourceId);
       const rName=_getResourceName(n.resourceId);
-      h+='<div class="note-card'+(orphaned?' note-orphaned':'')+'" data-rid="'+n.resourceId+'" data-ni="'+n.noteIndex+'">';
+      h+='<div class="note-card'+(orphaned?' note-orphaned':'')+'" data-rid="'+_escHtml(n.resourceId)+'" data-ni="'+n.noteIndex+'">';
       h+='<div class="note-card-hdr"><span class="note-cat-badge cat-'+n.category+'">'+n.category+'</span>';
       if(n.pinned)h+='<span style="font-size:8px;color:var(--accent-orange)">PINNED</span>';
       if(orphaned)h+='<span style="font-size:8px;color:var(--accent-orange)">ORPHANED</span>';
-      h+='<span class="note-resource" title="'+n.resourceId+'">'+rName+'</span></div>';
+      h+='<span class="note-resource" title="'+_escHtml(n.resourceId)+'">'+_escHtml(rName)+'</span></div>';
       h+='<div class="note-text">'+_escHtml(n.text)+'</div>';
-      h+='<div class="note-meta"><span>'+(n.author||'Anonymous')+'</span><span>'+_relTime(n.updated||n.created)+'</span></div>';
-      h+='<div class="note-actions"><button class="note-zoom-btn" data-rid="'+n.resourceId+'" title="Zoom to resource">Zoom</button><button class="note-edit-btn" data-rid="'+n.resourceId+'" data-ni="'+n.noteIndex+'" title="Edit note">Edit</button><button class="note-del-btn" data-rid="'+n.resourceId+'" data-ni="'+n.noteIndex+'" title="Delete note">Del</button></div>';
+      h+='<div class="note-meta"><span>'+_escHtml(n.author||'Anonymous')+'</span><span>'+_relTime(n.updated||n.created)+'</span></div>';
+      h+='<div class="note-actions"><button class="note-zoom-btn" data-rid="'+_escHtml(n.resourceId)+'" title="Zoom to resource">Zoom</button><button class="note-edit-btn" data-rid="'+_escHtml(n.resourceId)+'" data-ni="'+n.noteIndex+'" title="Edit note">Edit</button><button class="note-del-btn" data-rid="'+_escHtml(n.resourceId)+'" data-ni="'+n.noteIndex+'" title="Delete note">Del</button></div>';
       h+='</div>';
     });
   }
@@ -11670,9 +11716,9 @@ function _populateResourceSelect(){
   (_rlCtx.vpcs||[]).forEach(v=>opts+='<option value="'+v.VpcId+'">VPC: '+gn(v,v.VpcId)+'</option>');
   (_rlCtx.subnets||[]).forEach(s=>opts+='<option value="'+s.SubnetId+'">Subnet: '+gn(s,s.SubnetId)+'</option>');
   (_rlCtx.instances||[]).forEach(i=>opts+='<option value="'+i.InstanceId+'">EC2: '+gn(i,i.InstanceId)+'</option>');
-  (_rlCtx.rdsInstances||[]).forEach(d=>opts+='<option value="'+d.DBInstanceIdentifier+'">RDS: '+d.DBInstanceIdentifier+'</option>');
-  (_rlCtx.lambdaFns||[]).forEach(f=>opts+='<option value="'+f.FunctionName+'">Lambda: '+f.FunctionName+'</option>');
-  (_rlCtx.sgs||[]).forEach(s=>opts+='<option value="'+s.GroupId+'">SG: '+(s.GroupName||s.GroupId)+'</option>');
+  (_rlCtx.rdsInstances||[]).forEach(d=>opts+='<option value="'+esc(d.DBInstanceIdentifier)+'">RDS: '+esc(d.DBInstanceIdentifier)+'</option>');
+  (_rlCtx.lambdaFns||[]).forEach(f=>opts+='<option value="'+esc(f.FunctionName)+'">Lambda: '+esc(f.FunctionName)+'</option>');
+  (_rlCtx.sgs||[]).forEach(s=>opts+='<option value="'+esc(s.GroupId)+'">SG: '+esc(s.GroupName||s.GroupId)+'</option>');
   sel.innerHTML=opts;
 }
 function _showEditNote(rid,ni){
@@ -11787,6 +11833,7 @@ function _renderComplianceBadges(){
   });
 }
 function openNotesPanel(){
+  _closeAllDashboards('notesPanel');
   document.getElementById('notesPanel').classList.add('open');
   _renderNotesPanel();
 }
@@ -13411,6 +13458,7 @@ function openFirewallDash(){
     var o=document.createElement('option');o.value=v.VpcId;o.textContent=gn(v,v.VpcId)+' ('+v.VpcId+')';vpcSel.appendChild(o);
   });
   _fwDashRender();
+  _closeAllDashboards('fwDash');
   document.getElementById('fwDash').classList.add('open');
 }
 
@@ -13678,9 +13726,9 @@ function evaluateRouteTable(rt, destCidr){
   let bestMatch=null;
   let bestMask=-1;
   rt.Routes.forEach(function(r){
-    const rCidr=r.DestinationCidrBlock;
+    const rCidr=r.DestinationCidrBlock||r.DestinationIpv6CidrBlock;
     if(!rCidr) return;
-    const mask=parseInt(rCidr.split('/')[1],10);
+    const mask=parseInt(rCidr.split('/')[1],10)||0;
     if(_cidrContains(rCidr, dest)&&mask>bestMask){
       bestMask=mask;
       bestMatch=r;
@@ -13694,6 +13742,7 @@ function evaluateRouteTable(rt, destCidr){
   if(bestMatch.TransitGatewayId) return {target:bestMatch.TransitGatewayId,type:'tgw'};
   if(bestMatch.GatewayId==='local') return {target:'local',type:'local'};
   if(bestMatch.VpcEndpointId) return {target:bestMatch.VpcEndpointId,type:'vpce'};
+  if(bestMatch.GatewayId&&bestMatch.GatewayId.startsWith('vgw-')) return {target:bestMatch.GatewayId,type:'vgw'};
   return {target:'local',type:'local'};
 }
 
@@ -13804,7 +13853,8 @@ function _resolveNetworkPosition(type, id, ctx){
     if(!rds2) return null;
     var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
     var rSgs2=(rds2.VpcSecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===s.VpcSecurityGroupId})}).filter(Boolean);
-    return {subnetId:rSid,vpcId:rVpc,cidr:rds2.Endpoint&&rds2.Endpoint.Address?rds2.Endpoint.Address:null,sgs:rSgs2,name:rds2.DBInstanceIdentifier};
+    var rSubCidr=rSid?((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).CidrBlock:null;
+    return {subnetId:rSid,vpcId:rVpc,cidr:rSubCidr,sgs:rSgs2,name:rds2.DBInstanceIdentifier};
   }
   if(type==='alb'){
     var alb2=null;var aSid=null;
@@ -13844,6 +13894,37 @@ function _resolveNetworkPosition(type, id, ctx){
     var eSgs2=(eNc.securityGroups||[]).map(function(gid){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===gid})}).filter(Boolean);
     return {subnetId:eSid,vpcId:eVpc,cidr:null,sgs:eSgs2,name:ecs2.serviceName||id};
   }
+  if(type==='ecache'){
+    var ec2=null;var ecVpc=null;
+    (ctx.ecacheClusters||[]).forEach(function(c){if(c.CacheClusterId===id) ec2=c});
+    if(!ec2) return null;
+    // Find VPC from ecacheByVpc (can be Map or plain object)
+    var ecMap=ctx.ecacheByVpc||{};
+    var ecKeys=ecMap instanceof Map?Array.from(ecMap.keys()):Object.keys(ecMap);
+    ecKeys.forEach(function(vid){var arr=ecMap instanceof Map?ecMap.get(vid):ecMap[vid];(arr||[]).forEach(function(c){if(c.CacheClusterId===id) ecVpc=vid})});
+    // ElastiCache SGs stored as SecurityGroups array
+    var ecSgs=((ec2.SecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===(s.SecurityGroupId||s)})}).filter(Boolean));
+    // Find subnet via VPC — pick first private subnet in that VPC
+    var ecSid=null;
+    if(ecVpc)(ctx.subnets||[]).forEach(function(s){if(!ecSid&&s.VpcId===ecVpc&&!(ctx.pubSubs&&ctx.pubSubs.has(s.SubnetId))) ecSid=s.SubnetId});
+    if(!ecSid&&ecVpc)(ctx.subnets||[]).forEach(function(s){if(!ecSid&&s.VpcId===ecVpc) ecSid=s.SubnetId});
+    var ecSubCidr=ecSid?((ctx.subnets||[]).find(function(s){return s.SubnetId===ecSid})||{}).CidrBlock:null;
+    return {subnetId:ecSid,vpcId:ecVpc,cidr:ecSubCidr,sgs:ecSgs,name:ec2.CacheClusterId};
+  }
+  if(type==='redshift'){
+    var rs2=null;var rsVpc=null;
+    (ctx.redshiftClusters||[]).forEach(function(c){if(c.ClusterIdentifier===id) rs2=c});
+    if(!rs2) return null;
+    var rsMap=ctx.redshiftByVpc||{};
+    var rsKeys=rsMap instanceof Map?Array.from(rsMap.keys()):Object.keys(rsMap);
+    rsKeys.forEach(function(vid){var arr=rsMap instanceof Map?rsMap.get(vid):rsMap[vid];(arr||[]).forEach(function(c){if(c.ClusterIdentifier===id) rsVpc=vid})});
+    var rsSgs=((rs2.VpcSecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===(s.VpcSecurityGroupId||s)})}).filter(Boolean));
+    var rsSid=null;
+    if(rsVpc)(ctx.subnets||[]).forEach(function(s){if(!rsSid&&s.VpcId===rsVpc&&!(ctx.pubSubs&&ctx.pubSubs.has(s.SubnetId))) rsSid=s.SubnetId});
+    if(!rsSid&&rsVpc)(ctx.subnets||[]).forEach(function(s){if(!rsSid&&s.VpcId===rsVpc) rsSid=s.SubnetId});
+    var rsSubCidr=rsSid?((ctx.subnets||[]).find(function(s){return s.SubnetId===rsSid})||{}).CidrBlock:null;
+    return {subnetId:rsSid,vpcId:rsVpc,cidr:rsSubCidr,sgs:rsSgs,name:rs2.ClusterIdentifier};
+  }
   return null;
 }
 
@@ -13866,6 +13947,8 @@ function _resolveClickTarget(el){
       if(res.type==='RDS') return {type:'rds',id:res.rid||res.name};
       if(res.type==='FN') return {type:'lambda',id:res.rid||res.name};
       if(res.type==='ECS') return {type:'ecs',id:res.rid||res.name};
+      if(res.type==='CACHE') return {type:'ecache',id:res.rid||res.name};
+      if(res.type==='RS') return {type:'redshift',id:res.rid||res.name};
       if(res.type==='ENI') return {type:'subnet',id:subId};
     }
     return {type:'subnet',id:subId};
@@ -13978,16 +14061,18 @@ function traceFlow(source, target, config, ctx){
   var srcCidr=srcPos.ip||srcPos.cidr||((ctx.subnets||[]).find(function(s){return s.SubnetId===srcPos.subnetId})||{}).CidrBlock||'10.0.0.0/8';
   var tgtCidr=tgtPos.ip||tgtPos.cidr||((ctx.subnets||[]).find(function(s){return s.SubnetId===tgtPos.subnetId})||{}).CidrBlock||'10.0.0.0/8';
   path.push({hop:hopN++,type:'source',id:srcPos.name||source.id,action:'allow',detail:'Source: '+(srcPos.name||source.id)+' ('+source.type+') in subnet '+srcPos.subnetId,subnetId:srcPos.subnetId});
+  var srcSgIds=srcPos.sgs.map(function(s){return s.GroupId}).filter(Boolean);
+  var tgtSgIds=tgtPos.sgs.map(function(s){return s.GroupId}).filter(Boolean);
   if(srcPos.subnetId===tgtPos.subnetId){
-    var sgOut=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,tgtCidr);
+    var sgOut=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,tgtCidr,{sourceSgIds:tgtSgIds});
     path.push({hop:hopN++,type:'sg-outbound',id:'Source SG',action:sgOut.action,detail:'Security Group outbound check',rule:sgOut.rule});
     if(sgOut.action==='deny'){
-      var sgInSkip=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr);
+      var sgInSkip=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr,{sourceSgIds:srcSgIds});
       path.push({hop:hopN++,type:'sg-inbound',id:'Target SG',action:'skip',detail:'Skipped (blocked upstream)',rule:sgInSkip.rule});
       path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Target: '+(tgtPos.name||target.id),subnetId:tgtPos.subnetId});
       return {path:path,blocked:{hop:2,reason:'Source security group denies outbound '+config.protocol+'/'+config.port,suggestion:'Add outbound rule to source SG allowing '+config.protocol+'/'+config.port+' to '+tgtCidr}};
     }
-    var sgIn=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr);
+    var sgIn=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr,{sourceSgIds:srcSgIds});
     path.push({hop:hopN++,type:'sg-inbound',id:'Target SG',action:sgIn.action,detail:'Security Group inbound check',rule:sgIn.rule});
     if(sgIn.action==='deny'){
       path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Target: '+(tgtPos.name||target.id),subnetId:tgtPos.subnetId});
@@ -14011,7 +14096,7 @@ function traceFlow(source, target, config, ctx){
       path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by NACL',subnetId:tgtPos.subnetId});
       return {path:path,blocked:{hop:hopN-2,reason:'Source NACL denies outbound traffic',suggestion:'Add NACL outbound rule allowing '+config.protocol+'/'+config.port}};
     }
-    var sgOut2=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,tgtCidr);
+    var sgOut2=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,tgtCidr,{sourceSgIds:tgtSgIds});
     path.push({hop:hopN++,type:'sg-outbound',id:'Source SG',action:sgOut2.action,detail:'Source SG outbound',rule:sgOut2.rule});
     if(sgOut2.action==='deny'){
       path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by SG',subnetId:tgtPos.subnetId});
@@ -14024,7 +14109,7 @@ function traceFlow(source, target, config, ctx){
       path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by NACL',subnetId:tgtPos.subnetId});
       return {path:path,blocked:{hop:hopN-2,reason:'Target NACL denies inbound traffic',suggestion:'Add NACL inbound rule allowing '+config.protocol+'/'+config.port+' from '+srcCidr}};
     }
-    var sgIn2=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr);
+    var sgIn2=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr,{sourceSgIds:srcSgIds});
     path.push({hop:hopN++,type:'sg-inbound',id:'Target SG',action:sgIn2.action,detail:'Target SG inbound',rule:sgIn2.rule});
     if(sgIn2.action==='deny'){
       path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by SG',subnetId:tgtPos.subnetId});
@@ -14048,7 +14133,7 @@ function traceFlow(source, target, config, ctx){
     path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by NACL',subnetId:tgtPos.subnetId});
     return {path:path,blocked:{hop:hopN-2,reason:'Source NACL denies outbound traffic',suggestion:'Add NACL outbound rule allowing '+config.protocol+'/'+config.port}};
   }
-  var sgOutX=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,tgtCidr);
+  var sgOutX=evaluateSG(srcPos.sgs,'outbound',config.protocol,config.port,tgtCidr,{sourceSgIds:tgtSgIds});
   path.push({hop:hopN++,type:'sg-outbound',id:'Source SG',action:sgOutX.action,detail:'Source SG outbound',rule:sgOutX.rule});
   if(sgOutX.action==='deny'){
     path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by SG',subnetId:tgtPos.subnetId});
@@ -14086,7 +14171,7 @@ function traceFlow(source, target, config, ctx){
     path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by NACL',subnetId:tgtPos.subnetId});
     return {path:path,blocked:{hop:hopN-2,reason:'Target NACL denies inbound traffic',suggestion:'Add NACL inbound rule allowing '+config.protocol+'/'+config.port+' from '+srcCidr}};
   }
-  var sgIn3=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr);
+  var sgIn3=evaluateSG(tgtPos.sgs,'inbound',config.protocol,config.port,srcCidr,{sourceSgIds:srcSgIds});
   path.push({hop:hopN++,type:'sg-inbound',id:'Target SG',action:sgIn3.action,detail:'Target SG inbound (cross-VPC)',rule:sgIn3.rule});
   if(sgIn3.action==='deny'){
     path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'block',detail:'Blocked by SG',subnetId:tgtPos.subnetId});
@@ -14094,6 +14179,15 @@ function traceFlow(source, target, config, ctx){
   }
   path.push({hop:hopN++,type:'target',id:tgtPos.name||target.id,action:'allow',detail:'Target: '+(tgtPos.name||target.id)+' ('+target.type+')',subnetId:tgtPos.subnetId});
   return {path:path,blocked:null};
+}
+
+function _flowBannerHTML(state,srcName,tgtName,info){
+  var s1='<span class="flow-step-num'+(state>=1?' done':state===0?' active':'')+'">1</span>';
+  var s2='<span class="flow-step-num'+(state>=2?' done':state===1?' active':'')+'">2</span>';
+  var s3='<span class="flow-step-num'+(state>=3?' done':state===2?' active':'')+'">3</span>';
+  if(state===0) return s1+'Click a source resource &nbsp; '+s2+'<span style="color:var(--text-muted)">Target</span> &nbsp; '+s3+'<span style="color:var(--text-muted)">Results</span>';
+  if(state===1) return s1+'Source: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+esc(srcName)+'</span> &nbsp; '+s2+'Click a target';
+  return s1+esc(srcName)+' &nbsp; '+s2+esc(tgtName)+' &nbsp; '+s3+(info||'');
 }
 
 function enterFlowMode(presetSource){
@@ -14122,16 +14216,16 @@ function enterFlowMode(presetSource){
   if(presetSource){
     var srcPos=_resolveNetworkPosition(presetSource.type, presetSource.id, _rlCtx);
     var srcName=srcPos?srcPos.name:presetSource.id;
-    document.getElementById('flowLabel').innerHTML='TRACE FLOW: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+esc(srcName)+'</span> \u2192 Click a target resource';
+    document.getElementById('flowLabel').innerHTML=_flowBannerHTML(1,srcName);
     document.getElementById('flowSrcName')?.addEventListener('click',function(e){e.stopPropagation();_flowResetToSource();});
     _highlightFlowNode(presetSource,'source');
   } else {
-    document.getElementById('flowLabel').textContent='TRACE FLOW: Click a source resource';
+    document.getElementById('flowLabel').innerHTML=_flowBannerHTML(0);
   }
 }
 function _flowResetToSource(){
   _flowSelecting='source';_flowSource=null;_clearFlowHighlights();_clearFlowOverlay();
-  document.getElementById('flowLabel').textContent='TRACE FLOW: Click a source resource';
+  document.getElementById('flowLabel').innerHTML=_flowBannerHTML(0);
   var m=document.querySelector('.main');if(m)m.classList.add('flow-selecting');
 }
 function _flowRightClickHandler(event){
@@ -14176,9 +14270,23 @@ function _flowClickHandler(event){
     _clearFlowHighlights();
     var srcPos=_resolveNetworkPosition(target.type, target.id, _rlCtx);
     var srcName=srcPos?srcPos.name:target.id;
-    document.getElementById('flowLabel').innerHTML='TRACE FLOW: <span id="flowSrcName" style="text-decoration:underline;cursor:pointer" title="Click to re-select source">'+esc(srcName)+'</span> \u2192 Click a target resource';
+    document.getElementById('flowLabel').innerHTML=_flowBannerHTML(1,srcName);
     document.getElementById('flowSrcName')?.addEventListener('click',function(e){e.stopPropagation();_flowResetToSource();});
     _highlightFlowNode(target,'source');
+    // If a preset target was set via right-click context menu, auto-fill it
+    if(_flowCtxPresetTarget){
+      var presetTgt=_flowCtxPresetTarget;
+      _flowCtxPresetTarget=null;
+      _flowTarget=presetTgt;
+      _flowSelecting=null;
+      var mainEl2=document.querySelector('.main');
+      if(mainEl2) mainEl2.classList.remove('flow-selecting');
+      var tgtPos2=_resolveNetworkPosition(presetTgt.type, presetTgt.id, _rlCtx);
+      _flowConfig.port=_suggestPort(presetTgt.type, tgtPos2);
+      _highlightFlowNode(presetTgt,'target');
+      _executeTrace();
+      return;
+    }
   } else if(_flowSelecting==='target'){
     if(target.type===(_flowSource||{}).type&&target.id===(_flowSource||{}).id) return;
     _flowTarget=target;
@@ -14191,6 +14299,10 @@ function _flowClickHandler(event){
     _highlightFlowNode(target,'target');
     _executeTrace();
   } else if(_flowSelecting==='waypoint'){
+    // Prevent waypoint that equals source or target
+    if((target.type===(_flowSource||{}).type&&target.id===(_flowSource||{}).id)||(target.type===(_flowTarget||{}).type&&target.id===(_flowTarget||{}).id)) return;
+    // Prevent duplicate waypoints
+    if(_flowWaypoints.some(function(wp){return wp.ref.type===target.type&&wp.ref.id===target.id})) return;
     // Insert waypoint into chain
     _flowSelecting=null;
     var mainEl2=document.querySelector('.main');
@@ -14239,8 +14351,7 @@ function _executeTrace(){
   var tgtPos=_resolveNetworkPosition(_flowTarget.type, _flowTarget.id, _rlCtx);
   var srcName=srcPos?srcPos.name:_flowSource.id;
   var tgtName=tgtPos?tgtPos.name:_flowTarget.id;
-  var label='TRACE FLOW: '+srcName+' \u2192 '+tgtName+' | '+_flowConfig.protocol+'/'+_flowConfig.port+' | '+_flowPath.length+' hops';
-  document.getElementById('flowLabel').textContent=label;
+  document.getElementById('flowLabel').innerHTML=_flowBannerHTML(3,srcName,tgtName,_flowConfig.protocol.toUpperCase()+'/'+_flowConfig.port+' · '+_flowPath.length+' hops');
   var statusEl=document.getElementById('flowStatus');
   if(_flowBlocked){
     statusEl.textContent='BLOCKED';
@@ -14373,6 +14484,14 @@ function _renderFlowDetail(){
   h+='<input id="flowPortInput" type="number" min="1" max="65535" value="'+_flowConfig.port+'" style="width:60px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 6px;font-size:10px;font-family:\'IBM Plex Mono\',monospace">';
   h+='<button id="flowRetraceBtn" style="background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 10px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">Re-trace</button>';
   h+='</div>';
+  // Quick port buttons
+  var quickPorts=[{label:'SSH',port:22},{label:'HTTP',port:80},{label:'HTTPS',port:443},{label:'MySQL',port:3306},{label:'Postgres',port:5432},{label:'Redis',port:6379},{label:'RDP',port:3389}];
+  h+='<div class="flow-quick-ports">';
+  quickPorts.forEach(function(qp){
+    var isActive=_flowConfig.port===qp.port&&_flowConfig.protocol==='tcp';
+    h+='<button class="flow-port-btn'+(isActive?' active':'')+'" data-qp-port="'+qp.port+'">'+qp.label+' '+qp.port+'</button>';
+  });
+  h+='</div>';
   _flowPath.forEach(function(hop,idx){
     var isActive=_flowStepIndex===-1||idx===_flowStepIndex;
     var isBlk=hop.action==='block'||hop.action==='deny';
@@ -14429,6 +14548,17 @@ function _renderFlowDetail(){
       _executeTrace();
     });
   }
+  // Wire quick port buttons
+  dpBody.querySelectorAll('.flow-port-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var port=parseInt(btn.getAttribute('data-qp-port'),10);
+      _flowConfig.protocol='tcp';
+      _flowConfig.port=port;
+      if(_flowWaypoints.length>0) _executeMultiTrace();
+      else _executeTrace();
+    });
+  });
   dpBody.querySelectorAll('.flow-step').forEach(function(el){
     el.addEventListener('click',function(){
       var idx=parseInt(el.getAttribute('data-hop-idx'),10);
@@ -14461,7 +14591,7 @@ function _hopTypeLabel(type){
 }
 
 function _escHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function _stepForward(){
@@ -14489,10 +14619,11 @@ function _findAlternatePaths(source, target, config, ctx){
   var results=[];
   // Collect candidates: instances + ALBs in the target VPC (or any VPC if source is internet)
   var candidates=[];
+  var isInternet=source.type==='internet';
   // Public-subnet instances first (bastion pattern)
   (ctx.instances||[]).forEach(function(inst){
     var instVpc=inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId;
-    if(instVpc!==vpcId) return;
+    if(!isInternet&&instVpc!==vpcId) return;
     if(inst.InstanceId===(target.type==='instance'?target.id:'')) return;
     if(inst.InstanceId===(source.type==='instance'?source.id:'')) return;
     var isPub=ctx.pubSubs&&ctx.pubSubs.has(inst.SubnetId);
@@ -14502,7 +14633,7 @@ function _findAlternatePaths(source, target, config, ctx){
   // ALBs
   Object.keys(ctx.albBySub||{}).forEach(function(sid){
     var sub=(ctx.subnets||[]).find(function(s){return s.SubnetId===sid});
-    if(!sub||sub.VpcId!==vpcId) return;
+    if(!sub||(!isInternet&&sub.VpcId!==vpcId)) return;
     (ctx.albBySub[sid]||[]).forEach(function(alb){
       var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
       if(albId===(target.type==='alb'?target.id:'')) return;
@@ -14697,6 +14828,7 @@ function _renderMultiFlowDetail(){
   var dpTitle=document.getElementById('dpTitle');
   var dpSub=document.getElementById('dpSub');
   var dpBody=document.getElementById('dpBody');
+  dpBody.scrollTop=0;
   dpTitle.textContent='Multi-Hop Traffic Trace';
   var anyBlocked=_flowLegs.some(function(l){return l.status==='blocked'});
   dpSub.textContent=_flowLegs.length+' legs'+(anyBlocked?' \u2014 BLOCKED':' \u2014 ALL ALLOWED');
@@ -15073,18 +15205,44 @@ function _renderBastionArrows(faG){
     if(!bPos) return;
     var bc=_getSubnetCenter(bPos.subnetId);
     if(!bc) return;
+    // Bastion marker: pulsing ring on bastion host
+    faG.append('circle').attr('class','bastion-marker')
+      .attr('cx',bc.x).attr('cy',bc.y).attr('r',14)
+      .attr('fill','none').attr('stroke','#22d3ee').attr('stroke-width',2.5)
+      .attr('stroke-dasharray','4 3').attr('opacity',.8);
+    faG.append('circle').attr('class','bastion-marker')
+      .attr('cx',bc.x).attr('cy',bc.y).attr('r',5)
+      .attr('fill','#22d3ee').attr('opacity',.7);
+    // Deduplicate targets by subnet — one arrow per unique target subnet
+    var subSeen=new Set();
+    var uniqueTargets=[];
     ch.targets.forEach(function(tgt){
       var tPos=_resolveNetworkPosition(tgt.type, tgt.id, _rlCtx);
-      if(!tPos) return;
+      if(!tPos||!tPos.subnetId) return;
+      if(subSeen.has(tPos.subnetId)) return;
+      subSeen.add(tPos.subnetId);
       var tc=_getSubnetCenter(tPos.subnetId);
-      if(!tc) return;
+      if(tc) uniqueTargets.push({pos:tc,name:tgt.name||tgt.id});
+    });
+    // Fan-out offset so arrows to nearby subnets don't overlap
+    var n=uniqueTargets.length;
+    uniqueTargets.forEach(function(ut,idx){
+      var tc=ut.pos;
+      var dx=tc.x-bc.x,dy=tc.y-bc.y;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      // Curve control point: perpendicular offset, fanned when multiple
+      var perpX=n>1?(-dy/dist)*((idx-n/2+0.5)*18):0;
+      var perpY=n>1?(dx/dist)*((idx-n/2+0.5)*18):0;
+      var cpx=(bc.x+tc.x)/2+perpX;
+      var cpy=(bc.y+tc.y)/2+perpY-(dist>80?25:10);
       faG.append('path').attr('class','fa-path bastion')
-        .attr('d','M'+bc.x+','+bc.y+' L'+tc.x+','+tc.y)
-        .attr('opacity',.5);
-      var angle=Math.atan2(tc.y-bc.y,tc.x-bc.x);
+        .attr('d','M'+bc.x+','+bc.y+' Q'+cpx+','+cpy+' '+tc.x+','+tc.y)
+        .attr('opacity',.65);
+      // Arrowhead at target end
+      var angle=Math.atan2(tc.y-cpy,tc.x-cpx);
       faG.append('polygon').attr('class','fa-arrow')
-        .attr('points',_arrowPoints(tc.x,tc.y,angle,7))
-        .attr('fill','#22d3ee').attr('opacity',.6);
+        .attr('points',_arrowPoints(tc.x,tc.y,angle,8))
+        .attr('fill','#22d3ee').attr('opacity',.7);
     });
   });
 }
@@ -15171,9 +15329,10 @@ function _renderFlowAnalysisPanel(){
           var portLabel=pk==='443'?'HTTPS (443)':pk==='80'?'HTTP (80)':pk==='22'?'SSH (22)':'Port '+pk;
           h+='<h4 style="margin-top:10px;color:#10b981">'+portLabel+' <span style="color:var(--text-muted);font-weight:400">('+byPort[pk].length+' targets)</span></h4>';
           byPort[pk].forEach(function(p){
-            h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'">';
-            h+='<span style="color:#10b981">↓</span> Internet → <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
-            h+=' <span style="color:var(--text-muted);font-size:9px">('+p.type+')</span>';
+            h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'" style="display:flex;align-items:center">';
+            h+='<span style="flex:1"><span style="color:#10b981">↓</span> Internet → <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
+            h+=' <span style="color:var(--text-muted);font-size:9px">('+p.type+')</span></span>';
+            h+='<button class="fa-trace-btn" data-trace-src-t="internet" data-trace-src-id="internet" data-trace-tgt-t="'+p.to.type+'" data-trace-tgt-id="'+_escHtml(p.to.id)+'" data-trace-port="'+p.port+'">Trace ↗</button>';
             h+='</div>';
           });
         });
@@ -15184,9 +15343,10 @@ function _renderFlowAnalysisPanel(){
           var key=p.to.type+':'+p.to.id;
           if(seen3.has(key)) return;
           seen3.add(key);
-          h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'">';
-          h+='<span style="color:#10b981">↓</span> Internet → <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
-          h+=' <span style="color:var(--text-muted);font-size:9px">:'+p.port+' ('+p.type+')</span>';
+          h+='<div class="fa-path-item" data-ref-type="'+p.to.type+'" data-ref-id="'+_escHtml(p.to.id)+'" style="display:flex;align-items:center">';
+          h+='<span style="flex:1"><span style="color:#10b981">↓</span> Internet → <span style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</span>';
+          h+=' <span style="color:var(--text-muted);font-size:9px">:'+p.port+' ('+p.type+')</span></span>';
+          h+='<button class="fa-trace-btn" data-trace-src-t="internet" data-trace-src-id="internet" data-trace-tgt-t="'+p.to.type+'" data-trace-tgt-id="'+_escHtml(p.to.id)+'" data-trace-port="'+p.port+'">Trace ↗</button>';
           h+='</div>';
         });
       }
@@ -15239,8 +15399,9 @@ function _renderFlowAnalysisPanel(){
         var showTargets=mode==='bastion';
         h+='<div class="fa-bastion-targets" style="display:'+(showTargets?'block':'none')+';padding-left:24px;margin-bottom:8px">';
         ch.targets.forEach(function(tgt){
-          h+='<div class="fa-path-item" data-ref-type="'+tgt.type+'" data-ref-id="'+_escHtml(tgt.id)+'">';
-          h+='└ '+_escHtml(tgt.name||tgt.id);
+          h+='<div class="fa-path-item" data-ref-type="'+tgt.type+'" data-ref-id="'+_escHtml(tgt.id)+'" style="display:flex;align-items:center">';
+          h+='<span style="flex:1">└ '+_escHtml(tgt.name||tgt.id)+'</span>';
+          h+='<button class="fa-trace-btn" data-trace-src-t="'+ch.bastion.type+'" data-trace-src-id="'+_escHtml(ch.bastion.id)+'" data-trace-tgt-t="'+tgt.type+'" data-trace-tgt-id="'+_escHtml(tgt.id)+'" data-trace-port="22">Trace ↗</button>';
           h+='</div>';
         });
         h+='</div>';
@@ -15281,6 +15442,13 @@ function _renderFlowAnalysisPanel(){
         if(refType&&refId){_clearFlowHighlights();_highlightFlowNode({type:refType,id:refId},'source')}
       });
     }
+  });
+  // Wire "Trace ↗" bridge buttons — exit analysis, enter trace with pre-filled source/target
+  dpBody.querySelectorAll('.fa-trace-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      _launchTraceFromBtn(btn);
+    });
   });
 }
 
@@ -15337,6 +15505,226 @@ document.querySelectorAll('.fa-mode-pill').forEach(function(pill){
   pill.addEventListener('click',function(){
     _setFlowAnalysisMode(pill.getAttribute('data-fa-mode'));
   });
+});
+
+// --- Right-Click Context Menu for Flow Tracing ---
+var _flowCtxTarget=null;
+(function(){
+  var ctxMenu=document.getElementById('flowContextMenu');
+  function hideCtx(){ctxMenu.style.display='none';_flowCtxTarget=null}
+  // Show context menu on right-click of map resources
+  document.getElementById('mapSvg').addEventListener('contextmenu',function(e){
+    if(_flowMode) return; // existing flow mode handles its own right-click
+    var target=_resolveClickTarget(e.target);
+    if(!target) return;
+    e.preventDefault();
+    e.stopPropagation();
+    _flowCtxTarget=target;
+    ctxMenu.style.display='block';
+    // Position near click, clamped to viewport
+    var x=Math.min(e.clientX,window.innerWidth-200);
+    var y=Math.min(e.clientY,window.innerHeight-140);
+    ctxMenu.style.left=x+'px';
+    ctxMenu.style.top=y+'px';
+  });
+  // Hide on any click outside
+  document.addEventListener('click',function(e){
+    if(!ctxMenu.contains(e.target)) hideCtx();
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') hideCtx();
+  });
+  // Handle menu item clicks
+  ctxMenu.querySelectorAll('.flow-ctx-item').forEach(function(item){
+    item.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(!_flowCtxTarget) return;
+      var action=item.getAttribute('data-ctx-action');
+      var ref={type:_flowCtxTarget.type,id:_flowCtxTarget.id};
+      hideCtx();
+      if(action==='trace-from'){
+        if(_flowMode) exitFlowMode();
+        if(_flowAnalysisMode) exitFlowAnalysis();
+        enterFlowMode(ref);
+      } else if(action==='trace-to'){
+        if(_flowMode) exitFlowMode();
+        if(_flowAnalysisMode) exitFlowAnalysis();
+        enterFlowMode(); // no preset source
+        // Store preset target — next source click will auto-advance
+        _flowCtxPresetTarget=ref;
+      } else if(action==='analyze'){
+        if(_flowMode) exitFlowMode();
+        if(!_flowAnalysisMode) enterFlowAnalysis();
+        // Highlight the resource in the analysis panel
+        _clearFlowHighlights();
+        _highlightFlowNode(ref,'source');
+      }
+    });
+  });
+})();
+var _flowCtxPresetTarget=null;
+
+// --- Shared: Launch trace from a discovery button ---
+function _launchTraceFromBtn(btn, preCleanup){
+  var srcT=btn.getAttribute('data-trace-src-t');
+  var srcId=btn.getAttribute('data-trace-src-id');
+  var tgtT=btn.getAttribute('data-trace-tgt-t');
+  var tgtId=btn.getAttribute('data-trace-tgt-id');
+  var port=parseInt(btn.getAttribute('data-trace-port'),10)||443;
+  if(preCleanup) preCleanup();
+  exitFlowAnalysis();
+  enterFlowMode({type:srcT,id:srcId});
+  _flowTarget={type:tgtT,id:tgtId};
+  _flowSelecting=null;
+  var mainEl=document.querySelector('.main');
+  if(mainEl) mainEl.classList.remove('flow-selecting');
+  _flowConfig.port=port;
+  _flowConfig.protocol='tcp';
+  _highlightFlowNode({type:tgtT,id:tgtId},'target');
+  _executeTrace();
+}
+
+// --- Full Flow Analysis Dashboard ---
+function _openFlowAnalysisDashboard(d){
+  if(!d) return;
+  // Remove existing dashboard if open
+  var existing=document.getElementById('faDashOverlay');
+  if(existing) existing.remove();
+  var overlay=document.createElement('div');
+  overlay.id='faDashOverlay';
+  overlay.className='fa-dash-overlay';
+  var h='<div class="fa-dash-header">';
+  h+='<h2>Traffic Flow Analysis Dashboard</h2>';
+  h+='<span style="font-size:10px;color:var(--text-muted)">'+((d.ingressPaths||[]).length)+' ingress · '+((d.egressPaths||[]).length)+' egress · '+((d.bastionChains||[]).length)+' bastion chains</span>';
+  h+='<button class="fa-dash-close" id="faDashClose">✕ Close</button>';
+  h+='</div>';
+  h+='<div class="fa-dash-body">';
+  // --- Summary Cards ---
+  h+='<div class="fa-dash-grid" style="margin-bottom:20px">';
+  var tiers=[
+    {key:'internetFacing',label:'Internet-Facing',color:'#10b981',icon:'↗'},
+    {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:'🔐'},
+    {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:'🔒'},
+    {key:'database',label:'Database Tier',color:'#f59e0b',icon:'💾'}
+  ];
+  tiers.forEach(function(t){
+    var items=d.accessTiers[t.key]||[];
+    h+='<div class="fa-dash-card">';
+    h+='<h4 style="color:'+t.color+'">'+t.icon+' '+t.label+'</h4>';
+    h+='<div class="fa-dash-stat" style="color:'+t.color+'">'+items.length+'</div>';
+    h+='<div class="fa-dash-sub">resource'+(items.length!==1?'s':'')+'</div>';
+    h+='</div>';
+  });
+  // Ingress/Egress summary cards
+  h+='<div class="fa-dash-card">';
+  h+='<h4 style="color:#10b981">↓ Ingress Paths</h4>';
+  h+='<div class="fa-dash-stat" style="color:#10b981">'+((d.ingressPaths||[]).length)+'</div>';
+  h+='<div class="fa-dash-sub">discovered paths from Internet</div>';
+  h+='</div>';
+  h+='<div class="fa-dash-card">';
+  h+='<h4 style="color:#f97316">↑ Egress Paths</h4>';
+  h+='<div class="fa-dash-stat" style="color:#f97316">'+((d.egressPaths||[]).length)+'</div>';
+  h+='<div class="fa-dash-sub">paths to Internet</div>';
+  h+='</div>';
+  h+='</div>';
+  // --- Ingress Table ---
+  var inPaths=d.ingressPaths||[];
+  if(inPaths.length>0){
+    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#10b981;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">Ingress Paths</h3>';
+    h+='<table class="fa-dash-table"><thead><tr>';
+    h+='<th>Target</th><th>Type</th><th>Port</th><th>Path Type</th><th>Action</th>';
+    h+='</tr></thead><tbody>';
+    var seenIn=new Set();
+    inPaths.forEach(function(p){
+      var key=p.to.type+':'+p.to.id+':'+p.port;
+      if(seenIn.has(key)) return;
+      seenIn.add(key);
+      h+='<tr>';
+      h+='<td style="color:var(--accent-cyan)">'+_escHtml(p.toName||p.to.id)+'</td>';
+      h+='<td>'+_escHtml(p.to.type)+'</td>';
+      h+='<td>'+p.port+'</td>';
+      h+='<td>'+_escHtml(p.type)+'</td>';
+      h+='<td><button class="fa-trace-btn" data-trace-src-t="internet" data-trace-src-id="internet" data-trace-tgt-t="'+p.to.type+'" data-trace-tgt-id="'+_escHtml(p.to.id)+'" data-trace-port="'+p.port+'">Trace ↗</button></td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+  }
+  // --- Egress Table ---
+  var egPaths=d.egressPaths||[];
+  if(egPaths.length>0){
+    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#f97316;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">Egress Paths</h3>';
+    h+='<table class="fa-dash-table"><thead><tr>';
+    h+='<th>Source</th><th>Type</th><th>Via</th>';
+    h+='</tr></thead><tbody>';
+    egPaths.forEach(function(p){
+      h+='<tr>';
+      h+='<td style="color:var(--accent-cyan)">'+_escHtml(p.fromName||p.from.id)+'</td>';
+      h+='<td>'+_escHtml(p.from.type)+'</td>';
+      h+='<td>'+_escHtml(p.via||'igw')+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+  }
+  // --- Bastion Chains Table ---
+  var chains=d.bastionChains||[];
+  if(chains.length>0){
+    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#22d3ee;margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">Bastion Chains</h3>';
+    h+='<table class="fa-dash-table"><thead><tr>';
+    h+='<th>Bastion Host</th><th>Targets</th><th>Target Count</th><th>Action</th>';
+    h+='</tr></thead><tbody>';
+    chains.forEach(function(ch){
+      h+='<tr>';
+      h+='<td style="color:var(--accent-cyan)">'+_escHtml(ch.bastion.name||ch.bastion.id)+'</td>';
+      h+='<td>'+ch.targets.map(function(t){return _escHtml(t.name||t.id)}).join(', ')+'</td>';
+      h+='<td>'+ch.targets.length+'</td>';
+      h+='<td>';
+      if(ch.targets.length>0){
+        var firstTgt=ch.targets[0];
+        h+='<button class="fa-trace-btn" data-trace-src-t="'+ch.bastion.type+'" data-trace-src-id="'+_escHtml(ch.bastion.id)+'" data-trace-tgt-t="'+firstTgt.type+'" data-trace-tgt-id="'+_escHtml(firstTgt.id)+'" data-trace-port="22">Trace ↗</button>';
+      }
+      h+='</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+  }
+  // --- Access Tier Detail Tables ---
+  tiers.forEach(function(t){
+    var items=d.accessTiers[t.key]||[];
+    if(items.length===0) return;
+    h+='<h3 style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:'+t.color+';margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">'+t.icon+' '+t.label+' Resources ('+items.length+')</h3>';
+    h+='<table class="fa-dash-table"><thead><tr>';
+    h+='<th>Resource</th><th>Type</th><th>ID</th>';
+    h+='</tr></thead><tbody>';
+    items.forEach(function(ref){
+      h+='<tr>';
+      h+='<td style="color:var(--accent-cyan)">'+_escHtml(ref.name||ref.id)+'</td>';
+      h+='<td>'+_escHtml(ref.type)+'</td>';
+      h+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(ref.id)+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+  });
+  h+='</div>';
+  overlay.innerHTML=h;
+  document.body.appendChild(overlay);
+  // Wire close button
+  document.getElementById('faDashClose').addEventListener('click',function(){
+    overlay.remove();
+  });
+  // Wire Escape key
+  function dashEsc(e){if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',dashEsc)}}
+  document.addEventListener('keydown',dashEsc);
+  // Wire trace buttons inside dashboard
+  overlay.querySelectorAll('.fa-trace-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      _launchTraceFromBtn(btn,function(){overlay.remove();document.removeEventListener('keydown',dashEsc)});
+    });
+  });
+}
+
+document.getElementById('faDashBtn').addEventListener('click',function(){
+  if(_flowAnalysisCache) _openFlowAnalysisDashboard(_flowAnalysisCache);
 });
 
 // === DIFF / CHANGE DETECTION ===
@@ -16027,6 +16415,7 @@ function _openDiffDash(){
   var srcName=_diffBaseline?(_diffBaseline._srcName||_diffBaseline.accountLabel||'baseline'):'baseline';
   document.getElementById('diffDashLabel').textContent=srcName+' vs current';
   // Open
+  _closeAllDashboards('diffDash');
   document.getElementById('diffDash').classList.add('open');
   _renderDiffDash();
 }
@@ -16681,6 +17070,7 @@ function openBUDRDash(){
   _budrDashState={tierFilter:'all',search:'',sort:'tier'};
   var si=document.getElementById('budrSearch');if(si)si.value='';
   var so=document.getElementById('budrSort');if(so)so.value='tier';
+  _closeAllDashboards('budrDash');
   document.getElementById('budrDash').classList.add('open');
   _renderBUDRDash();
 }
