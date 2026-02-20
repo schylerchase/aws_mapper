@@ -1457,8 +1457,12 @@
   .udash-tab{padding:10px 14px;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border:none;background:transparent;color:var(--text-muted);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:5px}
   .udash-tab:hover{color:var(--text-secondary);background:rgba(255,255,255,.03)}
   .udash-tab.active{color:var(--tab-color,var(--accent-cyan));border-bottom-color:var(--tab-color,var(--accent-cyan));font-weight:600}
-  .udash-toolbar{flex-shrink:0;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary);min-height:0}
+  .udash-toolbar{flex-shrink:0;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary);min-height:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .udash-toolbar:empty{display:none}
+  .udash-toolbar label{color:var(--text-muted);font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+  .udash-toolbar input[type="text"]{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;width:200px}
+  .udash-toolbar input[type="text"]:focus{outline:none;border-color:var(--accent-cyan)}
+  .udash-toolbar select{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace}
   .udash-body{flex:1;overflow-y:auto;padding:16px;background:var(--bg-primary)}
   .udash-body.rpt-layout{display:flex;gap:0;padding:0;overflow:hidden}
   .udash-footer{flex-shrink:0;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);min-height:0}
@@ -17929,12 +17933,12 @@ document.getElementById('helpClose').addEventListener('click',()=>{document.getE
 // === UNIFIED DASHBOARD TAB REGISTRY ===
 var _udashTab = null;
 var _UDASH_TABS = [
-  {id:'classification', label:'Classification', color:'#a78bfa', icon:'\u{1F3F7}', prereq:function(){
+  {id:'classification', label:'Classification', color:'#a78bfa', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_classificationData.length) runClassificationEngine(_rlCtx);
     return true;
   }, render:function(){ _renderClassificationTab(); }},
-  {id:'iam', label:'IAM Review', color:'#f472b6', icon:'\u{1F510}', prereq:function(){
+  {id:'iam', label:'IAM Review', color:'#f472b6', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_iamReviewData.length){
       var iamRaw=safeParse(gv('in_iam'));
@@ -17942,21 +17946,21 @@ var _UDASH_TABS = [
     }
     return true;
   }, render:function(){ _renderIAMTab(); }},
-  {id:'compliance', label:'Compliance', color:'#22d3ee', icon:'\u2713', prereq:function(){
+  {id:'compliance', label:'Compliance', color:'#22d3ee', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     return true;
   }, render:function(){ _renderCompDash(); }},
-  {id:'firewall', label:'Firewall', color:'#f59e0b', icon:'\u{1F6E1}', prereq:function(){
+  {id:'firewall', label:'Firewall', color:'#f59e0b', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     return true;
   }, render:function(){ _renderFirewallTab(); }},
-  {id:'budr', label:'BUDR', color:'#10b981', icon:'\u{1F4BE}', prereq:function(){
+  {id:'budr', label:'BUDR', color:'#10b981', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_budrAssessments||!_budrAssessments.length) runBUDRChecks(_rlCtx);
     if(!_budrAssessments.length){_showToast('No resources to assess');return false}
     return true;
   }, render:function(){ _renderBUDRDash(); }},
-  {id:'reports', label:'Reports', color:'#6366f1', icon:'\u{1F4CA}', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }}
+  {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }}
 ];
 
 function openUnifiedDash(tabId){
@@ -17996,7 +18000,7 @@ function _renderUdashTabs(){
     var btn=document.createElement('button');
     btn.className='udash-tab'+(t.id===_udashTab?' active':'');
     btn.style.setProperty('--tab-color',t.color);
-    btn.innerHTML=t.icon+' '+t.label;
+    btn.textContent=t.label;
     btn.addEventListener('click',function(){_switchUdashTab(t.id)});
     c.appendChild(btn);
   });
