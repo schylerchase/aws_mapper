@@ -2080,7 +2080,7 @@ const _isElectron=!!(typeof window!=='undefined'&&window.electronAPI);
 // Preferences persistence
 const PREFS_KEY='awsNetMapPrefs';
 function loadPrefs(){try{const r=localStorage.getItem(PREFS_KEY);return r?JSON.parse(r):{}}catch(e){return {}}}
-function savePrefs(p){const c=loadPrefs();for(const k of Object.keys(p)){if(k==='__proto__'||k==='constructor'||k==='prototype')continue;c[k]=p[k]}try{localStorage.setItem(PREFS_KEY,JSON.stringify(c))}catch(e){}}
+function savePrefs(p){for(const k of Object.keys(p)){if(k==='__proto__'||k==='constructor'||k==='prototype')continue;_prefs[k]=p[k]}try{localStorage.setItem(PREFS_KEY,JSON.stringify(_prefs))}catch(e){}}
 const _prefs=loadPrefs();
 
 // Global text size scaling - works on sidebar, canvas, and detail panel
@@ -2453,8 +2453,11 @@ function generateDemo(){
     }
 
     // Target Groups for each ALB
+    // OPTIMIZED: Pre-index VPC subnets to avoid O(albs × instances × subnets) nested scan
+    const vpcSubnetIds=new Set(subnets.filter(s=>s.VpcId===vpcId).map(s=>s.SubnetId));
+    const vpcInstances=ec2Instances.filter(i=>i.SubnetId&&vpcSubnetIds.has(i.SubnetId));
     albsList.filter(a=>a.VpcId===vpcId).forEach((alb,li)=>{
-      const tgInsts=ec2Instances.filter(i=>i.SubnetId&&subnets.some(s=>s.SubnetId===i.SubnetId&&s.VpcId===vpcId)).slice(0,3+li);
+      const tgInsts=vpcInstances.slice(0,3+li);
       const tgType=alb.Type==='application'?'instance':'ip';
       tgsList.push({
         TargetGroupArn:'arn:aws:elasticloadbalancing:us-east-1:111222333444:targetgroup/'+vd.name.toLowerCase()+'-tg-'+li+'/abc'+li,
@@ -6353,14 +6356,17 @@ function parseIAMData(raw){
   if(raw.Policies)data.policies=raw.Policies;
   if(raw.PasswordPolicy)data.passwordPolicy=raw.PasswordPolicy;
   if(raw.AccountPasswordPolicy)data.passwordPolicy=raw.AccountPasswordPolicy;
+  // OPTIMIZED: Pre-index policies for O(1) lookup
+  const policyMap=new Map();
+  data.policies.forEach(dp=>{if(dp.Arn)policyMap.set(dp.Arn,dp);if(dp.PolicyName)policyMap.set(dp.PolicyName,dp)});
   // Helper: resolve a policy entry to its document statements
   function _resolvePolicyDoc(p){
     // Inline policy with PolicyDocument
     if(p.PolicyDocument){const doc=_safePolicyParse(p.PolicyDocument);return _stmtArr(doc.Statement)}
     if(p.Document){const doc=_safePolicyParse(p.Document);return _stmtArr(doc.Statement)}
-    // Managed policy reference: look up from data.policies
+    // Managed policy reference: look up from policyMap (O(1) instead of O(n))
     if(p.PolicyArn||p.PolicyName){
-      const pol=data.policies.find(dp=>dp.Arn===p.PolicyArn||dp.PolicyName===p.PolicyName);
+      const pol=policyMap.get(p.PolicyArn)||policyMap.get(p.PolicyName);
       if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}return _stmtArr(dd.Statement)}}
     }
     return[];
@@ -6400,6 +6406,9 @@ function getIAMAccessForVpc(iamData,vpcId){
 }
 function runIAMChecks(iamData){
   const f=[];if(!iamData)return f;
+  // OPTIMIZED: Pre-index policies to avoid O(roles × policies) nested find()
+  const policyByArn=new Map();
+  (iamData.policies||[]).forEach(p=>{if(p.Arn)policyByArn.set(p.Arn,p);if(p.PolicyName)policyByArn.set(p.PolicyName,p)});
   // Derive own account ID from first role/user ARN to detect cross-account trusts
   var _iamOwnAccountId='';
   var _firstArn=(iamData.roles||[]).concat(iamData.users||[]).find(r=>r.Arn);
@@ -6418,7 +6427,7 @@ function runIAMChecks(iamData){
     // IAM-4: Service wildcard actions (s3:*, ec2:* but not *) — scan both inline and managed
     const allStmts4=[];
     (role.RolePolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>allStmts4.push(s))});
-    (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>allStmts4.push(s))}}});
+    (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=policyByArn.get(mp.PolicyArn)||policyByArn.get(mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>allStmts4.push(s))}}});
     var hasIAM4=false;
     allStmts4.forEach(stmt=>{
       if(hasIAM4)return;
