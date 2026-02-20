@@ -570,7 +570,7 @@
   .gov-iam-expand.open{display:table-cell}
   .gov-admin-badge{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;text-transform:uppercase}
   .gov-finding-badge{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600}
-  .gov-rules-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:120;background:rgba(11,17,32,.92);display:flex;align-items:stretch;justify-content:center;padding:24px}
+  .gov-rules-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:600;background:rgba(11,17,32,.92);display:flex;align-items:stretch;justify-content:center;padding:24px}
   .gov-rules-panel{background:var(--bg-primary);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;width:100%;max-width:960px;overflow:hidden}
   .gov-rules-hdr{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
   .gov-rules-hdr h3{font-family:'IBM Plex Mono',monospace;font-size:14px;color:#8b5cf6;margin:0;flex:1}
@@ -1207,10 +1207,13 @@
     /* Zoom controls: above bottomToolbar (inline bottom:12px + ~34px tall + 6px gap) */
     .zoom-controls{bottom:52px;right:10px}
     .zoom-btn{width:36px;height:36px;font-size:17px;border-radius:6px}
-    .zoom-btn.wide{display:none}
+    .zoom-btn.wide{display:inline-flex;width:36px;height:36px;font-size:12px;padding:0;justify-content:center;align-items:center;overflow:hidden;text-indent:-9999px}
+    .zoom-btn.wide::after{text-indent:0;display:block}
+    #btnExpand.zoom-btn.wide::after{content:'E';font-size:13px;font-weight:700}
+    #btnCollapse.zoom-btn.wide::after{content:'C';font-size:13px;font-weight:700}
     .design-btn{padding:6px 10px;font-size:9px}
-    /* Hide expand/collapse and design help on mobile */
-    #detailBtns{display:none}
+    /* Show expand/collapse on mobile, hide design help */
+    #detailBtns{display:flex}
     .design-help{display:none !important}
 
     /* Legend: above bottomToolbar */
@@ -1489,6 +1492,42 @@
       .change-log{bottom:calc(52px + env(safe-area-inset-bottom))}
     }
   }
+  /* === Resource Spotlight (zoom window) === */
+  @keyframes spotlightFadeIn{from{opacity:0;transform:translateY(20px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes spotlightRingPulse{0%{stroke-opacity:.9;stroke-width:3}50%{stroke-opacity:.4;stroke-width:1.5}100%{stroke-opacity:.9;stroke-width:3}}
+  .resource-spotlight{position:fixed;z-index:80;pointer-events:none}
+  .resource-spotlight.active{pointer-events:auto}
+  .spotlight-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .4s ease;z-index:79;cursor:pointer}
+  .spotlight-backdrop.active{opacity:1}
+  .spotlight-card{position:fixed;bottom:24px;right:24px;width:380px;max-height:calc(100vh - 80px);background:rgba(10,14,23,.97);border:1px solid rgba(34,211,238,.3);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.6),0 0 20px rgba(34,211,238,.08);backdrop-filter:blur(20px);overflow:hidden;animation:spotlightFadeIn .4s ease forwards;z-index:81;display:flex;flex-direction:column}
+  .spotlight-header{padding:16px 18px 12px;background:linear-gradient(135deg,rgba(34,211,238,.06),transparent);border-bottom:1px solid var(--border);position:relative}
+  .spotlight-header .sl-type-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+  .spotlight-header h3{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:var(--text-primary);margin:0 0 4px;line-height:1.3;word-break:break-all}
+  .spotlight-header .sl-id{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);cursor:pointer}
+  .spotlight-header .sl-id:hover{color:var(--accent-cyan)}
+  .spotlight-close{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text-muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  .spotlight-close:hover{background:rgba(255,255,255,.1);color:var(--text-primary);border-color:rgba(255,255,255,.2)}
+  .spotlight-body{flex:1;overflow-y:auto;padding:14px 18px;font-family:'IBM Plex Mono',monospace}
+  .spotlight-section{margin-bottom:14px}
+  .spotlight-section-title{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .spotlight-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+  .spotlight-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:11px}
+  .spotlight-kv dt{color:var(--text-muted);white-space:nowrap}
+  .spotlight-kv dd{color:var(--text-secondary);margin:0;word-break:break-all}
+  .spotlight-nearby{display:flex;flex-wrap:wrap;gap:6px}
+  .spotlight-nearby-item{display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;flex:1;min-width:140px}
+  .spotlight-nearby-item:hover{border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.06);transform:translateY(-1px)}
+  .spotlight-nearby-item .sn-badge{display:inline-block;width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .spotlight-nearby-item .sn-name{font-size:10px;color:var(--text-primary);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .spotlight-nearby-item .sn-type{font-size:8px;color:var(--text-muted);text-transform:uppercase;flex-shrink:0}
+  .spotlight-actions{display:flex;gap:6px;padding:12px 18px;border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
+  .spotlight-actions button{flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s}
+  .spotlight-actions button:hover{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.3);color:var(--accent-cyan)}
+  .spotlight-actions button.primary{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:var(--accent-cyan);font-weight:600}
+  @media(max-width:767px){
+    .spotlight-card{left:8px;right:8px;bottom:56px;width:auto;max-height:50vh;border-radius:14px 14px 8px 8px}
+    .spotlight-backdrop{display:none}
+  }
 </style>
 </head>
 <body>
@@ -1496,7 +1535,7 @@
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v1.4.0</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v1.5.0</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -1562,7 +1601,7 @@
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v1.4.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v1.5.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -4707,13 +4746,13 @@ function _renderCompDash(){
   body.querySelectorAll('.comp-jump-btn').forEach(function(btn){btn.addEventListener('click',function(e){
     e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
     closeUnifiedDash();
-    setTimeout(function(){_zoomToElement(rid)},250);
+    setTimeout(function(){_zoomAndShowDetail(rid)},250);
   })});
   body.querySelectorAll('th[data-col]').forEach(function(th){th.addEventListener('click',function(){_compDashState.sort=th.dataset.col;_renderCompDash()})});
   body.querySelectorAll('.comp-res-link').forEach(function(a){a.addEventListener('click',function(e){
     e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
     closeUnifiedDash();
-    setTimeout(function(){_zoomToElement(rid)},250);
+    setTimeout(function(){_zoomAndShowDetail(rid)},250);
   })});
 }
 function _renderActionPlan(filtered,allFindings,unfilteredFindings){
@@ -4758,7 +4797,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
       h+='<div class="comp-resource-card'+(expanded?' expanded':'')+'" data-rc="'+t+'-'+ri+'">';
       h+='<div class="comp-rc-header">';
       h+='<span class="rc-sev" style="background:'+(sevColors[rg.worstSev]||'#3b82f6')+'"></span>';
-      h+='<span class="rc-name'+(jumpable?' rc-clickable':'')+'" title="'+esc(rg.resourceName)+'"'+(jumpable?' data-rid="'+esc(rid)+'"':'')+' style="'+(jumpable?'cursor:pointer;color:var(--accent-cyan)':'')+'">'+esc(rg.resourceName)+'</span>';
+      h+='<span class="rc-name" title="'+esc(rg.resourceName)+'" style="cursor:pointer">'+esc(rg.resourceName)+'</span>';
       h+='<span class="rc-count">'+rg.findings.length+' finding'+(rg.findings.length!==1?'s':'')+'</span>';
       if(jumpable)h+='<button class="rc-jump" data-rid="'+esc(rid)+'">Jump</button>';
       h+='</div>';
@@ -4800,11 +4839,6 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
   body.querySelectorAll('.comp-rc-header').forEach(function(hdr){
     hdr.addEventListener('click',function(e){
       if(e.target.classList.contains('rc-jump'))return;
-      if(e.target.classList.contains('rc-clickable')){
-        e.stopPropagation();var rid=e.target.dataset.rid;if(!rid||rid==='Multiple')return;
-        closeUnifiedDash();
-        setTimeout(function(){_zoomToElement(rid)},250);return;
-      }
       this.closest('.comp-resource-card').classList.toggle('expanded');
     });
   });
@@ -4814,7 +4848,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
       e.stopPropagation();
       var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
       closeUnifiedDash();
-      setTimeout(function(){_zoomToElement(rid)},250);
+      setTimeout(function(){_zoomAndShowDetail(rid)},250);
     });
   });
   // Mute buttons
@@ -8624,7 +8658,12 @@ function renderLandingZoneMap(ctx){
           positionTooltip(event,tt);
         }).on('mouseleave',function(){
           tt.style.display='none';
+        }).on('click',function(event){
+          event.stopPropagation();
+          var resId=d3.select(this).attr('data-id');
+          if(resId) _openResourceSpotlight(resId);
         });
+        rG.style('cursor','pointer');
         rG.append('rect').attr('x',rx).attr('y',ry).attr('width',iconW).attr('height',iconH)
           .attr('rx',2).attr('fill',res.bg).attr('stroke',res.col).attr('stroke-width',.5);
         rG.append('rect').attr('x',rx).attr('y',ry).attr('width',20).attr('height',iconH)
@@ -10585,6 +10624,7 @@ function _renderMapInner(){
   svg.on('click',function(event){
     if(!event.target.closest('.gw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.res-node')&&!event.target.closest('.route-hitarea')&&!event.target.closest('.internet-node')){
       forceClr();
+      if(_spotlightActive) _closeSpotlight();
     }
   });
 
@@ -10606,6 +10646,13 @@ function _renderMapInner(){
       .on('mouseleave.hl',function(){if(!_hlLocked)clr()})
       .on('click.hl',function(event){
         event.stopPropagation();
+        var resEl=d3.select(this);
+        var resId=resEl.attr('data-id');
+        if(resId){
+          forceClr();hlSub(sid);_hlLocked=true;_hlKey=sid;_hlType='sub';showLockInd(true);
+          _openResourceSpotlight(resId);
+          return;
+        }
         if(_hlLocked&&_hlKey===sid&&_hlType==='sub'){forceClr();return}
         forceClr();hlSub(sid);_hlLocked=true;_hlKey=sid;_hlType='sub';showLockInd(true);
       });
@@ -11086,7 +11133,7 @@ function _renderMapInner(){
         const nCh=(res.children||[]).length;
         const iconH=RES_ICON+nCh*RES_CHILD_H;
         // wrap in interactive group
-        const rG=sG.append('g').attr('class','res-node');
+        const rG=sG.append('g').attr('class','res-node').style('cursor','pointer');
         if(res.rid) rG.attr('data-id',res.rid);
         const _rx=rx,_ry=ry;
         rG.on('mouseenter',function(event){
@@ -12061,6 +12108,257 @@ function _highlightElement(el,bb){
     .transition().duration(400).attr('stroke-width',5).attr('stroke','#06b6d4')
     .transition().duration(1500).attr('opacity',0)
     .on('end',function(){d3.select(this).remove()});
+}
+
+// === RESOLVE RESOURCE TYPE FROM ID ===
+function _resolveResourceType(rid){
+  if(!rid||!_rlCtx) return null;
+  if(rid.startsWith('subnet-')) return 'Subnet';
+  if(rid.startsWith('vpc-')) return 'VPC';
+  if(rid.startsWith('i-')) return 'EC2';
+  if(rid.startsWith('sg-')) return 'SG';
+  if(rid.startsWith('igw-')) return 'IGW';
+  if(rid.startsWith('nat-')) return 'NAT';
+  if(rid.startsWith('vgw-')) return 'VGW';
+  if(rid.startsWith('vpce-')) return 'VPCE';
+  if(rid.startsWith('tgw-')) return 'TGW';
+  if(rid.startsWith('pcx-')) return 'PCX';
+  // Check by lookup in context
+  if((_rlCtx.rdsInstances||[]).find(function(d){return d.DBInstanceIdentifier===rid})) return 'RDS';
+  if((_rlCtx.lambdaFns||[]).find(function(f){return f.FunctionName===rid})) return 'Lambda';
+  if((_rlCtx.sgs||[]).find(function(s){return s.GroupId===rid})) return 'SG';
+  return null;
+}
+
+// === ZOOM TO RESOURCE AND OPEN DETAIL PANEL ===
+function _zoomAndShowDetail(rid){
+  if(!rid||rid==='Multiple') return;
+  _zoomToElement(rid);
+  var type=_resolveResourceType(rid);
+  if(type){
+    setTimeout(function(){_openDetailForSearch(type,rid)},400);
+  }
+}
+
+// === RESOURCE SPOTLIGHT (animated zoom window) ===
+var _spotlightActive=false;
+function _closeSpotlight(){
+  _spotlightActive=false;
+  var card=document.getElementById('spotlightCard');
+  var backdrop=document.getElementById('spotlightBackdrop');
+  if(card){card.style.opacity='0';card.style.transform='translateY(20px) scale(.95)';setTimeout(function(){card.remove()},300)}
+  if(backdrop){backdrop.classList.remove('active');setTimeout(function(){backdrop.remove()},400)}
+  _mapG&&_mapG.selectAll('.spotlight-ring').remove();
+}
+function _openResourceSpotlight(rid){
+  if(!rid||!_rlCtx)return;
+  _closeSpotlight();
+  _spotlightActive=true;
+  // Find the SVG element
+  var el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
+  if(!el)return;
+  var bb=el.getBBox();
+  var cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
+  var svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
+  // Animated zoom - tighter zoom than normal
+  var scale=Math.min(svgW/(bb.width+300),svgH/(bb.height+300),3.5);
+  _mapSvg.transition().duration(900).ease(d3.easeCubicInOut)
+    .call(_mapZoom.transform,d3.zoomIdentity.translate(svgW/2-cx*scale,svgH/2-cy*scale).scale(scale));
+  // Add animated ring around resource in SVG
+  _mapG.selectAll('.spotlight-ring').remove();
+  var pad=12;
+  var ring=_mapG.append('rect').attr('class','spotlight-ring')
+    .attr('x',bb.x-pad).attr('y',bb.y-pad)
+    .attr('width',bb.width+pad*2).attr('height',bb.height+pad*2)
+    .attr('rx',8).attr('ry',8)
+    .attr('fill','none').attr('stroke','#22d3ee').attr('stroke-width',2.5)
+    .attr('stroke-dasharray','6,3').attr('opacity',0).attr('pointer-events','none')
+    .style('animation','spotlightRingPulse 2s ease-in-out infinite');
+  ring.transition().duration(500).delay(400).attr('opacity',1);
+  // Gather resource info
+  var info=_gatherResourceInfo(rid);
+  if(!info)return;
+  // Create backdrop
+  var backdrop=document.createElement('div');
+  backdrop.id='spotlightBackdrop';
+  backdrop.className='spotlight-backdrop';
+  backdrop.addEventListener('click',_closeSpotlight);
+  document.body.appendChild(backdrop);
+  requestAnimationFrame(function(){backdrop.classList.add('active')});
+  // Build the card
+  var card=document.createElement('div');
+  card.id='spotlightCard';
+  card.className='spotlight-card';
+  var typeColors={EC2:'#f97316',RDS:'#a78bfa',Lambda:'#10b981',ALB:'#3b82f6',ECS:'#06b6d4',ElastiCache:'#ef4444',Redshift:'#ec4899',Subnet:'#22d3ee',VPC:'#60a5fa',SG:'#f59e0b',IGW:'#10b981',NAT:'#f97316',VGW:'#8b5cf6',VPCE:'#06b6d4',TGW:'#6366f1',PCX:'#a78bfa'};
+  var tc=typeColors[info.type]||'#22d3ee';
+  // Header
+  var h='<div class="spotlight-header">';
+  h+='<button class="spotlight-close" onclick="_closeSpotlight()">&times;</button>';
+  h+='<span class="sl-type-badge" style="background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44">'+_escHtml(info.type)+'</span>';
+  h+='<h3>'+_escHtml(info.name)+'</h3>';
+  h+='<span class="sl-id" title="Click to copy" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_escHtml(rid)+'\')">'+_escHtml(rid)+'</span>';
+  h+='</div>';
+  // Body
+  h+='<div class="spotlight-body">';
+  // Details section
+  if(info.details&&info.details.length){
+    h+='<div class="spotlight-section"><div class="spotlight-section-title">Details</div>';
+    h+='<dl class="spotlight-kv">';
+    info.details.forEach(function(d){h+='<dt>'+_escHtml(d[0])+'</dt><dd>'+_escHtml(d[1])+'</dd>'});
+    h+='</dl></div>';
+  }
+  // Compliance findings
+  if(info.findings&&info.findings.length){
+    h+='<div class="spotlight-section"><div class="spotlight-section-title">Compliance ('+info.findings.length+')</div>';
+    info.findings.slice(0,5).forEach(function(f){
+      var sc={CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#3b82f6'}[f.severity]||'#64748b';
+      h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px">';
+      h+='<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+sc+';flex-shrink:0"></span>';
+      h+='<span style="color:'+sc+';font-weight:600;width:55px;flex-shrink:0">'+_escHtml(f.severity)+'</span>';
+      h+='<span style="color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_escHtml(f.message)+'</span>';
+      h+='</div>';
+    });
+    if(info.findings.length>5) h+='<div style="font-size:9px;color:var(--text-muted);padding-top:4px">+'+(info.findings.length-5)+' more findings</div>';
+    h+='</div>';
+  }
+  // Related resources
+  if(info.related&&info.related.length){
+    h+='<div class="spotlight-section"><div class="spotlight-section-title">Related Resources</div>';
+    h+='<div class="spotlight-nearby">';
+    info.related.forEach(function(r){
+      var rc=typeColors[r.type]||'#64748b';
+      h+='<div class="spotlight-nearby-item" data-spotlight-rid="'+_escHtml(r.id)+'">';
+      h+='<span class="sn-badge" style="background:'+rc+'"></span>';
+      h+='<span class="sn-name">'+_escHtml(r.name)+'</span>';
+      h+='<span class="sn-type">'+_escHtml(r.type)+'</span>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  }
+  // Nearby resources
+  if(info.nearby&&info.nearby.length){
+    h+='<div class="spotlight-section"><div class="spotlight-section-title">Nearby Resources</div>';
+    h+='<div class="spotlight-nearby">';
+    info.nearby.forEach(function(r){
+      var rc=typeColors[r.type]||'#64748b';
+      h+='<div class="spotlight-nearby-item" data-spotlight-rid="'+_escHtml(r.id)+'">';
+      h+='<span class="sn-badge" style="background:'+rc+'"></span>';
+      h+='<span class="sn-name">'+_escHtml(r.name)+'</span>';
+      h+='<span class="sn-type">'+_escHtml(r.type)+'</span>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  }
+  h+='</div>';
+  // Actions
+  h+='<div class="spotlight-actions">';
+  h+='<button class="primary" data-spotlight-detail="'+_escHtml(rid)+'">Full Details</button>';
+  h+='<button data-spotlight-deps="'+_escHtml(rid)+'">Dependencies</button>';
+  h+='</div>';
+  card.innerHTML=h;
+  document.body.appendChild(card);
+  // Wire events
+  card.querySelectorAll('[data-spotlight-rid]').forEach(function(el){
+    el.addEventListener('click',function(){
+      var nrid=this.dataset.spotlightRid;
+      _openResourceSpotlight(nrid);
+    });
+  });
+  card.querySelector('[data-spotlight-detail]').addEventListener('click',function(){
+    var drid=this.dataset.spotlightDetail;
+    _closeSpotlight();
+    var type=_resolveResourceType(drid);
+    if(type) _openDetailForSearch(type,drid);
+  });
+  var depsBtn=card.querySelector('[data-spotlight-deps]');
+  if(depsBtn) depsBtn.addEventListener('click',function(){
+    var drid=this.dataset.spotlightDeps;
+    _closeSpotlight();
+    if(typeof showDependencies==='function') showDependencies(drid);
+  });
+}
+
+function _gatherResourceInfo(rid){
+  if(!_rlCtx) return null;
+  var info={id:rid,name:rid,type:'Unknown',details:[],findings:[],related:[],nearby:[]};
+  var gn2=function(obj,fallback){return obj&&obj.Tags?((obj.Tags.find(function(t){return t.Key==='Name'})||{}).Value||fallback):fallback};
+  // Determine type and gather details
+  if(rid.startsWith('i-')){
+    var inst=(_rlCtx.instances||[]).find(function(i){return i.InstanceId===rid});
+    if(!inst) return null;
+    info.type='EC2';info.name=gn2(inst,rid);
+    info.details=[['Type',inst.InstanceType||'—'],['State',(inst.State||{}).Name||'—'],['Private IP',inst.PrivateIpAddress||'—'],['Public IP',inst.PublicIpAddress||'—'],['AZ',(inst.Placement||{}).AvailabilityZone||'—'],['Subnet',inst.SubnetId||'—'],['VPC',inst.VpcId||'—']];
+    // Related: SGs, subnet, VPC
+    (inst.SecurityGroups||[]).forEach(function(sg){info.related.push({id:sg.GroupId,name:sg.GroupName||sg.GroupId,type:'SG'})});
+    if(inst.SubnetId){var sub=(_rlCtx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId});if(sub) info.related.push({id:sub.SubnetId,name:gn2(sub,sub.SubnetId),type:'Subnet'})}
+    // Nearby: other instances in same subnet
+    (_rlCtx.instances||[]).filter(function(i){return i.SubnetId===inst.SubnetId&&i.InstanceId!==rid}).slice(0,6).forEach(function(i){info.nearby.push({id:i.InstanceId,name:gn2(i,i.InstanceId),type:'EC2'})});
+    // Also add RDS, ALBs in same subnet
+    (_rlCtx.rdsInstances||[]).forEach(function(db){var subs=(db.DBSubnetGroup&&db.DBSubnetGroup.Subnets||[]).map(function(s){return s.SubnetIdentifier});if(subs.indexOf(inst.SubnetId)!==-1) info.nearby.push({id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier,type:'RDS'})});
+  } else if(rid.startsWith('subnet-')){
+    var sub=(_rlCtx.subnets||[]).find(function(s){return s.SubnetId===rid});
+    if(!sub) return null;
+    info.type='Subnet';info.name=gn2(sub,rid);
+    var isPub=_rlCtx.pubSubs&&_rlCtx.pubSubs.has(rid);
+    info.details=[['CIDR',sub.CidrBlock||'—'],['AZ',sub.AvailabilityZone||'—'],['Type',isPub?'Public':'Private'],['VPC',sub.VpcId||'—'],['Available IPs',''+(sub.AvailableIpAddressCount||0)]];
+    // Nearby: resources in this subnet
+    (_rlCtx.instances||[]).filter(function(i){return i.SubnetId===rid}).slice(0,8).forEach(function(i){info.nearby.push({id:i.InstanceId,name:gn2(i,i.InstanceId),type:'EC2'})});
+    // Related: VPC, route table
+    info.related.push({id:sub.VpcId,name:sub.VpcId,type:'VPC'});
+  } else if(rid.startsWith('vpc-')){
+    var vpc=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===rid});
+    if(!vpc) return null;
+    info.type='VPC';info.name=gn2(vpc,rid);
+    var vpcSubs=(_rlCtx.subnets||[]).filter(function(s){return s.VpcId===rid});
+    info.details=[['CIDR',vpc.CidrBlock||'—'],['State',vpc.State||'—'],['Subnets',''+vpcSubs.length],['Instances',''+(_rlCtx.instances||[]).filter(function(i){return vpcSubs.some(function(s){return s.SubnetId===i.SubnetId})}).length]];
+    vpcSubs.slice(0,8).forEach(function(s){info.nearby.push({id:s.SubnetId,name:gn2(s,s.SubnetId),type:'Subnet'})});
+  } else if(rid.startsWith('sg-')){
+    var sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===rid});
+    if(!sg) return null;
+    info.type='SG';info.name=sg.GroupName||rid;
+    info.details=[['Group ID',rid],['Description',sg.Description||'—'],['VPC',sg.VpcId||'—'],['Inbound Rules',''+(sg.IpPermissions||[]).length],['Outbound Rules',''+(sg.IpPermissionsEgress||[]).length]];
+    if(sg.VpcId) info.related.push({id:sg.VpcId,name:sg.VpcId,type:'VPC'});
+    // Instances using this SG
+    (_rlCtx.instances||[]).filter(function(i){return(i.SecurityGroups||[]).some(function(s){return s.GroupId===rid})}).slice(0,6).forEach(function(i){info.nearby.push({id:i.InstanceId,name:gn2(i,i.InstanceId),type:'EC2'})});
+  } else if(rid.startsWith('igw-')){
+    var igw=(_rlCtx.igws||[]).find(function(g){return g.InternetGatewayId===rid});
+    if(!igw) return null;
+    info.type='IGW';info.name=gn2(igw,rid);
+    var attachedVpcs=(igw.Attachments||[]).map(function(a){return a.VpcId});
+    info.details=[['Gateway ID',rid],['Attached VPCs',attachedVpcs.join(', ')||'None']];
+    attachedVpcs.forEach(function(v){info.related.push({id:v,name:v,type:'VPC'})});
+  } else if(rid.startsWith('nat-')){
+    var nat=(_rlCtx.nats||[]).find(function(g){return g.NatGatewayId===rid});
+    if(!nat) return null;
+    info.type='NAT';info.name=gn2(nat,rid);
+    info.details=[['Gateway ID',rid],['State',nat.State||'—'],['Subnet',nat.SubnetId||'—'],['VPC',nat.VpcId||'—']];
+    if(nat.VpcId) info.related.push({id:nat.VpcId,name:nat.VpcId,type:'VPC'});
+    if(nat.SubnetId) info.related.push({id:nat.SubnetId,name:nat.SubnetId,type:'Subnet'});
+  } else {
+    // Try RDS, Lambda, etc. by name lookup
+    var rds=(_rlCtx.rdsInstances||[]).find(function(d){return d.DBInstanceIdentifier===rid});
+    if(rds){
+      info.type='RDS';info.name=rds.DBInstanceIdentifier;
+      info.details=[['Engine',(rds.Engine||'')+' '+(rds.EngineVersion||'')],['Class',rds.DBInstanceClass||'—'],['Status',rds.DBInstanceStatus||'—'],['Multi-AZ',rds.MultiAZ?'Yes':'No'],['Storage',(rds.AllocatedStorage||'?')+' GB'],['Encrypted',rds.StorageEncrypted?'Yes':'No']];
+      var rdsVpc=rds.DBSubnetGroup?rds.DBSubnetGroup.VpcId:'';
+      if(rdsVpc) info.related.push({id:rdsVpc,name:rdsVpc,type:'VPC'});
+    } else {
+      var lam=(_rlCtx.lambdaFns||[]).find(function(f){return f.FunctionName===rid});
+      if(lam){
+        info.type='Lambda';info.name=lam.FunctionName;
+        info.details=[['Runtime',lam.Runtime||'—'],['Memory',(lam.MemorySize||'?')+' MB'],['Timeout',(lam.Timeout||'?')+' sec'],['Handler',lam.Handler||'—'],['Code Size',((lam.CodeSize||0)/1024).toFixed(1)+' KB']];
+        var lamVpc=lam.VpcConfig?lam.VpcConfig.VpcId:'';
+        if(lamVpc) info.related.push({id:lamVpc,name:lamVpc,type:'VPC'});
+      } else {
+        return null;
+      }
+    }
+  }
+  // Gather compliance findings for this resource
+  (_complianceFindings||[]).forEach(function(f){
+    if(f.resource===rid&&!_isMuted(f)) info.findings.push(f);
+  });
+  return info;
 }
 
 // === SEARCH → DETAIL PANEL DISPATCH ===
@@ -18334,11 +18632,11 @@ function _renderClassificationTab(){
       _renderClassificationTab();
     });
   });
-  // Resource name clicks → jump to resource on map
+  // Resource name clicks → jump to resource on map and open detail panel
   body.querySelectorAll('.gov-res-link').forEach(function(el){el.addEventListener('click',function(e){
     e.stopPropagation();var rid=this.dataset.rid;if(!rid)return;
     closeUnifiedDash();
-    setTimeout(function(){_zoomToElement(rid)},250);
+    setTimeout(function(){_zoomAndShowDetail(rid)},250);
   })});
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
