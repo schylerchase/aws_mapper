@@ -10,10 +10,14 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux"
+    "dev": "node build.js && electron .",
+    "watch": "node build.js --watch",
+    "bundle": "node build.js",
+    "bundle:prod": "NODE_ENV=production node build.js",
+    "build": "npm run bundle:prod && electron-builder",
+    "build:mac": "npm run bundle:prod && electron-builder --mac",
+    "build:win": "npm run bundle:prod && electron-builder --win",
+    "build:linux": "npm run bundle:prod && electron-builder --linux"
   },
   "build": {
     "appId": "com.awsmapper.app",
@@ -25,7 +29,10 @@
       "export-aws-data.sh",
       "export-aws-data.ps1",
       "xlsx.bundle.min.js",
-      "libs/**"
+      "libs/**",
+      "dist/**",
+      "src/styles/**",
+      "src/data/**"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
