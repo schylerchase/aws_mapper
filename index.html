@@ -297,7 +297,7 @@
   .fw-badge.warning{background:rgba(245,158,11,.15);color:var(--accent-orange)}
   .fw-toolbar{display:flex;gap:4px;border-top:1px solid var(--border);margin-top:6px;padding:4px 0}
   .fw-toolbar button{background:var(--bg-tertiary);border:1px solid var(--border);border-radius:3px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:8px;padding:3px 8px;cursor:pointer;transition:background .15s}.fw-toolbar button:hover{background:var(--border);color:var(--text-primary)}
-  .fw-full-panel{position:fixed;top:0;right:0;bottom:0;width:520px;background:var(--bg-primary);border-left:1px solid var(--border);z-index:80;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .2s ease}
+  .fw-full-panel{position:fixed;top:0;right:0;bottom:0;width:520px;background:var(--bg-primary);border-left:1px solid var(--border);z-index:600;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .2s ease}
   .fw-full-panel.open{transform:translateX(0)}
   .fw-fp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
   .fw-fp-header h3{margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text-primary)}
@@ -6426,6 +6426,7 @@ function runIAMChecks(iamData){
 
 // === GOVERNANCE: ASSET CLASSIFICATION ENGINE ===
 let _govDashState={tab:'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
+let _iamDashState={filter:'all',search:'',sort:'name',sortDir:'asc',page:1,perPage:50};
 let _classificationData=[];
 let _classificationOverrides={};
 let _iamReviewData=[];
@@ -18277,7 +18278,7 @@ function _renderClassificationTab(){
   if(!pageItems.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No resources match filters</td></tr>';
   pageItems.forEach(function(r){
     bh+='<tr>';
-    bh+='<td style="color:var(--accent-cyan)">'+_escHtml(r.name)+'</td>';
+    bh+='<td><span class="gov-res-link" data-rid="'+_escHtml(r.id)+'" style="color:var(--accent-cyan);cursor:pointer">'+_escHtml(r.name)+'</span></td>';
     bh+='<td>'+_escHtml(r.type)+'</td>';
     bh+='<td><span class="gov-tier-badge '+r.tier+'">'+r.tier+'</span></td>';
     bh+='<td>'+_escHtml(r.rpo)+'</td>';
@@ -18333,6 +18334,12 @@ function _renderClassificationTab(){
       _renderClassificationTab();
     });
   });
+  // Resource name clicks → jump to resource on map
+  body.querySelectorAll('.gov-res-link').forEach(function(el){el.addEventListener('click',function(e){
+    e.stopPropagation();var rid=this.dataset.rid;if(!rid)return;
+    closeUnifiedDash();
+    setTimeout(function(){_zoomToElement(rid)},250);
+  })});
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
     var rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
@@ -18349,7 +18356,7 @@ function _renderIAMTab(){
   var tb=document.getElementById('udashToolbar');
   var body=document.getElementById('udashBody');
   var footer=document.getElementById('udashFooter');
-  var st=_govDashState;
+  var st=_iamDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='iam'){
     _govToolbarTab='iam';
