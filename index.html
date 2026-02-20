@@ -10,6 +10,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
   :root {
+    color-scheme:dark;
     --bg-primary:#0a0e17;--bg-secondary:#111827;--bg-tertiary:#1a2236;--bg-card:#141c2e;
     --bg-input:#0d1220;--border:#1e2d4a;--border-focus:#3b82f6;
     --text-primary:#e2e8f0;--text-secondary:#94a3b8;--text-muted:#64748b;
@@ -1465,14 +1466,11 @@
   .udash-toolbar select{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace}
   .udash-body{flex:1;overflow-y:auto;padding:16px;background:var(--bg-primary)}
   .udash-body.rpt-layout{display:flex;gap:0;padding:0;overflow:hidden}
-  .udash-footer{flex-shrink:0;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);min-height:0}
+  .udash-footer{flex-shrink:0;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);min-height:0;display:flex;gap:8px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .udash-footer:empty{display:none}
-  /* Per-dashboard hover color overrides (must come after .dash-footer) */
-  .gov-footer button:hover{background:rgba(139,92,246,.1);border-color:var(--accent-purple)}
-  .rpt-footer button:hover{background:rgba(245,158,11,.1);border-color:#f59e0b}
-  /* Per-dashboard input focus color overrides */
-  .budr-toolbar input:focus{border-color:var(--accent-green)}
-  .gov-toolbar input:focus{border-color:var(--accent-purple)}
+  .udash-footer button,.udash-btn{background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 12px;cursor:pointer;transition:all .15s}
+  .udash-footer button:hover,.udash-btn:hover{background:rgba(96,165,250,.08);border-color:rgba(96,165,250,.3);color:var(--text-primary)}
+  .udash-footer button:disabled{opacity:.4;cursor:default}
   /* BUDR toolbar (new) */
 
   @supports (padding: env(safe-area-inset-top)){
@@ -1716,7 +1714,7 @@
       <span class="dock-label">NETWORK</span>
       <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace</button>
       <button id="flowAnalysisBtn" class="dock-btn green" title="Auto-discover traffic flows (Shift+F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Flows</button>
-      <button id="firewallBtn" class="dock-btn red" title="Open firewall editor (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
+      <button id="firewallBtn" class="dock-btn red" title="Open firewall editor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
     </div>
     <div class="dock-group">
       <span class="dock-label">VIEW</span>
@@ -4620,6 +4618,7 @@ function _renderCompDash(){
   var tb=document.getElementById('udashToolbar');
   var body=document.getElementById('udashBody');
   var footer=document.getElementById('udashFooter');
+  footer.innerHTML='';
   body.scrollTop=0;
   // Toolbar — only rebuild on tab switch
   if(_compToolbarTab!=='compliance'){
@@ -4743,7 +4742,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
     if(!rgs.length)return;
     var totalFindings=rgs.reduce(function(s,rg){return s+rg.findings.length},0);
     var effort=_estimateTotalEffort(rgs);
-    var collapsed=t===3;
+    var collapsed=t==='low';
     h+='<div class="comp-tier-section" data-tier="'+t+'">';
     h+='<div class="comp-tier-header'+(collapsed?' collapsed':'')+'" data-tier="'+t+'">';
     h+='<span class="tier-chevron">&#9660;</span>';
@@ -4753,7 +4752,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
     h+='</div>';
     h+='<div class="comp-tier-body"'+(collapsed?' style="display:none"':'')+'>';
     rgs.forEach(function(rg,ri){
-      var expanded=t===1;
+      var expanded=t==='crit';
       var rid=rg.resource;
       var jumpable=rid&&rid!=='Multiple';
       h+='<div class="comp-resource-card'+(expanded?' expanded':'')+'" data-rc="'+t+'-'+ri+'">';
@@ -15393,7 +15392,7 @@ function _hopTypeLabel(type){
 }
 
 function _escHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function _stepForward(){
@@ -17968,10 +17967,20 @@ function openUnifiedDash(tabId){
   var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
   if(!tab) return;
   if(!tab.prereq()) return;
-  _udashTab=tabId;
   var el=document.getElementById('udash');
+  var wasOpen=el.classList.contains('open');
+  if(wasOpen&&tabId===_udashTab) return;
+  _udashTab=tabId;
+  // Clean shared areas (prevents stale layout classes, hidden toolbars, wrong footers)
+  document.getElementById('udashToolbar').innerHTML='';
+  document.getElementById('udashBody').innerHTML='';
+  document.getElementById('udashBody').className='udash-body';
+  document.getElementById('udashFooter').innerHTML='';
+  document.getElementById('udashToolbar').style.display='';
+  _govToolbarTab=null;
+  _compToolbarTab=null;
   el.classList.add('open');
-  el.offsetHeight; // force reflow
+  if(!wasOpen) el.offsetHeight; // force reflow only on first open
   _renderUdashTabs();
   tab.render();
 }
@@ -18168,12 +18177,12 @@ function _renderBUDRDash(){
       var ce=function(s){return String(s||'').replace(/"/g,'""')};
       csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
     });
-    downloadBlob(csv,'budr-assessment.csv','text/csv');
+    downloadBlob(new Blob([csv],{type:'text/csv'}),'budr-assessment.csv');
   });
   document.getElementById('budrExportJSON').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
     var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
-    downloadBlob(JSON.stringify(data,null,2),'budr-assessment.json','application/json');
+    downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'budr-assessment.json');
   });
   var xlsxBtn=document.getElementById('budrExportXLSX');
   if(xlsxBtn) xlsxBtn.addEventListener('click',async function(){
@@ -18247,7 +18256,7 @@ function _renderClassificationTab(){
   if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
   var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
-    if(sortKey==='tier') return(_TIER_RPO_RTO[a.tier].priority-_TIER_RPO_RTO[b.tier].priority)*dir;
+    if(sortKey==='tier') return((_TIER_RPO_RTO[a.tier]||{priority:99}).priority-(_TIER_RPO_RTO[b.tier]||{priority:99}).priority)*dir;
     var av=(a[sortKey]||'').toLowerCase();var bv=(b[sortKey]||'').toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
@@ -24705,7 +24714,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='d'&&!e.shiftKey){if(_designMode)exitDesignMode();else enterDesignMode();return}
   if(e.key==='z'&&_designMode){undoLastChange();return}
   if(e.key==='e'&&_designMode&&_designChanges.length){exportDesignPlan('design-plan');return}
-  if(e.key==='/'){e.preventDefault();openSearch();return}
+  if(e.key==='/'){e.preventDefault();if(document.getElementById('udash').classList.contains('open'))closeUnifiedDash();openSearch();return}
   if(e.key==='n'){openNotesPanel();return}
   if(e.key==='b'&&!_designMode){if(_blastActive){_clearBlastRadius()}return}
   if(e.key==='h'&&!_designMode){const tb=document.getElementById('timelineBar');if(tb.classList.contains('open'))closeTimeline();else openTimeline();return}
