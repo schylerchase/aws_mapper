@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'">
 <title>AWS Network Topology Map</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" integrity="sha512-M7nHCiNUOwFt6Us3r8alutZLm9qMt4s9951uo8jqO4UwJ1hziseL6O3ndFyigx6+LREfZqnhHxYjKRJ8ZQ69DQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
+<script src="libs/d3.min.js"></script>
+<script src="libs/jszip.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
   :root {
@@ -2263,6 +2264,9 @@ const ipInCIDR=(ip,cidr)=>{const n=ipToInt(ip);const p=parseCIDR(cidr);if(n===nu
 
 // large-scale demo generator -- enterprise AWS environment
 function generateDemo(){
+  // OPTIMIZED: Seeded PRNG for deterministic demo data (reproducible across reloads)
+  let _seed=12345;
+  const _random=()=>{_seed=((_seed*1664525+1013904223)|0);return((_seed>>>0)/0x100000000)};
   const AZS=['us-east-1a','us-east-1b','us-east-1c'];
   const INST_TYPES=['t3.micro','t3.small','t3.medium','t3.large','m5.large','m5.xlarge','m5.2xlarge','r5.large','r5.xlarge','r5.2xlarge','c5.large','c5.xlarge'];
   const STATES=['running','running','running','running','running','stopped'];
@@ -2377,12 +2381,12 @@ function generateDemo(){
         const instCount=vd.instancesPer[ti]||0;
         for(let ii=0;ii<instCount;ii++){
           const instId=nid('i');
-          const iType=INST_TYPES[Math.floor(Math.random()*INST_TYPES.length)];
-          const st=STATES[Math.floor(Math.random()*STATES.length)];
+          const iType=INST_TYPES[Math.floor(_random()*INST_TYPES.length)];
+          const st=STATES[Math.floor(_random()*STATES.length)];
           const isBastionSlot=isPub&&ii===0&&a===0&&vd.tiers.length>2;
           const instName=isBastionSlot?vd.name.toLowerCase()+'-bastion':vd.name.toLowerCase()+'-'+tier.replace('private-','')+'-'+String(ii+1).padStart(2,'0');
           const _ec2Entry={InstanceId:instId,SubnetId:subId,InstanceType:isBastionSlot?'t3.micro':iType,
-            PrivateIpAddress:'10.'+Math.floor(Math.random()*255)+'.'+Math.floor(Math.random()*255)+'.'+Math.floor(Math.random()*254+1),
+            PrivateIpAddress:'10.'+Math.floor(_random()*255)+'.'+Math.floor(_random()*255)+'.'+Math.floor(_random()*254+1),
             Placement:{AvailabilityZone:AZS[a]},
             State:{Name:isBastionSlot?'running':st,Code:isBastionSlot?16:(st==='running'?16:80)},
             Tags:[{Key:'Name',Value:instName}]};
@@ -2390,13 +2394,13 @@ function generateDemo(){
           ec2Instances.push(_ec2Entry);
 
           // volume per instance (root)
-          const volSize=[50,100,200,500][Math.floor(Math.random()*4)];
+          const volSize=[50,100,200,500][Math.floor(_random()*4)];
           volsList.push({VolumeId:nid('vol'),Size:volSize,State:'in-use',VolumeType:'gp3',
             AvailabilityZone:AZS[a],Attachments:[{InstanceId:instId,Device:'/dev/sda1',State:'attached'}]});
 
           // data volume for data/cache/warehouse tiers
           if(tier.includes('data')||tier.includes('cache')||tier.includes('warehouse')||tier.includes('ml')){
-            const dataSize=[200,500,1000,2000][Math.floor(Math.random()*4)];
+            const dataSize=[200,500,1000,2000][Math.floor(_random()*4)];
             volsList.push({VolumeId:nid('vol'),Size:dataSize,State:'in-use',VolumeType:'io2',
               AvailabilityZone:AZS[a],Attachments:[{InstanceId:instId,Device:'/dev/sdf',State:'attached'}]});
           }
@@ -2414,7 +2418,7 @@ function generateDemo(){
           }
 
           // snapshot for ~40% of volumes
-          if(Math.random()>0.6){snapsList.push({SnapshotId:nid('snap'),VolumeId:volsList[volsList.length-1].VolumeId,
+          if(_random()>0.6){snapsList.push({SnapshotId:nid('snap'),VolumeId:volsList[volsList.length-1].VolumeId,
             State:'completed',VolumeSize:volSize,StartTime:'2025-01-15T00:00:00Z'})}
         }
       }
@@ -2512,7 +2516,7 @@ function generateDemo(){
    'pci-audit-trail','pci-transaction-logs','pci-encryption-keys',
    'app-uploads','static-frontend','lambda-packages','cloudformation-templates','codepipeline-artifacts'
   ].forEach(n=>{
-    s3Buckets.push({Name:n+'-'+Math.floor(Math.random()*99999),CreationDate:'2024-'+String(Math.floor(Math.random()*12)+1).padStart(2,'0')+'-15'});
+    s3Buckets.push({Name:n+'-'+Math.floor(_random()*99999),CreationDate:'2024-'+String(Math.floor(_random()*12)+1).padStart(2,'0')+'-15'});
   });
 
   // Route53
@@ -2875,7 +2879,8 @@ function generateDemo(){
     iam:{RoleDetailList:iamRoles,UserDetailList:iamUsers,Policies:iamPolicies}
   };
 }
-const demo=generateDemo();
+// OPTIMIZED: Lazy-load demo data only when user clicks "Load Demo" (saves ~5MB at startup)
+let demo=null;
 
 let gwNames={};
 
@@ -5359,7 +5364,9 @@ function _updateCompExpPreview(){
 }
 function addComplianceChip(sb2,findings){
   const c=document.createElement('div');
-  const crit=findings.filter(f=>f.severity==='CRITICAL').length;const high=findings.filter(f=>f.severity==='HIGH').length;
+  // OPTIMIZED: Single pass to count severities instead of multiple filter() calls
+  const counts=findings.reduce((acc,f)=>{acc[f.severity]=(acc[f.severity]||0)+1;return acc},{});
+  const crit=counts.CRITICAL||0;const high=counts.HIGH||0;
   c.className='compliance-chip '+(crit>0?'critical':high>0?'warn':'clean');
   c.innerHTML=`<b>${findings.length}</b> Compliance`;
   c.addEventListener('click',()=>renderCompliancePanel(findings));
@@ -20878,6 +20885,8 @@ document.getElementById('clearBtn').addEventListener('click',()=>{document.query
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
+  // OPTIMIZED: Generate demo data on first load (lazy initialization)
+  if(!demo)demo=generateDemo();
   // Split demo data into 2 accounts for multi-account view
   const allVpcs=demo.vpcs?demo.vpcs.Vpcs||[]:[];
   const allSubs=demo.subnets?demo.subnets.Subnets||[]:[];

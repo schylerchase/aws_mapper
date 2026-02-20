@@ -24,7 +24,8 @@
       "preload.js",
       "export-aws-data.sh",
       "export-aws-data.ps1",
-      "xlsx.bundle.min.js"
+      "xlsx.bundle.min.js",
+      "libs/**"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
