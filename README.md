@@ -191,6 +191,12 @@ The `-AllRegions` flag exports all active regions into subfolders. The PowerShel
 
 ---
 
+## See Also
+
+- **[Azure Network Mapper](https://github.com/schylerchase/azure_mapper)** -- the Azure equivalent with VNets, NSGs, Azure Firewall, and 30+ Azure resource types
+
+---
+
 ## License
 
 MIT
