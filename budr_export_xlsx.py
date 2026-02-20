@@ -19,6 +19,7 @@ import sys
 import argparse
 from datetime import datetime
 from pathlib import Path
+import os
 
 # pandas removed - was only used as wrapper for openpyxl (eliminates ~15-20MB dependency)
 from openpyxl import Workbook
@@ -49,14 +50,33 @@ TIER_LABELS = {
 
 SEVERITY_ORDER = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
 
-# ScubaGear effort mapping (mirrors _EFFORT_MAP in index.html)
-EFFORT_MAP = {
-    'BUDR-HA-1': 'moderate', 'BUDR-HA-2': 'moderate', 'BUDR-HA-3': 'quick',
-    'BUDR-HA-4': 'moderate', 'BUDR-HA-5': 'moderate', 'BUDR-HA-6': 'quick',
-    'BUDR-BAK-1': 'quick',  'BUDR-BAK-2': 'moderate', 'BUDR-BAK-3': 'moderate',
-    'BUDR-BAK-4': 'quick',  'BUDR-BAK-5': 'quick',
-    'BUDR-DR-1': 'project', 'BUDR-DR-2': 'moderate',
-}
+# Load effort mapping from shared JSON file (same data used by index.html)
+def load_effort_map():
+    """Load EFFORT_MAP from src/data/effort-map.json and convert to Python format."""
+    script_dir = Path(__file__).parent
+    effort_map_path = script_dir / 'src' / 'data' / 'effort-map.json'
+
+    # Map from JSON format (low/med/high) to Python export format (quick/moderate/project)
+    effort_mapping = {'low': 'quick', 'med': 'moderate', 'high': 'project'}
+
+    try:
+        with open(effort_map_path, 'r', encoding='utf-8') as f:
+            raw_map = json.load(f)
+            # Filter to BUDR controls only and convert values
+            return {k: effort_mapping.get(v, 'moderate')
+                    for k, v in raw_map.items()
+                    if k.startswith('BUDR-')}
+    except FileNotFoundError:
+        # Fallback if JSON file not found
+        return {
+            'BUDR-HA-1': 'moderate', 'BUDR-HA-2': 'moderate', 'BUDR-HA-3': 'quick',
+            'BUDR-HA-4': 'moderate', 'BUDR-HA-5': 'moderate', 'BUDR-HA-6': 'quick',
+            'BUDR-BAK-1': 'quick',  'BUDR-BAK-2': 'moderate', 'BUDR-BAK-3': 'moderate',
+            'BUDR-BAK-4': 'quick',  'BUDR-BAK-5': 'quick',
+            'BUDR-DR-1': 'project', 'BUDR-DR-2': 'moderate',
+        }
+
+EFFORT_MAP = load_effort_map()
 
 
 # ── Helpers ─────────────────────────────────────────────────────
