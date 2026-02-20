@@ -11939,7 +11939,7 @@ if(_isElectron){
 // Browser folder import (File System Access API — Chrome/Edge, fallback for Safari)
 {
   const bfBtn=document.getElementById('importFolderBrowser');
-  if(_isElectron||!window.showDirectoryPicker)bfBtn.style.display='none';
+  if(_isElectron)bfBtn.style.display='none';
   bfBtn.addEventListener('click',async()=>{
     if(!window.showDirectoryPicker){_showToast('Folder import requires Chrome or Edge. Use Upload JSON to select multiple files.','warn');return}
     try{
