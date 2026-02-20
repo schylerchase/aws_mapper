@@ -4688,7 +4688,7 @@ function _renderCompDash(){
   var summaryHtml='';
   if(_compDashState.execSummary){summaryHtml='<div id="compExecSummary"></div>'}
   // Action plan view
-  if(_compDashState.view==='action'){body.innerHTML=summaryHtml;if(_compDashState.execSummary)_renderExecSummary();_renderActionPlan(filtered,findings);return}
+  if(_compDashState.view==='action'){body.innerHTML=summaryHtml;if(_compDashState.execSummary)_renderExecSummary();_renderActionPlan(filtered,findings,findings);return}
   // Table view
   var h=summaryHtml;
   h+='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody>';
@@ -4717,15 +4717,16 @@ function _renderCompDash(){
     setTimeout(function(){_zoomToElement(rid)},250);
   })});
 }
-function _renderActionPlan(filtered,allFindings){
+function _renderActionPlan(filtered,allFindings,unfilteredFindings){
   var tiers=_getTierGroups(filtered);
+  var allTiers=_getTierGroups(unfilteredFindings||filtered);
   var body=document.getElementById('udashBody');
   var sevColors={CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#3b82f6'};
   var h='';
   // Action summary cards
   h+='<div class="comp-action-summary">';
   _PRIORITY_KEYS.forEach(function(t){
-    var meta=_TIER_META[t];var rgs=tiers[t];
+    var meta=_TIER_META[t];var rgs=allTiers[t];
     var findingCount=rgs.reduce(function(s,rg){return s+rg.findings.length},0);
     var effort=_estimateTotalEffort(rgs);
     h+='<div class="comp-action-card" style="background:'+meta.bg+';border-color:'+meta.border+';color:'+meta.color+'">';
