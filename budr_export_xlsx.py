@@ -20,7 +20,8 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
+# pandas removed - was only used as wrapper for openpyxl (eliminates ~15-20MB dependency)
+from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
@@ -311,9 +312,8 @@ def generate_report(json_path, output_path=None):
         stem = Path(json_path).stem
         output_path = str(Path(json_path).parent / f'{stem}.xlsx')
 
-    wb = pd.ExcelWriter(output_path, engine='openpyxl')
-    # Create workbook via openpyxl directly (pandas just for the writer context)
-    workbook = wb.book
+    # OPTIMIZED: Use openpyxl directly (pandas was only wrapper - saves ~15-20MB dependency)
+    workbook = Workbook()
 
     build_summary(workbook, data)
     build_assessments(workbook, data)
@@ -324,7 +324,7 @@ def generate_report(json_path, output_path=None):
     if 'Sheet' in workbook.sheetnames:
         del workbook['Sheet']
 
-    wb.close()
+    workbook.save(output_path)
     print(f'✓ Report saved: {output_path}')
     print(f'  Sheets: {", ".join(workbook.sheetnames)}')
     a = data.get('assessments', [])

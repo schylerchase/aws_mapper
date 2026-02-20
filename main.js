@@ -1,7 +1,12 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn, execSync } = require('child_process');
+const fsp = fs.promises; // OPTIMIZED: Use async file I/O to avoid blocking main process
+const { spawn, execSync, execFile, execFileSync } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
+const os = require('os');
+const { autoUpdater } = require('electron-updater');
 
 app.setName('AWS Network Mapper');
 
@@ -122,7 +127,7 @@ ipcMain.handle('file:save', async (event, { data, defaultName }) => {
     ]
   });
   if (result.canceled || !result.filePath) return null;
-  fs.writeFileSync(result.filePath, data, 'utf8');
+  await fsp.writeFile(result.filePath, data, 'utf8');
   return result.filePath;
 });
 
@@ -136,7 +141,7 @@ ipcMain.handle('file:open', async () => {
     properties: ['openFile']
   });
   if (result.canceled || !result.filePaths.length) return null;
-  return fs.readFileSync(result.filePaths[0], 'utf8');
+  return await fsp.readFile(result.filePaths[0], 'utf8');
 });
 
 ipcMain.handle('file:open-folder', async () => {
@@ -216,17 +221,26 @@ ipcMain.handle('file:open-folder', async () => {
 
 // ── IPC: AWS CLI Scan ─────────────────────────────────────────────
 
-function checkAwsCli() {
+// OPTIMIZED: Cache AWS CLI check result, use async exec to avoid blocking main process
+let _awsCliCached = null;
+async function checkAwsCli() {
+  if (_awsCliCached !== null) return _awsCliCached;
   try {
-    execSync('/usr/bin/which aws', { encoding: 'utf8', env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' } });
-    return true;
-  } catch { return false; }
+    await execFileAsync('/usr/bin/which', ['aws'], {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' }
+    });
+    _awsCliCached = true;
+  } catch {
+    _awsCliCached = false;
+  }
+  return _awsCliCached;
 }
 
-ipcMain.handle('aws:check-cli', () => checkAwsCli());
+ipcMain.handle('aws:check-cli', async () => await checkAwsCli());
 
 ipcMain.handle('aws:scan', async (event, { profile, region }) => {
-  if (!checkAwsCli()) {
+  if (!(await checkAwsCli())) {
     event.sender.send('aws:scan:error', 'AWS CLI not found. Install it from https://aws.amazon.com/cli/');
     return;
   }
@@ -280,7 +294,7 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
         files = {};
         for (const fname of fs.readdirSync(outDir)) {
           if (fname.endsWith('.json')) {
-            try { files[fname] = fs.readFileSync(path.join(outDir, fname), 'utf8'); } catch {}
+            try { files[fname] = fs.readFileSync(path.join(outDir, fname), 'utf8'); } catch (e) { console.warn('aws:scan - failed to read', fname, ':', e.message); }
           }
         }
       }
@@ -323,7 +337,6 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
 // ── BUDR XLSX Export ──────────────────────────────────────────────
 
 ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
-  const os = require('os');
   const tmpJson = path.join(os.tmpdir(), `budr-${Date.now()}.json`);
   const tmpXlsx = path.join(os.tmpdir(), `budr-${Date.now()}.xlsx`);
   fs.writeFileSync(tmpJson, jsonData, 'utf8');
@@ -334,7 +347,6 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
   }
 
   try {
-    const { execFileSync } = require('child_process');
     execFileSync('python3', [scriptPath, tmpJson, '-o', tmpXlsx], {
       timeout: 30000,
       stdio: 'pipe'
@@ -369,7 +381,6 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
 
 function checkForUpdates(manual = false) {
   try {
-    const { autoUpdater } = require('electron-updater');
     autoUpdater.autoDownload = false;
     autoUpdater.removeAllListeners();
     autoUpdater.on('update-available', (info) => {
@@ -395,8 +406,8 @@ function checkForUpdates(manual = false) {
         });
       });
     }
-    autoUpdater.checkForUpdates().catch(() => {});
-  } catch {}
+    autoUpdater.checkForUpdates().catch((err) => { console.warn('Auto-update check failed:', err.message); });
+  } catch (e) { console.warn('checkForUpdates error:', e.message); }
 }
 
 // ── Navigation Guards ─────────────────────────────────────────────
@@ -439,6 +450,6 @@ app.on('open-file', (event, filePath) => {
     try {
       const content = fs.readFileSync(filePath, 'utf8');
       mainWindow.webContents.send('file:opened', content);
-    } catch {}
+    } catch (e) { console.warn('file:opened - failed to read:', e.message); }
   }
 });
