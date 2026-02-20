@@ -219,7 +219,7 @@
   .dp-subtitle{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));color:var(--text-muted);margin-top:4px;word-break:break-all;line-height:1.5}
   .dp-close{width:28px;height:28px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;position:relative;z-index:10}
   .dp-close:hover{background:var(--border);color:var(--text-primary)}
-  .dp-body{flex:1;overflow-y:auto;padding:0}
+  .dp-body{flex:1;overflow-y:auto;padding:0;-webkit-overflow-scrolling:touch}
   .dp-body::-webkit-scrollbar{width:6px}
   .dp-body::-webkit-scrollbar-track{background:transparent}
   .dp-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -255,6 +255,15 @@
   .dp-badge.pub{background:rgba(6,182,212,.15);color:var(--accent-cyan)}
   .dp-badge.prv{background:rgba(139,92,246,.15);color:var(--accent-purple)}
   .dp-empty{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));color:var(--text-muted);padding:6px 0;font-style:italic}
+  /* sub-group within a dp-row (Storage, ENIs, etc.) */
+  .dp-sub{margin-top:6px;padding:5px 8px;background:rgba(255,255,255,.025);border:1px solid rgba(30,45,74,.4);border-radius:4px}
+  .dp-sub-title{font-family:'IBM Plex Mono',monospace;font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  .dp-sub-title .dp-sub-count{font-weight:400;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--text-muted);background:var(--bg-tertiary);padding:1px 5px;border-radius:3px}
+  .dp-sub-item{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));color:var(--text-secondary);padding:2px 0;border-bottom:1px solid rgba(30,45,74,.2);line-height:1.6}
+  .dp-sub-item:last-child{border-bottom:none}
+  .dp-props{display:grid;grid-template-columns:auto 1fr;gap:1px 10px;margin-top:3px;font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale))}
+  .dp-props .k{color:var(--text-muted);font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));white-space:nowrap;padding:2px 0}
+  .dp-props .v{color:var(--text-primary);padding:2px 0;word-break:break-all}
   /* text size controls */
   .dp-toolbar{display:flex;align-items:center;gap:6px;padding:6px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
   .dp-size-btn{width:24px;height:24px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -7503,28 +7512,35 @@ function openSubnetPanel(sub,vpcId,lk){
       const state=inst.State?.Name||'?';
       const stCls=state==='running'?'running':'stopped';
       eb+='<div class="dp-row">';
-      eb+='<span class="i">'+gn(inst,inst.InstanceId)+'</span> <span class="dp-badge '+stCls+'">'+state+'</span><br>';
-      eb+='<span class="k">ID:</span> '+inst.InstanceId+'<br>';
-      eb+='<span class="k">Type:</span> '+inst.InstanceType;
-      if(inst.PrivateIpAddress)eb+=' &nbsp;<span class="k">IP:</span> '+inst.PrivateIpAddress;
+      eb+='<span class="i">'+gn(inst,inst.InstanceId)+'</span> <span class="dp-badge '+stCls+'">'+state+'</span>';
+      eb+='<div class="dp-props">';
+      eb+='<span class="k">ID</span><span class="v">'+inst.InstanceId+'</span>';
+      eb+='<span class="k">Type</span><span class="v">'+inst.InstanceType+'</span>';
+      if(inst.PrivateIpAddress)eb+='<span class="k">IP</span><span class="v">'+inst.PrivateIpAddress+'</span>';
+      eb+='</div>';
       if(vols.length){
-        eb+='<br><span class="k">Storage:</span> '+totalGB+'GB ('+vols.length+' vol'+(vols.length>1?'s':'')+')';
+        eb+='<div class="dp-sub">';
+        eb+='<div class="dp-sub-title">Storage <span class="dp-sub-count">'+totalGB+'GB &middot; '+vols.length+' vol'+(vols.length>1?'s':'')+'</span></div>';
         vols.forEach(v=>{
           const vSnaps=(lk.snapByVol||{})[v.VolumeId]||[];
-          eb+='<br>&nbsp;&nbsp;<span class="s">'+v.VolumeId+'</span> '+v.Size+'GB '+(v.VolumeType||'')+' '+(v.State||'');
+          eb+='<div class="dp-sub-item"><span class="s">'+v.VolumeId+'</span> '+v.Size+'GB '+(v.VolumeType||'')+' '+(v.State||'');
           if(vSnaps.length){
             eb+=' <span class="k">['+vSnaps.length+' snap'+(vSnaps.length>1?'s':'')+']</span>';
             const latest=vSnaps.sort((a,b)=>(b.StartTime||'').localeCompare(a.StartTime||''))[0];
-            if(latest)eb+='<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="k">Latest:</span> '+latest.SnapshotId+' '+(latest.StartTime||'').split('T')[0]+' '+(latest.State||'');
+            if(latest)eb+='<br><span class="k" style="margin-left:8px">Latest:</span> '+latest.SnapshotId+' '+(latest.StartTime||'').split('T')[0]+' '+(latest.State||'');
           }
+          eb+='</div>';
         });
+        eb+='</div>';
       }
       const instEnis=(lk.enis||[]).filter(e=>e.Attachment&&e.Attachment.InstanceId===inst.InstanceId);
       if(instEnis.length){
-        eb+='<br><span class="k">ENIs:</span> '+instEnis.length;
+        eb+='<div class="dp-sub">';
+        eb+='<div class="dp-sub-title">ENIs <span class="dp-sub-count">'+instEnis.length+'</span></div>';
         instEnis.forEach(e=>{
-          eb+='<br>&nbsp;&nbsp;'+e.NetworkInterfaceId+' '+(e.PrivateIpAddress||'')+' '+(e.InterfaceType||'');
+          eb+='<div class="dp-sub-item">'+e.NetworkInterfaceId+' <span style="color:var(--text-muted)">'+(e.PrivateIpAddress||'')+'</span> <span style="color:var(--accent-orange)">'+(e.InterfaceType||'')+'</span></div>';
         });
+        eb+='</div>';
       }
       eb+='</div>';
     });
@@ -7535,13 +7551,16 @@ function openSubnetPanel(sub,vpcId,lk){
     let enb='';
     se.forEach(e=>{
       enb+='<div class="dp-row">';
-      enb+='<span class="i">'+e.NetworkInterfaceId+'</span><br>';
-      enb+='<span class="k">Type:</span> '+(e.InterfaceType||'N/A')+' &nbsp;<span class="k">Status:</span> '+(e.Status||'?');
-      if(e.PrivateIpAddress)enb+='<br><span class="k">Private IP:</span> '+e.PrivateIpAddress;
-      if(e.Description)enb+='<br><span class="k">Desc:</span> '+e.Description;
-      if(e.Attachment&&e.Attachment.InstanceId)enb+='<br><span class="k">Attached to:</span> <span class="i">'+e.Attachment.InstanceId+'</span>';
+      enb+='<span class="i">'+e.NetworkInterfaceId+'</span>';
+      enb+='<div class="dp-props">';
+      enb+='<span class="k">Type</span><span class="v">'+(e.InterfaceType||'N/A')+'</span>';
+      enb+='<span class="k">Status</span><span class="v">'+(e.Status||'?')+'</span>';
+      if(e.PrivateIpAddress)enb+='<span class="k">Private IP</span><span class="v">'+e.PrivateIpAddress+'</span>';
+      if(e.Description)enb+='<span class="k">Desc</span><span class="v">'+e.Description+'</span>';
+      if(e.Attachment&&e.Attachment.InstanceId)enb+='<span class="k">Attached to</span><span class="v"><span class="i">'+e.Attachment.InstanceId+'</span></span>';
       const eSgs=(e.Groups||[]);
-      if(eSgs.length)enb+='<br><span class="k">SGs:</span> '+eSgs.map(g=>g.GroupName||g.GroupId).join(', ');
+      if(eSgs.length)enb+='<span class="k">SGs</span><span class="v">'+eSgs.map(g=>g.GroupName||g.GroupId).join(', ')+'</span>';
+      enb+='</div>';
       enb+='</div>';
     });
     h+=sec('ENIs',se.length,enb,false);
@@ -7551,40 +7570,52 @@ function openSubnetPanel(sub,vpcId,lk){
     let lb='';
     sa.forEach(a=>{
       lb+='<div class="dp-row">';
-      lb+='<span class="i">'+a.LoadBalancerName+'</span><br>';
-      lb+='<span class="k">Type:</span> '+a.Type+' &nbsp;<span class="k">Scheme:</span> '+a.Scheme;
-      if(a.DNSName)lb+='<br><span class="k">DNS:</span> '+a.DNSName;
+      lb+='<span class="i">'+a.LoadBalancerName+'</span>';
+      lb+='<div class="dp-props">';
+      lb+='<span class="k">Type</span><span class="v">'+a.Type+'</span>';
+      lb+='<span class="k">Scheme</span><span class="v">'+a.Scheme+'</span>';
+      if(a.DNSName)lb+='<span class="k">DNS</span><span class="v">'+a.DNSName+'</span>';
+      if(a.LoadBalancerArn)lb+='<span class="k">ARN</span><span class="v" style="font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale))">'+a.LoadBalancerArn+'</span>';
+      lb+='</div>';
       if(a.LoadBalancerArn){
-        lb+='<br><span class="k">ARN:</span> <span style="font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale))">'+a.LoadBalancerArn+'</span>';
         const albTgs=(lk.tgByAlb||{})[a.LoadBalancerArn]||[];
         if(albTgs.length){
-          lb+='<br><span class="k">Target Groups:</span> '+albTgs.length;
+          lb+='<div class="dp-sub">';
+          lb+='<div class="dp-sub-title">Target Groups <span class="dp-sub-count">'+albTgs.length+'</span></div>';
           albTgs.forEach(tg=>{
-            lb+='<br>&nbsp;&nbsp;<span class="i">'+(tg.TargetGroupName||tg.TargetGroupArn.split('/')[1]||'')+'</span>';
+            lb+='<div class="dp-sub-item"><span class="i">'+(tg.TargetGroupName||tg.TargetGroupArn.split('/')[1]||'')+'</span>';
             lb+=' <span class="k">'+tg.Protocol+':'+tg.Port+'</span> ['+tg.TargetType+']';
             lb+=' HC:'+tg.HealthCheckPath;
             const tCount=(tg.Targets||[]).length;
             if(tCount)lb+=' <span class="p">'+tCount+' target'+(tCount>1?'s':'')+'</span>';
+            lb+='</div>';
           });
+          lb+='</div>';
         }
         const albWafs=(lk.wafByAlb||{})[a.LoadBalancerArn]||[];
         if(albWafs.length){
-          lb+='<br><span class="k">WAF WebACLs:</span> '+albWafs.length;
+          lb+='<div class="dp-sub">';
+          lb+='<div class="dp-sub-title" style="color:#f59e0b">WAF WebACLs <span class="dp-sub-count">'+albWafs.length+'</span></div>';
           albWafs.forEach(w=>{
-            lb+='<br>&nbsp;&nbsp;<span class="i" style="color:#f59e0b">'+w.Name+'</span>';
+            lb+='<div class="dp-sub-item"><span class="i" style="color:#f59e0b">'+w.Name+'</span>';
             if(w.Description)lb+=' <span class="k">'+w.Description+'</span>';
             const rCount=(w.Rules||[]).length;
-            if(rCount)lb+='<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="k">Rules:</span> '+(w.Rules||[]).map(r=>r.Name).join(', ');
+            if(rCount)lb+='<br><span class="k" style="margin-left:8px">Rules:</span> '+(w.Rules||[]).map(r=>r.Name).join(', ');
+            lb+='</div>';
           });
+          lb+='</div>';
         }
         const albCfs=(lk.cfByAlb||{})[a.LoadBalancerArn]||[];
         if(albCfs.length){
-          lb+='<br><span class="k">CloudFront:</span> '+albCfs.length+' distribution(s)';
+          lb+='<div class="dp-sub">';
+          lb+='<div class="dp-sub-title" style="color:#8b5cf6">CloudFront <span class="dp-sub-count">'+albCfs.length+'</span></div>';
           albCfs.forEach(d=>{
-            lb+='<br>&nbsp;&nbsp;<span class="i" style="color:#8b5cf6">'+d.DomainName+'</span>';
+            lb+='<div class="dp-sub-item"><span class="i" style="color:#8b5cf6">'+d.DomainName+'</span>';
             const aliases=(d.Aliases?.Items||[]);
             if(aliases.length)lb+=' ['+aliases.join(', ')+']';
+            lb+='</div>';
           });
+          lb+='</div>';
         }
       }
       lb+='</div>';
@@ -7597,12 +7628,15 @@ function openSubnetPanel(sub,vpcId,lk){
     let rb='';
     sr.forEach(db=>{
       rb+='<div class="dp-row">';
-      rb+='<span class="i" style="color:#3b82f6">'+db.DBInstanceIdentifier+'</span><br>';
-      rb+='<span class="k">Engine:</span> '+db.Engine+' &nbsp;<span class="k">Class:</span> '+db.DBInstanceClass;
-      rb+='<br><span class="k">Status:</span> '+db.DBInstanceStatus;
-      if(db.MultiAZ)rb+=' &nbsp;<span class="p">Multi-AZ</span>';
-      if(db.Endpoint)rb+='<br><span class="k">Endpoint:</span> '+db.Endpoint.Address+':'+db.Endpoint.Port;
-      rb+='<br><span class="k">Storage:</span> '+db.AllocatedStorage+'GB'+(db.StorageEncrypted?' (encrypted)':'');
+      rb+='<span class="i" style="color:#3b82f6">'+db.DBInstanceIdentifier+'</span>';
+      if(db.MultiAZ)rb+=' <span class="dp-badge" style="background:rgba(249,115,22,.15);color:var(--accent-orange)">Multi-AZ</span>';
+      rb+='<div class="dp-props">';
+      rb+='<span class="k">Engine</span><span class="v">'+db.Engine+'</span>';
+      rb+='<span class="k">Class</span><span class="v">'+db.DBInstanceClass+'</span>';
+      rb+='<span class="k">Status</span><span class="v">'+db.DBInstanceStatus+'</span>';
+      if(db.Endpoint)rb+='<span class="k">Endpoint</span><span class="v">'+db.Endpoint.Address+':'+db.Endpoint.Port+'</span>';
+      rb+='<span class="k">Storage</span><span class="v">'+db.AllocatedStorage+'GB'+(db.StorageEncrypted?' (encrypted)':'')+'</span>';
+      rb+='</div>';
       rb+='</div>';
     });
     h+=sec('RDS Instances',sr.length,rb,false);
@@ -7613,12 +7647,15 @@ function openSubnetPanel(sub,vpcId,lk){
     let eb='';
     secs.forEach(svc=>{
       eb+='<div class="dp-row">';
-      eb+='<span class="i" style="color:#f97316">'+svc.serviceName+'</span><br>';
+      eb+='<span class="i" style="color:#f97316">'+svc.serviceName+'</span>';
       const cluster=(svc.clusterArn||'').split('/').pop();
-      eb+='<span class="k">Cluster:</span> '+cluster+' &nbsp;<span class="k">Launch:</span> '+(svc.launchType||'?');
-      eb+='<br><span class="k">Tasks:</span> '+svc.runningCount+'/'+svc.desiredCount+' running';
-      if(svc.cpu)eb+=' &nbsp;<span class="k">CPU:</span> '+svc.cpu;
-      if(svc.memory)eb+=' &nbsp;<span class="k">Mem:</span> '+svc.memory+'MB';
+      eb+='<div class="dp-props">';
+      eb+='<span class="k">Cluster</span><span class="v">'+cluster+'</span>';
+      eb+='<span class="k">Launch</span><span class="v">'+(svc.launchType||'?')+'</span>';
+      eb+='<span class="k">Tasks</span><span class="v">'+svc.runningCount+'/'+svc.desiredCount+' running</span>';
+      if(svc.cpu)eb+='<span class="k">CPU</span><span class="v">'+svc.cpu+'</span>';
+      if(svc.memory)eb+='<span class="k">Mem</span><span class="v">'+svc.memory+'MB</span>';
+      eb+='</div>';
       eb+='</div>';
     });
     h+=sec('ECS Services',secs.length,eb,false);
@@ -7629,8 +7666,12 @@ function openSubnetPanel(sub,vpcId,lk){
     let lmb='';
     slm.forEach(fn=>{
       lmb+='<div class="dp-row">';
-      lmb+='<span class="i" style="color:#a855f7">'+fn.FunctionName+'</span><br>';
-      lmb+='<span class="k">Runtime:</span> '+fn.Runtime+' &nbsp;<span class="k">Mem:</span> '+fn.MemorySize+'MB &nbsp;<span class="k">Timeout:</span> '+fn.Timeout+'s';
+      lmb+='<span class="i" style="color:#a855f7">'+fn.FunctionName+'</span>';
+      lmb+='<div class="dp-props">';
+      lmb+='<span class="k">Runtime</span><span class="v">'+fn.Runtime+'</span>';
+      lmb+='<span class="k">Mem</span><span class="v">'+fn.MemorySize+'MB</span>';
+      lmb+='<span class="k">Timeout</span><span class="v">'+fn.Timeout+'s</span>';
+      lmb+='</div>';
       lmb+='</div>';
     });
     h+=sec('Lambda (VPC)',slm.length,lmb,false);
