@@ -341,6 +341,39 @@
   .fw-dash .fw-edit-badge{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(16,185,129,.15);color:#10b981;font-weight:600}
   .fw-dash .fw-expand-row td{padding:8px 16px;background:var(--bg-secondary);border-bottom:2px solid var(--border)}
   .fw-dash-footer .fw-edit-count{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto}
+  /* Firewall dashboard summary cards */
+  .fw-summary-cards{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap}
+  .fw-summary-card{flex:1;min-width:120px;padding:12px 14px;border-radius:8px;border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .15s;background:var(--bg-secondary)}
+  .fw-summary-card:hover{border-color:var(--accent-cyan);background:rgba(34,211,238,.04)}
+  .fw-summary-card.active{border-color:var(--accent-cyan);background:rgba(34,211,238,.08)}
+  .fw-summary-card .fw-card-count{font-size:22px;font-weight:700;line-height:1.2}
+  .fw-summary-card .fw-card-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .fw-summary-card .fw-card-sub{font-size:9px;color:var(--text-muted);margin-top:4px}
+  .fw-summary-card.severity-critical{border-color:rgba(220,38,38,.3)}.fw-summary-card.severity-critical .fw-card-count{color:#dc2626}
+  .fw-summary-card.severity-high{border-color:rgba(245,158,11,.3)}.fw-summary-card.severity-high .fw-card-count{color:#f59e0b}
+  .fw-summary-card.severity-medium{border-color:rgba(59,130,246,.3)}.fw-summary-card.severity-medium .fw-card-count{color:#3b82f6}
+  .fw-summary-card.clean{border-color:rgba(16,185,129,.3)}.fw-summary-card.clean .fw-card-count{color:#10b981}
+  /* Firewall sortable table */
+  .fw-dash-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .fw-dash-table th{position:sticky;top:0;background:var(--bg-secondary);padding:8px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid var(--border)}
+  .fw-dash-table th:hover{color:var(--text-primary)}
+  .fw-dash-table th.sort-asc::after{content:' ^';color:var(--accent-cyan)}
+  .fw-dash-table th.sort-desc::after{content:' v';color:var(--accent-cyan)}
+  .fw-dash-table td{padding:6px 12px;border-bottom:1px solid rgba(30,45,74,.15);vertical-align:middle}
+  .fw-dash-table tr:hover{background:rgba(100,116,139,.06)}
+  .fw-dash-table tr.has-edits{background:rgba(16,185,129,.04)}
+  .fw-dash-table tr.has-findings{border-left:2px solid}
+  .fw-link{color:var(--accent-cyan);cursor:pointer;text-decoration:none;border-bottom:1px dashed rgba(103,232,249,.3)}
+  .fw-link:hover{border-bottom-style:solid;border-bottom-color:var(--accent-cyan)}
+  /* Detail panel compliance section */
+  .fw-fp-compliance{border-top:1px solid var(--border);padding:12px 0}
+  .fw-fp-finding{padding:6px 8px;margin:4px 0;border-radius:4px;border-left:3px solid;font-size:10px}
+  .fw-fp-finding.sev-CRITICAL{border-left-color:#dc2626;background:rgba(220,38,38,.05)}
+  .fw-fp-finding.sev-HIGH{border-left-color:#f59e0b;background:rgba(245,158,11,.05)}
+  .fw-fp-finding.sev-MEDIUM{border-left-color:#3b82f6;background:rgba(59,130,246,.05)}
+  .fw-fp-finding.sev-LOW{border-left-color:#10b981;background:rgba(16,185,129,.05)}
+  .fw-fp-finding .fw-finding-ctrl{color:var(--accent-cyan);cursor:pointer;font-weight:600}
+  .fw-fp-finding .fw-finding-ctrl:hover{text-decoration:underline}
   .iam-risk-card{display:inline-flex;flex-direction:column;align-items:center;padding:8px 14px;border-radius:6px;border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;min-width:80px}
   .iam-risk-card .count{font-size:calc(18px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:700}
   .iam-risk-card .label{font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
@@ -2353,7 +2386,7 @@ function generateDemo(){
             Placement:{AvailabilityZone:AZS[a]},
             State:{Name:isBastionSlot?'running':st,Code:isBastionSlot?16:(st==='running'?16:80)},
             Tags:[{Key:'Name',Value:instName}]};
-          if(vi===0)_ec2Entry.IamInstanceProfile={Arn:'arn:aws:iam::123456789012:instance-profile/EC2InstanceRole',Id:'AIPA000000001'};
+          if(vi===0)_ec2Entry.IamInstanceProfile={Arn:'arn:aws:iam::111222333444:instance-profile/EC2InstanceRole',Id:'AIPA000000001'};
           ec2Instances.push(_ec2Entry);
 
           // volume per instance (root)
@@ -2401,7 +2434,7 @@ function generateDemo(){
       const scheme=pubSubs.length&&lb===0?'internet-facing':'internal';
       const lbType=LB_TYPES[lb%2];
       albsList.push({
-        LoadBalancerArn:'arn:aws:elasticloadbalancing:us-east-1:123456789:loadbalancer/'+lbType+'/'+vd.name.toLowerCase()+'-'+lbType.slice(0,3)+'-'+lb+'/abc'+lb,
+        LoadBalancerArn:'arn:aws:elasticloadbalancing:us-east-1:111222333444:loadbalancer/'+lbType+'/'+vd.name.toLowerCase()+'-'+lbType.slice(0,3)+'-'+lb+'/abc'+lb,
         LoadBalancerName:vd.name.toLowerCase()+'-'+lbType.slice(0,3)+'-'+lb,
         Type:lbType,Scheme:scheme,VpcId:vpcId,
         AvailabilityZones:lbSubs.slice(0,vd.azsUsed).map(s=>({SubnetId:s.SubnetId,ZoneName:s.AvailabilityZone})),
@@ -2424,7 +2457,7 @@ function generateDemo(){
       const tgInsts=ec2Instances.filter(i=>i.SubnetId&&subnets.some(s=>s.SubnetId===i.SubnetId&&s.VpcId===vpcId)).slice(0,3+li);
       const tgType=alb.Type==='application'?'instance':'ip';
       tgsList.push({
-        TargetGroupArn:'arn:aws:elasticloadbalancing:us-east-1:123456789:targetgroup/'+vd.name.toLowerCase()+'-tg-'+li+'/abc'+li,
+        TargetGroupArn:'arn:aws:elasticloadbalancing:us-east-1:111222333444:targetgroup/'+vd.name.toLowerCase()+'-tg-'+li+'/abc'+li,
         TargetGroupName:vd.name.toLowerCase()+'-tg-'+li,
         Protocol:li%2===0?'HTTPS':'HTTP',Port:li%2===0?443:80,
         VpcId:vpcId,TargetType:tgType,
@@ -2510,7 +2543,7 @@ function generateDemo(){
   if(internetFacingAlbs.length>0){
     wafAcls.push({
       Name:'prod-web-acl',Id:'waf-001',
-      ARN:'arn:aws:wafv2:us-east-1:123456789:regional/webacl/prod-web-acl/abc1',
+      ARN:'arn:aws:wafv2:us-east-1:111222333444:regional/webacl/prod-web-acl/abc1',
       Description:'Production WAF - OWASP rules',
       DefaultAction:{Allow:{}},
       Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1},{Name:'AWSManagedRulesSQLiRuleSet',Priority:2},{Name:'RateLimit-1000',Priority:3}],
@@ -2520,7 +2553,7 @@ function generateDemo(){
   if(internetFacingAlbs.length>2){
     wafAcls.push({
       Name:'staging-web-acl',Id:'waf-002',
-      ARN:'arn:aws:wafv2:us-east-1:123456789:regional/webacl/staging-web-acl/abc2',
+      ARN:'arn:aws:wafv2:us-east-1:111222333444:regional/webacl/staging-web-acl/abc2',
       Description:'Staging WAF - basic protection',
       DefaultAction:{Allow:{}},
       Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1}],
@@ -2529,7 +2562,7 @@ function generateDemo(){
   }
   wafAcls.push({
     Name:'pci-web-acl',Id:'waf-003',
-    ARN:'arn:aws:wafv2:us-east-1:123456789:regional/webacl/pci-web-acl/abc3',
+    ARN:'arn:aws:wafv2:us-east-1:111222333444:regional/webacl/pci-web-acl/abc3',
     Description:'PCI DSS compliant WAF',
     DefaultAction:{Block:{}},
     Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1},{Name:'AWSManagedRulesSQLiRuleSet',Priority:2},{Name:'AWSManagedRulesKnownBadInputsRuleSet',Priority:3},{Name:'AWSManagedRulesLinuxRuleSet',Priority:4}],
@@ -2572,15 +2605,15 @@ function generateDemo(){
     const vpcId=vpcs[ec.vpc]?.VpcId;if(!vpcId)return;
     const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
     ecsServices.push({
-      serviceName:ec.name,clusterArn:'arn:aws:ecs:us-east-1:123456789:cluster/'+ec.cluster,
-      taskRoleArn:'arn:aws:iam::123456789012:role/ECSTaskRole',
+      serviceName:ec.name,clusterArn:'arn:aws:ecs:us-east-1:111222333444:cluster/'+ec.cluster,
+      taskRoleArn:'arn:aws:iam::111222333444:role/ECSTaskRole',
       status:'ACTIVE',desiredCount:ec.tasks,runningCount:ec.tasks,launchType:'FARGATE',
       networkConfiguration:{awsvpcConfiguration:{
         subnets:prvSubs.slice(0,2).map(s=>s.SubnetId),
         securityGroups:sgs.filter(sg=>sg.VpcId===vpcId).slice(0,1).map(sg=>sg.GroupId),
         assignPublicIp:'DISABLED'
       }},
-      taskDefinition:'arn:aws:ecs:us-east-1:123456789:task-definition/'+ec.name+':12',
+      taskDefinition:'arn:aws:ecs:us-east-1:111222333444:task-definition/'+ec.name+':12',
       cpu:ec.cpu,memory:ec.mem
     });
   });
@@ -2598,8 +2631,8 @@ function generateDemo(){
     const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
     lambdaFunctions.push({
       FunctionName:lc.name,Runtime:lc.runtime,MemorySize:lc.mem,Timeout:lc.timeout,
-      FunctionArn:'arn:aws:lambda:us-east-1:123456789:function:'+lc.name,
-      Role:'arn:aws:iam::123456789012:role/LambdaExecutionRole',
+      FunctionArn:'arn:aws:lambda:us-east-1:111222333444:function:'+lc.name,
+      Role:'arn:aws:iam::111222333444:role/LambdaExecutionRole',
       State:'Active',LastModified:'2025-01-20T00:00:00Z',
       VpcConfig:{
         VpcId:vpcId,
@@ -2674,7 +2707,7 @@ function generateDemo(){
         CustomOriginConfig:{HTTPPort:80,HTTPSPort:443,OriginProtocolPolicy:'https-only'}
       }]},
       DefaultCacheBehavior:{ViewerProtocolPolicy:'redirect-to-https',Compress:true},
-      ViewerCertificate:{ACMCertificateArn:'arn:aws:acm:us-east-1:123456789:certificate/abc-'+ci},
+      ViewerCertificate:{ACMCertificateArn:'arn:aws:acm:us-east-1:111222333444:certificate/abc-'+ci},
       Aliases:{Items:ci===0?['www.example.com','api.example.com']:['staging.example.com']},
       WebACLId:wafAcls.length>ci?wafAcls[ci].ARN:''
     });
@@ -2694,84 +2727,84 @@ function generateDemo(){
 
   // IAM Demo Data
   const iamRoles=[
-    {RoleName:'EC2InstanceRole',Arn:'arn:aws:iam::123456789012:role/EC2InstanceRole',
+    {RoleName:'EC2InstanceRole',Arn:'arn:aws:iam::111222333444:role/EC2InstanceRole',
      CreateDate:'2024-01-15T00:00:00Z',
      AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ec2.amazonaws.com'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[{PolicyName:'EC2InlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
        {Effect:'Allow',Action:['s3:GetObject','s3:PutObject'],Resource:'arn:aws:s3:::prod-app-data/*'},
-       {Effect:'Allow',Action:['logs:CreateLogGroup','logs:CreateLogStream','logs:PutLogEvents'],Resource:'arn:aws:logs:*:123456789012:*'}
+       {Effect:'Allow',Action:['logs:CreateLogGroup','logs:CreateLogStream','logs:PutLogEvents'],Resource:'arn:aws:logs:*:111222333444:*'}
      ]}}],
      AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore',PolicyName:'AmazonSSMManagedInstanceCore'}],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'LambdaExecutionRole',Arn:'arn:aws:iam::123456789012:role/LambdaExecutionRole',
+    {RoleName:'LambdaExecutionRole',Arn:'arn:aws:iam::111222333444:role/LambdaExecutionRole',
      CreateDate:'2024-02-01T00:00:00Z',
      AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'lambda.amazonaws.com'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[{PolicyName:'LambdaInlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['logs:CreateLogGroup','logs:CreateLogStream','logs:PutLogEvents'],Resource:'arn:aws:logs:*:123456789012:*'},
-       {Effect:'Allow',Action:['dynamodb:GetItem','dynamodb:PutItem','dynamodb:Query','dynamodb:UpdateItem','dynamodb:DeleteItem'],Resource:'arn:aws:dynamodb:us-east-1:123456789012:table/prod-*'}
+       {Effect:'Allow',Action:['logs:CreateLogGroup','logs:CreateLogStream','logs:PutLogEvents'],Resource:'arn:aws:logs:*:111222333444:*'},
+       {Effect:'Allow',Action:['dynamodb:GetItem','dynamodb:PutItem','dynamodb:Query','dynamodb:UpdateItem','dynamodb:DeleteItem'],Resource:'arn:aws:dynamodb:us-east-1:111222333444:table/prod-*'}
      ]}}],
      AttachedManagedPolicies:[],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'ECSTaskRole',Arn:'arn:aws:iam::123456789012:role/ECSTaskRole',
+    {RoleName:'ECSTaskRole',Arn:'arn:aws:iam::111222333444:role/ECSTaskRole',
      CreateDate:'2024-03-10T00:00:00Z',
      AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ecs-tasks.amazonaws.com'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[{PolicyName:'ECSInlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
        {Effect:'Allow',Action:['ecr:GetDownloadUrlForLayer','ecr:BatchGetImage','ecr:GetAuthorizationToken'],Resource:'*'},
        {Effect:'Allow',Action:['s3:GetObject','s3:ListBucket'],Resource:['arn:aws:s3:::prod-assets','arn:aws:s3:::prod-assets/*']},
-       {Effect:'Allow',Action:['sqs:SendMessage','sqs:ReceiveMessage','sqs:DeleteMessage'],Resource:'arn:aws:sqs:us-east-1:123456789012:prod-*'}
+       {Effect:'Allow',Action:['sqs:SendMessage','sqs:ReceiveMessage','sqs:DeleteMessage'],Resource:'arn:aws:sqs:us-east-1:111222333444:prod-*'}
      ]}}],
      AttachedManagedPolicies:[],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'AdminRole',Arn:'arn:aws:iam::123456789012:role/AdminRole',
+    {RoleName:'AdminRole',Arn:'arn:aws:iam::111222333444:role/AdminRole',
      CreateDate:'2023-06-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::123456789012:root'},Action:'sts:AssumeRole'}]},
+     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[],
      AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/AdministratorAccess',PolicyName:'AdministratorAccess'}],
      RoleLastUsed:{LastUsedDate:new Date(Date.now()-86400000).toISOString()}},
-    {RoleName:'ReadOnlyRole',Arn:'arn:aws:iam::123456789012:role/ReadOnlyRole',
+    {RoleName:'ReadOnlyRole',Arn:'arn:aws:iam::111222333444:role/ReadOnlyRole',
      CreateDate:'2024-04-15T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::123456789012:root'},Action:'sts:AssumeRole'}]},
+     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[{PolicyName:'ReadOnlyInline',PolicyDocument:{Version:'2012-10-17',Statement:[
        {Effect:'Allow',Action:['ec2:Describe*','s3:Get*','s3:List*','rds:Describe*','lambda:List*','lambda:Get*','ecs:Describe*','ecs:List*','iam:Get*','iam:List*','cloudwatch:Get*','cloudwatch:List*','logs:Describe*','logs:Get*'],Resource:'*'}
      ]}}],
      AttachedManagedPolicies:[],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'DeployRole',Arn:'arn:aws:iam::123456789012:role/DeployRole',
+    {RoleName:'DeployRole',Arn:'arn:aws:iam::111222333444:role/DeployRole',
      CreateDate:'2024-05-20T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::123456789012:root'},Action:'sts:AssumeRole',Condition:{Bool:{'aws:MultiFactorAuthPresent':'true'}}}]},
-     PermissionsBoundary:{PermissionsBoundaryType:'Policy',PermissionsBoundaryArn:'arn:aws:iam::123456789012:policy/DeployBoundary'},
+     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole',Condition:{Bool:{'aws:MultiFactorAuthPresent':'true'}}}]},
+     PermissionsBoundary:{PermissionsBoundaryType:'Policy',PermissionsBoundaryArn:'arn:aws:iam::111222333444:policy/DeployBoundary'},
      RolePolicyList:[{PolicyName:'DeployInline',PolicyDocument:{Version:'2012-10-17',Statement:[
        {Effect:'Allow',Action:['codedeploy:*','s3:GetObject','s3:PutObject','s3:ListBucket'],Resource:'*'},
        {Effect:'Allow',Action:['ec2:DescribeInstances','ec2:DescribeInstanceStatus'],Resource:'*'}
      ]}}],
      AttachedManagedPolicies:[],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'CrossAccountRole',Arn:'arn:aws:iam::123456789012:role/CrossAccountRole',
+    {RoleName:'CrossAccountRole',Arn:'arn:aws:iam::111222333444:role/CrossAccountRole',
      CreateDate:'2024-06-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::999888777666:root'},Action:'sts:AssumeRole'}]},
+     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::555666777888:root'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[{PolicyName:'CrossAccountPolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
        {Effect:'Allow',Action:['s3:GetObject','s3:ListBucket'],Resource:['arn:aws:s3:::shared-data','arn:aws:s3:::shared-data/*']}
      ]}}],
      AttachedManagedPolicies:[],
      RoleLastUsed:{LastUsedDate:new Date(Date.now()-7776000000).toISOString()}},
-    {RoleName:'DataAnalystRole',Arn:'arn:aws:iam::123456789012:role/DataAnalystRole',
+    {RoleName:'DataAnalystRole',Arn:'arn:aws:iam::111222333444:role/DataAnalystRole',
      CreateDate:'2024-07-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::123456789012:root'},Action:'sts:AssumeRole'}]},
+     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[{PolicyName:'DataAnalystInline',PolicyDocument:{Version:'2012-10-17',Statement:[
        {Effect:'Allow',Action:'s3:*',Resource:'*'},
        {Effect:'Allow',Action:'redshift:*',Resource:'*'}
      ]}}],
      AttachedManagedPolicies:[],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'AWSServiceRoleForECS',Arn:'arn:aws:iam::123456789012:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS',
+    {RoleName:'AWSServiceRoleForECS',Arn:'arn:aws:iam::111222333444:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS',
      CreateDate:'2023-01-01T00:00:00Z',Path:'/aws-service-role/ecs.amazonaws.com/',
      AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ecs.amazonaws.com'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[],
      AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/aws-service-role/AmazonECSServiceRolePolicy',PolicyName:'AmazonECSServiceRolePolicy'}],
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'SecurityAuditRole',Arn:'arn:aws:iam::123456789012:role/SecurityAuditRole',
+    {RoleName:'SecurityAuditRole',Arn:'arn:aws:iam::111222333444:role/SecurityAuditRole',
      CreateDate:'2024-08-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::123456789012:root'},Action:'sts:AssumeRole'}]},
+     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
      RolePolicyList:[],
      AttachedManagedPolicies:[
        {PolicyArn:'arn:aws:iam::aws:policy/SecurityAudit',PolicyName:'SecurityAudit'},
@@ -2780,12 +2813,12 @@ function generateDemo(){
      RoleLastUsed:{LastUsedDate:new Date().toISOString()}}
   ];
   const iamUsers=[
-    {UserName:'admin-user',Arn:'arn:aws:iam::123456789012:user/admin-user',
+    {UserName:'admin-user',Arn:'arn:aws:iam::111222333444:user/admin-user',
      CreateDate:'2023-01-15T00:00:00Z',
-     MFADevices:[{SerialNumber:'arn:aws:iam::123456789012:mfa/admin-user'}],
+     MFADevices:[{SerialNumber:'arn:aws:iam::111222333444:mfa/admin-user'}],
      UserPolicyList:[],
      AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/AdministratorAccess',PolicyName:'AdministratorAccess'}]},
-    {UserName:'dev-user',Arn:'arn:aws:iam::123456789012:user/dev-user',
+    {UserName:'dev-user',Arn:'arn:aws:iam::111222333444:user/dev-user',
      CreateDate:'2024-03-01T00:00:00Z',
      MFADevices:[],
      UserPolicyList:[{PolicyName:'DevInlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
@@ -2793,7 +2826,7 @@ function generateDemo(){
        {Effect:'Allow',Action:'s3:GetObject',Resource:'arn:aws:s3:::dev-*/*'}
      ]}}],
      AttachedManagedPolicies:[]},
-    {UserName:'ci-bot',Arn:'arn:aws:iam::123456789012:user/ci-bot',
+    {UserName:'ci-bot',Arn:'arn:aws:iam::111222333444:user/ci-bot',
      CreateDate:'2024-05-01T00:00:00Z',
      MFADevices:[],
      UserPolicyList:[{PolicyName:'CIBotPolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
@@ -2801,9 +2834,9 @@ function generateDemo(){
        {Effect:'Allow',Action:['s3:GetObject','s3:PutObject'],Resource:'arn:aws:s3:::ci-artifacts/*'}
      ]}}],
      AttachedManagedPolicies:[]},
-    {UserName:'readonly-user',Arn:'arn:aws:iam::123456789012:user/readonly-user',
+    {UserName:'readonly-user',Arn:'arn:aws:iam::111222333444:user/readonly-user',
      CreateDate:'2024-06-01T00:00:00Z',
-     MFADevices:[{SerialNumber:'arn:aws:iam::123456789012:mfa/readonly-user'}],
+     MFADevices:[{SerialNumber:'arn:aws:iam::111222333444:mfa/readonly-user'}],
      UserPolicyList:[],
      AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/ReadOnlyAccess',PolicyName:'ReadOnlyAccess'}]}
   ];
@@ -3342,8 +3375,8 @@ function runPCIDSSChecks(ctx){
 }
 function runComplianceChecks(ctx){
   _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx)];
-  const iamRaw=safeParse(gv('in_iam'));
-  if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}
+  try{const iamRaw=safeParse(gv('in_iam'));
+  if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}
   // Annotate all findings with Checkov CKV IDs where mapping exists
   _complianceFindings.forEach(f=>{if(_CKV_MAP[f.control])f.ckv=_CKV_MAP[f.control]});
   return _complianceFindings;
@@ -4864,7 +4897,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
   body.querySelectorAll('.comp-mute-btn').forEach(function(btn){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
-      var t=parseInt(this.dataset.tier),ri=parseInt(this.dataset.ri),fi=parseInt(this.dataset.fi);
+      var t=this.dataset.tier,ri=parseInt(this.dataset.ri),fi=parseInt(this.dataset.fi);
       var rg=tiers[t]&&tiers[t][ri];
       if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_renderCompDash()}
     });
@@ -6306,6 +6339,9 @@ function exportCheckovCfn(){
 }
 
 // === IAM OVERLAY ===
+// Helpers: ensure Statement is always an array; safe JSON parse for policy docs
+function _stmtArr(s){return Array.isArray(s)?s:s?[s]:[]}
+function _safePolicyParse(s){if(typeof s!=='string')return s||{};try{return JSON.parse(s)}catch(e){return {}}}
 let _iamData=null;
 let _showIAM=false;
 function parseIAMData(raw){
@@ -6320,12 +6356,12 @@ function parseIAMData(raw){
   // Helper: resolve a policy entry to its document statements
   function _resolvePolicyDoc(p){
     // Inline policy with PolicyDocument
-    if(p.PolicyDocument){const doc=typeof p.PolicyDocument==='string'?JSON.parse(p.PolicyDocument):p.PolicyDocument;return doc.Statement||[]}
-    if(p.Document){const doc=JSON.parse(typeof p.Document==='string'?p.Document:'{}');return doc.Statement||[]}
+    if(p.PolicyDocument){const doc=_safePolicyParse(p.PolicyDocument);return _stmtArr(doc.Statement)}
+    if(p.Document){const doc=_safePolicyParse(p.Document);return _stmtArr(doc.Statement)}
     // Managed policy reference: look up from data.policies
     if(p.PolicyArn||p.PolicyName){
       const pol=data.policies.find(dp=>dp.Arn===p.PolicyArn||dp.PolicyName===p.PolicyName);
-      if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}return dd.Statement||[]}}
+      if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}return _stmtArr(dd.Statement)}}
     }
     return[];
   }
@@ -6368,33 +6404,35 @@ function runIAMChecks(iamData){
   var _iamOwnAccountId='';
   var _firstArn=(iamData.roles||[]).concat(iamData.users||[]).find(r=>r.Arn);
   if(_firstArn){var _am=_firstArn.Arn.match(/arn:aws:iam::(\d+):/);if(_am)_iamOwnAccountId=_am[1]}
-  iamData.roles.forEach(role=>{
+  (iamData.roles||[]).forEach(role=>{
     if(role._isAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
     if(role._hasWildcard&&!role._isAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
     // Check for cross-account trust without MFA condition
     if(role.AssumeRolePolicyDocument){
-      const trust=typeof role.AssumeRolePolicyDocument==='string'?JSON.parse(role.AssumeRolePolicyDocument):role.AssumeRolePolicyDocument;
-      const stmts=trust.Statement||[];
+      const trust=_safePolicyParse(role.AssumeRolePolicyDocument);
+      const stmts=_stmtArr(trust.Statement);
       const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId})});
       const hasMFA=stmts.some(s=>JSON.stringify(s.Condition||{}).includes('aws:MultiFactorAuth'));
       if(crossAccount&&!hasMFA)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
     }
     // IAM-4: Service wildcard actions (s3:*, ec2:* but not *) — scan both inline and managed
     const allStmts4=[];
-    (role.RolePolicyList||[]).forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>allStmts4.push(s))});
-    (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=typeof ver.Document==='string'?JSON.parse(ver.Document):ver.Document;(dd.Statement||[]).forEach(s=>allStmts4.push(s))}}});
+    (role.RolePolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>allStmts4.push(s))});
+    (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>allStmts4.push(s))}}});
+    var hasIAM4=false;
     allStmts4.forEach(stmt=>{
+      if(hasIAM4)return;
       if(stmt.Effect!=='Allow')return;
       const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
-      if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a)))f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role uses service-level wildcard actions (e.g. s3:*)',remediation:'Scope actions to specific API calls needed'});
+      if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a))){hasIAM4=true;f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role uses service-level wildcard actions (e.g. s3:*)',remediation:'Scope actions to specific API calls needed'})}
     });
     // IAM-5: Unused role (>90 days or never used)
     const lastUsed=role.RoleLastUsed?.LastUsedDate;
     if(!lastUsed||(Date.now()-new Date(lastUsed).getTime())>90*86400000)f.push({severity:'LOW',control:'IAM-5',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role unused for >90 days or never used',remediation:'Review and remove unused roles'});
     // IAM-6: Cross-account without ExternalId
     if(role.AssumeRolePolicyDocument){
-      const tr6=typeof role.AssumeRolePolicyDocument==='string'?JSON.parse(role.AssumeRolePolicyDocument):role.AssumeRolePolicyDocument;
-      (tr6.Statement||[]).forEach(s=>{
+      const tr6=_safePolicyParse(role.AssumeRolePolicyDocument);
+      _stmtArr(tr6.Statement).forEach(s=>{
         const pr=s.Principal||{};const awsPr=pr.AWS||'';const awsList=Array.isArray(awsPr)?awsPr:[awsPr];
         const isCross=awsList.some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId});
         const hasExtId=s.Condition&&(s.Condition.StringEquals?.['sts:ExternalId']||s.Condition.StringLike?.['sts:ExternalId']);
@@ -6412,7 +6450,7 @@ function runIAMChecks(iamData){
     let uIsAdmin=false,uHasWildcard=false;
     const uPolicies=[...(user.UserPolicyList||[]),...(user.AttachedManagedPolicies||[])];
     uPolicies.forEach(p=>{
-      const doc=p.PolicyDocument||{};const stmts=Array.isArray(doc.Statement)?doc.Statement:[];
+      const doc=_safePolicyParse(p.PolicyDocument);const stmts=_stmtArr(doc.Statement);
       stmts.forEach(stmt=>{
         if(stmt.Effect!=='Allow')return;
         const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
@@ -6428,7 +6466,7 @@ function runIAMChecks(iamData){
       const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);
       if(pol){
         const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
-        if(ver){const dd=typeof ver.Document==='string'?JSON.parse(ver.Document):ver.Document;(dd.Statement||[]).forEach(s=>{
+        if(ver){const dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{
           if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*')&&r.some(x=>x==='*'))uIsAdmin=true;if(r.some(x=>x==='*'))uHasWildcard=true}
         })}
       }
@@ -6438,9 +6476,9 @@ function runIAMChecks(iamData){
     if(!(user.MFADevices||[]).length)f.push({severity:'HIGH',control:'IAM-3',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has no MFA device configured',remediation:'Enable MFA for all IAM users'});
     if(user.UserPolicyList?.length>0)f.push({severity:'LOW',control:'IAM-7',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses inline policies instead of managed',remediation:'Convert inline policies to managed policies'});
     // Service wildcard check for users — scan both inline and managed
-    const uStmts=[];(user.UserPolicyList||[]).forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>uStmts.push(s))});
-    (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=typeof ver.Document==='string'?JSON.parse(ver.Document):ver.Document;(dd.Statement||[]).forEach(s=>uStmts.push(s))}}});
-    uStmts.forEach(stmt=>{if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a)))f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}});
+    const uStmts=[];(user.UserPolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>uStmts.push(s))});
+    (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>uStmts.push(s))}}});
+    var uHasIAM4=false;uStmts.forEach(stmt=>{if(uHasIAM4)return;if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a))){uHasIAM4=true;f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}}});
     // IAM-9: Access key age >90 days
     (user.AccessKeys||[]).forEach(ak=>{
       if(ak.Status==='Active'&&ak.CreateDate){const cd=new Date(ak.CreateDate);if(isNaN(cd.getTime()))return;const age=(Date.now()-cd.getTime())/86400000;
@@ -6602,7 +6640,7 @@ function prepareIAMReviewData(iamData){
     if(typeof trustDoc==='string'){try{trustParsed=JSON.parse(trustDoc)}catch(e){}}
     else if(trustDoc) trustParsed=trustDoc;
     var crossAccts=[];
-    (trustParsed.Statement||[]).forEach(function(stmt){
+    _stmtArr(trustParsed.Statement).forEach(function(stmt){
       if(stmt.Effect==='Allow'&&stmt.Principal){
         var aws=stmt.Principal.AWS;
         if(aws){(Array.isArray(aws)?aws:[aws]).forEach(function(arn){var m=String(arn).match(/:(\d{12}):/);if(m)crossAccts.push(m[1])})}
@@ -6623,9 +6661,12 @@ function prepareIAMReviewData(iamData){
     var findings=(_complianceFindings||[]).filter(function(f){return f.framework==='IAM'&&(f.resource===user.UserName||f.resource===(user.Arn||''))});
     var policyCount=(user.UserPolicyList||[]).length+(user.AttachedManagedPolicies||[]).length;
     var policyNames=(user.AttachedManagedPolicies||[]).map(function(p){return p.PolicyName||p.PolicyArn||''});
-    // Detect admin for users inline
+    // Detect admin for users by analyzing actual policy documents (not just name heuristic)
     var uIsAdmin=false;
-    (user.AttachedManagedPolicies||[]).forEach(function(mp){if((mp.PolicyName||'').match(/admin/i))uIsAdmin=true});
+    // Check inline policies
+    (user.UserPolicyList||[]).forEach(function(p){if(uIsAdmin)return;var doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(function(s){if(s.Effect==='Allow'){var a=Array.isArray(s.Action)?s.Action:[s.Action||''];var r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(function(x){return x==='*'})&&r.some(function(x){return x==='*'}))uIsAdmin=true}})});
+    // Check managed policies
+    (user.AttachedManagedPolicies||[]).forEach(function(mp){if(uIsAdmin)return;var pol=(iamData.policies||[]).find(function(p){return p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName});if(pol){var ver=(pol.PolicyVersionList||[]).find(function(v){return v.IsDefaultVersion});if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(function(s){if(s.Effect==='Allow'){var a=Array.isArray(s.Action)?s.Action:[s.Action||''];var r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(function(x){return x==='*'})&&r.some(function(x){return x==='*'}))uIsAdmin=true}})}}});
     items.push({name:user.UserName||'',arn:user.Arn||'',type:'User',created:created,lastUsed:lastUsed,isAdmin:uIsAdmin,hasWildcard:false,crossAccounts:[],policies:policyCount,policyNames:policyNames,permBoundary:user.PermissionsBoundary?user.PermissionsBoundary.PermissionsBoundaryArn:'',findings:findings,hasMFA:hasMFA,hasConsole:hasConsole,activeKeys:activeKeys,_raw:user});
   });
   _iamReviewData=items;
@@ -6699,8 +6740,7 @@ function _collectStatements(principal,iamData){
     let doc=p.PolicyDocument;
     if(typeof doc==='string'){try{doc=JSON.parse(decodeURIComponent(doc))}catch(e){try{doc=JSON.parse(doc)}catch(e2){doc={}}}}
     if(!doc)doc={};
-    const s=doc.Statement||[];
-    (Array.isArray(s)?s:[s]).forEach(st=>stmts.push(st));
+    _stmtArr(doc.Statement).forEach(st=>stmts.push(st));
   });
   (principal.AttachedManagedPolicies||[]).forEach(mp=>{
     const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);
@@ -6709,7 +6749,7 @@ function _collectStatements(principal,iamData){
       if(ver){
         let dd=ver.Document;
         if(typeof dd==='string'){try{dd=JSON.parse(decodeURIComponent(dd))}catch(e){try{dd=JSON.parse(dd)}catch(e2){dd={}}}}
-        if(dd){const s=dd.Statement||[];(Array.isArray(s)?s:[s]).forEach(st=>stmts.push(st))}
+        if(dd){_stmtArr(dd.Statement).forEach(st=>stmts.push(st))}
       }
     }
   });
@@ -6732,8 +6772,8 @@ function canDo(principal,action,resource,iamData){
     if(bPol){
       const ver=(bPol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
       if(ver){
-        let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}
-        const bStmts=(dd.Statement||[]);
+        const dd=_safePolicyParse(ver.Document);
+        const bStmts=_stmtArr(dd.Statement);
         const allowed=bStmts.some(s=>{
           if(s.Effect!=='Allow')return false;
           const ba=Array.isArray(s.Action)?s.Action:[s.Action||''];
@@ -6784,8 +6824,8 @@ function summarizePermissions(principal,iamData){
     if(bPol){
       const ver=(bPol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
       if(ver){
-        let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}
-        const bStmts=dd.Statement||[];
+        const dd=_safePolicyParse(ver.Document);
+        const bStmts=_stmtArr(dd.Statement);
         const bAllowed=new Set();
         bStmts.forEach(s=>{
           if(s.Effect!=='Allow')return;
@@ -6830,8 +6870,8 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
   }
   // Trust Policy (roles only)
   if(isRole&&principal.AssumeRolePolicyDocument){
-    const trust=typeof principal.AssumeRolePolicyDocument==='string'?JSON.parse(principal.AssumeRolePolicyDocument):principal.AssumeRolePolicyDocument;
-    const stmts=trust.Statement||[];
+    const trust=_safePolicyParse(principal.AssumeRolePolicyDocument);
+    const stmts=_stmtArr(trust.Statement);
     let tb='<div class="fw-legend"><span><span class="fw-dot" style="background:var(--accent-green)"></span>Allow</span><span><span class="fw-dot" style="background:var(--accent-red)"></span>Deny</span></div>';
     stmts.forEach(s=>{
       const isAllow=s.Effect==='Allow';
@@ -7025,11 +7065,11 @@ function openResourceList(type, pushNav){
       const accounts=new Set(d.map(v=>v._accountId).filter(a=>a&&a!=='default'));
       title='VPCs';sub=d.length+' total'+(accounts.size>1?' | '+accounts.size+' accounts':'');
       // Group by account if multi-account
-      if(accounts.size>1){
-        const grouped={};d.forEach(v=>{const a=v._accountId||'default';(grouped[a]=grouped[a]||[]).push(v)});
+      if(accounts.size>1||_loadedContexts.length>1){
+        const grouped={};d.forEach(v=>{const a=v._accountLabel||v._accountId||'default';(grouped[a]=grouped[a]||[]).push(v)});
         Object.entries(grouped).forEach(([acct,vpcList])=>{
-          const acCol=getAccountColor(acct);
-          items.push('<div style="font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));font-weight:600;color:'+(acCol||'var(--text-secondary)')+';padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:6px;text-transform:uppercase;letter-spacing:.5px">Account: '+acct+'</div>');
+          const acCol=vpcList[0]._ctxColor||getAccountColor(acct);
+          items.push('<div style="font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));font-weight:600;color:'+(acCol||'var(--text-secondary)')+';padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:6px;text-transform:uppercase;letter-spacing:.5px">'+acct+'</div>');
           vpcList.forEach(v=>{
             const sc=(ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).length;
             items.push(row(gn(v,v.VpcId),'ID: '+v.VpcId+' | CIDR: '+(v.CidrBlock||'?')+' | '+sc+' subnets','#7C3AED',{t:'vpc',id:v.VpcId}));
@@ -7261,8 +7301,8 @@ function openResourceList(type, pushNav){
       roles.forEach(r=>{if(r._isAdmin)adminCount++;if(r._hasWildcard&&!r._isAdmin)wildcardCount++;if(r.PermissionsBoundary)boundaryCount++});
       users.forEach(u=>{
         let uAdmin=false;const ups=[...(u.UserPolicyList||[]),...(u.AttachedManagedPolicies||[])];
-        ups.forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];if(a.some(x=>x==='*'))uAdmin=true}})});
-        (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}(dd.Statement||[]).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*'))uAdmin=true})}}});
+        ups.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];if(a.some(x=>x==='*'))uAdmin=true}})});
+        (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*'))uAdmin=true})}}});
         if(uAdmin)adminCount++;
         if(!(u.MFADevices||[]).length)noMfaCount++;
       });
@@ -7284,7 +7324,7 @@ function openResourceList(type, pushNav){
           if(r.PermissionsBoundary)badges.push('<span class="sev-badge sev-LOW" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)">BOUNDARY</span>');
           const resCount=ctx.iamRoleResources?ctx.iamRoleResources[r.RoleName]:null;
           const rcText=resCount?(' | '+(resCount.ec2?.length||0)+' EC2, '+(resCount.lambda?.length||0)+' Lambda, '+(resCount.ecs?.length||0)+' ECS'):'';
-          const trustSvc=r.AssumeRolePolicyDocument?(typeof r.AssumeRolePolicyDocument==='string'?JSON.parse(r.AssumeRolePolicyDocument):r.AssumeRolePolicyDocument).Statement?.map(s=>{const p=s.Principal||{};return p.Service||p.AWS||''}).flat().join(', '):'';
+          const trustSvc=r.AssumeRolePolicyDocument?(function(){try{const td=_safePolicyParse(r.AssumeRolePolicyDocument);return _stmtArr(td.Statement).map(s=>{const p=s.Principal||{};return p.Service||p.AWS||''}).flat().join(', ')}catch(e){return ''}})():'';
           items.push('<div class="dp-row" data-iam-role="'+ri+'" style="border-left:3px solid #f59e0b;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan);text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(103,232,249,.3)">'+esc(r.RoleName)+'</span><br><span class="k">Trust: '+esc((trustSvc||'?').substring(0,60))+esc(rcText)+'</span></div>');
         });
       }
@@ -7294,8 +7334,8 @@ function openResourceList(type, pushNav){
         users.forEach((u,ui)=>{
           const badges=[];
           let uAdm=false;const ups2=[...(u.UserPolicyList||[]),...(u.AttachedManagedPolicies||[])];
-          ups2.forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];if(a.some(x=>x==='*'))uAdm=true}})});
-          (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}(dd.Statement||[]).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*'))uAdm=true})}}});
+          ups2.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];if(a.some(x=>x==='*'))uAdm=true}})});
+          (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*'))uAdm=true})}}});
           if(uAdm)badges.push('<span class="sev-badge sev-CRITICAL">ADMIN</span>');
           if(!(u.MFADevices||[]).length)badges.push('<span class="sev-badge sev-HIGH">NO MFA</span>');
           else badges.push('<span class="sev-badge sev-LOW" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)">MFA</span>');
@@ -7316,8 +7356,8 @@ function openResourceList(type, pushNav){
               // Enrich user with _isAdmin/_hasWildcard for display
               user._isAdmin=false;user._hasWildcard=false;
               const ups3=[...(user.UserPolicyList||[]),...(user.AttachedManagedPolicies||[])];
-              ups3.forEach(p=>{const doc=p.PolicyDocument||{};(Array.isArray(doc.Statement)?doc.Statement:[]).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))user._isAdmin=true;if(r.some(x=>x==='*'))user._hasWildcard=true}})});
-              (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}(dd.Statement||[]).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))user._isAdmin=true;if(r.some(x=>x==='*'))user._hasWildcard=true}})}}});
+              ups3.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))user._isAdmin=true;if(r.some(x=>x==='*'))user._hasWildcard=true}})});
+              (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))user._isAdmin=true;if(r.some(x=>x==='*'))user._hasWildcard=true}})}}});
               openIAMPrincipalPanel(user,iamData,ctx);
             }
           });
@@ -8467,7 +8507,7 @@ function renderLandingZoneMap(ctx){
     vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
       .text(vl.vpc.CidrBlock+(region?' '+region:'')+lzAcctTag);
     if(_multiAccount&&vl.vpc._accountId!=='default'){
-      const lzAcCol=getAccountColor(vl.vpc._accountId);
+      const lzAcCol=vl.vpc._ctxColor||getAccountColor(vl.vpc._accountId);
       if(lzAcCol){
         vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',8).attr('height',vl.h).attr('fill',lzAcCol).attr('rx',2).attr('opacity',.7);
         const lzAcLbl=vl.vpc._accountLabel||vl.vpc._accountId;
@@ -11120,7 +11160,7 @@ function _renderMapInner(){
     vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:'')+(acctTag?acctTag:''));
     // Account color stripe for multi-account
     if(_multiAccount&&vl.vpc._accountId!=='default'){
-      const acCol=getAccountColor(vl.vpc._accountId);
+      const acCol=vl.vpc._ctxColor||getAccountColor(vl.vpc._accountId);
       if(acCol){
         vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',8).attr('height',vl.h).attr('fill',acCol).attr('rx',2).attr('opacity',.7);
         const acLbl=vl.vpc._accountLabel||vl.vpc._accountId;
@@ -12834,7 +12874,7 @@ function _renderNoteBadges(){
 function _buildComplianceLookup(){
   const lookup={};
   if(!_complianceFindings||!_complianceFindings.length)return lookup;
-  const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  const sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
   _complianceFindings.forEach(f=>{
     if(_isMuted(f))return;
     const rid=f.resource;if(!rid||rid==='Multiple')return;
@@ -12865,12 +12905,12 @@ function _renderComplianceBadges(){
     }
     if(vpcId){
       if(!vpcRollup[vpcId])vpcRollup[vpcId]={worst:'LOW',count:0};
-      const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+      const sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
       vpcRollup[vpcId].count+=data.count;
       if((sevOrder[data.worst]||9)<(sevOrder[vpcRollup[vpcId].worst]||9))vpcRollup[vpcId].worst=data.worst;
     }
   });
-  const sevOrder={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  const sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
   // Render badges on elements that exist on map
   Object.entries(lookup).forEach(([rid,data])=>{
     const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
@@ -13158,7 +13198,7 @@ function mergeContexts(contexts){
 
   visible.forEach(ctx=>{
     const c=ctx.rlCtx;if(!c)return;
-    const tag=(r)=>{if(r){r._accountId=r._accountId||ctx.accountId;r._accountLabel=ctx.accountLabel}return r};
+    const tag=(r)=>{if(r){r._accountId=r._accountId||ctx.accountId;r._accountLabel=ctx.accountLabel;r._ctxColor=ctx.color}return r};
 
     // Arrays — tag and concat
     const arrayKeys=['vpcs','subnets','rts','sgs','nacls','enis','igws','nats','vpces',
@@ -13298,11 +13338,7 @@ function _renderAccountPanel(){
     const visClass=ctx.visible?'':'hidden-acct';
     h+='<div class="account-card" style="'+(ctx.visible?'':'opacity:.5')+'">';
     h+='<div class="ac-top">';
-    if(ctx._isRegion){
-      h+='<div class="account-color-dot" style="background:rgba(59,130,246,.8);font-size:8px;display:flex;align-items:center;justify-content:center" title="Region context">&#127760;</div>';
-    }else{
-      h+='<div class="account-color-dot" style="background:'+(ctx.color||'var(--text-muted)')+'"></div>';
-    }
+    h+='<div class="account-color-dot" style="background:'+(ctx.color||'var(--text-muted)')+'"></div>';
     h+='<span class="ac-label" title="'+esc(ctx.accountId)+'">'+esc(ctx.accountLabel)+'</span>';
     h+='<span class="ac-region"'+(ctx._isRegion?' style="color:#60a5fa"':'')+'>'+esc(ctx.region)+'</span>';
     h+='</div>';
@@ -14044,7 +14080,17 @@ function _fwOpenFullEditor(type, resourceId, sub, vpcId, lk){
     var rt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===resourceId});
     if(rt) name=gn(rt,resourceId);
   }
-  titleEl.textContent=label+': '+(name||resourceId);
+  var vpcObj=vpcId?(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===vpcId}):null;
+  var vpcLabel=vpcObj?gn(vpcObj,vpcId):(vpcId||'');
+  titleEl.innerHTML=esc(label+': '+(name||resourceId))+
+    (vpcId?' <span class="fw-link" id="fwFpVpcLink" style="font-size:10px;font-weight:400">'+esc(vpcLabel)+'</span>':'');
+  var vpcLink=document.getElementById('fwFpVpcLink');
+  if(vpcLink){vpcLink.addEventListener('click',function(e){
+    e.stopPropagation();
+    document.getElementById('fwFullPanel').classList.remove('open');
+    closeUnifiedDash();
+    setTimeout(function(){_zoomToElement(vpcId)},250);
+  })}
 
   // Show/hide tabs: route tables don't have direction
   var tabsEl=document.getElementById('fwFpTabs');
@@ -14113,11 +14159,42 @@ function _fwRefreshFullPanel(){
     h+='<button class="fw-edit-btn add" data-fw-action="add-rt" data-rt-id="'+rt.RouteTableId+'">+ Add Route</button>';
   }
 
+  // Compliance findings for this resource
+  var _fpCompLookup=_buildComplianceLookup();
+  var _fpResComp=_fpCompLookup[_fwFpResId];
+  if(_fpResComp&&_fpResComp.findings.length){
+    h+='<div class="fw-fp-compliance">';
+    h+='<div style="font-size:11px;font-weight:600;color:var(--accent-orange);margin-bottom:8px">Compliance Findings ('+_fpResComp.count+')</div>';
+    _fpResComp.findings.forEach(function(f){
+      h+='<div class="fw-fp-finding sev-'+f.severity+'">';
+      h+='<span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 5px;margin-right:6px">'+f.severity+'</span>';
+      h+='<span class="fw-finding-ctrl" data-fw-ctrl="'+_escHtml(f.control)+'">'+_escHtml(f.control)+'</span>';
+      if(f.ckv) h+=' <span style="opacity:.5;font-size:8px">('+_escHtml(f.ckv)+')</span>';
+      h+='<div style="margin:4px 0 2px;color:var(--text-secondary);font-size:10px">'+_escHtml(f.message)+'</div>';
+      h+='<div style="color:var(--text-muted);font-size:9px">Remediation: '+_escHtml(f.remediation)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+
   bodyEl.innerHTML=h;
+
+  // Wire compliance control clicks -> switch to compliance tab
+  bodyEl.querySelectorAll('.fw-finding-ctrl').forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      var ctrl=this.dataset.fwCtrl;
+      document.getElementById('fwFullPanel').classList.remove('open');
+      _compDashState={sevFilter:'ALL',fwFilter:'all',search:ctrl,sort:'severity',showMuted:false,execSummary:false,view:_compDashState.view||'action'};
+      _compToolbarTab=null;
+      _switchUdashTab('compliance');
+    });
+  });
 
   // Click delegation for edit actions within the full panel body
   // _fwHandleAction handles full panel refresh after data-modifying actions
   bodyEl.onclick=function(ev){
+    if(ev.target.closest('.fw-finding-ctrl'))return; // already handled above
     _fwHandleAction(ev, _fwFpSub, _fwFpVpcId, _fwFpLk);
   };
 
@@ -14548,72 +14625,60 @@ function _fwHandleAction(e, sub, vpcId, lk){
 
 // === FIREWALL DASHBOARD ===
 var _fwDashFilter='all';
-var _fwDashExpanded=null;
-var _fwDashState={search:'',vpcFilter:'all',sort:'type',editsOnly:false};
+var _fwDashState={search:'',vpcFilter:'all',sort:'type',sortDir:'asc',cardFilter:null};
 
 function openFirewallDash(){
-  _fwDashState={search:'',vpcFilter:'all',sort:'type',editsOnly:false};
-  _fwDashFilter='all';_fwDashExpanded=null;
+  _fwDashState={search:'',vpcFilter:'all',sort:'type',sortDir:'asc',cardFilter:null};
+  _fwDashFilter='all';
   openUnifiedDash('firewall');
 }
 
 function _renderFirewallTab(){
   var tb=document.getElementById('udashToolbar');
+  if(!_rlCtx){tb.innerHTML='<span style="color:var(--text-muted)">No data loaded</span>';return}
   var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
-  // Build VPC options
   var vpcOpts='<option value="all">All VPCs</option>';
   (_rlCtx.vpcs||[]).forEach(function(v){
-    var n=gn(v,v.VpcId);
-    vpcOpts+='<option value="'+esc(v.VpcId)+'">'+n+' ('+esc(v.VpcId)+')</option>';
+    vpcOpts+='<option value="'+esc(v.VpcId)+'">'+esc(gn(v,v.VpcId))+'</option>';
   });
+  var sortOpts=[{k:'type',l:'Sort: Type'},{k:'name',l:'Sort: Name'},{k:'severity',l:'Sort: Severity'},{k:'rules',l:'Sort: Rules'}];
+  var sortHtml='';sortOpts.forEach(function(o){sortHtml+='<option value="'+o.k+'"'+(_fwDashState.sort===o.k?' selected':'')+'>'+o.l+'</option>'});
   tb.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-    '<input id="fwDashSearch" type="text" placeholder="Filter rules..." value="'+_escHtml(_fwDashState.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:200px">'+
+    '<input id="fwDashSearch" type="text" placeholder="Search resources..." value="'+_escHtml(_fwDashState.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:180px">'+
     '<select id="fwDashVpcFilter" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+vpcOpts+'</select>'+
-    '<select id="fwDashSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+
-      '<option value="type">Sort: Type</option><option value="severity">Severity</option><option value="group">SG Name</option>'+
-    '</select>'+
-    '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer">'+
-      '<input id="fwDashEditsOnly" type="checkbox"'+(_fwDashState.editsOnly?' checked':'')+'>Edits Only</label>'+
-    '<div id="fwDashPills" style="display:flex;gap:4px;margin-left:8px"></div>'+
+    '<select id="fwDashSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+sortHtml+'</select>'+
+    '<div id="fwDashPills" style="display:flex;gap:4px;margin-left:auto"></div>'+
     '</div>';
-  // Set select values
   document.getElementById('fwDashVpcFilter').value=_fwDashState.vpcFilter;
-  document.getElementById('fwDashSort').value=_fwDashState.sort;
-  // Build type pills
   var pills=document.getElementById('fwDashPills');
-  [{t:'all',l:'All',c:sgs.length+nacls.length+rts.length},{t:'sg',l:'SG',c:sgs.length},{t:'nacl',l:'NACL',c:nacls.length},{t:'route',l:'RT',c:rts.length}].forEach(function(p){
+  [{t:'all',l:'All'},{t:'sg',l:'SG'},{t:'nacl',l:'NACL'},{t:'route',l:'RT'}].forEach(function(p){
     var el=document.createElement('span');el.className='fw-dash-pill'+(p.t===_fwDashFilter?' active':'');
-    el.dataset.type=p.t;el.textContent=p.c+' '+p.l;
+    el.dataset.type=p.t;el.textContent=p.l;
     el.addEventListener('click',function(){
-      _fwDashFilter=p.t;pills.querySelectorAll('.fw-dash-pill').forEach(function(x){x.classList.remove('active')});el.classList.add('active');
-      _fwDashExpanded=null;_fwDashRender();
+      _fwDashFilter=p.t;_fwDashState.cardFilter=null;
+      pills.querySelectorAll('.fw-dash-pill').forEach(function(x){x.classList.remove('active')});el.classList.add('active');
+      _fwDashRender();
     });
     pills.appendChild(el);
   });
-  // Wire toolbar listeners
   document.getElementById('fwDashSearch').addEventListener('input',function(){
-    _fwDashState.search=this.value.toLowerCase();_fwDashExpanded=null;_fwDashRender();
+    _fwDashState.search=this.value.toLowerCase();_fwDashRender();
   });
   document.getElementById('fwDashVpcFilter').addEventListener('change',function(){
-    _fwDashState.vpcFilter=this.value;_fwDashExpanded=null;_fwDashRender();
+    _fwDashState.vpcFilter=this.value;_fwDashRender();
   });
   document.getElementById('fwDashSort').addEventListener('change',function(){
-    _fwDashState.sort=this.value;_fwDashExpanded=null;_fwDashRender();
-  });
-  document.getElementById('fwDashEditsOnly').addEventListener('change',function(){
-    _fwDashState.editsOnly=this.checked;_fwDashExpanded=null;_fwDashRender();
+    _fwDashState.sort=this.value;_fwDashRender();
   });
   _fwDashRender();
 }
 
 function _fwDashRender(){
-  var fb=document.getElementById('udashBody');if(fb)fb.scrollTop=0;
+  var body=document.getElementById('udashBody');if(body)body.scrollTop=0;
+  if(!_rlCtx){if(body)body.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted)">No data loaded</div>';return}
   var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
-  var search=_fwDashState.search;
-  var vpcFilter=_fwDashState.vpcFilter;
-  var sortBy=_fwDashState.sort;
-  var editsOnly=_fwDashState.editsOnly;
   var compLookup=_buildComplianceLookup();
+  var sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
 
   // Build unified rows
   var rows=[];
@@ -14622,7 +14687,12 @@ function _fwDashRender(){
     var inCount=(sg.IpPermissions||[]).length;var outCount=(sg.IpPermissionsEgress||[]).length;
     var ec=_fwEditCount(sg.GroupId);
     var cf=compLookup[sg.GroupId]||null;
-    rows.push({type:'sg',id:sg.GroupId,name:name,vpc:sg.VpcId,rules:inCount+outCount,rulesLabel:inCount+' in / '+outCount+' out',edits:ec,desc:sg.Description||'',obj:sg,comp:cf});
+    var hasOpen=false;
+    (sg.IpPermissions||[]).forEach(function(p){
+      (p.IpRanges||[]).forEach(function(r){if(r.CidrIp==='0.0.0.0/0')hasOpen=true});
+      (p.Ipv6Ranges||[]).forEach(function(r){if(r.CidrIpv6==='::/0')hasOpen=true});
+    });
+    rows.push({type:'sg',id:sg.GroupId,name:name,vpc:sg.VpcId,rules:inCount+outCount,rulesLabel:inCount+' in / '+outCount+' out',edits:ec,desc:sg.Description||'',obj:sg,comp:cf,openIngress:hasOpen});
   });
   nacls.forEach(function(n){
     var name=gn(n,n.NetworkAclId);
@@ -14631,142 +14701,179 @@ function _fwDashRender(){
     var outCount=entries.filter(function(e){return e.Egress&&e.RuleNumber!==32767}).length;
     var ec=_fwEditCount(n.NetworkAclId);
     var cf=compLookup[n.NetworkAclId]||null;
-    rows.push({type:'nacl',id:n.NetworkAclId,name:name,vpc:n.VpcId,rules:inCount+outCount,rulesLabel:inCount+' in / '+outCount+' out',edits:ec,desc:'',obj:n,comp:cf});
+    rows.push({type:'nacl',id:n.NetworkAclId,name:name,vpc:n.VpcId,rules:inCount+outCount,rulesLabel:inCount+' in / '+outCount+' out',edits:ec,desc:'',obj:n,comp:cf,openIngress:false});
   });
   rts.forEach(function(r){
     var name=gn(r,r.RouteTableId);
     var rc=(r.Routes||[]).length;
     var ec=_fwEditCount(r.RouteTableId);
     var cf=compLookup[r.RouteTableId]||null;
-    rows.push({type:'route',id:r.RouteTableId,name:name,vpc:r.VpcId,rules:rc,rulesLabel:rc+' routes',edits:ec,desc:'',obj:r,comp:cf});
+    rows.push({type:'route',id:r.RouteTableId,name:name,vpc:r.VpcId,rules:rc,rulesLabel:rc+' routes',edits:ec,desc:'',obj:r,comp:cf,openIngress:false});
   });
 
-  // Apply filters
-  if(_fwDashFilter!=='all') rows=rows.filter(function(r){return r.type===_fwDashFilter});
-  if(vpcFilter!=='all') rows=rows.filter(function(r){return r.vpc===vpcFilter});
-  if(editsOnly) rows=rows.filter(function(r){return r.edits>0});
-  if(search) rows=rows.filter(function(r){return (r.name+' '+r.id+' '+r.vpc+' '+r.desc).toLowerCase().indexOf(search)!==-1});
+  // Compute summary card metrics (before filtering)
+  var totalFindings=0,worstSev='LOW',openIngress=0,totalEdits=_fwEdits?_fwEdits.length:0;
+  rows.forEach(function(r){
+    if(r.comp){totalFindings+=r.comp.count;if((sevOrder[r.comp.worst]||9)<(sevOrder[worstSev]||9))worstSev=r.comp.worst}
+    if(r.openIngress)openIngress++;
+  });
+
+  // Summary cards HTML
+  var cf=_fwDashState.cardFilter;
+  var h='<div class="fw-summary-cards">';
+  h+='<div class="fw-summary-card'+(cf==='resources'?' active':'')+'">';
+  h+='<div class="fw-card-count">'+(sgs.length+nacls.length+rts.length)+'</div>';
+  h+='<div class="fw-card-label">Resources</div>';
+  h+='<div class="fw-card-sub">'+sgs.length+' SG / '+nacls.length+' NACL / '+rts.length+' RT</div></div>';
+  var findCls=totalFindings?'severity-'+worstSev.toLowerCase():'clean';
+  h+='<div class="fw-summary-card '+findCls+(cf==='findings'?' active':'')+'" data-card="findings">';
+  h+='<div class="fw-card-count">'+totalFindings+'</div>';
+  h+='<div class="fw-card-label">Findings</div>';
+  h+='<div class="fw-card-sub">'+(totalFindings?worstSev+' worst':'All clear')+'</div></div>';
+  var openCls=openIngress?'severity-critical':'clean';
+  h+='<div class="fw-summary-card '+openCls+(cf==='open'?' active':'')+'" data-card="open">';
+  h+='<div class="fw-card-count">'+openIngress+'</div>';
+  h+='<div class="fw-card-label">Open 0.0.0.0/0</div>';
+  h+='<div class="fw-card-sub">'+(openIngress?'Unrestricted ingress':'None detected')+'</div></div>';
+  var editCls=totalEdits?'severity-medium':'clean';
+  h+='<div class="fw-summary-card '+editCls+(cf==='edits'?' active':'')+'" data-card="edits">';
+  h+='<div class="fw-card-count">'+totalEdits+'</div>';
+  h+='<div class="fw-card-label">Pending Edits</div>';
+  h+='<div class="fw-card-sub">'+(totalEdits?totalEdits+' rule'+(totalEdits>1?'s':'')+' modified':'No changes')+'</div></div>';
+  h+='</div>';
+
+  // Apply card filter
+  var filtered=rows.slice();
+  if(cf==='findings') filtered=filtered.filter(function(r){return r.comp});
+  if(cf==='open') filtered=filtered.filter(function(r){return r.openIngress});
+  if(cf==='edits') filtered=filtered.filter(function(r){return r.edits>0});
+  // Apply toolbar filters
+  if(_fwDashFilter!=='all') filtered=filtered.filter(function(r){return r.type===_fwDashFilter});
+  if(_fwDashState.vpcFilter!=='all') filtered=filtered.filter(function(r){return r.vpc===_fwDashState.vpcFilter});
+  if(_fwDashState.search) filtered=filtered.filter(function(r){return (r.name+' '+r.id+' '+r.vpc+' '+r.desc).toLowerCase().indexOf(_fwDashState.search)!==-1});
 
   // Sort
-  rows.sort(function(a,b){
-    if(sortBy==='type') return a.type.localeCompare(b.type)||a.name.localeCompare(b.name);
-    if(sortBy==='name') return a.name.localeCompare(b.name);
-    if(sortBy==='vpc') return (a.vpc||'').localeCompare(b.vpc||'');
-    if(sortBy==='rules') return b.rules-a.rules;
-    if(sortBy==='compliance'){var sevOrd={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};var sa=a.comp?(sevOrd[a.comp.worst]||9):99;var sb2=b.comp?(sevOrd[b.comp.worst]||9):99;return sa-sb2}
+  var sortBy=_fwDashState.sort;var dir=_fwDashState.sortDir==='asc'?1:-1;
+  filtered.sort(function(a,b){
+    if(sortBy==='type') return (a.type.localeCompare(b.type)||a.name.localeCompare(b.name))*dir;
+    if(sortBy==='name') return a.name.localeCompare(b.name)*dir;
+    if(sortBy==='rules') return (b.rules-a.rules)*dir;
+    if(sortBy==='severity'){var sa=a.comp?(sevOrder[a.comp.worst]||9):99;var sb=b.comp?(sevOrder[b.comp.worst]||9):99;return (sa-sb)*dir}
     return 0;
   });
 
-  // Build table
-  var body=document.getElementById('udashBody');
-  var tbl=document.createElement('table');
-  var thead=document.createElement('thead');
-  var hRow=document.createElement('tr');
-  ['Type','Name','ID','VPC','Rules','Compliance','Edits',''].forEach(function(h){
-    var th=document.createElement('th');th.textContent=h;hRow.appendChild(th);
-  });
-  thead.appendChild(hRow);tbl.appendChild(thead);
-
-  var tbody=document.createElement('tbody');
-  rows.forEach(function(r){
-    var tr=document.createElement('tr');
-    tr.className='fw-row'+(r.edits?' has-edits':'')+(r.comp?' has-findings':'');
-
-    var tdType=document.createElement('td');
-    var badge=document.createElement('span');badge.className='fw-type-badge '+r.type;
-    badge.textContent=r.type==='sg'?'SG':r.type==='nacl'?'NACL':'RT';
-    tdType.appendChild(badge);tr.appendChild(tdType);
-
-    var tdName=document.createElement('td');tdName.textContent=r.name;
-    tdName.style.cssText='font-weight:500;color:var(--text-primary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    tr.appendChild(tdName);
-
-    var tdId=document.createElement('td');tdId.textContent=r.id;
-    tdId.style.cssText='font-size:10px;color:var(--text-muted)';tr.appendChild(tdId);
-
-    var tdVpc=document.createElement('td');
-    var vpcName=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===r.vpc});
-    tdVpc.textContent=vpcName?gn(vpcName,r.vpc):r.vpc||'—';
-    tdVpc.style.cssText='font-size:10px;color:var(--text-secondary)';tr.appendChild(tdVpc);
-
-    var tdRules=document.createElement('td');tdRules.textContent=r.rulesLabel;
-    tdRules.style.cssText='font-size:10px';tr.appendChild(tdRules);
-
-    var tdComp=document.createElement('td');
-    if(r.comp){var cb=document.createElement('span');cb.className='fw-comp-badge sev-'+r.comp.worst;cb.textContent=r.comp.count+' '+(r.comp.count===1?'finding':'findings');cb.title=r.comp.findings.map(function(f){return f.severity+': '+f.message}).join('\n');tdComp.appendChild(cb)}
-    else{tdComp.textContent='—';tdComp.style.cssText='color:var(--text-muted);font-size:10px'}
-    tr.appendChild(tdComp);
-
-    var tdEdits=document.createElement('td');
-    if(r.edits){var eb=document.createElement('span');eb.className='fw-edit-badge';eb.textContent=r.edits+' edit'+(r.edits>1?'s':'');tdEdits.appendChild(eb)}
-    tr.appendChild(tdEdits);
-
-    var tdAction=document.createElement('td');
-    var openBtn=document.createElement('button');
-    openBtn.textContent='Edit';
-    openBtn.style.cssText='background:none;border:1px solid var(--border);border-radius:3px;color:var(--accent-cyan);font-size:9px;padding:2px 8px;cursor:pointer;font-family:"IBM Plex Mono",monospace';
-    openBtn.addEventListener('click',function(e){e.stopPropagation();_fwOpenFullEditor(r.type,r.id,null,r.vpc,null)});
-    tdAction.appendChild(openBtn);tr.appendChild(tdAction);
-
-    tr.addEventListener('click',function(){
-      if(_fwDashExpanded===r.id){
-        _fwDashExpanded=null;
-        var ex=tbody.querySelector('.fw-expand-row[data-for="'+r.id+'"]');
-        if(ex)ex.remove();
-        tr.style.background='';
-        return;
-      }
-      // Collapse previous
-      var prev=tbody.querySelector('.fw-expand-row');if(prev)prev.remove();
-      tbody.querySelectorAll('.fw-row').forEach(function(x){x.style.background=''});
-      _fwDashExpanded=r.id;
-      tr.style.background='rgba(59,130,246,.08)';
-      // Create expanded row
-      var exTr=document.createElement('tr');exTr.className='fw-expand-row';exTr.dataset.for=r.id;
-      var exTd=document.createElement('td');exTd.colSpan=8;exTd.className='fw-expand-row';
-      // Render rules inline
-      var rulesHtml='';
-      if(r.type==='nacl') rulesHtml=_fwRenderNaclInline(r.obj,null);
-      else if(r.type==='sg') rulesHtml=_fwRenderSgInline(r.obj);
-      else if(r.type==='route') rulesHtml=_fwRenderRtInline(r.obj,r.vpc,null);
-      // Append compliance findings if any
-      if(r.comp&&r.comp.findings.length){
-        rulesHtml+='<div class="fw-findings-section"><div style="font-size:10px;font-weight:600;color:var(--accent-orange);margin-bottom:6px">Compliance Findings ('+r.comp.count+')</div>';
-        r.comp.findings.forEach(function(f){
-          rulesHtml+='<div class="fw-finding-item"><span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 4px">'+f.severity+'</span>';
-          rulesHtml+='<span class="fw-finding-ctrl">'+f.control+(f.ckv?' <span style="opacity:.5;font-size:8px">('+f.ckv+')</span>':'')+'</span>';
-          rulesHtml+='<span class="fw-finding-msg">'+_escHtml(f.message)+'</span></div>';
-          rulesHtml+='<div class="fw-finding-item" style="padding-left:90px"><span class="fw-finding-rem">Remediation: '+_escHtml(f.remediation)+'</span></div>';
-        });
-        rulesHtml+='</div>';
-      }
-      exTd.innerHTML=rulesHtml;
-      // Wire up event delegation for fw actions inside expanded row
-      exTd.addEventListener('click',function(ev){_fwHandleAction(ev,null,r.vpc,null)});
-      exTr.appendChild(exTd);
-      // Insert after current row
-      if(tr.nextSibling) tbody.insertBefore(exTr,tr.nextSibling);
-      else tbody.appendChild(exTr);
-    });
-    tbody.appendChild(tr);
-  });
-  tbl.appendChild(tbody);
-
-  body.textContent='';
-  if(!rows.length){
-    var empty=document.createElement('div');
-    empty.style.cssText='padding:60px 20px;text-align:center;color:var(--text-muted);font-family:"IBM Plex Mono",monospace;font-size:12px';
-    empty.textContent=editsOnly?'No resources with pending edits':'No firewall resources match filters';
-    body.appendChild(empty);
-  } else {
-    body.appendChild(tbl);
+  // Empty state
+  if(!filtered.length){
+    var emptyMsg=cf==='edits'?'No resources with pending edits':
+      cf==='findings'?'No resources with compliance findings':
+      cf==='open'?'No SGs with open 0.0.0.0/0 ingress':
+      _fwDashState.search?'No resources match "'+_escHtml(_fwDashState.search)+'"':
+      'No firewall resources found';
+    body.innerHTML=h+'<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-family:IBM Plex Mono,monospace;font-size:12px">'+emptyMsg+'</div>';
+    _fwWireCards(body);_fwRenderFooter(filtered.length,rows.length);
+    return;
   }
 
-  // Update footer
+  // Build table
+  var cols=[{k:'type',l:'Type'},{k:'name',l:'Name'},{k:'vpc',l:'VPC'},{k:'rules',l:'Rules'},{k:'severity',l:'Compliance'},{k:'edits',l:'Edits',nosort:true}];
+  h+='<table class="fw-dash-table"><thead><tr>';
+  cols.forEach(function(c){
+    var cls='';if(!c.nosort&&_fwDashState.sort===c.k) cls=_fwDashState.sortDir==='asc'?' sort-asc':' sort-desc';
+    h+='<th'+(c.nosort?'':' data-fw-sort="'+c.k+'"')+' class="'+cls+'">'+c.l+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+
+  filtered.forEach(function(r,idx){
+    var trCls='';if(r.edits)trCls+=' has-edits';if(r.comp)trCls+=' has-findings';
+    var sevColor=r.comp?({CRITICAL:'#dc2626',HIGH:'#f59e0b',MEDIUM:'#3b82f6',LOW:'#10b981'}[r.comp.worst]||'transparent'):'transparent';
+    h+='<tr class="'+trCls+'" style="cursor:pointer;border-left-color:'+sevColor+'" data-fw-idx="'+idx+'">';
+    // Type badge
+    h+='<td><span class="fw-type-badge '+r.type+'">'+(r.type==='sg'?'SG':r.type==='nacl'?'NACL':'RT')+'</span></td>';
+    // Name link
+    h+='<td><span class="fw-link" data-fw-action="open" data-fw-type="'+r.type+'" data-fw-id="'+esc(r.id)+'" data-fw-vpc="'+esc(r.vpc||'')+'">'+esc(r.name)+'</span>';
+    if(r.desc) h+='<br><span style="font-size:9px;color:var(--text-muted)">'+esc(r.desc.substring(0,60))+'</span>';
+    h+='</td>';
+    // VPC link
+    var vpcObj=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===r.vpc});
+    var vpcLabel=vpcObj?gn(vpcObj,r.vpc):(r.vpc||'--');
+    h+='<td><span class="fw-link" data-fw-action="zoom-vpc" data-fw-vpc="'+esc(r.vpc||'')+'">'+esc(vpcLabel)+'</span></td>';
+    // Rules
+    h+='<td style="font-size:10px">'+r.rulesLabel+'</td>';
+    // Compliance
+    if(r.comp){
+      h+='<td><span class="sev-badge sev-'+r.comp.worst+'" style="font-size:8px;padding:1px 5px">'+r.comp.worst+'</span> <span style="font-size:9px;color:var(--text-muted)">'+r.comp.count+'</span></td>';
+    } else {
+      h+='<td><span style="color:var(--text-muted);font-size:9px">--</span></td>';
+    }
+    // Edits
+    if(r.edits){
+      h+='<td><span class="fw-edit-badge">'+r.edits+'</span></td>';
+    } else {
+      h+='<td></td>';
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+
+  body.innerHTML=h;
+
+  // Wire card clicks
+  _fwWireCards(body);
+
+  // Wire sortable headers
+  body.querySelectorAll('.fw-dash-table th[data-fw-sort]').forEach(function(th){
+    th.addEventListener('click',function(){
+      var col=this.dataset.fwSort;
+      if(_fwDashState.sort===col){_fwDashState.sortDir=_fwDashState.sortDir==='asc'?'desc':'asc'}
+      else{_fwDashState.sort=col;_fwDashState.sortDir='asc'}
+      _fwDashRender();
+    });
+  });
+
+  // Wire link clicks via event delegation (use onclick to avoid accumulating listeners on re-render)
+  body.onclick=function(e){
+    var link=e.target.closest('[data-fw-action]');
+    if(!link)return;
+    e.stopPropagation();
+    var action=link.dataset.fwAction;
+    if(action==='open'){
+      _fwOpenFullEditor(link.dataset.fwType,link.dataset.fwId,null,link.dataset.fwVpc,null);
+    } else if(action==='zoom-vpc'){
+      var vid=link.dataset.fwVpc;if(!vid)return;
+      closeUnifiedDash();
+      setTimeout(function(){_zoomToElement(vid)},250);
+    }
+  };
+
+  // Wire row clicks
+  body.querySelectorAll('.fw-dash-table tbody tr[data-fw-idx]').forEach(function(tr){
+    tr.addEventListener('click',function(e){
+      if(e.target.closest('[data-fw-action]'))return;
+      var idx=parseInt(this.dataset.fwIdx);
+      var r=filtered[idx];if(!r)return;
+      _fwOpenFullEditor(r.type,r.id,null,r.vpc,null);
+    });
+  });
+
+  _fwRenderFooter(filtered.length,rows.length);
+}
+
+function _fwWireCards(container){
+  container.querySelectorAll('.fw-summary-card').forEach(function(card){
+    card.addEventListener('click',function(){
+      var f=this.dataset.card;
+      _fwDashState.cardFilter=(_fwDashState.cardFilter===f)?null:f;
+      _fwDashRender();
+    });
+  });
+}
+
+function _fwRenderFooter(shown,total){
   var totalEdits=_fwEdits?_fwEdits.length:0;
   var footer=document.getElementById('udashFooter');
   footer.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;width:100%">'+
-    '<span id="fwDashEditCount" style="font-size:10px;color:var(--text-muted)">'+(totalEdits?totalEdits+' edit'+(totalEdits>1?'s':'')+' pending':'No pending edits')+'</span>'+
+    '<span style="font-size:10px;color:var(--text-muted)">'+(totalEdits?totalEdits+' edit'+(totalEdits>1?'s':'')+' pending':'No pending edits')+
+    ' | '+shown+' of '+total+' resources</span>'+
     '<div style="display:flex;gap:6px">'+
       '<button id="fwDashExportAll" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer">Export All CLI</button>'+
       '<button id="fwDashResetAll" style="background:rgba(239,68,68,.1);border:1px solid var(--accent-red);color:var(--accent-red);padding:4px 10px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer">Reset All</button>'+
@@ -14776,8 +14883,8 @@ function _fwDashRender(){
     var cmds=_fwGenerateCli(_fwEdits);
     if(cmds.length&&navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(cmds.join('\n')).then(function(){
-        var btn=document.getElementById('fwDashExportAll');btn.textContent='Copied!';setTimeout(function(){btn.textContent='Export All CLI'},1500);
-      }).catch(function(){var btn=document.getElementById('fwDashExportAll');btn.textContent='Copy failed';setTimeout(function(){btn.textContent='Export All CLI'},1500)});
+        var btn=document.getElementById('fwDashExportAll');if(!btn)return;btn.textContent='Copied!';setTimeout(function(){if(btn.parentNode)btn.textContent='Export All CLI'},1500);
+      }).catch(function(){var btn=document.getElementById('fwDashExportAll');if(!btn)return;btn.textContent='Copy failed';setTimeout(function(){if(btn.parentNode)btn.textContent='Export All CLI'},1500)});
     }
   });
   document.getElementById('fwDashResetAll').addEventListener('click',function(){
@@ -15464,7 +15571,7 @@ function _clearFlowHighlights(){
 
 function _highlightFlowNode(ref, role){
   var svg=d3.select('#mapSvg');
-  var color=role==='source'?'#22d3ee':role==='waypoint'?'#f59e0b':'#f59e0b';
+  var color=role==='source'?'#22d3ee':role==='waypoint'?'#f59e0b':'#ef4444';
   if(ref.type==='internet'){
     svg.selectAll('.internet-node circle').each(function(){
       d3.select(this).style('filter','drop-shadow(0 0 10px '+color+')');
@@ -15473,6 +15580,14 @@ function _highlightFlowNode(ref, role){
   }
   if(ref.type==='subnet'){
     svg.selectAll('.subnet-node[data-subnet-id="'+ref.id+'"] rect').each(function(){
+      d3.select(this).style('filter','drop-shadow(0 0 8px '+color+')');
+    });
+    return;
+  }
+  // Fallback: resolve resource to its containing subnet and highlight that
+  var pos=_resolveNetworkPosition(ref.type, ref.id, _rlCtx);
+  if(pos&&pos.subnetId){
+    svg.selectAll('.subnet-node[data-subnet-id="'+pos.subnetId+'"] rect').each(function(){
       d3.select(this).style('filter','drop-shadow(0 0 8px '+color+')');
     });
   }
@@ -16470,9 +16585,9 @@ function _renderFlowAnalysisPanel(){
     h+='<h4>Access Tiers</h4>';
     var tierData=[
       {key:'internetFacing',label:'Internet-Facing',color:'#10b981',icon:'↗'},
-      {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:'🔐'},
-      {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:'🔒'},
-      {key:'database',label:'Database Tier',color:'#f59e0b',icon:'💾'}
+      {key:'bastionOnly',label:'Bastion-Only',color:'#22d3ee',icon:''},
+      {key:'fullyPrivate',label:'Fully Private',color:'#8b5cf6',icon:''},
+      {key:'database',label:'Database Tier',color:'#f59e0b',icon:''}
     ];
     tierData.forEach(function(td){
       var items=d.accessTiers[td.key]||[];
@@ -16578,7 +16693,7 @@ function _renderFlowAnalysisPanel(){
       h+='<h4 style="margin-top:14px">Bastion Chains ('+chains.length+')</h4>';
       chains.forEach(function(ch){
         h+='<div class="fa-path-item" data-ref-type="'+ch.bastion.type+'" data-ref-id="'+_escHtml(ch.bastion.id)+'">';
-        h+='<span style="color:#22d3ee">🔐</span> '+_escHtml(ch.bastion.name||ch.bastion.id);
+        h+=_escHtml(ch.bastion.name||ch.bastion.id);
         h+=' → <span style="color:var(--text-muted)">'+ch.targets.length+' target'+(ch.targets.length>1?'s':'')+'</span>';
         h+='</div>';
         // In bastion mode, show targets expanded
@@ -16858,7 +16973,7 @@ function _openFlowAnalysisDashboard(d){
   document.body.appendChild(overlay);
   // --- Wire static event listeners ---
   function closeDash(){overlay.remove();document.removeEventListener('keydown',dashEsc)}
-  function dashEsc(e){if(e.key==='Escape') closeDash()}
+  function dashEsc(e){if(e.key==='Escape'){e.stopImmediatePropagation();closeDash()}}
   document.addEventListener('keydown',dashEsc);
   document.getElementById('faDashClose').addEventListener('click',closeDash);
   document.getElementById('faDashSearch').addEventListener('input',function(){
@@ -18281,8 +18396,8 @@ var _UDASH_TABS = [
   {id:'iam', label:'IAM Review', color:'#f472b6', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_iamReviewData.length){
-      var iamRaw=safeParse(gv('in_iam'));
-      if(iamRaw){var p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}
+      try{var iamRaw=safeParse(gv('in_iam'));
+      if(iamRaw){var p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}}catch(e){console.warn('IAM parse error in prereq:',e)}
     }
     return true;
   }, render:function(){ _renderIAMTab(); }},
@@ -18331,7 +18446,10 @@ function _switchUdashTab(tabId){
   if(!tab||!tab.prereq()) return;
   _udashTab=tabId;
   _renderUdashTabs();
+  // Close firewall full panel if open
+  document.getElementById('fwFullPanel').classList.remove('open');
   // Clear shared areas
+  document.getElementById('udashBody').onclick=null;
   document.getElementById('udashToolbar').innerHTML='';
   document.getElementById('udashBody').innerHTML='';
   document.getElementById('udashBody').className='udash-body';
@@ -18358,6 +18476,7 @@ function _renderUdashTabs(){
 
 function closeUnifiedDash(){
   document.getElementById('udash').classList.remove('open');
+  document.getElementById('fwFullPanel').classList.remove('open');
   _udashTab=null;
 }
 
@@ -18570,7 +18689,7 @@ function _renderClassificationTab(){
     th+='<select id="govPerPage">';
     [25,50,100,0].forEach(function(v){th+='<option value="'+v+'"'+(st.perPage===v?' selected':'')+'>'+(v||'All')+'</option>'});
     th+='</select>';
-    th+='<button id="govRulesBtn" style="margin-left:auto;background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;padding:4px 12px;border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">⚙ Configure Rules</button>';
+    th+='<button id="govRulesBtn" style="margin-left:auto;background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;padding:4px 12px;border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">Configure Rules</button>';
     tb.innerHTML=th;
     document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderClassificationTab()});
     document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderClassificationTab()});
@@ -18730,7 +18849,7 @@ function _renderIAMTab(){
   if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.arn||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1})}
   var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
-    if(sortKey==='lastUsed'||sortKey==='created'){return((b[sortKey]||0)-(a[sortKey]||0))*dir}
+    if(sortKey==='lastUsed'||sortKey==='created'){return((a[sortKey]||0)-(b[sortKey]||0))*dir}
     var av=(a[sortKey]||'').toString().toLowerCase();var bv=(b[sortKey]||'').toString().toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
@@ -24662,7 +24781,7 @@ function _ckLambda(fns,res,seen){
     var id=_ckId(fn.FunctionName,'Lambda',seen);
     var props={FunctionName:fn.FunctionName,Runtime:fn.Runtime||'',Handler:fn.Handler||'index.handler',
       MemorySize:fn.MemorySize||128,Timeout:fn.Timeout||3,
-      Role:fn.Role||'arn:aws:iam::123456789012:role/LambdaRole',
+      Role:fn.Role||'arn:aws:iam::111222333444:role/LambdaRole',
       Code:{ZipFile:'exports.handler=async()=>({})'}};
     if(fn.VpcConfig&&fn.VpcConfig.SubnetIds&&fn.VpcConfig.SubnetIds.length){
       props.VpcConfig={SubnetIds:fn.VpcConfig.SubnetIds,SecurityGroupIds:fn.VpcConfig.SecurityGroupIds||[]};
