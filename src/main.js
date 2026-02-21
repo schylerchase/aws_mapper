@@ -10,14 +10,16 @@ import { _prefs, loadPrefs, savePrefs } from './modules/prefs.js';
 
 // Feature engines
 import { generateDemo } from './modules/demo-data.js';
-// Note: CIDR engine, compliance, etc. will be imported as we refactor the code that uses them
+import { ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR } from './modules/cidr-engine.js';
 
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
-  // Constants
+  // Constants (clean + underscore-prefixed aliases for inline code)
   SEV_ORDER, FW_LABELS, EOL_RUNTIMES, EFFORT_LABELS, EFFORT_TIME,
   PRIORITY_META, TIER_META, PRIORITY_ORDER, PRIORITY_KEYS,
   MUTE_KEY, NOTES_KEY, SNAP_KEY, SAVE_KEY, MAX_SNAPSHOTS, SAVE_INTERVAL, NOTE_CATEGORIES,
+  _SEV_ORDER: SEV_ORDER,
+  _FW_LABELS: FW_LABELS,
 
   // Utils
   safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv,
@@ -27,6 +29,9 @@ window.AppModules = {
 
   // Prefs
   _prefs, loadPrefs, savePrefs,
+
+  // CIDR engine
+  ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR,
 
   // Engines
   generateDemo
