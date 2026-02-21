@@ -13,7 +13,7 @@
     "dev": "node build.js && electron .",
     "watch": "node build.js --watch",
     "bundle": "node build.js",
-    "bundle:prod": "NODE_ENV=production node build.js",
+    "bundle:prod": "node build.js --production",
     "build": "npm run bundle:prod && electron-builder",
     "build:mac": "npm run bundle:prod && electron-builder --mac",
     "build:win": "npm run bundle:prod && electron-builder --win",

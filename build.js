@@ -5,7 +5,8 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isProd = process.argv.includes('--production') || process.env.NODE_ENV === 'production';
+const isDev = !isProd;
 const watch = process.argv.includes('--watch');
 
 const buildConfig = {
