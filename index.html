@@ -675,740 +675,13 @@ inputSections.forEach(sec=>{
 });
 document.querySelectorAll('.ji').forEach(el=>{el.addEventListener('input',function(){if(!this.value.trim()){this.className='ji';return}try{JSON.parse(this.value);this.className='ji valid'}catch(e){this.className='ji invalid'}})});
 
-function safeParse(t){if(!t||!t.trim())return null;try{return JSON.parse(t.trim())}catch(e){const b=[];let d=0,s=-1;for(let i=0;i<t.length;i++){if(t[i]==='{'){if(d===0)s=i;d++}if(t[i]==='}'){d--;if(d===0&&s>=0){b.push(t.substring(s,i+1));s=-1}}}return b.length?b.map(x=>{try{return JSON.parse(x)}catch(e2){return null}}).filter(Boolean):null}}
-function ext(r,keys){if(!r)return[];const a=Array.isArray(r)?r:[r];let res=[];for(const i of a)for(const k of keys)if(i[k])res=res.concat(i[k]);return res}
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-function gn(i,f){const t=(i.Tags||[]).find(x=>x.Key==='Name');return esc(t?t.Value:f)}
-function _closeAllDashboards(except){var ids=['udash','diffDash','notesPanel'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')});if(except!=='udash')_udashTab=null}
-function sid(id){return id?id.replace(/^[a-z]+-/,'').substring(0,10):''}
-const _EOL_RUNTIMES=new Set(['nodejs14.x','nodejs12.x','nodejs10.x','nodejs8.10','python2.7','python3.6','python3.7','dotnetcore3.1','dotnetcore2.1','ruby2.5','ruby2.7','java8','go1.x']);
-const _SEV_ORDER={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
-const _FW_LABELS={CIS:'CIS Benchmark',WAF:'Well-Architected Framework',IAM:'IAM Security',ARCH:'Best Practices',SOC2:'SOC 2',PCI:'PCI DSS 4',BUDR:'Backup & DR'};
-function clsGw(id){const m={'igw-':'IGW','vgw-':'VGW','vpce-':'VPCE','pcx-':'PCX','eigw-':'EIGW','lgw-':'LGW'};for(const[p,t]of Object.entries(m))if(id.startsWith(p))return t;return'GW'}
-function isShared(t){return t==='TGW'||t==='PCX'}
-function gcv(t){return{IGW:'var(--igw-color)',NAT:'var(--nat-color)',TGW:'var(--tgw-color)',VGW:'var(--vgw-color)',VPCE:'var(--vpce-color)',PCX:'var(--pcx-color)',EIGW:'var(--igw-color)'}[t]||'var(--text-muted)'}
-function gch(t){return{IGW:'#10b981',NAT:'#f59e0b',TGW:'#ec4899',VGW:'#ef4444',VPCE:'#a78bfa',PCX:'#fb923c',EIGW:'#10b981'}[t]||'#4a5e80'}
-function gv(id){return(document.getElementById(id)||{}).value||''}
+// Utility functions and constants now loaded from bundle:
+// - constants.js: SEV_ORDER, FW_LABELS, EOL_RUNTIMES, etc.
+// - utils.js: safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv
+// - dom-helpers.js: closeAllDashboards, showToast, etc.
 
-// === CIDR ENGINE ===
-const ipToInt=(ip)=>{if(!ip||typeof ip!=='string')return null;const parts=ip.split('.');if(parts.length!==4)return null;let n=0;for(let i=0;i<4;i++){const o=parseInt(parts[i],10);if(isNaN(o)||o<0||o>255||parts[i]!==String(o))return null;n=(n*256)+o}return n>>>0};
-const intToIp=(n)=>{n=n>>>0;return`${(n>>>24)&0xFF}.${(n>>>16)&0xFF}.${(n>>>8)&0xFF}.${n&0xFF}`};
-const parseCIDR=(cidr)=>{if(!cidr||typeof cidr!=='string')return null;const parts=cidr.trim().split('/');if(parts.length!==2)return null;const network=ipToInt(parts[0]);const prefix=parseInt(parts[1],10);if(network===null||isNaN(prefix)||prefix<0||prefix>32||parts[1]!==String(prefix))return null;const mask=prefix===0?0:(0xFFFFFFFF<<(32-prefix))>>>0;if((network&mask)!==network)return null;const size=prefix===32?1:(1<<(32-prefix))>>>0;return{network,prefix,mask,size}};
-const cidrToString=(network,prefix)=>`${intToIp(network)}/${prefix}`;
-const splitCIDR=(cidr)=>{const p=parseCIDR(cidr);if(!p||p.prefix>=32)return null;const np=p.prefix+1;const half=p.size>>>1;return[cidrToString(p.network,np),cidrToString((p.network+half)>>>0,np)]};
-const cidrContains=(parent,child)=>{const p=parseCIDR(parent);const c=parseCIDR(child);if(!p||!c||c.prefix<p.prefix)return false;return(c.network&p.mask)===p.network};
-const cidrOverlap=(a,b)=>{const pa=parseCIDR(a);const pb=parseCIDR(b);if(!pa||!pb)return false;const bigger=pa.prefix<=pb.prefix?pa:pb;const smaller=pa.prefix<=pb.prefix?pb:pa;return(smaller.network&bigger.mask)===bigger.network};
-const ipInCIDR=(ip,cidr)=>{const n=ipToInt(ip);const p=parseCIDR(cidr);if(n===null||!p)return false;return(n&p.mask)===p.network};
+// CIDR engine now loaded from bundle (src/modules/cidr-engine.js)
 
-// large-scale demo generator -- enterprise AWS environment
-function generateDemo(){
-  // OPTIMIZED: Seeded PRNG for deterministic demo data (reproducible across reloads)
-  let _seed=12345;
-  const _random=()=>{_seed=((_seed*1664525+1013904223)|0);return((_seed>>>0)/0x100000000)};
-  const AZS=['us-east-1a','us-east-1b','us-east-1c'];
-  const INST_TYPES=['t3.micro','t3.small','t3.medium','t3.large','m5.large','m5.xlarge','m5.2xlarge','r5.large','r5.xlarge','r5.2xlarge','c5.large','c5.xlarge'];
-  const STATES=['running','running','running','running','running','stopped'];
-  const LB_TYPES=['application','network'];
-  const SVC_ENDPOINTS=['s3','dynamodb','ssm','ssmmessages','ec2messages','logs','monitoring','kms','secretsmanager','sts','ecr.api','ecr.dkr','execute-api','elasticloadbalancing','autoscaling','sqs','sns','events'];
-  let iid=1;function nid(p){return p+'-'+String(iid++).padStart(5,'0')}
-
-  // VPC definitions -- enterprise multi-account pattern
-  const vpcDefs=[
-    {name:'Production',cidr:'10.0.0.0/16',tiers:['public','private-web','private-app','private-api','private-data','private-cache','private-queue','private-mgmt'],azsUsed:3,instancesPer:[4,6,10,8,6,4,3,2],albCount:5},
-    {name:'Staging',cidr:'10.1.0.0/16',tiers:['public','private-web','private-app','private-data','private-cache'],azsUsed:3,instancesPer:[2,4,6,4,2],albCount:3},
-    {name:'Development',cidr:'10.2.0.0/16',tiers:['public','private-app','private-data','private-test'],azsUsed:2,instancesPer:[2,6,3,4],albCount:2},
-    {name:'QA-Automation',cidr:'10.3.0.0/16',tiers:['public','private-runners','private-selenium','private-data'],azsUsed:2,instancesPer:[1,8,6,2],albCount:1},
-    {name:'Shared-Services',cidr:'10.10.0.0/16',tiers:['public','private-tools','private-monitoring','private-cicd','private-artifact','private-vault'],azsUsed:3,instancesPer:[2,5,4,6,3,2],albCount:3},
-    {name:'Data-Platform',cidr:'10.20.0.0/16',tiers:['private-ingest','private-streaming','private-processing','private-warehouse','private-analytics','private-ml'],azsUsed:3,instancesPer:[5,4,8,4,3,6],albCount:2},
-    {name:'Security',cidr:'10.30.0.0/16',tiers:['public','private-siem','private-scanner','private-forensics','private-logging'],azsUsed:2,instancesPer:[1,4,3,2,4],albCount:1},
-    {name:'DR-Recovery',cidr:'10.40.0.0/16',tiers:['public','private-web','private-app','private-data'],azsUsed:2,instancesPer:[2,3,5,3],albCount:2},
-    {name:'Edge-Services',cidr:'10.50.0.0/16',tiers:['public','private-proxy','private-waf','private-cdn-origin'],azsUsed:3,instancesPer:[3,4,3,2],albCount:3},
-    {name:'Management',cidr:'10.100.0.0/16',tiers:['public','private-bastion','private-logging','private-backup','private-config'],azsUsed:2,instancesPer:[1,3,4,3,2],albCount:1},
-    {name:'Sandbox',cidr:'10.200.0.0/16',tiers:['public','private-dev1','private-dev2','private-experiment'],azsUsed:2,instancesPer:[1,5,5,3],albCount:1},
-    {name:'PCI-Compliant',cidr:'10.60.0.0/16',tiers:['private-dmz','private-app','private-tokenize','private-vault','private-audit'],azsUsed:3,instancesPer:[3,6,4,2,2],albCount:2},
-  ];
-
-  const vpcs=[],subnets=[],rts=[],sgs=[],nacls=[],igwsList=[],natsList=[];
-  const ec2Instances=[],albsList=[],vpceList=[];
-  const volsList=[],enisList=[],snapsList=[],tgsList=[];
-  let subOct=0;
-
-  vpcDefs.forEach((vd,vi)=>{
-    const vpcId='vpc-'+vd.name.toLowerCase().replace(/[^a-z0-9]/g,'');
-    vpcs.push({VpcId:vpcId,CidrBlock:vd.cidr,State:'available',Tags:[{Key:'Name',Value:vd.name}]});
-
-    // IGW for VPCs with public tiers
-    const hasPublic=vd.tiers.some(t=>t.startsWith('public'));
-    const igwId=nid('igw');
-    if(hasPublic){igwsList.push({InternetGatewayId:igwId,Attachments:[{VpcId:vpcId,State:'available'}],Tags:[{Key:'Name',Value:vd.name+'-igw'}]})}
-
-    // NAT per AZ for non-public tiers
-    const natIds=[];
-    if(hasPublic){
-      for(let a=0;a<Math.min(vd.azsUsed,2);a++){
-        const natId=nid('nat');
-        natIds.push(natId);
-        natsList.push({NatGatewayId:natId,VpcId:vpcId,SubnetId:null,State:'available',Tags:[{Key:'Name',Value:vd.name+'-nat-'+AZS[a].slice(-2)}]});
-      }
-    }
-
-    // SGs per VPC -- realistic set per tier
-    const sgDefs=['web-https','web-http','app-internal','api-gateway','db-mysql','db-postgres','db-redis',
-      'monitoring-agents','ssh-bastion','alb-external','alb-internal','efs-mount','elasticsearch','memcached',
-      'vpn-access','mgmt-rdp'];
-    const sgCount=Math.min(sgDefs.length, vd.tiers.length*2+4);
-    for(let si=0;si<sgCount;si++){
-      const sgName=sgDefs[si];
-      const ports={https:[443,443],http:[80,80],'app-internal':[8080,8099],'api-gateway':[8443,8443],
-        'db-mysql':[3306,3306],'db-postgres':[5432,5432],'db-redis':[6379,6379],
-        'monitoring-agents':[9090,9100],elasticsearch:[9200,9300],memcached:[11211,11211],
-        'mgmt-rdp':[3389,3389],'ssh-bastion':[22,22]}[sgName]||[443,443];
-      sgs.push({GroupId:nid('sg'),GroupName:vd.name.toLowerCase()+'-'+sgName,VpcId:vpcId,
-        IpPermissions:[{IpProtocol:'tcp',FromPort:ports[0],ToPort:ports[1],IpRanges:[{CidrIp:sgName.includes('ssh')||sgName.includes('rdp')?'10.0.0.0/8':'0.0.0.0/0'}]},
-          {IpProtocol:'tcp',FromPort:22,ToPort:22,IpRanges:[{CidrIp:'10.0.0.0/8'}]}],
-        IpPermissionsEgress:[{IpProtocol:'-1',IpRanges:[{CidrIp:'0.0.0.0/0'}]}],
-        Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+sgName}]
-      });
-    }
-
-    // subnets and route tables per tier
-    vd.tiers.forEach((tier,ti)=>{
-      const isPub=tier.startsWith('public');
-      const rtId=nid('rtb');
-      const routes=[{DestinationCidrBlock:vd.cidr,GatewayId:'local'}];
-      if(isPub)routes.push({DestinationCidrBlock:'0.0.0.0/0',GatewayId:igwId});
-      // cross-VPC via TGW
-      routes.push({DestinationCidrBlock:'10.0.0.0/8',TransitGatewayId:'tgw-enterprise01'});
-
-      // NACL per tier
-      const naclId=nid('acl');
-      const naclAssocs=[];
-      const naclEntries=[
-        {RuleNumber:100,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:443,To:443}},
-        {RuleNumber:110,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'10.0.0.0/8',PortRange:{From:0,To:65535}},
-        {RuleNumber:120,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:1024,To:65535}},
-      ];
-      if(isPub)naclEntries.push({RuleNumber:130,Protocol:'6',RuleAction:'allow',Egress:false,CidrBlock:'0.0.0.0/0',PortRange:{From:80,To:80}});
-      naclEntries.push({RuleNumber:32767,Protocol:'-1',RuleAction:'deny',Egress:false,CidrBlock:'0.0.0.0/0'});
-
-      const assocs=[];
-      for(let a=0;a<vd.azsUsed;a++){
-        const subId=nid('subnet');
-        const oct2=ti*10+subOct;
-        subnets.push({SubnetId:subId,VpcId:vpcId,CidrBlock:vd.cidr.replace(/\.0\.0\//,'.'+oct2+'.'+a+'/').replace(/\/16/,'/24'),
-          AvailabilityZone:AZS[a],MapPublicIpOnLaunch:isPub,
-          Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-'+AZS[a].slice(-2)}]});
-        if(!isPub && natIds.length){
-          const azRtId=nid('rtb');
-          rts.push({RouteTableId:azRtId,VpcId:vpcId,
-            Routes:[{DestinationCidrBlock:vd.cidr,GatewayId:'local'},
-              {DestinationCidrBlock:'0.0.0.0/0',NatGatewayId:natIds[Math.min(a,natIds.length-1)]},
-              {DestinationCidrBlock:'10.0.0.0/8',TransitGatewayId:'tgw-enterprise01'}],
-            Associations:[{SubnetId:subId,RouteTableAssociationId:nid('rtbassoc')}],
-            Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-'+AZS[a].slice(-2)+'-rt'}]});
-        }else{
-          assocs.push({SubnetId:subId,RouteTableAssociationId:nid('rtbassoc')});
-        }
-        naclAssocs.push({SubnetId:subId});
-
-        // assign NAT subnet
-        if(isPub&&a<natIds.length&&natsList[natsList.length-vd.azsUsed+a+Math.min(a,natIds.length-1)])
-          natsList.forEach(n=>{if(n.NatGatewayId===natIds[a]&&!n.SubnetId)n.SubnetId=subId});
-
-        // EC2 instances
-        const instCount=vd.instancesPer[ti]||0;
-        for(let ii=0;ii<instCount;ii++){
-          const instId=nid('i');
-          const iType=INST_TYPES[Math.floor(_random()*INST_TYPES.length)];
-          const st=STATES[Math.floor(_random()*STATES.length)];
-          const isBastionSlot=isPub&&ii===0&&a===0&&vd.tiers.length>2;
-          const instName=isBastionSlot?vd.name.toLowerCase()+'-bastion':vd.name.toLowerCase()+'-'+tier.replace('private-','')+'-'+String(ii+1).padStart(2,'0');
-          const _ec2Entry={InstanceId:instId,SubnetId:subId,InstanceType:isBastionSlot?'t3.micro':iType,
-            PrivateIpAddress:'10.'+Math.floor(_random()*255)+'.'+Math.floor(_random()*255)+'.'+Math.floor(_random()*254+1),
-            Placement:{AvailabilityZone:AZS[a]},
-            State:{Name:isBastionSlot?'running':st,Code:isBastionSlot?16:(st==='running'?16:80)},
-            Tags:[{Key:'Name',Value:instName}]};
-          if(vi===0)_ec2Entry.IamInstanceProfile={Arn:'arn:aws:iam::111222333444:instance-profile/EC2InstanceRole',Id:'AIPA000000001'};
-          ec2Instances.push(_ec2Entry);
-
-          // volume per instance (root)
-          const volSize=[50,100,200,500][Math.floor(_random()*4)];
-          volsList.push({VolumeId:nid('vol'),Size:volSize,State:'in-use',VolumeType:'gp3',
-            AvailabilityZone:AZS[a],Attachments:[{InstanceId:instId,Device:'/dev/sda1',State:'attached'}]});
-
-          // data volume for data/cache/warehouse tiers
-          if(tier.includes('data')||tier.includes('cache')||tier.includes('warehouse')||tier.includes('ml')){
-            const dataSize=[200,500,1000,2000][Math.floor(_random()*4)];
-            volsList.push({VolumeId:nid('vol'),Size:dataSize,State:'in-use',VolumeType:'io2',
-              AvailabilityZone:AZS[a],Attachments:[{InstanceId:instId,Device:'/dev/sdf',State:'attached'}]});
-          }
-
-          // ENI per instance
-          enisList.push({NetworkInterfaceId:nid('eni'),SubnetId:subId,VpcId:vpcId,
-            InterfaceType:'interface',Status:'in-use',
-            Attachment:{InstanceId:instId,Status:'attached'}});
-
-          // secondary ENI for multi-homed instances
-          if(tier.includes('app')||tier.includes('proxy')||tier.includes('web')){
-            enisList.push({NetworkInterfaceId:nid('eni'),SubnetId:subId,VpcId:vpcId,
-              InterfaceType:'interface',Status:'in-use',
-              Attachment:{InstanceId:instId,Status:'attached'}});
-          }
-
-          // snapshot for ~40% of volumes
-          if(_random()>0.6){snapsList.push({SnapshotId:nid('snap'),VolumeId:volsList[volsList.length-1].VolumeId,
-            State:'completed',VolumeSize:volSize,StartTime:'2025-01-15T00:00:00Z'})}
-        }
-      }
-
-      if(isPub || !natIds.length) rts.push({RouteTableId:rtId,VpcId:vpcId,Routes:routes,Associations:assocs,
-        Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-rt'}]});
-      nacls.push({NetworkAclId:naclId,VpcId:vpcId,Associations:naclAssocs,Entries:naclEntries,
-        Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+tier+'-nacl'}]});
-      subOct++;
-    });
-
-    // ALBs
-    for(let lb=0;lb<vd.albCount;lb++){
-      const pubSubs=subnets.filter(s=>s.VpcId===vpcId&&(s.Tags[0]?.Value||'').includes('public'));
-      const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
-      const lbSubs=pubSubs.length?pubSubs:prvSubs;
-      const scheme=pubSubs.length&&lb===0?'internet-facing':'internal';
-      const lbType=LB_TYPES[lb%2];
-      albsList.push({
-        LoadBalancerArn:'arn:aws:elasticloadbalancing:us-east-1:111222333444:loadbalancer/'+lbType+'/'+vd.name.toLowerCase()+'-'+lbType.slice(0,3)+'-'+lb+'/abc'+lb,
-        LoadBalancerName:vd.name.toLowerCase()+'-'+lbType.slice(0,3)+'-'+lb,
-        Type:lbType,Scheme:scheme,VpcId:vpcId,
-        AvailabilityZones:lbSubs.slice(0,vd.azsUsed).map(s=>({SubnetId:s.SubnetId,ZoneName:s.AvailabilityZone})),
-        State:{Code:'active'},DNSName:vd.name.toLowerCase()+'-'+lb+'.us-east-1.elb.amazonaws.com'
-      });
-    }
-
-    // VPC endpoints -- prod/shared/data get all 18, others scale down
-    const epCount=Math.min(SVC_ENDPOINTS.length, vi<3?18:vi<6?12:6+vi);
-    for(let e=0;e<epCount;e++){
-      vpceList.push({VpcEndpointId:nid('vpce'),VpcId:vpcId,
-        ServiceName:'com.amazonaws.us-east-1.'+SVC_ENDPOINTS[e],
-        VpcEndpointType:e<2?'Gateway':'Interface',State:'available',
-        SubnetIds:subnets.filter(s=>s.VpcId===vpcId).slice(0,2).map(s=>s.SubnetId),
-        Tags:[{Key:'Name',Value:vd.name.toLowerCase()+'-'+SVC_ENDPOINTS[e]}]});
-    }
-
-    // Target Groups for each ALB
-    // OPTIMIZED: Pre-index VPC subnets to avoid O(albs × instances × subnets) nested scan
-    const vpcSubnetIds=new Set(subnets.filter(s=>s.VpcId===vpcId).map(s=>s.SubnetId));
-    const vpcInstances=ec2Instances.filter(i=>i.SubnetId&&vpcSubnetIds.has(i.SubnetId));
-    albsList.filter(a=>a.VpcId===vpcId).forEach((alb,li)=>{
-      const tgInsts=vpcInstances.slice(0,3+li);
-      const tgType=alb.Type==='application'?'instance':'ip';
-      tgsList.push({
-        TargetGroupArn:'arn:aws:elasticloadbalancing:us-east-1:111222333444:targetgroup/'+vd.name.toLowerCase()+'-tg-'+li+'/abc'+li,
-        TargetGroupName:vd.name.toLowerCase()+'-tg-'+li,
-        Protocol:li%2===0?'HTTPS':'HTTP',Port:li%2===0?443:80,
-        VpcId:vpcId,TargetType:tgType,
-        HealthCheckProtocol:'HTTP',HealthCheckPort:'traffic-port',HealthCheckPath:'/health',
-        HealthCheckIntervalSeconds:30,HealthyThresholdCount:3,UnhealthyThresholdCount:3,
-        LoadBalancerArns:[alb.LoadBalancerArn],
-        Targets:tgInsts.map(i=>({Id:i.InstanceId,Port:li%2===0?443:80}))
-      });
-    });
-  });
-
-  // peering connections -- hub-spoke from shared-services + key pairs
-  const peerings=[];
-  const sharedIdx=4; // Shared-Services
-  vpcs.forEach((v,i)=>{
-    if(i===sharedIdx)return;
-    peerings.push({VpcPeeringConnectionId:nid('pcx'),Status:{Code:'active'},
-      RequesterVpcInfo:{VpcId:vpcs[sharedIdx].VpcId,CidrBlock:vpcs[sharedIdx].CidrBlock},
-      AccepterVpcInfo:{VpcId:v.VpcId,CidrBlock:v.CidrBlock},
-      Tags:[{Key:'Name',Value:'shared-to-'+v.Tags[0].Value.toLowerCase()}]});
-  });
-  // extra direct peerings
-  [{r:0,a:1,n:'prod-to-staging'},{r:0,a:7,n:'prod-to-dr'},{r:5,a:11,n:'data-to-pci'},
-   {r:6,a:9,n:'security-to-mgmt'},{r:0,a:8,n:'prod-to-edge'}].forEach(p=>{
-    if(vpcs[p.r]&&vpcs[p.a])peerings.push({VpcPeeringConnectionId:nid('pcx'),Status:{Code:'active'},
-      RequesterVpcInfo:{VpcId:vpcs[p.r].VpcId,CidrBlock:vpcs[p.r].CidrBlock},
-      AccepterVpcInfo:{VpcId:vpcs[p.a].VpcId,CidrBlock:vpcs[p.a].CidrBlock},
-      Tags:[{Key:'Name',Value:p.n}]});
-  });
-
-  // VPN connections
-  const vpnConns=[
-    {VpnConnectionId:nid('vpn'),State:'available',VpnGatewayId:'vgw-onprem01',CustomerGatewayId:'cgw-dc01',Tags:[{Key:'Name',Value:'datacenter-east-primary'}]},
-    {VpnConnectionId:nid('vpn'),State:'available',VpnGatewayId:'vgw-onprem01',CustomerGatewayId:'cgw-dc02',Tags:[{Key:'Name',Value:'datacenter-east-backup'}]},
-    {VpnConnectionId:nid('vpn'),State:'available',VpnGatewayId:'vgw-onprem02',CustomerGatewayId:'cgw-dc03',Tags:[{Key:'Name',Value:'datacenter-west-primary'}]},
-    {VpnConnectionId:nid('vpn'),State:'available',VpnGatewayId:'vgw-onprem02',CustomerGatewayId:'cgw-dc04',Tags:[{Key:'Name',Value:'datacenter-west-backup'}]},
-  ];
-
-  // S3 buckets
-  const s3Buckets=[];
-  ['prod-assets','prod-logs','prod-backups','prod-media','prod-static','prod-config',
-   'staging-deploy','staging-logs','staging-assets',
-   'dev-artifacts','dev-sandbox','dev-test-data',
-   'shared-terraform-state','shared-ami-store','shared-lambda-layers','shared-container-images',
-   'data-lake-raw','data-lake-processed','data-lake-curated','data-lake-archive','data-lake-temp',
-   'ml-training-data','ml-models','ml-experiments',
-   'audit-logs','config-history','cloudtrail-logs','vpc-flow-logs','dns-query-logs',
-   'dr-backup-primary','dr-backup-secondary','dr-config-mirror',
-   'pci-audit-trail','pci-transaction-logs','pci-encryption-keys',
-   'app-uploads','static-frontend','lambda-packages','cloudformation-templates','codepipeline-artifacts'
-  ].forEach(n=>{
-    s3Buckets.push({Name:n+'-'+Math.floor(_random()*99999),CreationDate:'2024-'+String(Math.floor(_random()*12)+1).padStart(2,'0')+'-15'});
-  });
-
-  // Route53
-  const zones=[
-    {Id:'/hostedzone/Z001',Name:'example.com.',Config:{PrivateZone:false},ResourceRecordSetCount:187},
-    {Id:'/hostedzone/Z002',Name:'internal.example.com.',Config:{PrivateZone:true},ResourceRecordSetCount:342,VPCs:[{VPCId:'vpc-production'},{VPCId:'vpc-dataplatform'},{VPCId:'vpc-management'}]},
-    {Id:'/hostedzone/Z003',Name:'staging.example.com.',Config:{PrivateZone:false},ResourceRecordSetCount:64},
-    {Id:'/hostedzone/Z004',Name:'api.example.com.',Config:{PrivateZone:false},ResourceRecordSetCount:96},
-    {Id:'/hostedzone/Z005',Name:'dev.example.com.',Config:{PrivateZone:false},ResourceRecordSetCount:78},
-    {Id:'/hostedzone/Z006',Name:'data.internal.example.com.',Config:{PrivateZone:true},ResourceRecordSetCount:124,VPCs:[{VPCId:'vpc-dataplatform'}]},
-    {Id:'/hostedzone/Z007',Name:'pci.example.com.',Config:{PrivateZone:true},ResourceRecordSetCount:45,VPCs:[{VPCId:'vpc-pcicompliant'},{VPCId:'vpc-security'}]},
-    {Id:'/hostedzone/Z008',Name:'dr.example.com.',Config:{PrivateZone:false},ResourceRecordSetCount:52},
-  ];
-
-  // Route53 Record Sets (sample per zone)
-  const r53records=[];
-  zones.forEach(z=>{
-    const zid=z.Id.replace('/hostedzone/','');
-    const base=z.Name;
-    r53records.push({HostedZoneId:zid,Name:base,Type:'NS',TTL:172800,ResourceRecords:[{Value:'ns-1.awsdns-01.org.'},{Value:'ns-2.awsdns-02.co.uk.'}]});
-    r53records.push({HostedZoneId:zid,Name:base,Type:'SOA',TTL:900,ResourceRecords:[{Value:'ns-1.awsdns-01.org. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400'}]});
-    r53records.push({HostedZoneId:zid,Name:'www.'+base,Type:'A',AliasTarget:{DNSName:'dualstack.elb-prod-123456.us-east-1.elb.amazonaws.com.',HostedZoneId:'Z35SXDOTRQ7X7K',EvaluateTargetHealth:true}});
-    r53records.push({HostedZoneId:zid,Name:'api.'+base,Type:'CNAME',TTL:300,ResourceRecords:[{Value:'api-gateway.execute-api.us-east-1.amazonaws.com'}]});
-    r53records.push({HostedZoneId:zid,Name:'mail.'+base,Type:'MX',TTL:300,ResourceRecords:[{Value:'10 inbound-smtp.us-east-1.amazonaws.com'}]});
-    r53records.push({HostedZoneId:zid,Name:'_dmarc.'+base,Type:'TXT',TTL:300,ResourceRecords:[{Value:'"v=DMARC1; p=quarantine; rua=mailto:dmarc@'+base+'"'}]});
-  });
-
-  // WAF WebACLs
-  const wafAcls=[];
-  const internetFacingAlbs=albsList.filter(a=>a.Scheme==='internet-facing');
-  if(internetFacingAlbs.length>0){
-    wafAcls.push({
-      Name:'prod-web-acl',Id:'waf-001',
-      ARN:'arn:aws:wafv2:us-east-1:111222333444:regional/webacl/prod-web-acl/abc1',
-      Description:'Production WAF - OWASP rules',
-      DefaultAction:{Allow:{}},
-      Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1},{Name:'AWSManagedRulesSQLiRuleSet',Priority:2},{Name:'RateLimit-1000',Priority:3}],
-      ResourceArns:internetFacingAlbs.slice(0,2).map(a=>a.LoadBalancerArn)
-    });
-  }
-  if(internetFacingAlbs.length>2){
-    wafAcls.push({
-      Name:'staging-web-acl',Id:'waf-002',
-      ARN:'arn:aws:wafv2:us-east-1:111222333444:regional/webacl/staging-web-acl/abc2',
-      Description:'Staging WAF - basic protection',
-      DefaultAction:{Allow:{}},
-      Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1}],
-      ResourceArns:internetFacingAlbs.slice(2,4).map(a=>a.LoadBalancerArn)
-    });
-  }
-  wafAcls.push({
-    Name:'pci-web-acl',Id:'waf-003',
-    ARN:'arn:aws:wafv2:us-east-1:111222333444:regional/webacl/pci-web-acl/abc3',
-    Description:'PCI DSS compliant WAF',
-    DefaultAction:{Block:{}},
-    Rules:[{Name:'AWSManagedRulesCommonRuleSet',Priority:1},{Name:'AWSManagedRulesSQLiRuleSet',Priority:2},{Name:'AWSManagedRulesKnownBadInputsRuleSet',Priority:3},{Name:'AWSManagedRulesLinuxRuleSet',Priority:4}],
-    ResourceArns:[]
-  });
-
-  // RDS instances - placed in private subnets
-  const rdsInstances=[];
-  const rdsConfigs=[
-    {vpc:0,name:'prod-primary-db',engine:'aurora-mysql',cls:'db.r6g.xlarge',multi:true,storage:500},
-    {vpc:0,name:'prod-replica-db',engine:'aurora-mysql',cls:'db.r6g.large',multi:false,storage:500},
-    {vpc:1,name:'staging-db',engine:'postgres',cls:'db.t3.medium',multi:false,storage:100},
-    {vpc:3,name:'data-warehouse-db',engine:'aurora-postgresql',cls:'db.r6g.2xlarge',multi:true,storage:2000},
-    {vpc:6,name:'pci-db',engine:'mysql',cls:'db.r6g.large',multi:true,storage:200},
-  ];
-  rdsConfigs.forEach((rc,ri)=>{
-    const vpcId=vpcs[rc.vpc]?.VpcId;if(!vpcId)return;
-    const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
-    const sub=prvSubs[ri%Math.max(prvSubs.length,1)];
-    rdsInstances.push({
-      DBInstanceIdentifier:rc.name,DBInstanceClass:rc.cls,Engine:rc.engine,
-      DBInstanceStatus:'available',MultiAZ:rc.multi,AllocatedStorage:rc.storage,
-      Endpoint:{Address:rc.name+'.cluster-abc.us-east-1.rds.amazonaws.com',Port:rc.engine.includes('postgres')?5432:3306},
-      DBSubnetGroup:{VpcId:vpcId,DBSubnetGroupName:rc.name+'-subnet-group',
-        Subnets:prvSubs.slice(0,3).map(s=>({SubnetIdentifier:s.SubnetId,SubnetAvailabilityZone:{Name:s.AvailabilityZone}}))},
-      VpcSecurityGroups:sgs.filter(sg=>sg.VpcId===vpcId).slice(0,1).map(sg=>({VpcSecurityGroupId:sg.GroupId,Status:'active'})),
-      StorageEncrypted:true,AvailabilityZone:sub?.AvailabilityZone||'us-east-1a'
-    });
-  });
-
-  // ECS services
-  const ecsServices=[];
-  const ecsConfigs=[
-    {vpc:0,name:'prod-api',cluster:'prod-cluster',tasks:4,cpu:'512',mem:'1024'},
-    {vpc:0,name:'prod-worker',cluster:'prod-cluster',tasks:2,cpu:'1024',mem:'2048'},
-    {vpc:1,name:'staging-api',cluster:'staging-cluster',tasks:2,cpu:'256',mem:'512'},
-    {vpc:3,name:'data-pipeline',cluster:'data-cluster',tasks:3,cpu:'2048',mem:'4096'},
-  ];
-  ecsConfigs.forEach(ec=>{
-    const vpcId=vpcs[ec.vpc]?.VpcId;if(!vpcId)return;
-    const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
-    ecsServices.push({
-      serviceName:ec.name,clusterArn:'arn:aws:ecs:us-east-1:111222333444:cluster/'+ec.cluster,
-      taskRoleArn:'arn:aws:iam::111222333444:role/ECSTaskRole',
-      status:'ACTIVE',desiredCount:ec.tasks,runningCount:ec.tasks,launchType:'FARGATE',
-      networkConfiguration:{awsvpcConfiguration:{
-        subnets:prvSubs.slice(0,2).map(s=>s.SubnetId),
-        securityGroups:sgs.filter(sg=>sg.VpcId===vpcId).slice(0,1).map(sg=>sg.GroupId),
-        assignPublicIp:'DISABLED'
-      }},
-      taskDefinition:'arn:aws:ecs:us-east-1:111222333444:task-definition/'+ec.name+':12',
-      cpu:ec.cpu,memory:ec.mem
-    });
-  });
-
-  // Lambda VPC functions
-  const lambdaFunctions=[];
-  const lambdaConfigs=[
-    {vpc:0,name:'prod-auth-handler',runtime:'nodejs20.x',mem:256,timeout:30},
-    {vpc:0,name:'prod-image-processor',runtime:'python3.12',mem:1024,timeout:300},
-    {vpc:3,name:'data-etl-trigger',runtime:'python3.12',mem:512,timeout:900},
-    {vpc:4,name:'shared-log-shipper',runtime:'nodejs20.x',mem:128,timeout:60},
-  ];
-  lambdaConfigs.forEach(lc=>{
-    const vpcId=vpcs[lc.vpc]?.VpcId;if(!vpcId)return;
-    const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
-    lambdaFunctions.push({
-      FunctionName:lc.name,Runtime:lc.runtime,MemorySize:lc.mem,Timeout:lc.timeout,
-      FunctionArn:'arn:aws:lambda:us-east-1:111222333444:function:'+lc.name,
-      Role:'arn:aws:iam::111222333444:role/LambdaExecutionRole',
-      State:'Active',LastModified:'2025-01-20T00:00:00Z',
-      VpcConfig:{
-        VpcId:vpcId,
-        SubnetIds:prvSubs.slice(0,2).map(s=>s.SubnetId),
-        SecurityGroupIds:sgs.filter(sg=>sg.VpcId===vpcId).slice(0,1).map(sg=>sg.GroupId)
-      }
-    });
-  });
-
-  // ElastiCache
-  const ecacheClusters=[];
-  const ecConfigs=[
-    {vpc:0,name:'prod-redis',engine:'redis',type:'cache.r6g.large',nodes:3},
-    {vpc:1,name:'staging-redis',engine:'redis',type:'cache.t3.micro',nodes:1},
-    {vpc:3,name:'data-redis',engine:'redis',type:'cache.r6g.xlarge',nodes:2},
-  ];
-  ecConfigs.forEach(ec=>{
-    const vpcId=vpcs[ec.vpc]?.VpcId;if(!vpcId)return;
-    ecacheClusters.push({
-      CacheClusterId:ec.name,Engine:ec.engine,CacheNodeType:ec.type,
-      CacheClusterStatus:'available',NumCacheNodes:ec.nodes,
-      CacheSubnetGroupName:ec.name+'-subnet-group',
-      VpcId:vpcId,
-      CacheNodes:Array.from({length:ec.nodes},(_,i)=>({
-        CacheNodeId:'000'+(i+1),CacheNodeStatus:'available',
-        Endpoint:{Address:ec.name+'.abc.0001.use1.cache.amazonaws.com',Port:6379}
-      })),
-      SecurityGroups:sgs.filter(sg=>sg.VpcId===vpcId).slice(0,1).map(sg=>({SecurityGroupId:sg.GroupId,Status:'active'}))
-    });
-  });
-
-  // Redshift
-  const redshiftClusters=[];
-  if(vpcs[3]){
-    const vpcId=vpcs[3].VpcId;
-    const prvSubs=subnets.filter(s=>s.VpcId===vpcId&&!(s.Tags[0]?.Value||'').includes('public'));
-    redshiftClusters.push({
-      ClusterIdentifier:'data-analytics-cluster',NodeType:'ra3.xlplus',
-      ClusterStatus:'available',NumberOfNodes:4,DBName:'analytics',
-      Endpoint:{Address:'data-analytics-cluster.abc.us-east-1.redshift.amazonaws.com',Port:5439},
-      VpcId:vpcId,ClusterSubnetGroupName:'data-redshift-subnet-group',
-      VpcSecurityGroups:sgs.filter(sg=>sg.VpcId===vpcId).slice(0,1).map(sg=>({VpcSecurityGroupId:sg.GroupId,Status:'active'})),
-      Encrypted:true,
-      ClusterNodes:Array.from({length:4},(_,i)=>({NodeRole:i===0?'LEADER':'COMPUTE'}))
-    });
-  }
-
-  // Transit Gateway Attachments
-  const tgwAttachments=[];
-  vpcs.forEach(vpc=>{
-    const hasRoute=rts.some(rt=>rt.VpcId===vpc.VpcId&&(rt.Routes||[]).some(r=>r.TransitGatewayId));
-    if(hasRoute){
-      tgwAttachments.push({
-        TransitGatewayAttachmentId:nid('tgw-attach'),
-        TransitGatewayId:'tgw-enterprise01',
-        ResourceId:vpc.VpcId,ResourceType:'vpc',
-        State:'available',
-        Association:{TransitGatewayRouteTableId:'tgw-rtb-main',State:'associated'}
-      });
-    }
-  });
-
-  // CloudFront
-  const cfDistributions=[];
-  const cfAlbs=albsList.filter(a=>a.Scheme==='internet-facing').slice(0,2);
-  cfAlbs.forEach((alb,ci)=>{
-    cfDistributions.push({
-      Id:'E'+String(ci+1).padStart(13,'0'),DomainName:'d'+String(ci+1).padStart(13,'0')+'.cloudfront.net',
-      Status:'Deployed',Enabled:true,
-      Origins:{Items:[{
-        DomainName:alb.DNSName,Id:'ALB-'+alb.LoadBalancerName,
-        CustomOriginConfig:{HTTPPort:80,HTTPSPort:443,OriginProtocolPolicy:'https-only'}
-      }]},
-      DefaultCacheBehavior:{ViewerProtocolPolicy:'redirect-to-https',Compress:true},
-      ViewerCertificate:{ACMCertificateArn:'arn:aws:acm:us-east-1:111222333444:certificate/abc-'+ci},
-      Aliases:{Items:ci===0?['www.example.com','api.example.com']:['staging.example.com']},
-      WebACLId:wafAcls.length>ci?wafAcls[ci].ARN:''
-    });
-  });
-  if(s3Buckets.length>0){
-    cfDistributions.push({
-      Id:'E0000000000003',DomainName:'d0000000000003.cloudfront.net',
-      Status:'Deployed',Enabled:true,
-      Origins:{Items:[{
-        DomainName:s3Buckets[4].Name+'.s3.amazonaws.com',Id:'S3-'+s3Buckets[4].Name,
-        S3OriginConfig:{OriginAccessIdentity:'origin-access-identity/cloudfront/EOAI123'}
-      }]},
-      DefaultCacheBehavior:{ViewerProtocolPolicy:'redirect-to-https',Compress:true},
-      Aliases:{Items:['static.example.com']}
-    });
-  }
-
-  // IAM Demo Data
-  const iamRoles=[
-    {RoleName:'EC2InstanceRole',Arn:'arn:aws:iam::111222333444:role/EC2InstanceRole',
-     CreateDate:'2024-01-15T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ec2.amazonaws.com'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[{PolicyName:'EC2InlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['s3:GetObject','s3:PutObject'],Resource:'arn:aws:s3:::prod-app-data/*'},
-       {Effect:'Allow',Action:['logs:CreateLogGroup','logs:CreateLogStream','logs:PutLogEvents'],Resource:'arn:aws:logs:*:111222333444:*'}
-     ]}}],
-     AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore',PolicyName:'AmazonSSMManagedInstanceCore'}],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'LambdaExecutionRole',Arn:'arn:aws:iam::111222333444:role/LambdaExecutionRole',
-     CreateDate:'2024-02-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'lambda.amazonaws.com'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[{PolicyName:'LambdaInlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['logs:CreateLogGroup','logs:CreateLogStream','logs:PutLogEvents'],Resource:'arn:aws:logs:*:111222333444:*'},
-       {Effect:'Allow',Action:['dynamodb:GetItem','dynamodb:PutItem','dynamodb:Query','dynamodb:UpdateItem','dynamodb:DeleteItem'],Resource:'arn:aws:dynamodb:us-east-1:111222333444:table/prod-*'}
-     ]}}],
-     AttachedManagedPolicies:[],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'ECSTaskRole',Arn:'arn:aws:iam::111222333444:role/ECSTaskRole',
-     CreateDate:'2024-03-10T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ecs-tasks.amazonaws.com'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[{PolicyName:'ECSInlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['ecr:GetDownloadUrlForLayer','ecr:BatchGetImage','ecr:GetAuthorizationToken'],Resource:'*'},
-       {Effect:'Allow',Action:['s3:GetObject','s3:ListBucket'],Resource:['arn:aws:s3:::prod-assets','arn:aws:s3:::prod-assets/*']},
-       {Effect:'Allow',Action:['sqs:SendMessage','sqs:ReceiveMessage','sqs:DeleteMessage'],Resource:'arn:aws:sqs:us-east-1:111222333444:prod-*'}
-     ]}}],
-     AttachedManagedPolicies:[],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'AdminRole',Arn:'arn:aws:iam::111222333444:role/AdminRole',
-     CreateDate:'2023-06-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[],
-     AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/AdministratorAccess',PolicyName:'AdministratorAccess'}],
-     RoleLastUsed:{LastUsedDate:new Date(Date.now()-86400000).toISOString()}},
-    {RoleName:'ReadOnlyRole',Arn:'arn:aws:iam::111222333444:role/ReadOnlyRole',
-     CreateDate:'2024-04-15T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[{PolicyName:'ReadOnlyInline',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['ec2:Describe*','s3:Get*','s3:List*','rds:Describe*','lambda:List*','lambda:Get*','ecs:Describe*','ecs:List*','iam:Get*','iam:List*','cloudwatch:Get*','cloudwatch:List*','logs:Describe*','logs:Get*'],Resource:'*'}
-     ]}}],
-     AttachedManagedPolicies:[],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'DeployRole',Arn:'arn:aws:iam::111222333444:role/DeployRole',
-     CreateDate:'2024-05-20T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole',Condition:{Bool:{'aws:MultiFactorAuthPresent':'true'}}}]},
-     PermissionsBoundary:{PermissionsBoundaryType:'Policy',PermissionsBoundaryArn:'arn:aws:iam::111222333444:policy/DeployBoundary'},
-     RolePolicyList:[{PolicyName:'DeployInline',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['codedeploy:*','s3:GetObject','s3:PutObject','s3:ListBucket'],Resource:'*'},
-       {Effect:'Allow',Action:['ec2:DescribeInstances','ec2:DescribeInstanceStatus'],Resource:'*'}
-     ]}}],
-     AttachedManagedPolicies:[],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'CrossAccountRole',Arn:'arn:aws:iam::111222333444:role/CrossAccountRole',
-     CreateDate:'2024-06-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::555666777888:root'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[{PolicyName:'CrossAccountPolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['s3:GetObject','s3:ListBucket'],Resource:['arn:aws:s3:::shared-data','arn:aws:s3:::shared-data/*']}
-     ]}}],
-     AttachedManagedPolicies:[],
-     RoleLastUsed:{LastUsedDate:new Date(Date.now()-7776000000).toISOString()}},
-    {RoleName:'DataAnalystRole',Arn:'arn:aws:iam::111222333444:role/DataAnalystRole',
-     CreateDate:'2024-07-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[{PolicyName:'DataAnalystInline',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:'s3:*',Resource:'*'},
-       {Effect:'Allow',Action:'redshift:*',Resource:'*'}
-     ]}}],
-     AttachedManagedPolicies:[],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'AWSServiceRoleForECS',Arn:'arn:aws:iam::111222333444:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS',
-     CreateDate:'2023-01-01T00:00:00Z',Path:'/aws-service-role/ecs.amazonaws.com/',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ecs.amazonaws.com'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[],
-     AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/aws-service-role/AmazonECSServiceRolePolicy',PolicyName:'AmazonECSServiceRolePolicy'}],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}},
-    {RoleName:'SecurityAuditRole',Arn:'arn:aws:iam::111222333444:role/SecurityAuditRole',
-     CreateDate:'2024-08-01T00:00:00Z',
-     AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{AWS:'arn:aws:iam::111222333444:root'},Action:'sts:AssumeRole'}]},
-     RolePolicyList:[],
-     AttachedManagedPolicies:[
-       {PolicyArn:'arn:aws:iam::aws:policy/SecurityAudit',PolicyName:'SecurityAudit'},
-       {PolicyArn:'arn:aws:iam::aws:policy/ReadOnlyAccess',PolicyName:'ReadOnlyAccess'}
-     ],
-     RoleLastUsed:{LastUsedDate:new Date().toISOString()}}
-  ];
-  const iamUsers=[
-    {UserName:'admin-user',Arn:'arn:aws:iam::111222333444:user/admin-user',
-     CreateDate:'2023-01-15T00:00:00Z',
-     MFADevices:[{SerialNumber:'arn:aws:iam::111222333444:mfa/admin-user'}],
-     UserPolicyList:[],
-     AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/AdministratorAccess',PolicyName:'AdministratorAccess'}]},
-    {UserName:'dev-user',Arn:'arn:aws:iam::111222333444:user/dev-user',
-     CreateDate:'2024-03-01T00:00:00Z',
-     MFADevices:[],
-     UserPolicyList:[{PolicyName:'DevInlinePolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:'ec2:*',Resource:'*'},
-       {Effect:'Allow',Action:'s3:GetObject',Resource:'arn:aws:s3:::dev-*/*'}
-     ]}}],
-     AttachedManagedPolicies:[]},
-    {UserName:'ci-bot',Arn:'arn:aws:iam::111222333444:user/ci-bot',
-     CreateDate:'2024-05-01T00:00:00Z',
-     MFADevices:[],
-     UserPolicyList:[{PolicyName:'CIBotPolicy',PolicyDocument:{Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['codedeploy:CreateDeployment','codedeploy:GetDeployment','codedeploy:RegisterApplicationRevision'],Resource:'*'},
-       {Effect:'Allow',Action:['s3:GetObject','s3:PutObject'],Resource:'arn:aws:s3:::ci-artifacts/*'}
-     ]}}],
-     AttachedManagedPolicies:[]},
-    {UserName:'readonly-user',Arn:'arn:aws:iam::111222333444:user/readonly-user',
-     CreateDate:'2024-06-01T00:00:00Z',
-     MFADevices:[{SerialNumber:'arn:aws:iam::111222333444:mfa/readonly-user'}],
-     UserPolicyList:[],
-     AttachedManagedPolicies:[{PolicyArn:'arn:aws:iam::aws:policy/ReadOnlyAccess',PolicyName:'ReadOnlyAccess'}]}
-  ];
-  const iamPolicies=[
-    {PolicyName:'AdministratorAccess',Arn:'arn:aws:iam::aws:policy/AdministratorAccess',
-     PolicyVersionList:[{Document:JSON.stringify({Version:'2012-10-17',Statement:[{Effect:'Allow',Action:'*',Resource:'*'}]}),IsDefaultVersion:true}]},
-    {PolicyName:'ReadOnlyAccess',Arn:'arn:aws:iam::aws:policy/ReadOnlyAccess',
-     PolicyVersionList:[{Document:JSON.stringify({Version:'2012-10-17',Statement:[{Effect:'Allow',Action:['ec2:Describe*','s3:Get*','s3:List*','rds:Describe*','lambda:List*','lambda:Get*','ecs:Describe*','ecs:List*','iam:Get*','iam:List*','cloudwatch:Get*','cloudwatch:List*','logs:Describe*','logs:Get*'],Resource:'*'}]}),IsDefaultVersion:true}]},
-    {PolicyName:'AmazonSSMManagedInstanceCore',Arn:'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore',
-     PolicyVersionList:[{Document:JSON.stringify({Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['ssm:UpdateInstanceInformation','ssmmessages:CreateControlChannel','ssmmessages:CreateDataChannel','ssmmessages:OpenControlChannel','ssmmessages:OpenDataChannel','ec2messages:GetMessages'],Resource:'*'}
-     ]}),IsDefaultVersion:true}]},
-    {PolicyName:'SecurityAudit',Arn:'arn:aws:iam::aws:policy/SecurityAudit',
-     PolicyVersionList:[{Document:JSON.stringify({Version:'2012-10-17',Statement:[
-       {Effect:'Allow',Action:['access-analyzer:Get*','access-analyzer:List*','config:Describe*','config:Get*','config:List*','guardduty:Get*','guardduty:List*','inspector:Describe*','inspector:Get*','inspector:List*','iam:Get*','iam:List*','iam:GenerateCredentialReport','cloudtrail:Describe*','cloudtrail:Get*','cloudtrail:LookupEvents'],Resource:'*'}
-     ]}),IsDefaultVersion:true}]}
-  ];
-
-  return {
-    vpcs:{Vpcs:vpcs},subnets:{Subnets:subnets},rts:{RouteTables:rts},
-    sgs:{SecurityGroups:sgs},nacls:{NetworkAcls:nacls},
-    igws:{InternetGateways:igwsList},nats:{NatGateways:natsList},
-    ec2:{Reservations:[{Instances:ec2Instances}]},
-    albs:{LoadBalancers:albsList},vpces:{VpcEndpoints:vpceList},
-    peer:{VpcPeeringConnections:peerings},vpn:{VpnConnections:vpnConns},
-    vols:{Volumes:volsList},snaps:{Snapshots:snapsList},
-    s3:{Buckets:s3Buckets},r53:{HostedZones:zones},r53records:{ResourceRecordSets:r53records},tgs:{TargetGroups:tgsList},
-    enis:{NetworkInterfaces:enisList},waf:{WebACLs:wafAcls},
-    rds:{DBInstances:rdsInstances},ecs:{services:ecsServices},
-    lambda:{Functions:lambdaFunctions},elasticache:{CacheClusters:ecacheClusters},
-    redshift:{Clusters:redshiftClusters},tgwatt:{TransitGatewayAttachments:tgwAttachments},
-    cf:{DistributionList:{Items:cfDistributions}},
-    iam:{RoleDetailList:iamRoles,UserDetailList:iamUsers,Policies:iamPolicies}
-  };
-}
-// OPTIMIZED: Lazy-load demo data only when user clicks "Load Demo" (saves ~5MB at startup)
-let demo=null;
-
-let gwNames={};
-
-// Compliance reference documentation links
-const _complianceRefs={
-  'CIS 5.1':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/nacl-controls.html',ref:'CIS AWS Foundations 5.1'},
-  'CIS 5.2':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html#ec2-13',ref:'CIS AWS Foundations 5.2'},
-  'CIS 5.3':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html#ec2-14',ref:'CIS AWS Foundations 5.3'},
-  'CIS 5.4':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html#ec2-2',ref:'CIS AWS Foundations 5.4'},
-  'CIS 5.5':{url:'https://docs.aws.amazon.com/vpc/latest/peering/peering-configurations-partial-access.html',ref:'CIS AWS Foundations 5.5'},
-  'NET-1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Scenario2.html',ref:'VPC Private Subnet Design'},
-  'NET-2':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'Security Group Best Practices'},
-  'WAF-1':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html',ref:'AWS WAF Rules'},
-  'WAF-2':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-rate-based-rules.html',ref:'WAF Rate-Based Rules'},
-  'WAF-3':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-protections.html',ref:'WAF ALB Protection'},
-  'WAF-4':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-default-action.html',ref:'WAF Default Action'},
-  'ARCH-N1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-ip-addressing.html',ref:'Well-Architected SEC05-BP01'},
-  'ARCH-N2':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html',ref:'Well-Architected REL-10'},
-  'ARCH-N3':{url:'https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/use-fault-isolation-to-protect-your-workload.html',ref:'Well-Architected REL-10'},
-  'ARCH-N5':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'Well-Architected SEC05-BP02'},
-  'ARCH-C1':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html',ref:'Well-Architected SEC05-BP01'},
-  'ARCH-C2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html',ref:'Well-Architected SEC08-BP02'},
-  'ARCH-C3':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html',ref:'Lambda VPC Config'},
-  'ARCH-D1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_BestPractices.Security.html',ref:'Well-Architected SEC05-BP01'},
-  'ARCH-D2':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'Well-Architected REL-09'},
-  'ARCH-D3':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html',ref:'Well-Architected SEC08-BP02'},
-  'ARCH-D4':{url:'https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/Replication.html',ref:'Well-Architected REL-09'},
-  'ARCH-D5':{url:'https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-db-encryption.html',ref:'Well-Architected SEC08-BP02'},
-  'ARCH-S1':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html',ref:'Well-Architected SEC08-BP02'},
-  'ARCH-S2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'Well-Architected REL-09'},
-  'ARCH-E1':{url:'https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html',ref:'Well-Architected PERF04-BP01'},
-  'ARCH-G1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html',ref:'Well-Architected REL-10'},
-  'ARCH-G2':{url:'https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-s3.html',ref:'Well-Architected COST07-BP01'},
-  'ARCH-X1':{url:'https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-routing.html',ref:'VPC Peering Routing'},
-  'SOC2-CC6.1':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html',ref:'SOC2 CC6.1 Logical Access Security'},
-  'SOC2-CC6.3':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html',ref:'SOC2 CC6.3 Role-Based Access'},
-  'SOC2-CC6.6':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'SOC2 CC6.6 Network Boundaries'},
-  'SOC2-CC6.7':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html',ref:'SOC2 CC6.7 Data Transmission'},
-  'SOC2-CC6.8':{url:'https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/infrastructure-protection.html',ref:'SOC2 CC6.8 Malicious Software'},
-  'SOC2-CC7.2':{url:'https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html',ref:'SOC2 CC7.2 Monitoring'},
-  'SOC2-CC8.1':{url:'https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html',ref:'SOC2 CC8.1 Change Management'},
-  'SOC2-A1.2':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'SOC2 A1.2 Availability'},
-  'SOC2-A1.3':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'SOC2 A1.3 Recovery'},
-  'SOC2-C1.1':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html',ref:'SOC2 C1.1 Confidentiality'},
-  'SOC2-C1.2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html',ref:'SOC2 C1.2 Data Protection'},
-  'SOC2-PI1.1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html',ref:'SOC2 PI1.1 Processing Integrity'},
-  'PCI-1.3.1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html',ref:'PCI DSS 4.0 Req 1.3.1 Inbound Traffic'},
-  'PCI-1.3.2':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'PCI DSS 4.0 Req 1.3.2 Outbound Traffic'},
-  'PCI-1.3.4':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html',ref:'PCI DSS 4.0 Req 1.3.4 Network Segmentation'},
-  'PCI-2.2.1':{url:'https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html',ref:'PCI DSS 4.0 Req 2.2.1 Configuration Standards'},
-  'PCI-3.4.1':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html',ref:'PCI DSS 4.0 Req 3.4.1 Data Encryption'},
-  'PCI-3.5.1':{url:'https://docs.aws.amazon.com/kms/latest/developerguide/overview.html',ref:'PCI DSS 4.0 Req 3.5.1 Key Management'},
-  'PCI-4.2.1':{url:'https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html',ref:'PCI DSS 4.0 Req 4.2.1 TLS'},
-  'PCI-6.4.1':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html',ref:'PCI DSS 4.0 Req 6.4.1 Web App Firewall'},
-  'PCI-7.2.1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html',ref:'PCI DSS 4.0 Req 7.2.1 Least Privilege'},
-  'PCI-8.3.1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa.html',ref:'PCI DSS 4.0 Req 8.3.1 MFA'},
-  'PCI-10.2.1':{url:'https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html',ref:'PCI DSS 4.0 Req 10.2.1 Audit Logging'},
-  'PCI-11.3.1':{url:'https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html',ref:'PCI DSS 4.0 Req 11.3.1 Vulnerability Scanning'},
-  'PCI-12.10.1':{url:'https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html',ref:'PCI DSS 4.0 Req 12.10.1 Incident Response'},
-  'IAM-1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html',ref:'IAM Best Practices'},
-  'IAM-2':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege',ref:'IAM Least Privilege'},
-  'IAM-3':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html',ref:'Cross-Account MFA'},
-  'IAM-4':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege',ref:'IAM Service Wildcards'},
-  'IAM-5':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_finding-unused.html',ref:'Unused IAM Roles'},
-  'IAM-6':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html',ref:'External ID Best Practice'},
-  'IAM-7':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#bp-use-aws-defined-policies',ref:'Managed vs Inline Policies'},
-  'IAM-8':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html',ref:'Permission Boundaries'},
-  // CKV (standalone Checkov checks)
-  'CKV_AWS_79':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html',ref:'Checkov CKV_AWS_79 — IMDSv2'},
-  'CKV_AWS_126':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',ref:'Checkov CKV_AWS_126 — VPC Flow Logs'},
-  'CKV_AWS_21':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html',ref:'Checkov CKV_AWS_21 — S3 Versioning'},
-  'CKV_AWS_18':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html',ref:'Checkov CKV_AWS_18 — S3 Access Logging'},
-  'CKV_AWS_26':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'Checkov CKV_AWS_26 — RDS Backup Retention'},
-  'CKV_AWS_45':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html',ref:'Checkov CKV_AWS_45 — Lambda Env Encryption'},
-  'CKV_AWS_50':{url:'https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html',ref:'Checkov CKV_AWS_50 — Lambda X-Ray Tracing'},
-  // BUDR
-  'BUDR-HA-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS Multi-AZ Deployments'},
-  'BUDR-HA-2':{url:'https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html',ref:'EC2 Auto Scaling'},
-  'BUDR-HA-3':{url:'https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html',ref:'ECS Service Scaling'},
-  'BUDR-HA-4':{url:'https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/Replication.html',ref:'ElastiCache Replication'},
-  'BUDR-HA-5':{url:'https://docs.aws.amazon.com/redshift/latest/mgmt/managing-clusters-console.html',ref:'Redshift Cluster Management'},
-  'BUDR-HA-6':{url:'https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-subnets.html',ref:'ALB Availability Zones'},
-  'BUDR-BAK-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'RDS Automated Backups'},
-  'BUDR-BAK-2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'EBS Snapshots'},
-  'BUDR-BAK-3':{url:'https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/backups.html',ref:'ElastiCache Backups'},
-  'BUDR-BAK-4':{url:'https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-snapshots.html',ref:'Redshift Snapshots'},
-  'BUDR-BAK-5':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'EBS Snapshot Scheduling'},
-  'BUDR-DR-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS DR Strategy'},
-  'BUDR-DR-2':{url:'https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/ec2-backup.html',ref:'EC2 DR Strategy'},
-};
 // === CHECKOV (CKV) ID MAPPING ===
 // Maps existing control IDs to their Checkov equivalents for unified compliance view
 const _CKV_MAP={
@@ -1450,383 +723,7 @@ let _showNested=false;
 let _detailLevel=0; // 0=collapsed(VPC+subnet names), 1=normal(resources), 2=expanded(nested children)
 let _dnsRecordsExpanded=false; // DNS zones always show; toggle for individual record rows
 
-// === COMPLIANCE ENGINE ===
-let _complianceFindings=[];
-function _hasOpenCidr(perm){return(perm.IpRanges||[]).some(r=>r.CidrIp==='0.0.0.0/0')||(perm.Ipv6Ranges||[]).some(r=>r.CidrIpv6==='::/0')}
-function _hasPort(perm,port){if(perm.IpProtocol==='-1')return true;const p=String(perm.IpProtocol);if(p!=='6'&&p!=='17'&&p!=='tcp'&&p!=='udp')return false;const from=perm.FromPort,to=perm.ToPort;if(from===undefined||to===undefined)return false;return from<=port&&to>=port}
-function _naclCoversPort(e,port){if(e.Protocol==='-1')return true;const p=parseInt(e.Protocol,10);if(p!==6&&p!==17)return false;const pr=e.PortRange;if(!pr||pr.From===undefined||pr.To===undefined)return false;return pr.From<=port&&pr.To>=port}
-function runCISChecks(ctx){
-  const f=[];
-  // CIS 5.2: SG allows SSH from 0.0.0.0/0
-  (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
-    if(_hasPort(p,22)&&_hasOpenCidr(p))f.push({severity:'HIGH',control:'CIS 5.2',framework:'CIS',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows SSH (22) from 0.0.0.0/0',remediation:'Restrict SSH to specific CIDR ranges or bastion host SG'});
-  })});
-  // CIS 5.3: SG allows RDP from 0.0.0.0/0
-  (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
-    if(_hasPort(p,3389)&&_hasOpenCidr(p))f.push({severity:'HIGH',control:'CIS 5.3',framework:'CIS',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows RDP (3389) from 0.0.0.0/0',remediation:'Restrict RDP to specific CIDR ranges or VPN'});
-  })});
-  // CIS 5.4: Default SG restricts all traffic
-  (ctx.sgs||[]).forEach(sg=>{if(sg.GroupName==='default'){
-    const hasIngress=(sg.IpPermissions||[]).length>0;const hasEgress=(sg.IpPermissionsEgress||[]).length>0;
-    if(hasIngress||hasEgress)f.push({severity:'MEDIUM',control:'CIS 5.4',framework:'CIS',resource:sg.GroupId,resourceName:'default',message:`Default SG in VPC ${sg.VpcId} has ${hasIngress?'ingress':''}${hasIngress&&hasEgress?' and ':''}${hasEgress?'egress':''} rules`,remediation:'Remove all rules from default SGs; use custom SGs instead'});
-  }});
-  // CIS 5.1: NACLs allow ingress from 0.0.0.0/0 to admin ports
-  (ctx.nacls||[]).forEach(nacl=>{(nacl.Entries||[]).forEach(e=>{
-    if(!e.Egress&&e.RuleAction==='allow'&&(e.CidrBlock==='0.0.0.0/0'||e.Ipv6CidrBlock==='::/0')){
-      if(_naclCoversPort(e,22))f.push({severity:'HIGH',control:'CIS 5.1',framework:'CIS',resource:nacl.NetworkAclId,resourceName:gn(nacl,nacl.NetworkAclId),message:'NACL allows SSH (22) from 0.0.0.0/0',remediation:'Restrict NACL ingress to specific source CIDRs'});
-      if(_naclCoversPort(e,3389))f.push({severity:'HIGH',control:'CIS 5.1',framework:'CIS',resource:nacl.NetworkAclId,resourceName:gn(nacl,nacl.NetworkAclId),message:'NACL allows RDP (3389) from 0.0.0.0/0',remediation:'Restrict NACL ingress to specific source CIDRs'});
-    }
-  })});
-  // CIS 5.5: Peering route tables least-access
-  (ctx.rts||[]).forEach(rt=>{(rt.Routes||[]).forEach(r=>{
-    if(r.VpcPeeringConnectionId&&r.DestinationCidrBlock==='0.0.0.0/0')f.push({severity:'MEDIUM',control:'CIS 5.5',framework:'CIS',resource:rt.RouteTableId,resourceName:gn(rt,rt.RouteTableId),message:'Peering route has overly broad 0.0.0.0/0 destination',remediation:'Use specific CIDR ranges for peering routes'});
-  })});
-  // NET-1: Private subnets with IGW routes
-  const pubSubIds=ctx.pubSubs||new Set();
-  (ctx.subnets||[]).forEach(sub=>{
-    if(pubSubIds.has&&pubSubIds.has(sub.SubnetId))return;
-    const rt=ctx.subRT&&ctx.subRT[sub.SubnetId];if(!rt)return;
-    const hasIgw=(rt.Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State==='active');
-    if(hasIgw)f.push({severity:'MEDIUM',control:'NET-1',framework:'CIS',resource:sub.SubnetId,resourceName:gn(sub,sub.SubnetId),message:'Private subnet has direct IGW route',remediation:'Remove IGW route from private subnet route table'});
-  });
-  // NET-2: SG allows all protocols from 0.0.0.0/0
-  (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
-    if(p.IpProtocol==='-1'&&_hasOpenCidr(p))f.push({severity:'CRITICAL',control:'NET-2',framework:'CIS',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows ALL traffic from 0.0.0.0/0',remediation:'Restrict to specific ports and source CIDRs'});
-  })});
-  // CKV_AWS_79: EC2 IMDSv2 not enforced
-  (ctx.instances||[]).forEach(inst=>{
-    const mo=inst.MetadataOptions||{};
-    if(mo.HttpTokens!=='required')f.push({severity:'HIGH',control:'CKV_AWS_79',framework:'CIS',resource:inst.InstanceId,resourceName:gn(inst,inst.InstanceId),message:'EC2 instance not enforcing IMDSv2 (HttpTokens != required)',remediation:'Set MetadataOptions.HttpTokens to "required" to enforce IMDSv2'});
-  });
-  // CKV_AWS_126: VPC flow logs not enabled (standalone CKV check)
-  // Note: FlowLogs field requires enrichment (describe-flow-logs); only flag if data is available
-  if((ctx.vpcs||[]).some(v=>v.FlowLogs!==undefined)){
-    (ctx.vpcs||[]).forEach(vpc=>{
-      if(!vpc.FlowLogs||vpc.FlowLogs.length===0)f.push({severity:'MEDIUM',control:'CKV_AWS_126',framework:'CIS',resource:vpc.VpcId,resourceName:gn(vpc,vpc.VpcId),message:'VPC does not have flow logs enabled',remediation:'Enable VPC Flow Logs to CloudWatch or S3'});
-    });
-  }
-  // CKV_AWS_21: S3 versioning not enabled
-  // Note: Versioning field requires per-bucket get-bucket-versioning call
-  if((ctx.s3bk||[]).some(b=>b.Versioning!==undefined)){
-    (ctx.s3bk||[]).forEach(bk=>{
-      if(!bk.Versioning||bk.Versioning.Status!=='Enabled')f.push({severity:'MEDIUM',control:'CKV_AWS_21',framework:'CIS',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket versioning not enabled',remediation:'Enable versioning for data protection and recovery'});
-    });
-  }
-  // CKV_AWS_18: S3 access logging not configured
-  // Note: LoggingConfiguration requires per-bucket get-bucket-logging call
-  if((ctx.s3bk||[]).some(b=>b.LoggingConfiguration!==undefined||b.LoggingEnabled!==undefined)){
-    (ctx.s3bk||[]).forEach(bk=>{
-      if(!bk.LoggingConfiguration&&!bk.LoggingEnabled)f.push({severity:'LOW',control:'CKV_AWS_18',framework:'CIS',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket access logging not configured',remediation:'Enable server access logging to an audit bucket'});
-    });
-  }
-  // CKV_AWS_26: RDS backup retention < 7 days
-  (ctx.rdsInstances||[]).forEach(db=>{
-    if((db.BackupRetentionPeriod||0)<7)f.push({severity:'MEDIUM',control:'CKV_AWS_26',framework:'CIS',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS backup retention is '+(db.BackupRetentionPeriod||0)+' days (should be >=7)',remediation:'Set BackupRetentionPeriod to at least 7 days'});
-  });
-  // CKV_AWS_338: CloudWatch log group retention
-  // CKV_AWS_45: Lambda environment variables not encrypted with KMS
-  (ctx.lambdaFns||[]).forEach(fn=>{
-    if(fn.Environment&&fn.Environment.Variables&&Object.keys(fn.Environment.Variables).length>0&&!fn.KMSKeyArn)
-      f.push({severity:'LOW',control:'CKV_AWS_45',framework:'CIS',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda has environment variables without KMS encryption',remediation:'Set KMSKeyArn to encrypt environment variables at rest'});
-  });
-  // CKV_AWS_50: Lambda X-Ray tracing not enabled
-  (ctx.lambdaFns||[]).forEach(fn=>{
-    if(!fn.TracingConfig||fn.TracingConfig.Mode!=='Active')
-      f.push({severity:'LOW',control:'CKV_AWS_50',framework:'CIS',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda X-Ray tracing not active',remediation:'Enable active tracing for distributed tracing and debugging'});
-  });
-  return f;
-}
-function runWAFChecks(ctx){
-  const f=[];
-  const acls=ctx.wafAcls||[];
-  // WAF-1: Empty WebACL
-  acls.forEach(acl=>{if(!(acl.Rules||[]).length)f.push({severity:'HIGH',control:'WAF-1',framework:'WAF',resource:acl.Id||acl.WebACLId||'',resourceName:acl.Name||'',message:'WebACL has zero rules',remediation:'Add rate-limiting and IP-filtering rules to WebACL'})});
-  // WAF-2: No rate-limiting rule
-  acls.forEach(acl=>{const hasRate=(acl.Rules||[]).some(r=>(r.Statement&&r.Statement.RateBasedStatement)||(r.Type==='RATE_BASED'));
-    if(!hasRate&&(acl.Rules||[]).length>0)f.push({severity:'MEDIUM',control:'WAF-2',framework:'WAF',resource:acl.Id||acl.WebACLId||'',resourceName:acl.Name||'',message:'WebACL has no rate-limiting rule',remediation:'Add a rate-based rule to prevent DDoS/brute-force'})});
-  // WAF-3: ALB not protected by WAF
-  const protectedArns=new Set();acls.forEach(acl=>{(acl.ResourceArns||[]).forEach(a=>protectedArns.add(a))});
-  (ctx.albs||[]).forEach(alb=>{if(alb.LoadBalancerArn&&!protectedArns.has(alb.LoadBalancerArn))f.push({severity:'MEDIUM',control:'WAF-3',framework:'WAF',resource:alb.LoadBalancerArn,resourceName:alb.LoadBalancerName||'',message:'ALB not associated with any WebACL',remediation:'Associate this ALB with a WAF WebACL'})});
-  // WAF-4: Default action is ALLOW
-  acls.forEach(acl=>{const da=acl.DefaultAction||{};if(da.Allow||da.Type==='ALLOW')f.push({severity:'MEDIUM',control:'WAF-4',framework:'WAF',resource:acl.Id||acl.WebACLId||'',resourceName:acl.Name||'',message:'WebACL default action is ALLOW (should be BLOCK)',remediation:'Set default action to BLOCK and add explicit ALLOW rules'})});
-  return f;
-}
-function runArchChecks(ctx){
-  const f=[];const gn2=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
-  const pubSubs=ctx.pubSubs||new Set();const subRT=ctx.subRT||{};
-  // ARCH-N1: Public subnet with no IGW route
-  (ctx.subnets||[]).forEach(sub=>{
-    if(!sub.MapPublicIpOnLaunch)return;
-    const rt=subRT[sub.SubnetId];if(!rt)return;
-    const hasIgw=(rt.Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State!=='blackhole');
-    if(!hasIgw)f.push({severity:'HIGH',control:'ARCH-N1',framework:'ARCH',resource:sub.SubnetId,resourceName:gn2(sub,sub.SubnetId),message:'Subnet has MapPublicIpOnLaunch=true but no IGW route',remediation:'Add an IGW route to the route table or disable MapPublicIpOnLaunch'});
-  });
-  // ARCH-N2: Private subnet resources with no NAT route
-  (ctx.subnets||[]).forEach(sub=>{
-    if(pubSubs.has(sub.SubnetId))return;
-    const rt=subRT[sub.SubnetId];if(!rt)return;
-    const hasNat=(rt.Routes||[]).some(r=>r.NatGatewayId);
-    const hasVpce=(rt.Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('vpce-'));
-    const cnt=((ctx.instBySub||{})[sub.SubnetId]||[]).length+((ctx.lambdaBySub||{})[sub.SubnetId]||[]).length+((ctx.ecsBySub||{})[sub.SubnetId]||[]).length;
-    if(cnt>0&&!hasNat&&!hasVpce)f.push({severity:'HIGH',control:'ARCH-N2',framework:'ARCH',resource:sub.SubnetId,resourceName:gn2(sub,sub.SubnetId),message:'Private subnet has '+cnt+' resources but no NAT gateway or VPC endpoint route',remediation:'Add a NAT gateway in a public subnet and route 0.0.0.0/0 through it'});
-  });
-  // ARCH-N3: VPC with all subnets in single AZ
-  const subByVpc={};(ctx.subnets||[]).forEach(s=>{(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s)});
-  Object.entries(subByVpc).forEach(([vid,subs])=>{
-    const azs=new Set(subs.map(s=>s.AvailabilityZone).filter(Boolean));
-    if(subs.length>1&&azs.size===1){const vpc=(ctx.vpcs||[]).find(v=>v.VpcId===vid);
-      f.push({severity:'HIGH',control:'ARCH-N3',framework:'ARCH',resource:vid,resourceName:gn2(vpc||{},vid),message:'All '+subs.length+' subnets in single AZ ('+[...azs][0]+') — no HA',remediation:'Create subnets across at least 2 AZs for fault tolerance'});}
-  });
-  // ARCH-N5: Overly broad SG egress
-  (ctx.sgs||[]).forEach(sg=>{if(sg.GroupName==='default')return;
-    (sg.IpPermissionsEgress||[]).forEach(p=>{
-      if(p.IpProtocol==='-1'&&_hasOpenCidr(p)){const inst=(ctx.instances||[]).filter(i=>(i.SecurityGroups||[]).some(g=>g.GroupId===sg.GroupId));
-        if(inst.length>0)f.push({severity:'LOW',control:'ARCH-N5',framework:'ARCH',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG has unrestricted egress attached to '+inst.length+' instance(s)',remediation:'Restrict egress to required ports/CIDRs only'});}
-    });
-  });
-  // ARCH-C1: EC2 in public subnet with wide-open SG
-  (ctx.instances||[]).forEach(inst=>{if(!pubSubs.has(inst.SubnetId))return;
-    const sgIds=(inst.SecurityGroups||[]).map(g=>g.GroupId);
-    const hasBroad=sgIds.some(gid=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);return sg&&(sg.IpPermissions||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
-    if(hasBroad)f.push({severity:'CRITICAL',control:'ARCH-C1',framework:'ARCH',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'EC2 in public subnet with SG allowing all traffic from 0.0.0.0/0',remediation:'Restrict to specific ports; use ALB/NLB as entry point'});
-  });
-  // ARCH-C2: EC2 without EBS encryption
-  (ctx.instances||[]).forEach(inst=>{const vols=(inst.BlockDeviceMappings||[]).map(b=>b.Ebs?.VolumeId).filter(Boolean);
-    const unenc=vols.filter(vid=>{const v=(ctx.volumes||[]).find(x=>x.VolumeId===vid);return v&&!v.Encrypted});
-    if(unenc.length>0)f.push({severity:'MEDIUM',control:'ARCH-C2',framework:'ARCH',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:unenc.length+' unencrypted EBS volume(s)',remediation:'Enable EBS encryption by default in account settings'});
-  });
-  // ARCH-C3: Lambda in VPC single AZ
-  (ctx.lambdaFns||[]).forEach(fn=>{const vc=fn.VpcConfig;if(!vc||!vc.SubnetIds||!vc.SubnetIds.length)return;
-    const azs=new Set(vc.SubnetIds.map(sid=>{const s=(ctx.subnets||[]).find(x=>x.SubnetId===sid);return s?s.AvailabilityZone:null}).filter(Boolean));
-    if(azs.size<2)f.push({severity:'MEDIUM',control:'ARCH-C3',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda in single AZ only',remediation:'Configure Lambda VPC subnets across at least 2 AZs'});
-  });
-  // ARCH-D1: RDS publicly accessible
-  (ctx.rdsInstances||[]).forEach(db=>{if(db.PubliclyAccessible)f.push({severity:'CRITICAL',control:'ARCH-D1',framework:'ARCH',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS instance is publicly accessible',remediation:'Set PubliclyAccessible=false; access via VPN/bastion'})});
-  // ARCH-D2: RDS without Multi-AZ
-  (ctx.rdsInstances||[]).forEach(db=>{if(db.MultiAZ)return;if((db.DBInstanceClass||'').includes('.micro'))return;
-    f.push({severity:'MEDIUM',control:'ARCH-D2',framework:'ARCH',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS not configured for Multi-AZ',remediation:'Enable Multi-AZ for production databases'})});
-  // ARCH-D3: RDS without encryption
-  (ctx.rdsInstances||[]).forEach(db=>{if(!db.StorageEncrypted)f.push({severity:'HIGH',control:'ARCH-D3',framework:'ARCH',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS storage not encrypted',remediation:'Enable encryption at rest'})});
-  // ARCH-D4: ElastiCache single node
-  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.NumCacheNodes>1||(ec.CacheNodeType||'').includes('.micro'))return;
-    f.push({severity:'MEDIUM',control:'ARCH-D4',framework:'ARCH',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache cluster has only 1 node',remediation:'Add read replicas or enable cluster mode'})});
-  // ARCH-D5: Redshift without encryption
-  (ctx.redshiftClusters||[]).forEach(rs=>{if(!rs.Encrypted)f.push({severity:'HIGH',control:'ARCH-D5',framework:'ARCH',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift cluster not encrypted at rest',remediation:'Enable encryption (requires snapshot migration)'})});
-  // ARCH-S1: S3 without encryption
-  (ctx.s3bk||[]).forEach(bk=>{if(!bk.ServerSideEncryption&&!bk.BucketEncryption)f.push({severity:'MEDIUM',control:'ARCH-S1',framework:'ARCH',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket may lack default encryption',remediation:'Enable default encryption (SSE-S3 or SSE-KMS)'})});
-  // ARCH-S2: EBS volumes without snapshots
-  (ctx.volumes||[]).forEach(vol=>{const snaps=(ctx.snapByVol||{})[vol.VolumeId]||[];
-    if(snaps.length>0||vol.State!=='in-use')return;
-    f.push({severity:'LOW',control:'ARCH-S2',framework:'ARCH',resource:vol.VolumeId,resourceName:gn2(vol,vol.VolumeId),message:'In-use EBS volume has no snapshots',remediation:'Create regular snapshots using AWS Backup or DLM'})});
-  // ARCH-E1: Internet-facing ALB without CloudFront
-  const cfOrigins=new Set();(ctx.cfDistributions||[]).forEach(d=>{(d.Origins?.Items||[]).forEach(o=>{cfOrigins.add(o.DomainName)})});
-  (ctx.albs||[]).forEach(alb=>{if(alb.Scheme!=='internet-facing'||cfOrigins.has(alb.DNSName))return;
-    f.push({severity:'LOW',control:'ARCH-E1',framework:'ARCH',resource:alb.LoadBalancerName,resourceName:alb.LoadBalancerName,message:'Internet-facing ALB without CloudFront',remediation:'Place CloudFront in front for caching and DDoS protection'})});
-  // ARCH-G1: NAT Gateway in single AZ
-  const natByVpc={};(ctx.nats||[]).forEach(n=>{(natByVpc[n.VpcId]=natByVpc[n.VpcId]||[]).push(n)});
-  Object.entries(natByVpc).forEach(([vid,nats])=>{
-    const azs=new Set(nats.map(n=>{const s=(ctx.subnets||[]).find(x=>x.SubnetId===n.SubnetId);return s?s.AvailabilityZone:null}).filter(Boolean));
-    if(nats.length>=1&&azs.size===1&&(subByVpc[vid]||[]).length>2){const vpc=(ctx.vpcs||[]).find(v=>v.VpcId===vid);
-      f.push({severity:'MEDIUM',control:'ARCH-G1',framework:'ARCH',resource:vid,resourceName:gn2(vpc||{},vid),message:'NAT Gateway(s) only in 1 AZ',remediation:'Deploy NAT Gateways in each AZ for resilience'});}
-  });
-  // ARCH-G2: Missing S3 VPC Endpoint
-  const vpcHasS3Vpce={};(ctx.vpces||[]).forEach(e=>{if((e.ServiceName||'').includes('.s3'))vpcHasS3Vpce[e.VpcId]=true});
-  (ctx.vpcs||[]).forEach(vpc=>{
-    const hasFns=(ctx.lambdaFns||[]).some(fn=>fn.VpcConfig&&fn.VpcConfig.VpcId===vpc.VpcId);
-    const hasInst=(ctx.instances||[]).some(i=>i.VpcId===vpc.VpcId);
-    if((hasFns||hasInst)&&!vpcHasS3Vpce[vpc.VpcId])f.push({severity:'LOW',control:'ARCH-G2',framework:'ARCH',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC has compute but no S3 Gateway Endpoint (traffic routes through NAT)',remediation:'Create an S3 Gateway Endpoint (free) to reduce NAT costs'});
-  });
-  // ARCH-X1: VPC peering without return route
-  (ctx.peerings||[]).forEach(p=>{if(p.Status?.Code!=='active')return;
-    [p.RequesterVpcInfo?.VpcId,p.AccepterVpcInfo?.VpcId].forEach(vid=>{if(!vid)return;
-      const hasRoute=(ctx.rts||[]).some(rt=>rt.VpcId===vid&&(rt.Routes||[]).some(r=>r.VpcPeeringConnectionId===p.VpcPeeringConnectionId));
-      if(!hasRoute)f.push({severity:'HIGH',control:'ARCH-X1',framework:'ARCH',resource:p.VpcPeeringConnectionId,resourceName:p.VpcPeeringConnectionId,message:'VPC '+vid+' has no route for peering '+p.VpcPeeringConnectionId,remediation:'Add routes in both VPCs for the peering connection'});
-    });
-  });
-  // ARCH-C4: Lambda using deprecated/EOL runtime
-  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
-    f.push({severity:'HIGH',control:'ARCH-C4',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda uses deprecated runtime: '+fn.Runtime,remediation:'Upgrade to a supported runtime version to receive security patches'})});
-  // ARCH-C5: Lambda with excessive timeout and no DLQ
-  (ctx.lambdaFns||[]).forEach(fn=>{if((fn.Timeout||3)>300&&!fn.DeadLetterConfig?.TargetArn)
-    f.push({severity:'LOW',control:'ARCH-C5',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda timeout >5min with no dead letter queue',remediation:'Add an SQS or SNS DLQ for failed invocations'})});
-  // ARCH-D6: ElastiCache without encryption at rest
-  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.AtRestEncryptionEnabled===false||(!ec.AtRestEncryptionEnabled&&ec.Engine==='redis'))
-    f.push({severity:'MEDIUM',control:'ARCH-D6',framework:'ARCH',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache cluster without encryption at rest',remediation:'Enable at-rest encryption (requires creating a new cluster)'})});
-  // ARCH-D7: Redshift publicly accessible
-  (ctx.redshiftClusters||[]).forEach(rs=>{if(rs.PubliclyAccessible)
-    f.push({severity:'CRITICAL',control:'ARCH-D7',framework:'ARCH',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift cluster is publicly accessible',remediation:'Disable public access; connect via VPN or bastion in private subnet'})});
-  // ARCH-E2: CloudFront allowing HTTP (not redirect/https-only)
-  (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
-    if(vpp==='allow-all')f.push({severity:'MEDIUM',control:'ARCH-E2',framework:'ARCH',resource:d.Id||d.ARN||'',resourceName:d.DomainName||d.Id||'',message:'CloudFront allows HTTP connections',remediation:'Set ViewerProtocolPolicy to redirect-to-https or https-only'})});
-  // ARCH-C6: ECS service with desiredCount=0 or mismatch
-  (ctx.ecsServices||[]).forEach(svc=>{if(svc.desiredCount>0&&svc.runningCount===0)
-    f.push({severity:'HIGH',control:'ARCH-C6',framework:'ARCH',resource:svc.serviceName,resourceName:svc.serviceName,message:'ECS service has 0 running tasks (desired: '+svc.desiredCount+')',remediation:'Check task definition, IAM role, and container health checks'})});
-  return f;
-}
-function runSOC2Checks(ctx){
-  const f=[];const gn2=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
-  const pubSubs=ctx.pubSubs||new Set();
-  // CC6.1 – Logical Access: SGs with 0.0.0.0/0 on sensitive ports (SSH/RDP/DB)
-  const sensPorts=[22,3389,3306,5432,1433,1521,6379,27017];
-  (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
-    sensPorts.forEach(port=>{if(_hasPort(p,port)&&_hasOpenCidr(p))
-      f.push({severity:'HIGH',control:'SOC2-CC6.1',framework:'SOC2',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows port '+port+' from 0.0.0.0/0 — logical access control gap',remediation:'Restrict to known CIDR ranges; use bastion hosts or SSM Session Manager'})});
-  })});
-  // CC6.3 – Role-Based Access: default SG with rules (should have no inbound)
-  (ctx.sgs||[]).forEach(sg=>{if(sg.GroupName!=='default')return;
-    if((sg.IpPermissions||[]).length>0)f.push({severity:'MEDIUM',control:'SOC2-CC6.3',framework:'SOC2',resource:sg.GroupId,resourceName:'default',message:'Default SG has inbound rules — violates least-privilege',remediation:'Remove all inbound rules from default SG; create explicit SGs per role'});
-  });
-  // CC6.6 – Network boundaries: VPC without NACL customization
-  (ctx.vpcs||[]).forEach(vpc=>{
-    const nacls=(ctx.nacls||[]).filter(n=>n.VpcId===vpc.VpcId&&!n.IsDefault);
-    if(nacls.length===0)f.push({severity:'MEDIUM',control:'SOC2-CC6.6',framework:'SOC2',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC uses only default NACLs — no network boundary segmentation',remediation:'Create custom NACLs for each subnet tier (public/private/data)'});
-  });
-  // CC6.7 – Data in transit: ALB without HTTPS listener
-  (ctx.albs||[]).forEach(alb=>{
-    const hasHttps=(alb.Listeners||[]).some(l=>l.Protocol==='HTTPS');
-    if(alb.Scheme==='internet-facing'&&!hasHttps)f.push({severity:'HIGH',control:'SOC2-CC6.7',framework:'SOC2',resource:alb.LoadBalancerName,resourceName:alb.LoadBalancerName,message:'Internet-facing ALB has no HTTPS listener — data transmitted unencrypted',remediation:'Add HTTPS listener with TLS 1.2+ certificate via ACM'});
-  });
-  // CC6.8 – Malicious software: EC2 in public subnet without SG restricting outbound
-  (ctx.instances||[]).forEach(inst=>{if(!pubSubs.has(inst.SubnetId))return;
-    const sgIds=(inst.SecurityGroups||[]).map(g=>g.GroupId);
-    const anyOpen=sgIds.some(gid=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);return sg&&(sg.IpPermissionsEgress||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
-    if(anyOpen)f.push({severity:'MEDIUM',control:'SOC2-CC6.8',framework:'SOC2',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'Public EC2 with unrestricted egress — C2 callback risk',remediation:'Restrict outbound to required ports; use VPC endpoints for AWS services'});
-  });
-  // CC7.2 – Monitoring: VPC without flow logs indication
-  if((ctx.vpcs||[]).some(v=>v.FlowLogs!==undefined)){(ctx.vpcs||[]).forEach(vpc=>{
-    if(!vpc.FlowLogs||vpc.FlowLogs.length===0)f.push({severity:'HIGH',control:'SOC2-CC7.2',framework:'SOC2',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC has no flow logs enabled — insufficient monitoring',remediation:'Enable VPC Flow Logs to CloudWatch or S3 for audit trail'});
-  });}
-  // CC8.1 – Change mgmt: resources without Name tags
-  let untagged=0;
-  (ctx.instances||[]).forEach(inst=>{if(!gn2(inst,null))untagged++});
-  (ctx.rdsInstances||[]).forEach(db=>{if(!(db.TagList||[]).some(t=>t.Key==='Name'))untagged++});
-  if(untagged>0)f.push({severity:'LOW',control:'SOC2-CC8.1',framework:'SOC2',resource:'Multiple',resourceName:untagged+' resources',message:untagged+' resource(s) missing Name tags — change tracking gap',remediation:'Apply consistent tagging policy (Name, Environment, Owner, CostCenter)'});
-  // A1.2 – Availability: single-AZ databases
-  (ctx.rdsInstances||[]).forEach(db=>{if(!db.MultiAZ&&!(db.DBInstanceClass||'').includes('.micro'))
-    f.push({severity:'HIGH',control:'SOC2-A1.2',framework:'SOC2',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS not Multi-AZ — does not meet availability commitment',remediation:'Enable Multi-AZ for production databases'})});
-  // A1.3 – Recovery: EBS volumes without snapshots
-  (ctx.volumes||[]).forEach(vol=>{const snaps=(ctx.snapByVol||{})[vol.VolumeId]||[];
-    if(snaps.length===0&&vol.State==='in-use')f.push({severity:'MEDIUM',control:'SOC2-A1.3',framework:'SOC2',resource:vol.VolumeId,resourceName:gn2(vol,vol.VolumeId),message:'In-use EBS volume with no backup snapshots — recovery gap',remediation:'Configure AWS Backup or DLM lifecycle policy'})});
-  // C1.1 – Confidentiality: S3 without encryption
-  (ctx.s3bk||[]).forEach(bk=>{if(!bk.ServerSideEncryption&&!bk.BucketEncryption)
-    f.push({severity:'HIGH',control:'SOC2-C1.1',framework:'SOC2',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket without default encryption — confidentiality risk',remediation:'Enable SSE-S3 or SSE-KMS default encryption'})});
-  // C1.2 – Data at rest: unencrypted EBS
-  (ctx.volumes||[]).forEach(vol=>{if(!vol.Encrypted&&vol.State==='in-use')
-    f.push({severity:'HIGH',control:'SOC2-C1.2',framework:'SOC2',resource:vol.VolumeId,resourceName:gn2(vol,vol.VolumeId),message:'EBS volume not encrypted at rest — data protection gap',remediation:'Enable EBS encryption by default in account settings'})});
-  // C1.3 – Confidentiality: ElastiCache without transit encryption
-  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.TransitEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.TransitEncryptionEnabled))
-    f.push({severity:'HIGH',control:'SOC2-C1.3',framework:'SOC2',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without in-transit encryption — data exposure risk',remediation:'Enable transit encryption (requires new cluster for existing Redis)'})});
-  // CC7.3 – Monitoring: CloudFront permissive protocol policy
-  (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
-    if(vpp==='allow-all')f.push({severity:'MEDIUM',control:'SOC2-CC7.3',framework:'SOC2',resource:d.Id||d.ARN||'',resourceName:d.DomainName||d.Id||'',message:'CloudFront allows unencrypted HTTP — monitoring blind spot',remediation:'Set ViewerProtocolPolicy to redirect-to-https'})});
-  // A1.4 – Availability: ECS services not meeting desired count
-  (ctx.ecsServices||[]).forEach(svc=>{if(svc.desiredCount>0&&svc.runningCount<svc.desiredCount)
-    f.push({severity:'HIGH',control:'SOC2-A1.4',framework:'SOC2',resource:svc.serviceName,resourceName:svc.serviceName,message:'ECS service running '+svc.runningCount+'/'+svc.desiredCount+' tasks — availability gap',remediation:'Check task health, resource limits, and container image availability'})});
-  // CC6.10 – Runtime security: Lambda deprecated runtimes
-  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
-    f.push({severity:'HIGH',control:'SOC2-CC6.10',framework:'SOC2',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda using EOL runtime '+fn.Runtime+' — no security patches',remediation:'Upgrade to supported runtime version'})});
-  // PI1.1 – Processing integrity: VPC without custom route table
-  (ctx.vpcs||[]).forEach(vpc=>{
-    const customRts=(ctx.rts||[]).filter(rt=>rt.VpcId===vpc.VpcId&&!(rt.Associations||[]).some(a=>a.Main));
-    if(customRts.length===0&&(ctx.subnets||[]).filter(s=>s.VpcId===vpc.VpcId).length>1)
-      f.push({severity:'LOW',control:'SOC2-PI1.1',framework:'SOC2',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC uses only main route table for all subnets — processing integrity risk',remediation:'Create custom route tables per subnet tier for explicit routing control'});
-  });
-  return f;
-}
-function runPCIDSSChecks(ctx){
-  const f=[];const gn2=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
-  const pubSubs=ctx.pubSubs||new Set();
-  // 1.3.1 – Restrict inbound to CDE: SGs with 0.0.0.0/0 on DB ports
-  const dbPorts=[3306,5432,1433,1521,6379,27017,5439];
-  (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
-    dbPorts.forEach(port=>{if(_hasPort(p,port)&&_hasOpenCidr(p))
-      f.push({severity:'CRITICAL',control:'PCI-1.3.1',framework:'PCI',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows DB port '+port+' from 0.0.0.0/0 — CDE exposure',remediation:'Restrict database ports to application-tier SGs only; never expose to 0.0.0.0/0'})});
-  })});
-  // 1.3.2 – Restrict outbound from CDE: DB instances with unrestricted egress
-  (ctx.rdsInstances||[]).forEach(db=>{
-    const sgIds=(db.VpcSecurityGroups||[]).map(g=>g.VpcSecurityGroupId);
-    const allOpen=sgIds.some(gid=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);return sg&&(sg.IpPermissionsEgress||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
-    if(allOpen)f.push({severity:'HIGH',control:'PCI-1.3.2',framework:'PCI',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS SG has unrestricted outbound — must restrict CDE egress',remediation:'Restrict egress to specific app-tier SGs and required AWS service endpoints'});
-  });
-  // 1.3.4 – Network segmentation: public subnet resources sharing SG with private
-  const pubSgIds=new Set();const privSgIds=new Set();
-  (ctx.instances||[]).forEach(inst=>{
-    const sgs=(inst.SecurityGroups||[]).map(g=>g.GroupId);
-    if(pubSubs.has(inst.SubnetId))sgs.forEach(g=>pubSgIds.add(g));
-    else sgs.forEach(g=>privSgIds.add(g));
-  });
-  pubSgIds.forEach(gid=>{if(privSgIds.has(gid)){
-    const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);
-    f.push({severity:'HIGH',control:'PCI-1.3.4',framework:'PCI',resource:gid,resourceName:(sg?sg.GroupName:'')||gid,message:'SG shared between public and private subnets — network segmentation failure',remediation:'Create separate SGs for each network tier; never share across CDE boundary'})}
-  });
-  // 2.2.1 – Configuration standards: instances with default SG attached
-  (ctx.instances||[]).forEach(inst=>{
-    const hasDefault=(inst.SecurityGroups||[]).some(g=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===g.GroupId);return sg&&sg.GroupName==='default'});
-    if(hasDefault)f.push({severity:'MEDIUM',control:'PCI-2.2.1',framework:'PCI',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'EC2 using default SG — non-compliant with configuration standards',remediation:'Replace default SG with purpose-built SG following least privilege'});
-  });
-  // 3.4.1 – Encryption at rest: unencrypted storage
-  (ctx.rdsInstances||[]).forEach(db=>{if(!db.StorageEncrypted)
-    f.push({severity:'CRITICAL',control:'PCI-3.4.1',framework:'PCI',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS storage not encrypted — cardholder data at risk',remediation:'Enable encryption at rest (requires snapshot + restore for existing instances)'})});
-  (ctx.volumes||[]).forEach(vol=>{if(!vol.Encrypted&&vol.State==='in-use')
-    f.push({severity:'CRITICAL',control:'PCI-3.4.1',framework:'PCI',resource:vol.VolumeId,resourceName:gn2(vol,vol.VolumeId),message:'EBS volume not encrypted — stored data exposure risk',remediation:'Enable EBS encryption by default; migrate existing volumes via snapshot'})});
-  (ctx.s3bk||[]).forEach(bk=>{if(!bk.ServerSideEncryption&&!bk.BucketEncryption)
-    f.push({severity:'CRITICAL',control:'PCI-3.4.1',framework:'PCI',resource:bk.Name,resourceName:bk.Name,message:'S3 bucket without default encryption — data at rest violation',remediation:'Enable SSE-S3 or SSE-KMS default encryption; add bucket policy to deny unencrypted uploads'})});
-  // 3.5.1 – Key management: encrypted resources without KMS (using default keys)
-  (ctx.rdsInstances||[]).forEach(db=>{if(db.StorageEncrypted&&db.KmsKeyId&&db.KmsKeyId.includes('aws/rds'))
-    f.push({severity:'LOW',control:'PCI-3.5.1',framework:'PCI',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS using AWS-managed key instead of CMK — limited key control',remediation:'Use customer-managed KMS key for full key rotation and access control'})});
-  // 4.2.1 – Encrypt data in transit: ALB without HTTPS
-  (ctx.albs||[]).forEach(alb=>{
-    const hasHttps=(alb.Listeners||[]).some(l=>l.Protocol==='HTTPS');
-    if(alb.Scheme==='internet-facing'&&!hasHttps)f.push({severity:'CRITICAL',control:'PCI-4.2.1',framework:'PCI',resource:alb.LoadBalancerName,resourceName:alb.LoadBalancerName,message:'Internet-facing ALB without HTTPS — data in transit unencrypted',remediation:'Add HTTPS listener with TLS 1.2+ via ACM certificate; redirect HTTP to HTTPS'});
-  });
-  // 6.4.1 – Web application firewall: internet-facing ALB without WAF
-  const albsWithWaf=new Set();(ctx.wafAcls||[]).forEach(acl=>{
-    (acl.ResourceArns||[]).forEach(arn=>{const m=arn.match(/loadbalancer\/app\/([^/]+)/);if(m)albsWithWaf.add(m[1])})});
-  (ctx.albs||[]).forEach(alb=>{if(alb.Scheme!=='internet-facing')return;
-    if(!albsWithWaf.has(alb.LoadBalancerName))f.push({severity:'HIGH',control:'PCI-6.4.1',framework:'PCI',resource:alb.LoadBalancerName,resourceName:alb.LoadBalancerName,message:'Internet-facing ALB without WAF — web app firewall required',remediation:'Associate AWS WAF WebACL with ALB; add OWASP Top 10 managed rule group'});
-  });
-  // 7.2.1 – Least privilege: SGs with all-traffic rules
-  (ctx.sgs||[]).forEach(sg=>{if(sg.GroupName==='default')return;
-    (sg.IpPermissions||[]).forEach(p=>{if(p.IpProtocol==='-1'&&_hasOpenCidr(p))
-      f.push({severity:'HIGH',control:'PCI-7.2.1',framework:'PCI',resource:sg.GroupId,resourceName:sg.GroupName||'',message:'SG allows all inbound traffic — violates least privilege',remediation:'Replace with specific port/protocol rules matching business need'})});
-  });
-  // 10.2.1 – Audit logging: VPC without flow logs
-  if((ctx.vpcs||[]).some(v=>v.FlowLogs!==undefined)){(ctx.vpcs||[]).forEach(vpc=>{
-    if(!vpc.FlowLogs||vpc.FlowLogs.length===0)f.push({severity:'HIGH',control:'PCI-10.2.1',framework:'PCI',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'VPC flow logs not enabled — insufficient audit logging',remediation:'Enable VPC Flow Logs with at least 1 year retention for PCI compliance'});
-  });}
-  // 11.3.1 – Vulnerability management: publicly accessible RDS
-  (ctx.rdsInstances||[]).forEach(db=>{if(db.PubliclyAccessible)
-    f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS publicly accessible — immediate vulnerability exposure',remediation:'Set PubliclyAccessible=false; access only via private subnet or VPN'})});
-  // 12.10.1 – Incident response: no GuardDuty detection (indicated by no config)
-  (ctx.vpcs||[]).forEach(vpc=>{
-    const instCount=(ctx.instances||[]).filter(i=>i.VpcId===vpc.VpcId).length;
-    if(instCount>5&&vpc.FlowLogs!==undefined&&!vpc.FlowLogs)f.push({severity:'MEDIUM',control:'PCI-12.10.1',framework:'PCI',resource:vpc.VpcId,resourceName:gn2(vpc,vpc.VpcId),message:'Large VPC ('+instCount+' instances) without monitoring — incident response gap',remediation:'Enable GuardDuty, CloudTrail, and VPC Flow Logs; create SNS alerts'});
-  });
-  // PCI-2.3.1 – Encrypt services: ElastiCache without transit encryption
-  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.TransitEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.TransitEncryptionEnabled))
-    f.push({severity:'HIGH',control:'PCI-2.3.1',framework:'PCI',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without in-transit encryption — data exposed in network',remediation:'Enable transit encryption; use TLS for Redis connections'})});
-  // PCI-3.4.1 – ElastiCache without at-rest encryption
-  (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.AtRestEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.AtRestEncryptionEnabled))
-    f.push({severity:'HIGH',control:'PCI-3.4.1',framework:'PCI',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without at-rest encryption — cached data at risk',remediation:'Enable at-rest encryption (requires new cluster)'})});
-  // PCI-6.3.1 – Patch management: Lambda deprecated runtime
-  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
-    f.push({severity:'CRITICAL',control:'PCI-6.3.1',framework:'PCI',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda on EOL runtime '+fn.Runtime+' — unpatched vulnerabilities',remediation:'Upgrade to supported runtime for security patch coverage'})});
-  // PCI-4.2.1 – CloudFront allowing HTTP
-  (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
-    if(vpp==='allow-all')f.push({severity:'HIGH',control:'PCI-4.2.1',framework:'PCI',resource:d.Id||d.ARN||'',resourceName:d.DomainName||d.Id||'',message:'CloudFront allows unencrypted HTTP — data in transit violation',remediation:'Set ViewerProtocolPolicy to redirect-to-https or https-only'})});
-  // PCI-11.3.1 – Redshift publicly accessible
-  (ctx.redshiftClusters||[]).forEach(rs=>{if(rs.PubliclyAccessible)
-    f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift publicly accessible — data warehouse exposed',remediation:'Disable public access; use private subnet with VPN access only'})});
-  return f;
-}
-function runComplianceChecks(ctx){
-  _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx)];
-  try{const iamRaw=safeParse(gv('in_iam'));
-  if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}
-  // Annotate all findings with Checkov CKV IDs where mapping exists
-  _complianceFindings.forEach(f=>{if(_CKV_MAP[f.control])f.ckv=_CKV_MAP[f.control]});
-  return _complianceFindings;
-}
+// Compliance engine now loaded from bundle (src/modules/compliance-engine.js)
 // === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
 const _BUDR_STRATEGY={hot:'Hot',warm:'Warm',pilot:'Pilot Light',cold:'Cold'};
 const _BUDR_STRATEGY_ORDER={hot:0,warm:1,pilot:2,cold:3};
@@ -6575,7 +5472,7 @@ function subMaxChildren(subId,ctx){
 // Landing Zone Hub-Spoke D3 Layout
 function renderLandingZoneMap(ctx){
   const {vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,
-    subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
+    subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,eniByInst,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
     snapByVol,tgByAlb,wafAcls,wafByAlb,
     rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions,
     rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources}=ctx;
@@ -7527,7 +6424,7 @@ function renderLandingZoneMap(ctx){
     const baseRouteLevel=Math.min(...allVpcTops)-40;
 
     // Shared trunk approach: vertical trunk to right of NET, horizontal bus to NET circle
-    const spokeTrunkX=iX+34; // Right edge of NET circle (radius 32) + 2px gap
+    const spokeTrunkX=iX+42; // Right edge of NET circle (radius 32) + 10px gap for clearance
 
     // Track gateway index per VPC for horizontal offset
     const vpcGwIndex={};
@@ -7535,8 +6432,8 @@ function renderLandingZoneMap(ctx){
     // Draw per-gateway paths: gateway -> exit -> routeLevel -> trunk
     spokeInetGws.forEach((g,i)=>{
       const vpcIdx=vpcGwIndex[g.vid]=(vpcGwIndex[g.vid]||0)+1;
-      const routeLevel=baseRouteLevel-i*8;
-      const exitX=g.sgX+25+vpcIdx*10;
+      const routeLevel=baseRouteLevel-i*16;
+      const exitX=g.sgX+25+vpcIdx*20;
       // Path stops at the shared trunk X — no more flagpole
       const netPath=`M${g.sgX+16},${g.sgY} L${exitX},${g.sgY} L${exitX},${routeLevel} L${spokeTrunkX},${routeLevel}`;
       const pb=lzStructG.append('path')
@@ -7549,7 +6446,7 @@ function renderLandingZoneMap(ctx){
     });
 
     // Shared vertical trunk from top route level down to NET center Y
-    const topRouteLevel=baseRouteLevel-(spokeInetGws.length-1)*8;
+    const topRouteLevel=baseRouteLevel-(spokeInetGws.length-1)*16;
     const trunkVert=`M${spokeTrunkX},${topRouteLevel} L${spokeTrunkX},${iY}`;
     lzStructG.append('path')
       .attr('class','route-trunk animated')
@@ -7569,7 +6466,7 @@ function renderLandingZoneMap(ctx){
     inetVids.forEach(vid=>{
       // Find this VPC's route levels (its gateways' route levels)
       const vpcGws=spokeInetGws.filter(g=>g.vid===vid);
-      const vpcRouteLevels=vpcGws.map((g,i)=>baseRouteLevel-spokeInetGws.indexOf(g)*8);
+      const vpcRouteLevels=vpcGws.map((g,i)=>baseRouteLevel-spokeInetGws.indexOf(g)*16);
       const vpcTopRL=Math.min(...vpcRouteLevels);
       // Trunk from this VPC's top route level down to NET Y
       const vpcTrunk=`M${spokeTrunkX},${vpcTopRL} L${spokeTrunkX},${iY}`;
@@ -8522,7 +7419,7 @@ function _renderMapInner(){
     // LANDING ZONE HUB-SPOKE LAYOUT
     renderLandingZoneMap({
       vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,
-      subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
+      subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,eniByInst,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
       snapByVol,tgByAlb,wafAcls,wafByAlb,
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions,
       rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources
@@ -8741,7 +7638,7 @@ function _renderMapInner(){
     const gs=[...(pvGws[vl.vpc.VpcId]||[])].sort((a,b)=>{const oa=gwOrder[a.type]??9,ob=gwOrder[b.type]??9;return oa-ob;});
     const gwOff=Math.max(60,Math.min(vl.chanW*0.7,120));
     const gx=vl.gwSide==='left'?(vl.x-gwOff):(vl.x+vl.w+gwOff);
-    const minGap=GR*2+30; // minimum vertical gap between gateway circles (room for label below)
+    const minGap=GR*2+40; // minimum vertical gap between gateway circles (room for label + line clearance)
 
     // Compute ideal Y for each gateway at centroid of its connected subnets
     const gwYs=gs.map(gw=>{
@@ -8762,11 +7659,19 @@ function _renderMapInner(){
         gwYs[i].gy=gwYs[i-1].gy+minGap;
       }
     }
-    // Final clamp to VPC bounds (don't let pushed gateways escape VPC)
-    gwYs.forEach(g=>{
-      g.gy=Math.min(g.gy, vl.y+vl.h-GR-10);
-      g.gy=Math.max(g.gy, vl.y+GR+20);
-    });
+    // Final clamp: distribute evenly within VPC bounds if gateways overflow
+    const totalNeeded=(gwYs.length-1)*minGap;
+    const vpcAvailable=vl.h-GR-10-(GR+20);
+    if(totalNeeded>vpcAvailable&&gwYs.length>1){
+      // Not enough room — distribute evenly within available space
+      const evenGap=vpcAvailable/(gwYs.length-1);
+      gwYs.forEach((g,i)=>{g.gy=vl.y+GR+20+i*evenGap});
+    }else{
+      gwYs.forEach(g=>{
+        g.gy=Math.min(g.gy, vl.y+vl.h-GR-10);
+        g.gy=Math.max(g.gy, vl.y+GR+20);
+      });
+    }
 
     gwYs.forEach(({gw,gy})=>gwP.set(gw.id,{x:gx,y:gy,gw}));
   });
@@ -9329,13 +8234,13 @@ function _renderMapInner(){
       // Shared gateways (TGW) use trunks close to VPC edge
       const tn=vtcShared[vid]=(vtcShared[vid]||0)+1;
       const nt=tpvShared[vid]||1;
-      const sp=Math.max(6,Math.min(10,(ov.chanW*0.1)/Math.max(nt,1)));
-      tx=gwLeft?(cl-2-(tn-1)*sp):(cl+2+(tn-1)*sp);
+      const sp=Math.max(12,Math.min(18,(ov.chanW*0.2)/Math.max(nt,1)));
+      tx=gwLeft?(cl-4-(tn-1)*sp):(cl+4+(tn-1)*sp);
     }else{
       // Per-VPC gateways: UP lines get inner trunks, DOWN lines get outer trunks
       const baseOffset=50;
       const perVpcCount=tpvPerVpc[vid]||1;
-      const sp=Math.max(8,Math.min(14,(ov.chanW*0.25)/Math.max(perVpcCount,1)));
+      const sp=Math.max(12,Math.min(18,(ov.chanW*0.3)/Math.max(perVpcCount,1)));
 
       // Separate counters for up vs down
       if(!vtcPerVpcUp[vid])vtcPerVpcUp[vid]=0;
@@ -9346,11 +8251,13 @@ function _renderMapInner(){
         tx=gwLeft?(cl-baseOffset-(tn-1)*sp):(cl+baseOffset+(tn-1)*sp);
       }else{
         const tn=++vtcPerVpcDown[vid];
+        // Calculate avgSubY for THIS gateway's connections (was undefined before)
+        const thisAvgSubY=conns.reduce((s,c)=>s+c.sl.y+c.sl.h/2,0)/conns.length;
         const upCount=Object.keys(tG).filter(k=>{
           const c=tG[k][0];
           if(c.vid!==vid)return false;
           const g=gwP.get(c.gid);
-          return g&&!isShared(g.gw.type)&&g.y<avgSubY;
+          return g&&!isShared(g.gw.type)&&g.y<thisAvgSubY;
         }).length;
         tx=gwLeft?(cl-baseOffset-(upCount)*sp-(tn-1)*sp):(cl+baseOffset+(upCount)*sp+(tn-1)*sp);
       }
@@ -9474,13 +8381,15 @@ function _renderMapInner(){
   });
 
   // Draw shared gateway bus routing AFTER all VPCs processed
+  var _sharedBusIdx=0;
   Object.entries(sharedGwBusY).forEach(([gid,info])=>{
     const {vpcs:vpcConns,col,gp}=info;
     if(!vpcConns.length)return;
 
-    // Bus bar Y: just enough below VPCs to clear, halfway to the gateway
+    // Bus bar Y: offset each shared gateway's bus bar to avoid overlap
     const allVpcBotForBus=Math.max(...vpcConns.map(v=>v.ov.y+v.ov.h));
-    const busY=allVpcBotForBus+30;
+    const busY=allVpcBotForBus+30+(_sharedBusIdx*20);
+    _sharedBusIdx++;
 
     // Each VPC trunk: dashed trunk spanning subnets + solid connector to bus bar
     vpcConns.forEach(vc=>{
