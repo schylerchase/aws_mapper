@@ -1012,8 +1012,10 @@
   .flow-path-leg.allowed{stroke:#22d3ee}
   .flow-path-leg.blocked{stroke:#ef4444;stroke-dasharray:4 4}
   .flow-path-leg.skipped{stroke:#4b5563;stroke-dasharray:3 6;opacity:.4}
+  .flow-ingress-arrow{fill:none;stroke:#10b981;stroke-width:3.5;stroke-dasharray:8 4;animation:flow-dash .7s linear infinite;pointer-events:none;opacity:.95;filter:drop-shadow(0 0 6px rgba(16,185,129,.6))}
   .flow-fwd-arrow{fill:none;stroke:#10b981;stroke-width:2.5;stroke-dasharray:6 3;animation:flow-dash .8s linear infinite;pointer-events:none;opacity:.85}
   .fa-fwd-target{filter:drop-shadow(0 0 6px rgba(16,185,129,.5));stroke:#10b981 !important;stroke-width:2 !important}
+  .fa-ingress-target{filter:drop-shadow(0 0 8px rgba(16,185,129,.7));stroke:#10b981 !important;stroke-width:2.5 !important;opacity:1 !important}
   .flow-waypoint-marker{pointer-events:none}
   .flow-waypoint-marker circle{fill:#f59e0b;stroke:#fff;stroke-width:2}
   .flow-leg{margin-bottom:6px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
