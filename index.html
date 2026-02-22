@@ -8,7 +8,7 @@
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js?v=4"></script>
+<script src="dist/app.bundle.js?v=12"></script>
 <link rel="stylesheet" href="src/styles/main.css">
 </head>
 <body>
@@ -13745,8 +13745,8 @@ function _renderFlowAnalysisOverlay(mode){
   // Clean up previous highlight state
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target');
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
@@ -13792,6 +13792,8 @@ function _renderIngressArrows(faG){
   var hlEls=[];
   // Track ALB→backend forwarding for arrows
   var fwdLinks=[];
+  // Track IGW→subnet pairs for flow arrows
+  var igwToSubs={};  // igwId → Set of subnetIds
   (_flowAnalysisCache.ingressPaths||[]).forEach(function(p){
     var pos=_resolveNetworkPosition(p.to.type, p.to.id, _rlCtx);
     if(!pos||!pos.subnetId||!pos.vpcId) return;
@@ -13801,14 +13803,9 @@ function _renderIngressArrows(faG){
     var key=gid+':'+pos.subnetId;
     if(seen.has(key)) return;
     seen.add(key);
-    // Highlight subnet→IGW route lines
-    sg.querySelectorAll('[data-gid="'+gid+'"][data-sid="'+pos.subnetId+'"]').forEach(function(el){hlEls.push(el)});
-    // Highlight trunk/L-bend paths (gateway+VPC, no subnet)
-    sg.querySelectorAll('[data-gid="'+gid+'"][data-vid="'+pos.vpcId+'"]:not([data-sid])').forEach(function(el){hlEls.push(el)});
-    // Highlight gateway-only paths (bus-bar verticals)
-    sg.querySelectorAll('[data-gid="'+gid+'"]:not([data-vid]):not([data-net-vert]):not([data-net-line])').forEach(function(el){hlEls.push(el)});
-    // Highlight NET verticals for this gateway
-    sg.querySelectorAll('[data-net-vert][data-gid="'+gid+'"]').forEach(function(el){hlEls.push(el)});
+    // Track IGW→subnet for flow arrows
+    if(!igwToSubs[gid]) igwToSubs[gid]=new Set();
+    igwToSubs[gid].add(pos.subnetId);
     // For ALB ingress, trace forwarding to backend subnets
     if(p.type==='loadbalancer'&&p.to.type==='alb'){
       var alb2=null;
@@ -13823,7 +13820,6 @@ function _renderIngressArrows(faG){
         var backendSubs=new Set();
         tgs2.forEach(function(tg){
           (tg.Targets||[]).forEach(function(t){
-            // Resolve target instance to its subnet
             var tPos=_resolveNetworkPosition('instance',t.Id,_rlCtx);
             if(tPos&&tPos.subnetId&&tPos.subnetId!==pos.subnetId){
               backendSubs.add(tPos.subnetId);
@@ -13836,16 +13832,80 @@ function _renderIngressArrows(faG){
       }
     }
   });
-  // Highlight the NET horizontal line (shared internet backbone)
+  // Highlight the NET horizontal backbone + internet node when we have ingress
+  var hasIngress=seen.size>0;
   var netLine=sg.querySelector('[data-net-line]');
-  if(netLine&&hlEls.length>0) hlEls.push(netLine);
-  // Highlight internet node
+  if(netLine&&hasIngress) hlEls.push(netLine);
   var inetNode=document.querySelector('.internet-node');
-  if(inetNode&&hlEls.length>0) d3.select(inetNode).style('opacity','1').style('filter','drop-shadow(0 0 6px rgba(16,185,129,.6))');
-  // Apply glow class to all collected elements
+  if(inetNode&&hasIngress) d3.select(inetNode).style('opacity','1').style('filter','drop-shadow(0 0 6px rgba(16,185,129,.6))');
   hlEls.forEach(function(el){el.classList.add('fa-hl-ingress')});
+  // Highlight public subnet boxes as ingress destinations
+  var ingressSubs=new Set();
+  seen.forEach(function(key){var sid=key.split(':')[1];ingressSubs.add(sid)});
+  ingressSubs.forEach(function(sid){
+    var subEl=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+    if(subEl) d3.select(subEl).classed('fa-ingress-target',true);
+  });
+  // Draw IGW→subnet flow arrows (replaces trunk/vertical highlighting)
+  _renderIngressFlowArrows(faG,igwToSubs);
   // Draw ALB→backend forwarding arrows
   if(fwdLinks.length>0) _renderForwardingArrows(faG,fwdLinks);
+}
+
+function _getGatewayCenter(gid){
+  // Find IGW icon position from its label text or circle element
+  var labels=document.querySelectorAll('.gw-label, text');
+  for(var i=0;i<labels.length;i++){
+    var el=labels[i];
+    if(el.getAttribute('data-gw-id')===gid){
+      var bbox=el.getBBox();
+      return {x:bbox.x+bbox.width/2,y:bbox.y-15};
+    }
+  }
+  // Fallback: find gateway icon circle by searching near the gateway ID in data attributes
+  var gwNode=document.querySelector('[data-gateway-id="'+gid+'"]');
+  if(gwNode){var bb=gwNode.getBBox();return {x:bb.x+bb.width/2,y:bb.y+bb.height/2}}
+  // Fallback: use the midpoint of the highlighted stubs for this gateway
+  var stubs=document.querySelectorAll('.fa-hl-ingress[data-gid="'+gid+'"]');
+  if(stubs.length>0){
+    var lastStub=stubs[stubs.length-1];
+    var bb2=lastStub.getBBox();
+    return {x:bb2.x+bb2.width+30,y:bb2.y+bb2.height/2};
+  }
+  return null;
+}
+
+function _renderIngressFlowArrows(faG,igwToSubs){
+  var drawn=new Set();
+  // Ensure arrowhead marker
+  var svg=d3.select('#mapSvg');
+  var defs=svg.select('defs');
+  if(defs.empty()) defs=svg.append('defs');
+  if(defs.select('#ingress-arrow-head').empty()){
+    defs.append('marker').attr('id','ingress-arrow-head')
+      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+      .attr('markerWidth',8).attr('markerHeight',8).attr('orient','auto')
+      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
+  }
+  Object.keys(igwToSubs).forEach(function(gid){
+    igwToSubs[gid].forEach(function(sid){
+      var key=gid+'>'+sid;
+      if(drawn.has(key)) return;
+      drawn.add(key);
+      // Get subnet box right edge for arrow endpoint
+      var subRect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+      if(!subRect) return;
+      var srBB=subRect.getBBox();
+      var endX=srBB.x+srBB.width;
+      var endY=srBB.y+srBB.height/2;
+      // Draw wide horizontal arrow entering subnet from the right
+      var arrowLen=120;
+      faG.append('line').attr('class','flow-ingress-arrow')
+        .attr('x1',endX+arrowLen).attr('y1',endY)
+        .attr('x2',endX+2).attr('y2',endY)
+        .attr('marker-end','url(#ingress-arrow-head)');
+    });
+  });
 }
 
 function _renderForwardingArrows(faG,fwdLinks){
@@ -14214,8 +14274,8 @@ function exitFlowAnalysis(){
   // Remove route-line highlight classes and fa-active dim
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target');
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
