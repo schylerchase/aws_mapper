@@ -11,6 +11,7 @@ import { _prefs, loadPrefs, savePrefs } from './modules/prefs.js';
 // Feature engines
 import { generateDemo } from './modules/demo-data.js';
 import { ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR } from './modules/cidr-engine.js';
+import { runComplianceChecks } from './modules/compliance-engine.js';
 
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
@@ -33,11 +34,17 @@ window.AppModules = {
   // CIDR engine
   ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR,
 
+  // Compliance
+  runComplianceChecks,
+
   // Engines
   generateDemo
 };
 
 // Make functions available globally (transitional - will remove once all code is modularized)
 Object.assign(window, window.AppModules);
+
+// Initialize _complianceFindings on window so inline code can reference it before first run
+if (!window._complianceFindings) window._complianceFindings = [];
 
 console.log('AWS Network Mapper modules loaded');

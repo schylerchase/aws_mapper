@@ -2,6 +2,9 @@
 // Runs automated compliance checks and generates findings
 // Extracted from index.html for modularization
 
+import { safeParse, gv } from './utils.js';
+import { EOL_RUNTIMES } from './constants.js';
+
 // === CHECKOV (CKV) ID MAPPING ===
 // Maps existing control IDs to their Checkov equivalents for unified compliance view
 const _CKV_MAP={
@@ -237,7 +240,7 @@ function runArchChecks(ctx){
     });
   });
   // ARCH-C4: Lambda using deprecated/EOL runtime
-  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
+  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&EOL_RUNTIMES.has(fn.Runtime))
     f.push({severity:'HIGH',control:'ARCH-C4',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda uses deprecated runtime: '+fn.Runtime,remediation:'Upgrade to a supported runtime version to receive security patches'})});
   // ARCH-C5: Lambda with excessive timeout and no DLQ
   (ctx.lambdaFns||[]).forEach(fn=>{if((fn.Timeout||3)>300&&!fn.DeadLetterConfig?.TargetArn)
@@ -316,7 +319,7 @@ function runSOC2Checks(ctx){
   (ctx.ecsServices||[]).forEach(svc=>{if(svc.desiredCount>0&&svc.runningCount<svc.desiredCount)
     f.push({severity:'HIGH',control:'SOC2-A1.4',framework:'SOC2',resource:svc.serviceName,resourceName:svc.serviceName,message:'ECS service running '+svc.runningCount+'/'+svc.desiredCount+' tasks — availability gap',remediation:'Check task health, resource limits, and container image availability'})});
   // CC6.10 – Runtime security: Lambda deprecated runtimes
-  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
+  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&EOL_RUNTIMES.has(fn.Runtime))
     f.push({severity:'HIGH',control:'SOC2-CC6.10',framework:'SOC2',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda using EOL runtime '+fn.Runtime+' — no security patches',remediation:'Upgrade to supported runtime version'})});
   // PI1.1 – Processing integrity: VPC without custom route table
   (ctx.vpcs||[]).forEach(vpc=>{
@@ -402,7 +405,7 @@ function runPCIDSSChecks(ctx){
   (ctx.ecacheClusters||[]).forEach(ec=>{if(ec.AtRestEncryptionEnabled===false||(ec.Engine==='redis'&&!ec.AtRestEncryptionEnabled))
     f.push({severity:'HIGH',control:'PCI-3.4.1',framework:'PCI',resource:ec.CacheClusterId,resourceName:ec.CacheClusterId,message:'ElastiCache without at-rest encryption — cached data at risk',remediation:'Enable at-rest encryption (requires new cluster)'})});
   // PCI-6.3.1 – Patch management: Lambda deprecated runtime
-  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&_EOL_RUNTIMES.has(fn.Runtime))
+  (ctx.lambdaFns||[]).forEach(fn=>{if(fn.Runtime&&EOL_RUNTIMES.has(fn.Runtime))
     f.push({severity:'CRITICAL',control:'PCI-6.3.1',framework:'PCI',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda on EOL runtime '+fn.Runtime+' — unpatched vulnerabilities',remediation:'Upgrade to supported runtime for security patch coverage'})});
   // PCI-4.2.1 – CloudFront allowing HTTP
   (ctx.cfDistributions||[]).forEach(d=>{const vpp=d.DefaultCacheBehavior?.ViewerProtocolPolicy;
@@ -412,11 +415,13 @@ function runPCIDSSChecks(ctx){
     f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift publicly accessible — data warehouse exposed',remediation:'Disable public access; use private subnet with VPN access only'})});
   return f;
 }
-function runComplianceChecks(ctx){
+export function runComplianceChecks(ctx){
   _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx)];
   try{const iamRaw=safeParse(gv('in_iam'));
   if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}
   // Annotate all findings with Checkov CKV IDs where mapping exists
   _complianceFindings.forEach(f=>{if(_CKV_MAP[f.control])f.ckv=_CKV_MAP[f.control]});
+  // Sync to window so inline code can read it
+  window._complianceFindings=_complianceFindings;
   return _complianceFindings;
 }
