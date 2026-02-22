@@ -8,7 +8,7 @@
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js"></script>
+<script src="dist/app.bundle.js?v=4"></script>
 <link rel="stylesheet" href="src/styles/main.css">
 </head>
 <body>
@@ -13745,8 +13745,8 @@ function _renderFlowAnalysisOverlay(mode){
   // Clean up previous highlight state
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress');
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
@@ -13790,6 +13790,8 @@ function _renderIngressArrows(faG){
   // Collect unique (igwId, subnetId, vpcId) combos from ingress paths
   var seen=new Set();
   var hlEls=[];
+  // Track ALB→backend forwarding for arrows
+  var fwdLinks=[];
   (_flowAnalysisCache.ingressPaths||[]).forEach(function(p){
     var pos=_resolveNetworkPosition(p.to.type, p.to.id, _rlCtx);
     if(!pos||!pos.subnetId||!pos.vpcId) return;
@@ -13807,6 +13809,32 @@ function _renderIngressArrows(faG){
     sg.querySelectorAll('[data-gid="'+gid+'"]:not([data-vid]):not([data-net-vert]):not([data-net-line])').forEach(function(el){hlEls.push(el)});
     // Highlight NET verticals for this gateway
     sg.querySelectorAll('[data-net-vert][data-gid="'+gid+'"]').forEach(function(el){hlEls.push(el)});
+    // For ALB ingress, trace forwarding to backend subnets
+    if(p.type==='loadbalancer'&&p.to.type==='alb'){
+      var alb2=null;
+      Object.keys(_rlCtx.albBySub||{}).forEach(function(sid){
+        (_rlCtx.albBySub[sid]||[]).forEach(function(a){
+          var aid=a.LoadBalancerArn?a.LoadBalancerArn.split('/').pop():'';
+          if(aid===p.to.id||a.LoadBalancerName===p.to.id) alb2=a;
+        });
+      });
+      if(alb2&&alb2.LoadBalancerArn){
+        var tgs2=(_rlCtx.tgByAlb||{})[alb2.LoadBalancerArn]||[];
+        var backendSubs=new Set();
+        tgs2.forEach(function(tg){
+          (tg.Targets||[]).forEach(function(t){
+            // Resolve target instance to its subnet
+            var tPos=_resolveNetworkPosition('instance',t.Id,_rlCtx);
+            if(tPos&&tPos.subnetId&&tPos.subnetId!==pos.subnetId){
+              backendSubs.add(tPos.subnetId);
+            }
+          });
+        });
+        backendSubs.forEach(function(bSid){
+          fwdLinks.push({fromSub:pos.subnetId,toSub:bSid,albName:alb2.LoadBalancerName||p.to.id});
+        });
+      }
+    }
   });
   // Highlight the NET horizontal line (shared internet backbone)
   var netLine=sg.querySelector('[data-net-line]');
@@ -13816,6 +13844,46 @@ function _renderIngressArrows(faG){
   if(inetNode&&hlEls.length>0) d3.select(inetNode).style('opacity','1').style('filter','drop-shadow(0 0 6px rgba(16,185,129,.6))');
   // Apply glow class to all collected elements
   hlEls.forEach(function(el){el.classList.add('fa-hl-ingress')});
+  // Draw ALB→backend forwarding arrows
+  if(fwdLinks.length>0) _renderForwardingArrows(faG,fwdLinks);
+}
+
+function _renderForwardingArrows(faG,fwdLinks){
+  var line=d3.line().x(function(d){return d.x}).y(function(d){return d.y}).curve(d3.curveBasis);
+  var drawn=new Set();
+  var targetSubs=new Set();
+  fwdLinks.forEach(function(lnk){
+    var key=lnk.fromSub+'>'+lnk.toSub;
+    if(drawn.has(key)) return;
+    drawn.add(key);
+    var fc=_getSubnetCenter(lnk.fromSub);
+    var tc=_getSubnetCenter(lnk.toSub);
+    if(!fc||!tc) return;
+    targetSubs.add(lnk.toSub);
+    var dx=tc.x-fc.x,dy=tc.y-fc.y;
+    var dist=Math.sqrt(dx*dx+dy*dy);
+    var perpX=(-dy/dist)*20;
+    var perpY=(dx/dist)*20;
+    var mid={x:(fc.x+tc.x)/2+perpX,y:(fc.y+tc.y)/2+perpY-(dist>100?20:8)};
+    faG.append('path').attr('class','flow-fwd-arrow')
+      .attr('d',line([fc,mid,tc]))
+      .attr('marker-end','url(#fwd-arrow-head)');
+  });
+  // Add glow to target subnet boxes
+  targetSubs.forEach(function(sid){
+    var subEl=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+    if(subEl) d3.select(subEl).classed('fa-fwd-target',true);
+  });
+  // Ensure arrowhead marker exists
+  var svg=d3.select('#mapSvg');
+  var defs=svg.select('defs');
+  if(defs.empty()) defs=svg.append('defs');
+  if(defs.select('#fwd-arrow-head').empty()){
+    defs.append('marker').attr('id','fwd-arrow-head')
+      .attr('viewBox','0 0 10 10').attr('refX',8).attr('refY',5)
+      .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto-start-reverse')
+      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
+  }
 }
 
 function _renderEgressArrows(faG){
@@ -14146,8 +14214,8 @@ function exitFlowAnalysis(){
   // Remove route-line highlight classes and fa-active dim
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress');
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
