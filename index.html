@@ -8,7 +8,7 @@
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js?v=12"></script>
+<script src="dist/app.bundle.js?v=19"></script>
 <link rel="stylesheet" href="src/styles/main.css">
 </head>
 <body>
@@ -13745,11 +13745,12 @@ function _renderFlowAnalysisOverlay(mode){
   // Clean up previous highlight state
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target');
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target,.fa-egress-source,.fa-bastion-target,.fa-flow-bright').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target','fa-egress-source','fa-bastion-target','fa-flow-bright');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
+  document.querySelectorAll('.gw-node').forEach(function(el){d3.select(el).style('filter',null).style('opacity',null)});
   if(!_flowAnalysisCache||!mode) return;
   var g=mapRoot.empty()?svg:mapRoot;
   var faG=g.append('g').attr('class','flow-analysis-layer');
@@ -13832,24 +13833,142 @@ function _renderIngressArrows(faG){
       }
     }
   });
-  // Highlight the NET horizontal backbone + internet node when we have ingress
+  // Collect ingress subnet IDs and VPC gateway IDs
   var hasIngress=seen.size>0;
-  var netLine=sg.querySelector('[data-net-line]');
-  if(netLine&&hasIngress) hlEls.push(netLine);
+  var ingressSubs=new Set();
+  var ingressGids=new Set();
+  seen.forEach(function(key){var parts=key.split(':');ingressGids.add(parts[0]);ingressSubs.add(parts[1])});
+  // Glow on internet node
   var inetNode=document.querySelector('.internet-node');
   if(inetNode&&hasIngress) d3.select(inetNode).style('opacity','1').style('filter','drop-shadow(0 0 6px rgba(16,185,129,.6))');
-  hlEls.forEach(function(el){el.classList.add('fa-hl-ingress')});
-  // Highlight public subnet boxes as ingress destinations
-  var ingressSubs=new Set();
-  seen.forEach(function(key){var sid=key.split(':')[1];ingressSubs.add(sid)});
+  // Bright green fill + glow on public subnet boxes
   ingressSubs.forEach(function(sid){
-    var subEl=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+    var subNode=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"]');
+    if(!subNode) return;
+    d3.select(subNode).classed('fa-flow-bright',true);
+    var subEl=subNode.querySelector('rect');
     if(subEl) d3.select(subEl).classed('fa-ingress-target',true);
   });
-  // Draw IGW→subnet flow arrows (replaces trunk/vertical highlighting)
+  // Glow on IGW icons
+  ingressGids.forEach(function(gid){
+    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(16,185,129,.8))').style('opacity','1');
+  });
+  // Draw connected ingress path: Internet → backbone → vertical drops → IGW icons
+  _renderIngressConnectedPath(faG,ingressGids);
+  // Draw curved IGW→subnet flow arrows
   _renderIngressFlowArrows(faG,igwToSubs);
   // Draw ALB→backend forwarding arrows
   if(fwdLinks.length>0) _renderForwardingArrows(faG,fwdLinks);
+}
+
+function _renderIngressConnectedPath(faG,ingressGids){
+  if(!ingressGids||ingressGids.size===0) return;
+  // Find Internet node center
+  var inetNode=document.querySelector('.internet-node');
+  var inetCircle=inetNode?inetNode.querySelector('circle'):null;
+  var inetPos=null;
+  if(inetCircle){var ib=inetCircle.getBBox();inetPos={x:ib.x+ib.width/2,y:ib.y+ib.height/2}}
+  // Gather IGW positions: NET vertical x + IGW icon center
+  var igwPositions=[];
+  ingressGids.forEach(function(gid){
+    var netVert=document.querySelector('[data-net-vert][data-gid="'+gid+'"]');
+    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwCircle=gwNode?gwNode.querySelector('circle'):null;
+    if(!gwCircle) return;
+    var cb=gwCircle.getBBox();
+    var cx=cb.x+cb.width/2,cy=cb.y+cb.height/2;
+    // Use NET vertical x if available, else use IGW icon x
+    var vertX=cx;
+    if(netVert){
+      var d=netVert.getAttribute('d');
+      var m=d.match(/M([\d.]+)/);
+      if(m) vertX=parseFloat(m[1]);
+    }
+    igwPositions.push({gid:gid,vertX:vertX,cx:cx,cy:cy});
+  });
+  if(igwPositions.length===0) return;
+  // Sort by x position
+  igwPositions.sort(function(a,b){return a.vertX-b.vertX});
+  // Backbone y from NET vertical or default
+  var backboneY=-20;
+  var netVert=document.querySelector('[data-net-vert]');
+  if(netVert){var d=netVert.getAttribute('d');var m=d.match(/[ML][\d.]+,([-\d.]+)/);if(m) backboneY=parseFloat(m[1])}
+  // Start point: Internet node or leftmost IGW
+  var startX=inetPos?inetPos.x:igwPositions[0].vertX;
+  var startY=inetPos?inetPos.y:backboneY;
+  var endX=igwPositions[igwPositions.length-1].vertX;
+  // Draw backbone: horizontal green line from Internet to rightmost IGW
+  faG.append('path')
+    .attr('class','flow-ingress-backbone')
+    .attr('d','M'+startX+','+startY+' L'+startX+','+backboneY+' L'+endX+','+backboneY);
+  // Draw bright Internet node in flow layer (parent nodes-layer is dimmed)
+  if(inetPos){
+    var ig=faG.append('g').attr('class','flow-inet-icon');
+    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',42)
+      .attr('fill','none').attr('stroke','#10b981').attr('stroke-width',2).attr('opacity',.3);
+    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',36)
+      .attr('fill','rgba(16,185,129,.1)').attr('stroke','#10b981').attr('stroke-width',2);
+    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',5)
+      .attr('fill','#10b981');
+    ig.append('text').attr('x',inetPos.x).attr('y',inetPos.y+52)
+      .attr('text-anchor','middle').attr('fill','#10b981').attr('font-size','11px')
+      .attr('font-family','IBM Plex Mono,monospace').text('Internet');
+    ig.style('filter','drop-shadow(0 0 10px rgba(16,185,129,.8))');
+  }
+  // Cache VPC bounding boxes for spatial lookup
+  var vpcBounds={};
+  document.querySelectorAll('.vpc-group').forEach(function(vg){
+    var r=vg.querySelector('rect');
+    var vid=vg.getAttribute('data-vpc-id');
+    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
+  });
+  function findVpcBBSpatial(pt){
+    for(var vid in vpcBounds){
+      var v=vpcBounds[vid];
+      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
+    }
+    return null;
+  }
+  // Find VPC for each IGW via data
+  function findVpcForIgw(gid){
+    var igw=(_rlCtx.igws||[]).find(function(g){return g.InternetGatewayId===gid});
+    if(!igw) return null;
+    var vpcId=(igw.Attachments||[]).length>0?igw.Attachments[0].VpcId:null;
+    return vpcId?vpcBounds[vpcId]:null;
+  }
+  // Draw drops from backbone to trunk tops (outside VPC boundaries)
+  igwPositions.forEach(function(p){
+    // Junction dot on backbone
+    faG.append('circle')
+      .attr('class','flow-ingress-drop')
+      .attr('cx',p.vertX).attr('cy',backboneY).attr('r',4)
+      .attr('fill','#10b981').attr('stroke','none');
+    // Find VPC boundary for this IGW
+    var vpcBB=findVpcForIgw(p.gid)||findVpcBBSpatial({x:p.cx,y:p.cy});
+    if(!vpcBB){
+      // Fallback: short stub toward IGW (no VPC found)
+      faG.append('path').attr('class','flow-ingress-drop')
+        .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+(backboneY+60));
+      return;
+    }
+    // Compute trunk X position (same logic as _renderIngressFlowArrows)
+    var vpcMidX=(vpcBB.left+vpcBB.right)/2;
+    var goLeft=p.cx<vpcMidX;
+    var trunkX=goLeft?vpcBB.left-25:vpcBB.right+25;
+    var trunkTopY=vpcBB.top-15;
+    // Route drop: backbone → above VPC → horizontally to trunk → trunk top
+    var jogY=vpcBB.top-40; // horizontal jog point above VPC
+    if(Math.abs(p.vertX-trunkX)<5){
+      // Trunk aligns with backbone drop — straight line
+      faG.append('path').attr('class','flow-ingress-drop')
+        .attr('d','M'+p.vertX+','+backboneY+' L'+trunkX+','+trunkTopY);
+    } else {
+      // L-shaped: down to above VPC, horizontal to trunk X, then down to trunk top
+      faG.append('path').attr('class','flow-ingress-drop')
+        .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+jogY+' L'+trunkX+','+jogY+' L'+trunkX+','+trunkTopY);
+    }
+  });
 }
 
 function _getGatewayCenter(gid){
@@ -13875,8 +13994,41 @@ function _getGatewayCenter(gid){
   return null;
 }
 
+function _drawBusTopology(faG,opts){
+  var subs=opts.subnets;
+  if(!subs||subs.length===0) return;
+  var tx=opts.trunkX;
+  // Compute trunk Y range — always includes gateway to prevent dead ends
+  var ys=subs.map(function(s){return s.cy});
+  if(opts.gwPos) ys.push(opts.gwPos.y);
+  var startY=opts.trunkStartY!=null?Math.min(opts.trunkStartY,Math.min.apply(null,ys)):Math.min.apply(null,ys);
+  var endY=opts.trunkEndY!=null?Math.max(opts.trunkEndY,Math.max.apply(null,ys)):Math.max.apply(null,ys);
+  // 1. Vertical trunk
+  var trunkPath=faG.append('path').attr('class',opts.pathClass)
+    .attr('d','M'+tx+','+startY+' L'+tx+','+endY);
+  if(opts.trunkStyle){
+    Object.keys(opts.trunkStyle).forEach(function(k){trunkPath.style(k,opts.trunkStyle[k])});
+  }
+  // 2. Gateway connector (trunk → gateway icon)
+  if(opts.gwPos){
+    var gp=faG.append('path').attr('class',opts.gwClass||opts.pathClass)
+      .attr('d','M'+tx+','+opts.gwPos.y+' L'+opts.gwPos.x+','+opts.gwPos.y);
+    if(opts.gwMarker) gp.attr('marker-end',opts.gwMarker);
+  }
+  // 3. Branches: continuous from trunk to subnet edge (no gaps)
+  subs.forEach(function(sp,idx){
+    var subEdgeX=(sp.x+sp.w/2)<tx?sp.x+sp.w:sp.x;
+    var fromX,toX;
+    if(opts.branchDirection==='toTrunk'){fromX=subEdgeX;toX=tx}
+    else{fromX=tx;toX=subEdgeX}
+    var bp=faG.append('path').attr('class',opts.pathClass)
+      .attr('d','M'+fromX+','+sp.cy+' L'+toX+','+sp.cy);
+    if(opts.branchMarker) bp.attr('marker-end',opts.branchMarker);
+    if(opts.onBranch) opts.onBranch(sp,idx,subEdgeX);
+  });
+}
+
 function _renderIngressFlowArrows(faG,igwToSubs){
-  var drawn=new Set();
   // Ensure arrowhead marker
   var svg=d3.select('#mapSvg');
   var defs=svg.select('defs');
@@ -13884,34 +14036,94 @@ function _renderIngressFlowArrows(faG,igwToSubs){
   if(defs.select('#ingress-arrow-head').empty()){
     defs.append('marker').attr('id','ingress-arrow-head')
       .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
-      .attr('markerWidth',8).attr('markerHeight',8).attr('orient','auto')
+      .attr('markerWidth',8).attr('markerHeight',8).attr('markerUnits','userSpaceOnUse')
+      .attr('orient','auto-start-reverse')
       .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
   }
+  if(defs.select('#ingress-branch-head').empty()){
+    defs.append('marker').attr('id','ingress-branch-head')
+      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+      .attr('markerWidth',7).attr('markerHeight',7).attr('markerUnits','userSpaceOnUse')
+      .attr('orient','auto-start-reverse')
+      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
+  }
+  // Cache VPC bounding boxes for spatial lookup
+  var vpcBounds={};
+  document.querySelectorAll('.vpc-group').forEach(function(vg){
+    var r=vg.querySelector('rect');
+    var vid=vg.getAttribute('data-vpc-id');
+    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
+  });
+  function findVpcBB(pt){
+    for(var vid in vpcBounds){
+      var v=vpcBounds[vid];
+      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
+    }
+    return null;
+  }
+  // Bus topology per IGW: trunk outside VPC, branches into subnets
   Object.keys(igwToSubs).forEach(function(gid){
-    igwToSubs[gid].forEach(function(sid){
-      var key=gid+'>'+sid;
-      if(drawn.has(key)) return;
-      drawn.add(key);
-      // Get subnet box right edge for arrow endpoint
-      var subRect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
-      if(!subRect) return;
-      var srBB=subRect.getBBox();
-      var endX=srBB.x+srBB.width;
-      var endY=srBB.y+srBB.height/2;
-      // Draw wide horizontal arrow entering subnet from the right
-      var arrowLen=120;
-      faG.append('line').attr('class','flow-ingress-arrow')
-        .attr('x1',endX+arrowLen).attr('y1',endY)
-        .attr('x2',endX+2).attr('y2',endY)
-        .attr('marker-end','url(#ingress-arrow-head)');
+    var sids=Array.from(igwToSubs[gid]);
+    if(sids.length===0) return;
+    // Get IGW position for trunk side hint
+    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwPos=null;
+    if(gwNode){
+      var circle=gwNode.querySelector('circle');
+      if(circle){var cb=circle.getBBox();gwPos={x:cb.x+cb.width/2,y:cb.y+cb.height/2}}
+    }
+    // Get all target subnet positions
+    var subPositions=[];
+    sids.forEach(function(sid){
+      var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+      if(!rect) return;
+      var bb=rect.getBBox();
+      subPositions.push({sid:sid,x:bb.x,y:bb.y,w:bb.width,h:bb.height,cy:bb.y+bb.height/2});
+    });
+    if(subPositions.length===0) return;
+    // Find VPC boundary spatially
+    var firstSub=subPositions[0];
+    var vpcBB=findVpcBB({x:firstSub.x+firstSub.w/2,y:firstSub.cy});
+    // Trunk side: prefer side where IGW is (traffic enters from gateway side)
+    var vpcMidX=vpcBB?(vpcBB.left+vpcBB.right)/2:subPositions.reduce(function(s,sp){return s+sp.x+sp.w/2},0)/subPositions.length;
+    var goLeft=gwPos?gwPos.x<vpcMidX:true;
+    var trunkX;
+    if(vpcBB){
+      trunkX=goLeft?vpcBB.left-25:vpcBB.right+25;
+    } else {
+      trunkX=goLeft?firstSub.x-60:firstSub.x+firstSub.w+60;
+    }
+    // Sort subnets by Y
+    subPositions.sort(function(a,b){return a.cy-b.cy});
+    _drawBusTopology(faG,{
+      trunkX:trunkX,
+      subnets:subPositions,
+      gwPos:gwPos,
+      pathClass:'flow-ingress-arrow',
+      branchMarker:'url(#ingress-branch-head)',
+      gwMarker:'url(#ingress-branch-head)',
+      trunkStartY:vpcBB?vpcBB.top-15:null,
+      branchDirection:'toSubnet'
     });
   });
 }
 
 function _renderForwardingArrows(faG,fwdLinks){
-  var line=d3.line().x(function(d){return d.x}).y(function(d){return d.y}).curve(d3.curveBasis);
   var drawn=new Set();
   var targetSubs=new Set();
+  // Cache VPC bounding boxes for spatial lookup
+  var vpcBounds=[];
+  document.querySelectorAll('.vpc-group').forEach(function(vg){
+    var r=vg.querySelector('rect');
+    if(r){var b=r.getBBox();vpcBounds.push({left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height})}
+  });
+  function findVpcBB(pt){
+    for(var i=0;i<vpcBounds.length;i++){
+      var v=vpcBounds[i];
+      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
+    }
+    return null;
+  }
   fwdLinks.forEach(function(lnk){
     var key=lnk.fromSub+'>'+lnk.toSub;
     if(drawn.has(key)) return;
@@ -13920,18 +14132,56 @@ function _renderForwardingArrows(faG,fwdLinks){
     var tc=_getSubnetCenter(lnk.toSub);
     if(!fc||!tc) return;
     targetSubs.add(lnk.toSub);
-    var dx=tc.x-fc.x,dy=tc.y-fc.y;
-    var dist=Math.sqrt(dx*dx+dy*dy);
-    var perpX=(-dy/dist)*20;
-    var perpY=(dx/dist)*20;
-    var mid={x:(fc.x+tc.x)/2+perpX,y:(fc.y+tc.y)/2+perpY-(dist>100?20:8)};
+    var fromRect=document.querySelector('.subnet-node[data-subnet-id="'+lnk.fromSub+'"] rect');
+    var toRect=document.querySelector('.subnet-node[data-subnet-id="'+lnk.toSub+'"] rect');
+    var fBB=fromRect?fromRect.getBBox():null;
+    var tBB=toRect?toRect.getBBox():null;
+    // Find VPC boundary spatially
+    var vpcBB=findVpcBB(fc);
+    var pathD;
+    if(vpcBB && Math.abs(fc.x-tc.x)<100){
+      // Same column: route outside VPC boundary with L-shape
+      var vpcLeft=vpcBB.left;
+      var vpcRight=vpcBB.right;
+      var distToLeft=fc.x-vpcLeft;
+      var distToRight=vpcRight-fc.x;
+      var outsideX=distToLeft<distToRight?vpcLeft-30:vpcRight+30;
+      var r=16;
+      var dirV=tc.y<fc.y?-1:1;
+      var dirH=outsideX<fc.x?-1:1;
+      var fromEdgeX=fBB?(dirH<0?fBB.x:fBB.x+fBB.width):fc.x;
+      var toEdgeX=tBB?(dirH<0?tBB.x:tBB.x+tBB.width):tc.x;
+      r=Math.min(r,Math.abs(fc.y-tc.y)/2,Math.abs(outsideX-fromEdgeX)/2);
+      if(r<2) r=0;
+      pathD='M'+fromEdgeX+','+fc.y;
+      if(r>0){
+        pathD+=' L'+(outsideX-dirH*r)+','+fc.y;
+        pathD+=' Q'+outsideX+','+fc.y+' '+outsideX+','+(fc.y+dirV*r);
+      } else { pathD+=' L'+outsideX+','+fc.y; }
+      if(r>0){
+        pathD+=' L'+outsideX+','+(tc.y-dirV*r);
+        pathD+=' Q'+outsideX+','+tc.y+' '+(outsideX-dirH*r)+','+tc.y;
+      } else { pathD+=' L'+outsideX+','+tc.y; }
+      pathD+=' L'+toEdgeX+','+tc.y;
+    } else {
+      // Different columns: curved path offset away from center
+      var dx=tc.x-fc.x,dy=tc.y-fc.y;
+      var dist=Math.sqrt(dx*dx+dy*dy)||1;
+      var perpX=(-dy/dist)*30;
+      var perpY=(dx/dist)*30;
+      var mid={x:(fc.x+tc.x)/2+perpX,y:(fc.y+tc.y)/2+perpY};
+      pathD='M'+fc.x+','+fc.y+' Q'+mid.x+','+mid.y+' '+tc.x+','+tc.y;
+    }
     faG.append('path').attr('class','flow-fwd-arrow')
-      .attr('d',line([fc,mid,tc]))
+      .attr('d',pathD)
       .attr('marker-end','url(#fwd-arrow-head)');
   });
   // Add glow to target subnet boxes
   targetSubs.forEach(function(sid){
-    var subEl=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+    var subNode=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"]');
+    if(!subNode) return;
+    d3.select(subNode).classed('fa-flow-bright',true);
+    var subEl=subNode.querySelector('rect');
     if(subEl) d3.select(subEl).classed('fa-fwd-target',true);
   });
   // Ensure arrowhead marker exists
@@ -13940,24 +14190,56 @@ function _renderForwardingArrows(faG,fwdLinks){
   if(defs.empty()) defs=svg.append('defs');
   if(defs.select('#fwd-arrow-head').empty()){
     defs.append('marker').attr('id','fwd-arrow-head')
-      .attr('viewBox','0 0 10 10').attr('refX',8).attr('refY',5)
-      .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto-start-reverse')
+      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+      .attr('markerWidth',7).attr('markerHeight',7).attr('markerUnits','userSpaceOnUse')
+      .attr('orient','auto-start-reverse')
       .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
   }
 }
 
 function _renderEgressArrows(faG){
   if(!_rlCtx) return;
-  var sg=document.querySelector('.struct-group');
-  if(!sg) return;
+  // Ensure egress arrowhead marker
+  var svg=d3.select('#mapSvg');
+  var defs=svg.select('defs');
+  if(defs.empty()) defs=svg.append('defs');
+  if(defs.select('#egress-arrow-head').empty()){
+    defs.append('marker').attr('id','egress-arrow-head')
+      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+      .attr('markerWidth',9).attr('markerHeight',9).attr('markerUnits','userSpaceOnUse')
+      .attr('orient','auto-start-reverse')
+      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#fb923c');
+  }
+  if(defs.select('#egress-branch-head').empty()){
+    defs.append('marker').attr('id','egress-branch-head')
+      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+      .attr('markerWidth',7).attr('markerHeight',7).attr('markerUnits','userSpaceOnUse')
+      .attr('orient','auto-start-reverse')
+      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#fb923c');
+  }
+  // Cache VPC bounding boxes
+  var vpcBounds={};
+  document.querySelectorAll('.vpc-group').forEach(function(vg){
+    var r=vg.querySelector('rect');
+    var vid=vg.getAttribute('data-vpc-id');
+    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
+  });
+  // Also try matching by spatial containment for VPC IDs
+  function findVpcBounds(pt){
+    for(var vid in vpcBounds){
+      var v=vpcBounds[vid];
+      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
+    }
+    return null;
+  }
+  // Collect egress data grouped by VPC
+  var vpcData={};
   var seen=new Set();
-  var hlEls=[];
   (_flowAnalysisCache.egressPaths||[]).forEach(function(p){
     var pos=_resolveNetworkPosition(p.from.type, p.from.id, _rlCtx);
     if(!pos||!pos.subnetId||!pos.vpcId) return;
     if(seen.has(pos.subnetId)) return;
     seen.add(pos.subnetId);
-    // Find the gateway used for egress (NAT or IGW)
     var gid=null;
     if(p.via==='nat'){
       var nat=(_rlCtx.nats||[]).find(function(n){
@@ -13971,76 +14253,158 @@ function _renderEgressArrows(faG){
       if(igw) gid=igw.InternetGatewayId;
     }
     if(!gid) return;
-    // Highlight subnet→gateway route lines
-    sg.querySelectorAll('[data-gid="'+gid+'"][data-sid="'+pos.subnetId+'"]').forEach(function(el){hlEls.push(el)});
-    sg.querySelectorAll('[data-gid="'+gid+'"][data-vid="'+pos.vpcId+'"]:not([data-sid])').forEach(function(el){hlEls.push(el)});
-    sg.querySelectorAll('[data-gid="'+gid+'"]:not([data-vid]):not([data-net-vert]):not([data-net-line])').forEach(function(el){hlEls.push(el)});
-    // For NAT egress, also highlight NAT→IGW chain if applicable
-    if(p.via==='nat'){
-      var igw2=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
-      if(igw2){
-        var igwId=igw2.InternetGatewayId;
-        sg.querySelectorAll('[data-net-vert][data-gid="'+igwId+'"]').forEach(function(el){hlEls.push(el)});
-      }
-    } else {
-      sg.querySelectorAll('[data-net-vert][data-gid="'+gid+'"]').forEach(function(el){hlEls.push(el)});
-    }
+    if(!vpcData[pos.vpcId]) vpcData[pos.vpcId]={subnets:[],gateways:{}};
+    vpcData[pos.vpcId].subnets.push(pos.subnetId);
+    if(!vpcData[pos.vpcId].gateways[gid]) vpcData[pos.vpcId].gateways[gid]=[];
+    vpcData[pos.vpcId].gateways[gid].push(pos.subnetId);
   });
-  if(hlEls.length>0){
-    var netLine=sg.querySelector('[data-net-line]');
-    if(netLine) hlEls.push(netLine);
-  }
-  hlEls.forEach(function(el){el.classList.add('fa-hl-egress')});
+  // Render per VPC: trunk + branches + gateway arrows
+  Object.keys(vpcData).forEach(function(vpcId){
+    var data=vpcData[vpcId];
+    // Highlight all egress subnets
+    data.subnets.forEach(function(sid){
+      var subNode=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"]');
+      if(!subNode) return;
+      d3.select(subNode).classed('fa-flow-bright',true);
+      var subEl=subNode.querySelector('rect');
+      if(subEl) d3.select(subEl).classed('fa-egress-source',true);
+    });
+    // For each gateway group, draw trunk + branches outside VPC
+    Object.keys(data.gateways).forEach(function(gid){
+      var sids=data.gateways[gid];
+      // Get gateway visual position
+      var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+      var gwPos=null;
+      if(gwNode){
+        var circle=gwNode.querySelector('circle');
+        if(circle){var cb=circle.getBBox();gwPos={x:cb.x+cb.width/2,y:cb.y+cb.height/2}}
+      }
+      if(!gwPos) return;
+      // Get all subnet positions
+      var subPositions=[];
+      sids.forEach(function(sid){
+        var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+        if(!rect) return;
+        var bb=rect.getBBox();
+        subPositions.push({sid:sid,x:bb.x,y:bb.y,w:bb.width,h:bb.height,cy:bb.y+bb.height/2});
+      });
+      if(subPositions.length===0) return;
+      // Find VPC boundary for routing
+      var firstSub=subPositions[0];
+      var vb=findVpcBounds({x:firstSub.x+firstSub.w/2,y:firstSub.cy});
+      // Determine trunk side: route toward the gateway
+      var goRight=gwPos.x>firstSub.x+firstSub.w/2;
+      var trunkX;
+      if(vb){
+        trunkX=goRight?vb.right+25:vb.left-25;
+      } else {
+        trunkX=goRight?firstSub.x+firstSub.w+60:firstSub.x-60;
+      }
+      // Sort subnets by y
+      subPositions.sort(function(a,b){return a.cy-b.cy});
+      _drawBusTopology(faG,{
+        trunkX:trunkX,
+        subnets:subPositions,
+        gwPos:gwPos,
+        pathClass:'flow-egress-arrow',
+        gwClass:'flow-egress-gw',
+        branchMarker:'url(#egress-branch-head)',
+        gwMarker:'url(#egress-arrow-head)',
+        branchDirection:'toTrunk'
+      });
+    });
+  });
 }
 
 function _renderBastionArrows(faG){
-  var line=d3.line().x(function(d){return d.x}).y(function(d){return d.y}).curve(d3.curveBasis);
+  // Ensure bastion arrowhead markers
+  var svg=d3.select('#mapSvg');
+  var defs=svg.select('defs');
+  if(defs.empty()) defs=svg.append('defs');
+  if(defs.select('#bastion-arrow-head').empty()){
+    defs.append('marker').attr('id','bastion-arrow-head')
+      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+      .attr('markerWidth',7).attr('markerHeight',7).attr('markerUnits','userSpaceOnUse')
+      .attr('orient','auto-start-reverse')
+      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#22d3ee');
+  }
+  // Cache VPC bounding boxes
+  var vpcBounds={};
+  document.querySelectorAll('.vpc-group').forEach(function(vg){
+    var r=vg.querySelector('rect');
+    var vid=vg.getAttribute('data-vpc-id');
+    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
+  });
   (_flowAnalysisCache.bastionChains||[]).forEach(function(ch){
     var bPos=_resolveNetworkPosition(ch.bastion.type, ch.bastion.id, _rlCtx);
-    if(!bPos) return;
-    var bc=_getSubnetCenter(bPos.subnetId);
-    if(!bc) return;
-    // Bastion waypoint marker (reuses trace waypoint style — orange circle with "B")
+    if(!bPos||!bPos.subnetId) return;
+    var bastionRect=document.querySelector('.subnet-node[data-subnet-id="'+bPos.subnetId+'"] rect');
+    if(!bastionRect) return;
+    var bbb=bastionRect.getBBox();
+    var bastionSub={x:bbb.x,y:bbb.y,w:bbb.width,h:bbb.height,cy:bbb.y+bbb.height/2};
+    // Highlight bastion subnet (cyan)
+    var bSubNode=document.querySelector('.subnet-node[data-subnet-id="'+bPos.subnetId+'"]');
+    if(bSubNode){
+      d3.select(bSubNode).classed('fa-flow-bright',true);
+      d3.select(bastionRect).classed('fa-ingress-target',true);
+    }
+    // Bastion "B" badge on the subnet
     var wg=faG.append('g').attr('class','flow-waypoint-marker');
-    wg.append('circle').attr('cx',bc.x).attr('cy',bc.y).attr('r',14);
-    wg.append('text').attr('x',bc.x).attr('y',bc.y+1)
+    wg.append('circle').attr('cx',bastionSub.x+bastionSub.w/2).attr('cy',bastionSub.cy).attr('r',14);
+    wg.append('text').attr('x',bastionSub.x+bastionSub.w/2).attr('y',bastionSub.cy+1)
       .attr('text-anchor','middle').attr('dominant-baseline','central')
       .attr('fill','#000').attr('font-size','9px').attr('font-weight','700')
       .attr('font-family','IBM Plex Mono').text('B');
-    // Internet → Bastion leg (if internet coords available)
-    var ic=_getInternetCoords();
-    if(ic){
-      var midY=Math.min(ic.y,bc.y)-30;
-      faG.append('path').attr('class','flow-path-leg allowed')
-        .attr('d',line([ic,{x:(ic.x+bc.x)/2,y:midY},bc]));
-    }
     // Deduplicate targets by subnet
     var subSeen=new Set();
-    var uniqueTargets=[];
+    var targetSubs=[];
     ch.targets.forEach(function(tgt){
       var tPos=_resolveNetworkPosition(tgt.type, tgt.id, _rlCtx);
       if(!tPos||!tPos.subnetId) return;
       if(subSeen.has(tPos.subnetId)) return;
       subSeen.add(tPos.subnetId);
-      var tc=_getSubnetCenter(tPos.subnetId);
-      if(tc) uniqueTargets.push({pos:tc,name:tgt.name||tgt.id});
+      var tRect=document.querySelector('.subnet-node[data-subnet-id="'+tPos.subnetId+'"] rect');
+      if(!tRect) return;
+      var tb=tRect.getBBox();
+      targetSubs.push({sid:tPos.subnetId,x:tb.x,y:tb.y,w:tb.width,h:tb.height,cy:tb.y+tb.height/2});
+      // Highlight target subnet (purple)
+      var tSubNode=document.querySelector('.subnet-node[data-subnet-id="'+tPos.subnetId+'"]');
+      if(tSubNode){
+        d3.select(tSubNode).classed('fa-flow-bright',true);
+        d3.select(tRect).classed('fa-bastion-target',true);
+      }
     });
-    // Bastion → Target legs with fan-out offset
-    var n=uniqueTargets.length;
-    uniqueTargets.forEach(function(ut,idx){
-      var tc=ut.pos;
-      var dx=tc.x-bc.x,dy=tc.y-bc.y;
-      var dist=Math.sqrt(dx*dx+dy*dy);
-      var perpX=n>1?(-dy/dist)*((idx-n/2+0.5)*18):0;
-      var perpY=n>1?(dx/dist)*((idx-n/2+0.5)*18):0;
-      var mid={x:(bc.x+tc.x)/2+perpX,y:(bc.y+tc.y)/2+perpY-(dist>80?25:10)};
-      faG.append('path').attr('class','flow-path-leg allowed')
-        .attr('d',line([bc,mid,tc]));
-      // Target hop marker (reuses trace hop style — numbered green circle)
-      var hopG=faG.append('g').attr('class','flow-hop flow-hop-allow');
-      hopG.append('circle').attr('cx',tc.x).attr('cy',tc.y).attr('r',8);
-      hopG.append('text').attr('x',tc.x).attr('y',tc.y)
-        .style('font-size','7px').text(idx+1);
+    if(targetSubs.length===0) return;
+    // Bus topology: vertical trunk from bastion to targets
+    // Find VPC boundary
+    var vpcBB=bPos.vpcId?vpcBounds[bPos.vpcId]:null;
+    // Trunk runs to the right of the bastion subnet (between bastion and targets)
+    var allSubs=[bastionSub].concat(targetSubs);
+    allSubs.sort(function(a,b){return a.cy-b.cy});
+    var trunkX;
+    if(vpcBB){
+      // Place trunk slightly inside VPC, between bastion column and target column
+      var midVpcX=(vpcBB.left+vpcBB.right)/2;
+      // If bastion is on the left, trunk goes right of it. Otherwise left.
+      trunkX=bastionSub.x+bastionSub.w/2<midVpcX?bastionSub.x+bastionSub.w+20:bastionSub.x-20;
+    } else {
+      trunkX=bastionSub.x+bastionSub.w+20;
+    }
+    _drawBusTopology(faG,{
+      trunkX:trunkX,
+      subnets:allSubs,
+      pathClass:'flow-path-leg allowed',
+      branchMarker:'url(#bastion-arrow-head)',
+      trunkStyle:{'stroke-dasharray':'none','opacity':'0.6'},
+      branchDirection:'toSubnet',
+      onBranch:function(sp,idx,edgeX){
+        if(sp===bastionSub) return;
+        var hopIdx=idx-(allSubs.indexOf(bastionSub)<idx?1:0);
+        var hopG=faG.append('g').attr('class','flow-hop flow-hop-allow');
+        hopG.append('circle').attr('cx',edgeX+(edgeX<trunkX?-12:12)).attr('cy',sp.cy).attr('r',8);
+        hopG.append('text').attr('x',edgeX+(edgeX<trunkX?-12:12)).attr('y',sp.cy)
+          .style('font-size','7px').text(hopIdx+1);
+      }
     });
   });
 }
@@ -14274,11 +14638,12 @@ function exitFlowAnalysis(){
   // Remove route-line highlight classes and fa-active dim
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target');
+  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target,.fa-egress-source,.fa-bastion-target,.fa-flow-bright').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target','fa-egress-source','fa-bastion-target','fa-flow-bright');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
+  document.querySelectorAll('.gw-node').forEach(function(el){d3.select(el).style('filter',null).style('opacity',null)});
   _clearFlowHighlights();
   var dp=document.getElementById('detailPanel');
   if(dp.classList.contains('open')){
@@ -18361,7 +18726,7 @@ document.getElementById('landingDemo').addEventListener('click',function(){docum
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
   // OPTIMIZED: Generate demo data on first load (lazy initialization)
-  if(!demo)demo=generateDemo();
+  if(typeof demo==='undefined'||!demo)demo=generateDemo();
   // Split demo data into 2 accounts for multi-account view
   const allVpcs=demo.vpcs?demo.vpcs.Vpcs||[]:[];
   const allSubs=demo.subnets?demo.subnets.Subnets||[]:[];
