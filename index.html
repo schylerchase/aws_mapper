@@ -8405,8 +8405,8 @@ function _renderMapInner(){
         structG.append('path').attr('class','route-trunk route-structural').attr('d',trunkPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vpcId);
       }
 
-      // Solid L-connector from bottom of trunk down to bus Y, then horizontal to TGW X
-      const connPath=`M${vc.tx},${trunkBot} L${vc.tx},${busY} L${gp.x},${busY}`;
+      // Vertical drop from trunk bottom to bus Y (horizontal drawn once after loop)
+      const connPath=`M${vc.tx},${trunkBot} L${vc.tx},${busY}`;
       structG.append('path').attr('class','route-trunk route-structural').attr('d',connPath).attr('stroke',col).style('stroke-dasharray','none').style('opacity',0.45).attr('data-gid',gid).attr('data-vid',vpcId);
       // Solid patch at trunk-to-connector junction
       const tgwJunc=`M${vc.tx-3},${trunkBot-3} L${vc.tx+3},${trunkBot-3} L${vc.tx+3},${trunkBot+3} L${vc.tx-3},${trunkBot+3} Z`;
@@ -8422,6 +8422,15 @@ function _renderMapInner(){
           _hlLocked=true;_hlKey=gid;_hlType='gw';showLockInd(true);
         });
     });
+
+    // One shared horizontal bus bar (prevents opacity stacking from per-VPC overlaps)
+    var allTrunkXs=vpcConns.map(vc=>vc.tx);
+    allTrunkXs.push(gp.x);
+    var busMinX=Math.min(...allTrunkXs);
+    var busMaxX=Math.max(...allTrunkXs);
+    structG.append('path').attr('class','route-trunk route-structural')
+      .attr('d',`M${busMinX},${busY} L${busMaxX},${busY}`)
+      .attr('stroke',col).style('stroke-dasharray','none').style('opacity',0.45).attr('data-gid',gid);
 
     // Single vertical from bus bar to gateway circle
     const gwConnect=`M${gp.x},${busY} L${gp.x},${gp.y-GR-4}`;
@@ -13753,9 +13762,11 @@ function _renderFlowAnalysisOverlay(mode){
   document.querySelectorAll('.gw-node').forEach(function(el){d3.select(el).style('filter',null).style('opacity',null)});
   if(!_flowAnalysisCache||!mode) return;
   var g=mapRoot.empty()?svg:mapRoot;
-  var faG=g.append('g').attr('class','flow-analysis-layer');
+  // Insert flow layer BEFORE nodes-layer so arrows render behind VPCs/subnets/resources
+  var nodesLayer=g.select('.nodes-layer');
+  var faG=nodesLayer.empty()?g.append('g').attr('class','flow-analysis-layer'):g.insert('g','.nodes-layer').attr('class','flow-analysis-layer');
   // Dim map for modes that highlight route lines
-  var needDim=(mode==='ingress'||mode==='egress'||mode==='all');
+  var needDim=(mode==='ingress'||mode==='egress'||mode==='bastion'||mode==='all');
   if(needDim&&!mapRoot.empty()) mapRoot.classed('fa-active',true);
   if(mode==='tiers'||mode==='all') _renderTierBadges(faG);
   if(mode==='ingress'||mode==='all') _renderIngressArrows(faG);
@@ -13854,15 +13865,15 @@ function _renderIngressArrows(faG){
     var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
     if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(16,185,129,.8))').style('opacity','1');
   });
-  // Draw connected ingress path: Internet → backbone → vertical drops → IGW icons
-  _renderIngressConnectedPath(faG,ingressGids);
-  // Draw curved IGW→subnet flow arrows
+  // Draw connected ingress path: Internet → backbone → vertical drops → trunk tops
+  _renderIngressConnectedPath(faG,ingressGids,igwToSubs);
+  // Draw bus topology: trunk + branches per IGW
   _renderIngressFlowArrows(faG,igwToSubs);
   // Draw ALB→backend forwarding arrows
   if(fwdLinks.length>0) _renderForwardingArrows(faG,fwdLinks);
 }
 
-function _renderIngressConnectedPath(faG,ingressGids){
+function _renderIngressConnectedPath(faG,ingressGids,igwToSubs){
   if(!ingressGids||ingressGids.size===0) return;
   // Find Internet node center
   var inetNode=document.querySelector('.internet-node');
@@ -13898,10 +13909,11 @@ function _renderIngressConnectedPath(faG,ingressGids){
   var startX=inetPos?inetPos.x:igwPositions[0].vertX;
   var startY=inetPos?inetPos.y:backboneY;
   var endX=igwPositions[igwPositions.length-1].vertX;
-  // Draw backbone: horizontal green line from Internet to rightmost IGW
+  // Draw backbone: animated green line from Internet to rightmost IGW (with arrowhead)
   faG.append('path')
     .attr('class','flow-ingress-backbone')
-    .attr('d','M'+startX+','+startY+' L'+startX+','+backboneY+' L'+endX+','+backboneY);
+    .attr('d','M'+startX+','+startY+' L'+startX+','+backboneY+' L'+endX+','+backboneY)
+    .attr('marker-end','url(#ingress-arrow-head)');
   // Draw bright Internet node in flow layer (parent nodes-layer is dimmed)
   if(inetPos){
     var ig=faG.append('g').attr('class','flow-inet-icon');
@@ -13937,7 +13949,7 @@ function _renderIngressConnectedPath(faG,ingressGids){
     var vpcId=(igw.Attachments||[]).length>0?igw.Attachments[0].VpcId:null;
     return vpcId?vpcBounds[vpcId]:null;
   }
-  // Draw drops from backbone to trunk tops (outside VPC boundaries)
+  // Draw drops from backbone to trunk tops (connecting to topmost branch)
   igwPositions.forEach(function(p){
     // Junction dot on backbone
     faG.append('circle')
@@ -13947,7 +13959,6 @@ function _renderIngressConnectedPath(faG,ingressGids){
     // Find VPC boundary for this IGW
     var vpcBB=findVpcForIgw(p.gid)||findVpcBBSpatial({x:p.cx,y:p.cy});
     if(!vpcBB){
-      // Fallback: short stub toward IGW (no VPC found)
       faG.append('path').attr('class','flow-ingress-drop')
         .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+(backboneY+60));
       return;
@@ -13956,17 +13967,31 @@ function _renderIngressConnectedPath(faG,ingressGids){
     var vpcMidX=(vpcBB.left+vpcBB.right)/2;
     var goLeft=p.cx<vpcMidX;
     var trunkX=goLeft?vpcBB.left-25:vpcBB.right+25;
-    var trunkTopY=vpcBB.top-15;
-    // Route drop: backbone → above VPC → horizontally to trunk → trunk top
-    var jogY=vpcBB.top-40; // horizontal jog point above VPC
+    // Find topmost subnet CY for this IGW so drop connects to the trunk's natural start
+    var topSubY=null;
+    var sids=igwToSubs&&igwToSubs[p.gid]?Array.from(igwToSubs[p.gid]):[];
+    sids.forEach(function(sid){
+      var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+      if(!rect) return;
+      var bb=rect.getBBox();
+      var cy=bb.y+bb.height/2;
+      if(topSubY===null||cy<topSubY) topSubY=cy;
+    });
+    // Also consider gateway position (trunk spans to it)
+    var dropEndY=topSubY!==null?topSubY:vpcBB.top+30;
+    if(p.cy<dropEndY) dropEndY=p.cy; // gwPos might be above topmost subnet
+    // Route drop: backbone → trunkX at topmost branch (with arrowhead)
     if(Math.abs(p.vertX-trunkX)<5){
       // Trunk aligns with backbone drop — straight line
       faG.append('path').attr('class','flow-ingress-drop')
-        .attr('d','M'+p.vertX+','+backboneY+' L'+trunkX+','+trunkTopY);
+        .attr('d','M'+p.vertX+','+backboneY+' L'+trunkX+','+dropEndY)
+        .attr('marker-end','url(#ingress-arrow-head)');
     } else {
-      // L-shaped: down to above VPC, horizontal to trunk X, then down to trunk top
+      // L-shaped: down to jog point, horizontal to trunk X, then down to trunk start
+      var jogY=Math.min(backboneY+30,dropEndY-20);
       faG.append('path').attr('class','flow-ingress-drop')
-        .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+jogY+' L'+trunkX+','+jogY+' L'+trunkX+','+trunkTopY);
+        .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+jogY+' L'+trunkX+','+jogY+' L'+trunkX+','+dropEndY)
+        .attr('marker-end','url(#ingress-arrow-head)');
     }
   });
 }
@@ -14009,10 +14034,13 @@ function _drawBusTopology(faG,opts){
   if(opts.trunkStyle){
     Object.keys(opts.trunkStyle).forEach(function(k){trunkPath.style(k,opts.trunkStyle[k])});
   }
-  // 2. Gateway connector (trunk → gateway icon)
+  // 2. Gateway connector
   if(opts.gwPos){
+    var gwFromX,gwToX;
+    if(opts.gwDirection==='toTrunk'){gwFromX=opts.gwPos.x;gwToX=tx}
+    else{gwFromX=tx;gwToX=opts.gwPos.x}
     var gp=faG.append('path').attr('class',opts.gwClass||opts.pathClass)
-      .attr('d','M'+tx+','+opts.gwPos.y+' L'+opts.gwPos.x+','+opts.gwPos.y);
+      .attr('d','M'+gwFromX+','+opts.gwPos.y+' L'+gwToX+','+opts.gwPos.y);
     if(opts.gwMarker) gp.attr('marker-end',opts.gwMarker);
   }
   // 3. Branches: continuous from trunk to subnet edge (no gaps)
@@ -14102,7 +14130,7 @@ function _renderIngressFlowArrows(faG,igwToSubs){
       pathClass:'flow-ingress-arrow',
       branchMarker:'url(#ingress-branch-head)',
       gwMarker:'url(#ingress-branch-head)',
-      trunkStartY:vpcBB?vpcBB.top-15:null,
+      gwDirection:'toTrunk',
       branchDirection:'toSubnet'
     });
   });
@@ -14258,7 +14286,9 @@ function _renderEgressArrows(faG){
     if(!vpcData[pos.vpcId].gateways[gid]) vpcData[pos.vpcId].gateways[gid]=[];
     vpcData[pos.vpcId].gateways[gid].push(pos.subnetId);
   });
-  // Render per VPC: trunk + branches + gateway arrows
+  // Collect all egress gateway IDs for outbound path
+  var egressGids=new Set();
+  // Render per VPC: SINGLE trunk + branches + gateway connectors
   Object.keys(vpcData).forEach(function(vpcId){
     var data=vpcData[vpcId];
     // Highlight all egress subnets
@@ -14269,50 +14299,126 @@ function _renderEgressArrows(faG){
       var subEl=subNode.querySelector('rect');
       if(subEl) d3.select(subEl).classed('fa-egress-source',true);
     });
-    // For each gateway group, draw trunk + branches outside VPC
-    Object.keys(data.gateways).forEach(function(gid){
-      var sids=data.gateways[gid];
-      // Get gateway visual position
+    // Draw SEPARATE bus topology per gateway (each gateway routes its own subnets)
+    var gwKeys=Object.keys(data.gateways);
+    var baseTrunkX=null;
+    gwKeys.forEach(function(gid,gwIdx){
+      egressGids.add(gid);
       var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
       var gwPos=null;
       if(gwNode){
         var circle=gwNode.querySelector('circle');
         if(circle){var cb=circle.getBBox();gwPos={x:cb.x+cb.width/2,y:cb.y+cb.height/2}}
       }
-      if(!gwPos) return;
-      // Get all subnet positions
+      // Collect subnet positions for THIS gateway only
       var subPositions=[];
-      sids.forEach(function(sid){
+      data.gateways[gid].forEach(function(sid){
         var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
         if(!rect) return;
         var bb=rect.getBBox();
         subPositions.push({sid:sid,x:bb.x,y:bb.y,w:bb.width,h:bb.height,cy:bb.y+bb.height/2});
       });
       if(subPositions.length===0) return;
-      // Find VPC boundary for routing
-      var firstSub=subPositions[0];
-      var vb=findVpcBounds({x:firstSub.x+firstSub.w/2,y:firstSub.cy});
-      // Determine trunk side: route toward the gateway
-      var goRight=gwPos.x>firstSub.x+firstSub.w/2;
-      var trunkX;
-      if(vb){
-        trunkX=goRight?vb.right+25:vb.left-25;
-      } else {
-        trunkX=goRight?firstSub.x+firstSub.w+60:firstSub.x-60;
+      // Find VPC boundary once
+      if(baseTrunkX===null){
+        var firstSub=subPositions[0];
+        var vb=findVpcBounds({x:firstSub.x+firstSub.w/2,y:firstSub.cy});
+        var goRight=gwPos?gwPos.x>firstSub.x+firstSub.w/2:true;
+        if(vb){baseTrunkX=goRight?vb.right+25:vb.left-25}
+        else{baseTrunkX=goRight?firstSub.x+firstSub.w+60:firstSub.x-60}
       }
-      // Sort subnets by y
+      // Offset each gateway's trunk to prevent overlap
+      var trunkX=baseTrunkX+gwIdx*18;
       subPositions.sort(function(a,b){return a.cy-b.cy});
+      // Draw bus topology WITHOUT gwPos — trunk spans subnets only
       _drawBusTopology(faG,{
         trunkX:trunkX,
         subnets:subPositions,
-        gwPos:gwPos,
         pathClass:'flow-egress-arrow',
-        gwClass:'flow-egress-gw',
         branchMarker:'url(#egress-branch-head)',
-        gwMarker:'url(#egress-arrow-head)',
         branchDirection:'toTrunk'
       });
+      // Draw L-shaped connector from trunk to gateway icon
+      if(gwPos){
+        var subYs=subPositions.map(function(s){return s.cy});
+        var trunkMinY=Math.min.apply(null,subYs);
+        var trunkMaxY=Math.max.apply(null,subYs);
+        // Find nearest trunk endpoint to gateway
+        var anchorY=gwPos.y<trunkMinY?trunkMinY:gwPos.y>trunkMaxY?trunkMaxY:gwPos.y;
+        var d='M'+trunkX+','+anchorY;
+        if(Math.abs(anchorY-gwPos.y)>2) d+=' L'+trunkX+','+gwPos.y;
+        d+=' L'+gwPos.x+','+gwPos.y;
+        faG.append('path').attr('class','flow-egress-arrow')
+          .attr('d',d).attr('marker-end','url(#egress-arrow-head)');
+      }
+      // Glow on gateway icon
+      if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(251,146,60,.8))').style('opacity','1');
     });
+  });
+  // Draw egress outbound path: gateways → backbone → Internet
+  _renderEgressConnectedPath(faG,egressGids);
+}
+
+function _renderEgressConnectedPath(faG,egressGids){
+  if(!egressGids||egressGids.size===0) return;
+  // Find Internet node center
+  var inetNode=document.querySelector('.internet-node');
+  var inetCircle=inetNode?inetNode.querySelector('circle'):null;
+  var inetPos=null;
+  if(inetCircle){var ib=inetCircle.getBBox();inetPos={x:ib.x+ib.width/2,y:ib.y+ib.height/2}}
+  // Gather gateway positions
+  var gwPositions=[];
+  egressGids.forEach(function(gid){
+    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwCircle=gwNode?gwNode.querySelector('circle'):null;
+    if(!gwCircle) return;
+    var cb=gwCircle.getBBox();
+    gwPositions.push({gid:gid,cx:cb.x+cb.width/2,cy:cb.y+cb.height/2});
+  });
+  if(gwPositions.length===0) return;
+  gwPositions.sort(function(a,b){return a.cx-b.cx});
+  // Backbone Y: same as ingress (above VPCs)
+  var backboneY=-20;
+  var netVert=document.querySelector('[data-net-vert]');
+  if(netVert){var d=netVert.getAttribute('d');var m=d.match(/[ML][\d.]+,([-\d.]+)/);if(m) backboneY=parseFloat(m[1])}
+  // Backbone: animated orange line — reversed so dashes animate toward Internet
+  var inetX=inetPos?inetPos.x:gwPositions[0].cx;
+  var inetY=inetPos?inetPos.y:backboneY;
+  var farGwX=gwPositions[gwPositions.length-1].cx;
+  // Horizontal backbone from rightmost gateway toward Internet
+  faG.append('path')
+    .attr('class','flow-egress-backbone')
+    .attr('d','M'+farGwX+','+backboneY+' L'+inetX+','+backboneY)
+    .attr('marker-end','url(#egress-arrow-head)');
+  // Vertical leg from backbone up to Internet icon
+  if(inetPos){
+    faG.append('path')
+      .attr('class','flow-egress-backbone')
+      .attr('d','M'+inetX+','+backboneY+' L'+inetX+','+inetY);
+  }
+  // Internet icon in orange
+  if(inetPos){
+    var ig=faG.append('g').attr('class','flow-inet-icon');
+    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',42)
+      .attr('fill','none').attr('stroke','#fb923c').attr('stroke-width',2).attr('opacity',.3);
+    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',36)
+      .attr('fill','rgba(251,146,60,.1)').attr('stroke','#fb923c').attr('stroke-width',2);
+    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',5)
+      .attr('fill','#fb923c');
+    ig.append('text').attr('x',inetPos.x).attr('y',inetPos.y+52)
+      .attr('text-anchor','middle').attr('fill','#fb923c').attr('font-size','11px')
+      .attr('font-family','IBM Plex Mono,monospace').text('Internet');
+  }
+  // Drops: from each gateway UP to the backbone (with arrowheads)
+  gwPositions.forEach(function(p){
+    // Junction dot on backbone
+    faG.append('circle')
+      .attr('cx',p.cx).attr('cy',backboneY).attr('r',4)
+      .attr('fill','#fb923c').attr('stroke','none');
+    // Animated drop from gateway to backbone with arrowhead
+    faG.append('path').attr('class','flow-egress-arrow')
+      .attr('d','M'+p.cx+','+p.cy+' L'+p.cx+','+backboneY)
+      .attr('marker-end','url(#egress-arrow-head)');
   });
 }
 
@@ -14395,15 +14501,16 @@ function _renderBastionArrows(faG){
       subnets:allSubs,
       pathClass:'flow-path-leg allowed',
       branchMarker:'url(#bastion-arrow-head)',
-      trunkStyle:{'stroke-dasharray':'none','opacity':'0.6'},
+      trunkStyle:{'opacity':'0.85'},
       branchDirection:'toSubnet',
       onBranch:function(sp,idx,edgeX){
         if(sp===bastionSub) return;
         var hopIdx=idx-(allSubs.indexOf(bastionSub)<idx?1:0);
+        var bx=edgeX+(edgeX<trunkX?12:-12);
         var hopG=faG.append('g').attr('class','flow-hop flow-hop-allow');
-        hopG.append('circle').attr('cx',edgeX+(edgeX<trunkX?-12:12)).attr('cy',sp.cy).attr('r',8);
-        hopG.append('text').attr('x',edgeX+(edgeX<trunkX?-12:12)).attr('y',sp.cy)
-          .style('font-size','7px').text(hopIdx+1);
+        hopG.append('circle').attr('cx',bx).attr('cy',sp.cy).attr('r',5);
+        hopG.append('text').attr('x',bx).attr('y',sp.cy)
+          .style('font-size','6px').text(hopIdx+1);
       }
     });
   });

@@ -1012,12 +1012,13 @@
   .flow-path-leg.allowed{stroke:#22d3ee}
   .flow-path-leg.blocked{stroke:#ef4444;stroke-dasharray:4 4}
   .flow-path-leg.skipped{stroke:#4b5563;stroke-dasharray:3 6;opacity:.4}
-  .flow-ingress-arrow{fill:none;stroke:#10b981;stroke-width:3;stroke-dasharray:8 4;animation:flow-dash .7s linear infinite;pointer-events:none;opacity:.9;filter:drop-shadow(0 0 5px rgba(16,185,129,.5))}
+  .flow-ingress-arrow{fill:none;stroke:#10b981;stroke-width:3;stroke-dasharray:8 4;animation:flow-dash .7s linear infinite;pointer-events:none;opacity:.9}
   .flow-fwd-arrow{fill:none;stroke:#10b981;stroke-width:2.5;stroke-dasharray:6 3;animation:flow-dash .8s linear infinite;pointer-events:none;opacity:.85}
   .fa-fwd-target{filter:drop-shadow(0 0 6px rgba(16,185,129,.5));stroke:#10b981 !important;stroke-width:2 !important}
   .fa-ingress-target{fill:rgba(16,185,129,.18) !important;filter:drop-shadow(0 0 18px rgba(16,185,129,1)) drop-shadow(0 0 8px rgba(16,185,129,.9));stroke:#10b981 !important;stroke-width:3.5 !important;opacity:1 !important}
-  .flow-egress-arrow{fill:none;stroke:#fb923c;stroke-width:2.5;stroke-dasharray:8 4;animation:flow-dash .8s linear infinite;pointer-events:none;opacity:.9;filter:drop-shadow(0 0 4px rgba(251,146,60,.5))}
-  .flow-egress-gw{fill:none;stroke:#fb923c;stroke-width:3.5;stroke-dasharray:none;pointer-events:none;opacity:1;filter:drop-shadow(0 0 6px rgba(251,146,60,.6))}
+  .flow-egress-arrow{fill:none;stroke:#fb923c;stroke-width:2.5;stroke-dasharray:8 4;animation:flow-dash .8s linear infinite;pointer-events:none;opacity:.9}
+  .flow-egress-gw{fill:none;stroke:#fb923c;stroke-width:3.5;stroke-dasharray:none;pointer-events:none;opacity:1}
+  .flow-egress-backbone{fill:none;stroke:#fb923c;stroke-width:4;stroke-dasharray:10 5;animation:flow-dash .9s linear infinite;pointer-events:none;opacity:.85}
   .fa-egress-source{fill:rgba(251,146,60,.18) !important;filter:drop-shadow(0 0 18px rgba(251,146,60,1)) drop-shadow(0 0 8px rgba(251,146,60,.8));stroke:#fb923c !important;stroke-width:3 !important;opacity:1 !important}
   .fa-bastion-target{fill:rgba(139,92,246,.18) !important;filter:drop-shadow(0 0 18px rgba(139,92,246,1)) drop-shadow(0 0 8px rgba(139,92,246,.8));stroke:#8b5cf6 !important;stroke-width:3 !important;opacity:1 !important}
   .fa-flow-bright text{paint-order:stroke fill;stroke:rgba(0,0,0,.85);stroke-width:3px;stroke-linejoin:round}
@@ -1052,11 +1053,11 @@
   .fa-active .lines-layer .peering-group{opacity:.05;transition:opacity .3s}
   .fa-active .lines-layer .peering-label-g{opacity:.05;transition:opacity .3s}
   .fa-active .label-layer{opacity:.1;transition:opacity .3s}
-  .fa-hl-ingress{stroke:#10b981 !important;stroke-width:5px !important;filter:drop-shadow(0 0 8px rgba(16,185,129,.8)) drop-shadow(0 0 3px rgba(16,185,129,.5));opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
+  .fa-hl-ingress{stroke:#10b981 !important;stroke-width:5px !important;opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
   /* Connected ingress backbone + vertical drops */
-  .flow-ingress-backbone{stroke:#10b981;stroke-width:4;fill:none;opacity:1;filter:drop-shadow(0 0 8px rgba(16,185,129,.8));stroke-dasharray:none}
-  .flow-ingress-drop{stroke:#10b981;stroke-width:2.5;fill:none;opacity:.7;filter:drop-shadow(0 0 4px rgba(16,185,129,.5));stroke-dasharray:6 4;animation:dashFlow 1s linear infinite}
-  .fa-hl-egress{stroke:#fb923c !important;stroke-width:5px !important;filter:drop-shadow(0 0 8px rgba(251,146,44,.8)) drop-shadow(0 0 3px rgba(251,146,44,.5));opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
+  .flow-ingress-backbone{stroke:#10b981;stroke-width:4;fill:none;opacity:.85;stroke-dasharray:10 5;animation:flow-dash .9s linear infinite}
+  .flow-ingress-drop{stroke:#10b981;stroke-width:2.5;fill:none;opacity:.7;stroke-dasharray:6 4;animation:dashFlow 1s linear infinite}
+  .fa-hl-egress{stroke:#fb923c !important;stroke-width:5px !important;opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
   .tier-badge{pointer-events:none;transition:opacity .2s}
   .fa-tier-row{padding:6px 10px;border-radius:4px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;font-size:10px;font-family:'IBM Plex Mono',monospace;margin-bottom:3px}
   .fa-tier-row:hover{background:rgba(255,255,255,.05)}
