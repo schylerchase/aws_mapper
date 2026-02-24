@@ -9538,12 +9538,63 @@ if(_isElectron){
   });
 }
 
-// Browser folder import (File System Access API — Chrome/Edge, fallback for Safari)
+// Browser folder import (File System Access API — Chrome/Edge, webkitdirectory fallback)
 {
   const bfBtn=document.getElementById('importFolderBrowser');
   if(_isElectron)bfBtn.style.display='none';
+  // Fallback: webkitdirectory input for when showDirectoryPicker is unavailable
+  function _folderFallback(){
+    const inp=document.createElement('input');inp.type='file';
+    inp.setAttribute('webkitdirectory','');inp.setAttribute('directory','');inp.multiple=true;
+    inp.addEventListener('change',()=>{
+      if(!inp.files||!inp.files.length)return;
+      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
+      const regions={},flatFiles={},profiles={};
+      const pending=[];
+      for(const file of inp.files){
+        if(!file.name.endsWith('.json'))continue;
+        const parts=(file.webkitRelativePath||file.name).split('/');
+        pending.push(file.text().then(txt=>{
+          if(parts.length===2){
+            // root/file.json — flat
+            flatFiles[parts[1]]=txt;
+          }else if(parts.length===3){
+            // root/region/file.json or root/profile/file.json
+            const dir=parts[1];
+            if(regionRe.test(dir)){
+              if(!regions[dir])regions[dir]={};
+              regions[dir][parts[2]]=txt;
+            }else{
+              if(!profiles[dir])profiles[dir]={regions:{},files:{}};
+              profiles[dir].files[parts[2]]=txt;
+            }
+          }else if(parts.length===4){
+            // root/profile/region/file.json
+            const prof=parts[1],reg=parts[2];
+            if(!profiles[prof])profiles[prof]={regions:{},files:{}};
+            if(regionRe.test(reg)){
+              if(!profiles[prof].regions[reg])profiles[prof].regions[reg]={};
+              profiles[prof].regions[reg][parts[3]]=txt;
+            }else{
+              profiles[prof].files[parts[3]]=txt;
+            }
+          }
+        }));
+      }
+      Promise.all(pending).then(()=>{
+        if(Object.keys(profiles).length){
+          importFolder({_structure:'multi-profile',profiles,files:flatFiles});
+        }else if(Object.keys(regions).length){
+          importFolder({_structure:'multi-region',regions,files:flatFiles});
+        }else{
+          importFolder({_structure:'flat',files:flatFiles});
+        }
+      });
+    });
+    inp.click();
+  }
   bfBtn.addEventListener('click',async()=>{
-    if(!window.showDirectoryPicker){_showToast('Folder import requires Chrome or Edge. Use Upload JSON to select multiple files.','warn');return}
+    if(!window.showDirectoryPicker){_folderFallback();return}
     try{
       const dirHandle=await window.showDirectoryPicker({mode:'read'});
       const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
