@@ -583,8 +583,8 @@
   .gov-tier-count{font-size:32px;font-weight:700;margin-bottom:4px;font-family:'IBM Plex Mono',monospace}
   .gov-tier-meta{font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace}
   .gov-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
-  .gov-table thead{background:var(--bg-secondary);position:sticky;top:0;z-index:2}
-  .gov-table th{padding:8px 12px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;text-transform:uppercase;font-size:10px;letter-spacing:.5px}
+  .gov-table thead{position:sticky;top:0;z-index:2}
+  .gov-table th{padding:8px 12px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:2px solid var(--border);cursor:pointer;user-select:none;text-transform:uppercase;font-size:10px;letter-spacing:.5px;background:var(--bg-primary)}
   .gov-table th:hover{color:var(--text-primary);background:rgba(255,255,255,.02)}
   .gov-table th.sort-asc::after{content:' ▲';font-size:8px}
   .gov-table th.sort-desc::after{content:' ▼';font-size:8px}
@@ -1516,7 +1516,8 @@
   .udash-toolbar input[type="text"]{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;width:200px}
   .udash-toolbar input[type="text"]:focus{outline:none;border-color:var(--accent-cyan)}
   .udash-toolbar select{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:'IBM Plex Mono',monospace}
-  .udash-body{flex:1;overflow-y:auto;padding:16px;background:var(--bg-primary)}
+  .udash-body{flex:1;overflow-y:auto;padding:0 16px 16px;background:var(--bg-primary)}
+  .udash-body>:first-child{margin-top:16px}
   .udash-body.rpt-layout{display:flex;gap:0;padding:0;overflow:hidden}
   .udash-footer{flex-shrink:0;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);min-height:0;display:flex;gap:8px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .udash-footer:empty{display:none}

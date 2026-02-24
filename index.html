@@ -753,6 +753,54 @@ const _BUDR_RTO_RPO={
   ebs_snap:{rto:'~15 min',rpo:'snapshot age',tier:'partial',strategy:'pilot'},
   ebs_no_snap:{rto:'~hours',rpo:'unrecoverable',tier:'at_risk',strategy:'cold'}
 };
+// Estimated minutes for each BUDR profile (for tier compliance comparison)
+// rtoWhy/rpoWhy: justification for estimated values
+const _BUDR_EST_MINUTES={
+  rds_multi_az:{rto:5,rpo:1,rtoWhy:'Multi-AZ automatic failover completes in 1-2 min; DNS propagation adds ~3 min',rpoWhy:'Synchronous replication to standby — data loss limited to in-flight transactions (~seconds)'},
+  rds_single_backup:{rto:30,rpo:1440,rtoWhy:'Restore from automated snapshot requires instance provisioning + data load (~20-30 min)',rpoWhy:'Automated backups run daily — worst case RPO is 24 hours since last backup window'},
+  rds_no_backup:{rto:480,rpo:Infinity,rtoWhy:'No backups — requires manual rebuild from application layer or external source',rpoWhy:'No backup mechanism configured — all data since creation is unrecoverable'},
+  rds_aurora:{rto:0.5,rpo:5,rtoWhy:'Aurora automatic failover promotes read replica in <30 sec; DNS TTL is 5 sec',rpoWhy:'Aurora replicates 6 copies across 3 AZs — RPO limited to last committed transaction (~seconds)'},
+  ec2_asg:{rto:3,rpo:0,rtoWhy:'ASG detects failure via health check (1-2 min) and launches replacement from AMI (~1-2 min)',rpoWhy:'Stateless compute — no persistent data on instance; state lives in external stores'},
+  ec2_ami_snap:{rto:15,rpo:10080,rtoWhy:'Manual AMI launch + EBS restore from snapshot (~10-15 min depending on volume size)',rpoWhy:'Snapshot frequency is typically weekly — worst case RPO is 7 days since last snapshot'},
+  ec2_standalone:{rto:480,rpo:Infinity,rtoWhy:'No AMI/snapshot — requires full OS install, config, and application deployment from scratch',rpoWhy:'No backup mechanism — local EBS data is unrecoverable if instance or volume is lost'},
+  ecs_multi:{rto:1,rpo:0,rtoWhy:'ECS service scheduler replaces failed tasks in ~30-60 sec from container image',rpoWhy:'Stateless containers — no persistent data; state lives in external stores (RDS, S3, etc.)'},
+  ecs_single:{rto:5,rpo:0,rtoWhy:'Single task replacement takes ~2-5 min including image pull and health check',rpoWhy:'Stateless containers — no persistent data; state lives in external stores'},
+  lambda:{rto:0,rpo:0,rtoWhy:'Fully managed — AWS handles all availability; cold start adds <1 sec latency',rpoWhy:'Stateless execution — no persistent data; code stored in S3 with versioning'},
+  ecache_multi:{rto:2,rpo:0.1,rtoWhy:'Multi-AZ auto-failover promotes replica in 1-2 min; DNS endpoint updates automatically',rpoWhy:'Async replication lag is typically <100ms — data loss limited to replication lag'},
+  ecache_single:{rto:15,rpo:10080,rtoWhy:'Restore from snapshot requires new cluster provisioning + data load (~10-15 min)',rpoWhy:'Snapshot frequency is typically daily/weekly — worst case RPO equals snapshot interval'},
+  ecache_no_snap:{rto:15,rpo:Infinity,rtoWhy:'New cluster provisioning takes ~10-15 min but cache starts cold (empty)',rpoWhy:'No snapshots — entire cache contents are lost; must be rebuilt from source of truth'},
+  redshift_snap:{rto:30,rpo:1440,rtoWhy:'Restore from snapshot creates new cluster (~20-30 min depending on data size)',rpoWhy:'Automated snapshots run every 8 hours by default — worst case RPO is snapshot interval'},
+  redshift_multi:{rto:15,rpo:5,rtoWhy:'Multi-node cluster redistributes work to surviving nodes (~10-15 min recovery)',rpoWhy:'Synchronous replication across nodes — RPO limited to in-flight queries (~minutes)'},
+  redshift_none:{rto:480,rpo:Infinity,rtoWhy:'No snapshots — requires full data reload from S3/source systems (hours to days)',rpoWhy:'No backup mechanism — all warehouse data is unrecoverable'},
+  alb_multi_az:{rto:0,rpo:0,rtoWhy:'Fully managed multi-AZ — AWS handles node replacement transparently',rpoWhy:'Stateless load balancer — no data to lose; config stored in AWS control plane'},
+  alb_single_az:{rto:5,rpo:0,rtoWhy:'Single-AZ ALB may need DNS failover if AZ goes down (~3-5 min)',rpoWhy:'Stateless load balancer — no data to lose'},
+  s3:{rto:0,rpo:0,rtoWhy:'11 nines durability — service is always available across 3+ AZs',rpoWhy:'Objects replicated across multiple AZs automatically'},
+  s3_versioned:{rto:0,rpo:0,rtoWhy:'Versioned objects can be restored to any previous version instantly',rpoWhy:'Every object change creates a new version — zero data loss possible'},
+  s3_unversioned:{rto:0,rpo:Infinity,rtoWhy:'Bucket is always available, but deleted/overwritten objects cannot be recovered',rpoWhy:'No versioning — overwrites and deletes are permanent and unrecoverable'},
+  s3_mfa_delete:{rto:0,rpo:0,rtoWhy:'MFA Delete prevents accidental deletion — objects recoverable from versions',rpoWhy:'Versioning + MFA Delete = immutable storage; data cannot be accidentally lost'},
+  ebs_snap:{rto:15,rpo:10080,rtoWhy:'Create new volume from snapshot + attach to instance (~10-15 min)',rpoWhy:'Snapshot frequency is typically weekly — worst case RPO is 7 days since last snapshot'},
+  ebs_no_snap:{rto:480,rpo:Infinity,rtoWhy:'No snapshots — volume data is unrecoverable if volume fails (rare but possible)',rpoWhy:'No backup mechanism — all volume data is permanently lost on failure'}
+};
+// Classification tier targets in minutes (from compliance policy)
+const _TIER_TARGETS={
+  critical:{rto:240,rpo:60,rtoLabel:'2-4 hours',rpoLabel:'Hourly'},
+  high:{rto:480,rpo:360,rtoLabel:'4-8 hours',rpoLabel:'6 hours'},
+  medium:{rto:720,rpo:1440,rtoLabel:'12 hours',rpoLabel:'Daily'},
+  low:{rto:1440,rpo:10080,rtoLabel:'24 hours',rpoLabel:'Weekly'}
+};
+// Compare estimated restore capability vs tier target — returns compliance status
+function _budrTierCompliance(profileKey,classTier){
+  if(!profileKey||!classTier)return{status:'unknown',issues:[]};
+  var est=_BUDR_EST_MINUTES[profileKey];var target=_TIER_TARGETS[classTier];
+  if(!est||!target)return{status:'unknown',issues:[]};
+  var issues=[];
+  if(est.rpo===Infinity)issues.push({field:'RPO',severity:'critical',msg:'No backup — RPO unrecoverable (target: '+target.rpoLabel+')'});
+  else if(est.rpo>target.rpo)issues.push({field:'RPO',severity:'warning',msg:'Est. RPO ~'+_fmtMin(est.rpo)+' exceeds '+classTier+' target of '+target.rpoLabel});
+  if(est.rto>target.rto)issues.push({field:'RTO',severity:'warning',msg:'Est. RTO ~'+_fmtMin(est.rto)+' exceeds '+classTier+' target of '+target.rtoLabel});
+  var status=issues.some(function(i){return i.severity==='critical'})?'fail':issues.length?'warn':'pass';
+  return{status:status,issues:issues,estRto:est.rto,estRpo:est.rpo,targetRto:target.rto,targetRpo:target.rpo,rtoWhy:est.rtoWhy||'',rpoWhy:est.rpoWhy||''};
+}
+function _fmtMin(m){if(m===0)return '0';if(m===Infinity)return '∞';if(m<60)return Math.round(m)+' min';if(m<1440)return Math.round(m/60*10)/10+' hr';return Math.round(m/1440*10)/10+' days'}
 let _budrFindings=[];
 let _budrAssessments=[];
 function runBUDRChecks(ctx){
@@ -886,12 +934,49 @@ function runBUDRChecks(ctx){
   });
   _budrFindings=f;
   _budrAssessments=assessments;
+  // Cross-reference with classification engine for tier compliance
+  _enrichBudrWithClassification(ctx,f);
   return f;
+}
+function _enrichBudrWithClassification(ctx,findings){
+  // Run classification if not already done
+  if(!_classificationData.length&&ctx) runClassificationEngine(ctx);
+  // Build lookup by resource id/name
+  var classMap={};
+  _classificationData.forEach(function(c){classMap[c.id]=c;classMap[c.name]=c});
+  // Enrich each BUDR assessment
+  _budrAssessments.forEach(function(a){
+    var cls=classMap[a.id]||classMap[a.name];
+    a.classTier=cls?cls.tier:'low';
+    a.classVpcName=cls?cls.vpcName:'';
+    // Find which profile key this assessment uses
+    var profileKey=null;
+    for(var k in _BUDR_RTO_RPO){if(_BUDR_RTO_RPO[k]===a.profile){profileKey=k;break}}
+    a.profileKey=profileKey;
+    a.compliance=_budrTierCompliance(profileKey,a.classTier);
+    // Generate findings for compliance gaps
+    if(a.compliance.issues.length>0){
+      a.compliance.issues.forEach(function(issue){
+        var sev=issue.severity==='critical'?'CRITICAL':'HIGH';
+        findings.push({severity:sev,control:'BUDR-TIER-'+issue.field,framework:'BUDR',resource:a.id,resourceName:a.name,
+          message:issue.msg+' ['+a.classTier+' tier]',
+          remediation:issue.field==='RPO'?'Configure automated backups to meet '+a.classTier+' RPO target':'Improve HA/DR strategy to meet '+a.classTier+' RTO target'});
+      });
+    }
+  });
 }
 function _getBUDRTierCounts(){
   const counts={protected:0,partial:0,at_risk:0};
   _budrAssessments.forEach(a=>{
     if(a.profile)counts[a.profile.tier]=(counts[a.profile.tier]||0)+1;
+  });
+  return counts;
+}
+function _getBudrComplianceCounts(){
+  var counts={pass:0,warn:0,fail:0,unknown:0};
+  _budrAssessments.forEach(function(a){
+    var s=a.compliance?a.compliance.status:'unknown';
+    counts[s]=(counts[s]||0)+1;
   });
   return counts;
 }
@@ -1673,8 +1758,9 @@ function _rptBUDRAssessmentTable(){
     h+='<td><a href="#res-'+esc(a.id)+'" class="rpt-res-link">'+esc(a.name||a.id)+'</a></td>';
     h+='<td><span class="'+cls+'">'+esc(tierLabel)+'</span></td>';
     h+='<td><span class="strategy-badge strategy-'+esc(strategy)+'">'+esc(stratLabel)+'</span></td>';
-    h+='<td>'+esc(rto)+'</td>';
-    h+='<td>'+esc(rpo)+'</td>';
+    var estM=_BUDR_EST_MINUTES[a.profileKey]||{};
+    h+='<td title="'+(estM.rtoWhy?esc(estM.rtoWhy):'')+'">'+esc(rto)+'</td>';
+    h+='<td title="'+(estM.rpoWhy?esc(estM.rpoWhy):'')+'">'+esc(rpo)+'</td>';
     h+='<td>'+esc(sigs)+'</td>';
     h+='</tr>';
   });
@@ -3908,14 +3994,19 @@ function runClassificationEngine(ctx){
   var results=[];
   var vpcNameMap={};
   (ctx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
+  // Build subnet→VPC lookup for resources that only have SubnetId
+  var subnetVpcMap={};
+  (ctx.subnets||[]).forEach(function(s){if(s.VpcId) subnetVpcMap[s.SubnetId]=s.VpcId});
+  function resolveVpc(vpcId,subnetId){return vpcId||subnetVpcMap[subnetId]||''}
   // Classify instances
   (ctx.instances||[]).forEach(function(inst){
     var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-    var vpcName=vpcNameMap[inst.VpcId]||'';
+    var vpcId=resolveVpc(inst.VpcId,inst.SubnetId);
+    var vpcName=vpcNameMap[vpcId]||'';
     var sc=_scoreClassification(name,'instance',vpcName);
     var tier=_classificationOverrides[inst.InstanceId]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:inst.InstanceId,name:name,type:'EC2',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[inst.InstanceId],vpcId:inst.VpcId,vpcName:vpcName});
+    results.push({id:inst.InstanceId,name:name,type:'EC2',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[inst.InstanceId],vpcId:vpcId,vpcName:vpcName});
   });
   // Classify RDS
   (ctx.rdsInstances||[]).forEach(function(db){
@@ -3930,10 +4021,12 @@ function runClassificationEngine(ctx){
   // Classify ElastiCache
   (ctx.ecacheClusters||[]).forEach(function(ec){
     var name=ec.CacheClusterId;
-    var sc=_scoreClassification(name,'elasticache','');
+    var vpcId=ec.VpcId||'';
+    var vpcName=vpcNameMap[vpcId]||'';
+    var sc=_scoreClassification(name,'elasticache',vpcName);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ElastiCache',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:'',vpcName:''});
+    results.push({id:name,name:name,type:'ElastiCache',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
   });
   // Classify ALBs
   (ctx.albs||[]).forEach(function(alb){
@@ -3950,6 +4043,7 @@ function runClassificationEngine(ctx){
   (ctx.lambdaFns||[]).forEach(function(fn){
     var name=fn.FunctionName;
     var vpcId=fn.VpcConfig?fn.VpcConfig.VpcId:'';
+    if(!vpcId&&fn.VpcConfig&&fn.VpcConfig.SubnetIds&&fn.VpcConfig.SubnetIds[0]) vpcId=subnetVpcMap[fn.VpcConfig.SubnetIds[0]]||'';
     var vpcName=vpcNameMap[vpcId]||'';
     var sc=_scoreClassification(name,'lambda',vpcName);
     var tier=_classificationOverrides[name]||sc.tier;
@@ -3959,10 +4053,13 @@ function runClassificationEngine(ctx){
   // Classify ECS
   (ctx.ecsServices||[]).forEach(function(svc){
     var name=svc.serviceName||'';
-    var sc=_scoreClassification(name,'ecs','');
+    var nc=svc.networkConfiguration&&svc.networkConfiguration.awsvpcConfiguration;
+    var vpcId=nc&&nc.subnets&&nc.subnets[0]?subnetVpcMap[nc.subnets[0]]||'':'';
+    var vpcName=vpcNameMap[vpcId]||'';
+    var sc=_scoreClassification(name,'ecs',vpcName);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ECS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:'',vpcName:''});
+    results.push({id:name,name:name,type:'ECS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
   });
   // Classify Redshift
   (ctx.redshiftClusters||[]).forEach(function(rs){
@@ -8412,8 +8509,8 @@ function _renderMapInner(){
       const tgwJunc=`M${vc.tx-3},${trunkBot-3} L${vc.tx+3},${trunkBot-3} L${vc.tx+3},${trunkBot+3} L${vc.tx-3},${trunkBot+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',tgwJunc).attr('stroke',col).attr('fill',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vpcId);
 
-      // Hitarea covers full path
-      const fullPath=`M${vc.tx},${trunkTop} L${vc.tx},${busY} L${gp.x},${busY}`;
+      // Hitarea covers trunk path
+      const fullPath=`M${vc.tx},${trunkTop} L${vc.tx},${busY}`;
       lnL.append('path').attr('class','route-hitarea').attr('d',fullPath)
         .on('mouseenter',()=>{if(!_hlLocked){hlGw(gid);ndL.selectAll('.gw-node[data-gwid="'+gid+'"]').classed('gw-hl',true)}}).on('mouseleave',()=>{clr()})
         .on('click',function(event){event.stopPropagation();
@@ -8423,18 +8520,18 @@ function _renderMapInner(){
         });
     });
 
-    // One shared horizontal bus bar (prevents opacity stacking from per-VPC overlaps)
-    var allTrunkXs=vpcConns.map(vc=>vc.tx);
-    allTrunkXs.push(gp.x);
-    var busMinX=Math.min(...allTrunkXs);
-    var busMaxX=Math.max(...allTrunkXs);
-    structG.append('path').attr('class','route-trunk route-structural')
-      .attr('d',`M${busMinX},${busY} L${busMaxX},${busY}`)
-      .attr('stroke',col).style('stroke-dasharray','none').style('opacity',0.45).attr('data-gid',gid);
-
-    // Single vertical from bus bar to gateway circle
-    const gwConnect=`M${gp.x},${busY} L${gp.x},${gp.y-GR-4}`;
-    structG.append('path').attr('class','route-trunk route-structural').attr('d',gwConnect).attr('stroke',col).style('stroke-dasharray','none').style('opacity',0.45).attr('data-gid',gid);
+    // Direct spoke lines from each VPC trunk to gateway (no bus bar, no long horizontals)
+    var gwX=gp.x,gwTopY=gp.y-GR-4;
+    vpcConns.forEach(vc=>{
+      var d=`M${vc.tx},${busY} L${gwX},${gwTopY}`;
+      structG.append('path').attr('class','route-trunk route-structural')
+        .attr('d',d).attr('stroke',col).style('opacity',0.35)
+        .attr('data-gid',gid).attr('data-vid',vc.ov.vpc.VpcId);
+      // Junction dot at trunk origin
+      structG.append('circle').attr('cx',vc.tx).attr('cy',busY).attr('r',3)
+        .attr('fill',col).attr('stroke','none').style('opacity',0.6)
+        .attr('class','route-junction route-structural').attr('data-gid',gid);
+    });
   });
 
   // (Per-VPC verticals to gateway drawn inline above)
@@ -16470,6 +16567,7 @@ function _renderBUDRDash(){
   var th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:200px">';
   th+='<select id="budrSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">';
   th+='<option value="tier"'+(st.sort==='tier'?' selected':'')+'>Sort: Tier</option>';
+  th+='<option value="compliance"'+(st.sort==='compliance'?' selected':'')+'>Sort: Compliance</option>';
   th+='<option value="name"'+(st.sort==='name'?' selected':'')+'>Sort: Name</option>';
   th+='<option value="type"'+(st.sort==='type'?' selected':'')+'>Sort: Type</option>';
   th+='</select>';
@@ -16491,7 +16589,9 @@ function _renderBUDRDash(){
   if(st.search){var q=st.search.toLowerCase();items=items.filter(function(a){return(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q)})}
   if(st.sort==='name')items.sort(function(a,b){return(a.name||a.id||'').localeCompare(b.name||b.id||'')});
   else if(st.sort==='type')items.sort(function(a,b){return(a.type||'').localeCompare(b.type||'')});
+  else if(st.sort==='compliance'){var co={fail:0,warn:1,pass:2,unknown:3};items.sort(function(a,b){var sa=a.compliance?co[a.compliance.status]:3;var sb=b.compliance?co[b.compliance.status]:3;return sa-sb})}
   // Summary cards
+  var compCounts=_getBudrComplianceCounts();
   var h='<div class="budr-summary">';
   ['protected','partial','at_risk'].forEach(function(tier){
     var meta=_BUDR_TIER_META[tier];var c=counts[tier]||0;
@@ -16503,6 +16603,15 @@ function _renderBUDRDash(){
     h+='</div>';
   });
   h+='</div>';
+  // Tier compliance summary bar
+  if(compCounts.fail||compCounts.warn){
+    h+='<div style="display:flex;gap:8px;padding:6px 12px;margin:0 0 8px;background:var(--bg-tertiary);border-radius:6px;font-family:IBM Plex Mono,monospace;font-size:10px;align-items:center">';
+    h+='<span style="color:var(--text-muted);font-weight:600">Tier Compliance:</span>';
+    if(compCounts.pass)h+='<span style="color:#22c55e">'+compCounts.pass+' meet target</span>';
+    if(compCounts.warn)h+='<span style="color:#f59e0b">'+compCounts.warn+' warnings</span>';
+    if(compCounts.fail)h+='<span style="color:#ef4444">'+compCounts.fail+' gaps</span>';
+    h+='</div>';
+  }
   // Group by tier
   var groups={protected:[],partial:[],at_risk:[]};
   items.forEach(function(a){if(a.profile)groups[a.profile.tier].push(a)});
@@ -16526,9 +16635,36 @@ function _renderBUDRDash(){
       h+='<span class="br-dot '+tier+'"></span>';
       h+='<span class="br-type">'+esc(a.type)+'</span>';
       h+='<span class="br-name">'+esc(a.name)+'</span>';
-      h+='<span class="br-rto">RTO: '+esc(a.profile.rto)+' | RPO: '+esc(a.profile.rpo)+'</span>';
+      // Classification tier badge + compliance indicator
+      var ct=a.classTier||'low';var cc=a.compliance||{status:'unknown'};
+      var tierColors={critical:'#ef4444',high:'#f59e0b',medium:'#22d3ee',low:'#64748b'};
+      var compIcon=cc.status==='pass'?'✓':cc.status==='warn'?'⚠':cc.status==='fail'?'✗':'?';
+      var compColor=cc.status==='pass'?'#22c55e':cc.status==='warn'?'#f59e0b':cc.status==='fail'?'#ef4444':'#64748b';
+      h+='<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:'+tierColors[ct]+'22;color:'+tierColors[ct]+';border:1px solid '+tierColors[ct]+'44;margin-left:auto">'+ct.toUpperCase()+'</span>';
+      h+='<span style="font-size:9px;color:'+compColor+';margin-left:4px" title="'+esc(cc.issues?cc.issues.map(function(i){return i.msg}).join('; '):'')+'">'+compIcon+'</span>';
+      h+='<span class="br-rto" style="margin-left:6px">RTO: '+esc(a.profile.rto)+' | RPO: '+esc(a.profile.rpo)+'</span>';
       h+='</div>';
       h+='<div class="budr-res-body">';
+      // RTO/RPO justification
+      var estM=_BUDR_EST_MINUTES[a.profileKey]||{};
+      if(estM.rtoWhy||estM.rpoWhy){
+        h+='<div style="margin-bottom:6px;padding:4px 8px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">';
+        h+='<div style="color:#818cf8;font-weight:600;margin-bottom:2px">Est. RTO/RPO Justification</div>';
+        if(estM.rtoWhy)h+='<div style="color:var(--text-secondary)"><b>RTO '+esc(a.profile.rto)+'</b> — '+esc(estM.rtoWhy)+'</div>';
+        if(estM.rpoWhy)h+='<div style="color:var(--text-secondary)"><b>RPO '+esc(a.profile.rpo)+'</b> — '+esc(estM.rpoWhy)+'</div>';
+        h+='</div>';
+      }
+      // Tier compliance details
+      if(cc.issues&&cc.issues.length){
+        h+='<div style="margin-bottom:6px;padding:4px 8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">';
+        h+='<div style="color:#ef4444;font-weight:600;margin-bottom:2px">Tier Compliance Gap — '+ct.toUpperCase()+' tier</div>';
+        cc.issues.forEach(function(issue){
+          h+='<div style="color:var(--text-secondary)">'+esc(issue.msg)+'</div>';
+        });
+        var target=_TIER_TARGETS[ct];
+        if(target)h+='<div style="color:var(--text-muted);margin-top:2px">Target: RTO ≤ '+target.rtoLabel+' | RPO ≤ '+target.rpoLabel+'</div>';
+        h+='</div>';
+      }
       // Signals
       if(a.signals){
         h+='<div class="budr-signals">';
