@@ -10,6 +10,13 @@ const { autoUpdater } = require('electron-updater');
 
 app.setName('AWS Network Mapper');
 
+// ── GPU Hardware Acceleration ────────────────────────────────────
+// SVG/D3 rendering benefits heavily from GPU-accelerated compositing
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,Vulkan');
+
 let mainWindow = null;
 let activeScan = null;
 const SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/;

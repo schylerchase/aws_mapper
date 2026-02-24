@@ -30,7 +30,7 @@
       "export-aws-data.ps1",
       "xlsx.bundle.min.js",
       "libs/**",
-      "dist/**",
+      "dist/app.bundle.js",
       "src/styles/**",
       "src/data/**"
     ],
