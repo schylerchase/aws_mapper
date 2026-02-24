@@ -146,6 +146,16 @@ function Invoke-AwsExport {
     try {
         $result = & aws @Flags @Cmd 2>&1
         if ($LASTEXITCODE -eq 0) {
+            $json = ($result | Out-String) | ConvertFrom-Json
+            $hasData = $false
+            foreach ($prop in $json.PSObject.Properties) {
+                if ($prop.Value -is [System.Array] -and $prop.Value.Count -gt 0) {
+                    $hasData = $true; break
+                }
+            }
+            if (-not $hasData) {
+                return @{ Label=$Label; Status="SKIP"; Detail="empty" }
+            }
             $result | Out-File -FilePath $filePath -Encoding utf8
             $size = (Get-Item $filePath).Length
             return @{ Label=$Label; Status="OK"; Detail="${size} bytes" }
@@ -251,9 +261,20 @@ function Export-Region {
         try {
             $result = & aws @localFlags @($_.Cmd) 2>&1
             if ($LASTEXITCODE -eq 0) {
-                $result | Out-File -FilePath $filePath -Encoding utf8
-                $size = (Get-Item $filePath).Length
-                @{ Label=$_.Label; Status="OK"; Detail="${size} bytes" }
+                $json = ($result | Out-String) | ConvertFrom-Json
+                $hasData = $false
+                foreach ($prop in $json.PSObject.Properties) {
+                    if ($prop.Value -is [System.Array] -and $prop.Value.Count -gt 0) {
+                        $hasData = $true; break
+                    }
+                }
+                if ($hasData) {
+                    $result | Out-File -FilePath $filePath -Encoding utf8
+                    $size = (Get-Item $filePath).Length
+                    @{ Label=$_.Label; Status="OK"; Detail="${size} bytes" }
+                } else {
+                    @{ Label=$_.Label; Status="SKIP"; Detail="empty" }
+                }
             } else {
                 $msg = ($result | Out-String).Trim()
                 if ($msg.Length -gt 60) { $msg = $msg.Substring(0, 60) }
