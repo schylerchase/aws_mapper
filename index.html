@@ -228,6 +228,7 @@
       <button id="compDashBtn" class="dock-btn cyan" title="Compliance dashboard (Shift+C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Compliance</button>
       <button id="budrBtn" class="dock-btn green" title="Backup & DR assessment (Shift+B)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>BUDR</button>
       <button id="reportsBtn" class="dock-btn amber" title="Report builder (Shift+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reports</button>
+      <button id="inventoryBtn" class="dock-btn orange" title="Resource inventory (Shift+I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inventory</button>
       <button id="govBtn" class="dock-btn purple" title="Governance dashboard (Shift+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Governance</button>
     </div>
     <div class="dock-group">
@@ -443,6 +444,7 @@
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+R</td><td>Report Builder</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+T</td><td>Traffic Trace</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+F</td><td>Flow Analysis</td></tr>
+          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+I</td><td>Resource Inventory</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">F</td><td>Firewall Editor</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">N</td><td>Notes / Annotations</td></tr>
         </table>
@@ -727,6 +729,12 @@ let _dnsRecordsExpanded=false; // DNS zones always show; toggle for individual r
 // === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
 const _BUDR_STRATEGY={hot:'Hot',warm:'Warm',pilot:'Pilot Light',cold:'Cold'};
 const _BUDR_STRATEGY_ORDER={hot:0,warm:1,pilot:2,cold:3};
+const _BUDR_STRATEGY_LEGEND=[
+  {k:'critical',label:'Critical (Hot)',color:'#ef4444',icon:'🔴',desc:'Active-active — full replica running at all times. Near-zero RTO & RPO.'},
+  {k:'high',label:'High (Warm)',color:'#f59e0b',icon:'🟡',desc:'Scaled-down replica running. Scale up on failover. Minutes to recover.'},
+  {k:'medium',label:'Medium (Pilot Light)',color:'#6366f1',icon:'🟣',desc:'Data replicated continuously, compute stopped. Spin up on failover. ~10-30 min.'},
+  {k:'low',label:'Low (Cold)',color:'#64748b',icon:'⚪',desc:'Backups only, no standby. Rebuild from scratch. Hours to recover.'}
+];
 const _BUDR_RTO_RPO={
   rds_multi_az:{rto:'~5 min',rpo:'~1 min',tier:'protected',strategy:'warm'},
   rds_single_backup:{rto:'~30 min',rpo:'~24 hr',tier:'partial',strategy:'pilot'},
@@ -803,6 +811,7 @@ function _budrTierCompliance(profileKey,classTier){
 function _fmtMin(m){if(m===0)return '0';if(m===Infinity)return '∞';if(m<60)return Math.round(m)+' min';if(m<1440)return Math.round(m/60*10)/10+' hr';return Math.round(m/1440*10)/10+' days'}
 let _budrFindings=[];
 let _budrAssessments=[];
+let _budrOverrides={};
 function runBUDRChecks(ctx){
   const f=[];const assessments=[];
   const gn=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
@@ -963,6 +972,48 @@ function _enrichBudrWithClassification(ctx,findings){
           remediation:issue.field==='RPO'?'Configure automated backups to meet '+a.classTier+' RPO target':'Improve HA/DR strategy to meet '+a.classTier+' RTO target'});
       });
     }
+    // Apply manual override if present
+    var ov=_budrOverrides[a.id];
+    if(ov){
+      a.overridden=true;
+      a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
+      if(ov.strategy){
+        a.profile=Object.assign({},a.profile);
+        var sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
+        var tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
+        a.profile.strategy=sm[ov.strategy]||ov.strategy;
+        a.profile.tier=tm[ov.strategy]||a.profile.tier;
+      }
+      if(ov.rto) a.profile.rto=ov.rto;
+      if(ov.rpo) a.profile.rpo=ov.rpo;
+    }
+  });
+}
+function _reapplyBUDROverrides(){
+  _budrAssessments.forEach(function(a){
+    // Restore auto values first
+    if(a.autoProfile){
+      a.profile=Object.assign({},a.profile);
+      a.profile.strategy=a.autoProfile.strategy;
+      a.profile.rto=a.autoProfile.rto;
+      a.profile.rpo=a.autoProfile.rpo;
+      a.profile.tier=a.autoProfile.tier;
+      a.overridden=false;
+    }
+    var ov=_budrOverrides[a.id];
+    if(ov){
+      a.overridden=true;
+      if(!a.autoProfile)a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
+      a.profile=Object.assign({},a.profile);
+      if(ov.strategy){
+        var sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
+        var tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
+        a.profile.strategy=sm[ov.strategy]||ov.strategy;
+        a.profile.tier=tm[ov.strategy]||a.profile.tier;
+      }
+      if(ov.rto)a.profile.rto=ov.rto;
+      if(ov.rpo)a.profile.rpo=ov.rpo;
+    }
   });
 }
 function _getBUDRTierCounts(){
@@ -1000,7 +1051,7 @@ const _RPT_MODULES=[
    render:function(ctx,opts){return _rptBUDR(ctx,opts)}},
   {id:'inventory',name:'Resource Inventory',icon:'',category:'data',enabled:true,
    available:function(){return !!_rlCtx},
-   desc:function(){if(!_rlCtx)return 'No data';var t=0;['vpcs','subnets','instances','rdsInstances','albs','ecsServices','lambdaFns'].forEach(function(k){t+=(_rlCtx[k]||[]).length});return t+' resources'},
+   desc:function(){if(!_rlCtx)return 'No data';if(!_inventoryData.length)_buildInventoryData();return _inventoryData.length+' resources across all resource types'},
    render:function(ctx,opts){return _rptInventory(ctx,opts)}},
   {id:'action-plan',name:'Action Plan',icon:'',category:'remediation',enabled:true,
    available:function(){return _complianceFindings.length>0||_budrFindings.length>0},
@@ -1719,6 +1770,20 @@ function _rptBUDRStrategyGrid(){
     h+='<span class="lbl">'+esc(s.label)+'</span></div>';
   });
   h+='</div>';
+  h+=_rptBUDRStrategyLegend();
+  return h;
+}
+
+function _rptBUDRStrategyLegend(){
+  var h='<div style="margin-top:10px;padding:10px 12px;background:var(--bg-tertiary);border-radius:6px;font-size:11px;font-family:IBM Plex Mono,monospace">';
+  h+='<div style="color:var(--text-muted);font-weight:600;margin-bottom:6px;font-size:10px;letter-spacing:.5px">DR STRATEGY REFERENCE</div>';
+  _BUDR_STRATEGY_LEGEND.forEach(function(s){
+    h+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">';
+    h+='<span style="color:'+s.color+';font-weight:700;min-width:100px">'+s.icon+' '+esc(s.label)+'</span>';
+    h+='<span style="color:var(--text-secondary)">'+esc(s.desc)+'</span>';
+    h+='</div>';
+  });
+  h+='</div>';
   return h;
 }
 
@@ -1775,29 +1840,53 @@ function _rptFormatSignals(sigs){
 }
 
 function _rptInventory(ctx, opts){
-  var c=_rlCtx;
   var h='<section class="rpt-section" id="s-inventory"><h2 class="rpt-section-toggle">Resource Inventory</h2>';
-  if(!c){return h+'<p>No data loaded.</p></section>'}
+  if(!_rlCtx){return h+'<p>No data loaded.</p></section>'}
+  if(!_inventoryData.length) _buildInventoryData();
+  if(!_inventoryData.length){return h+'<p>No resources found.</p></section>'}
   h+='<div class="rpt-section-body">';
-  var invTypes=[
-    {key:'vpcs',label:'VPCs',anchor:'vpcs'},{key:'subnets',label:'Subnets',anchor:'subnets'},
-    {key:'instances',label:'EC2',anchor:'ec2'},{key:'rdsInstances',label:'RDS',anchor:'rds'},
-    {key:'albs',label:'ALBs',anchor:'albs'},{key:'ecsServices',label:'ECS',anchor:'ecs'},
-    {key:'lambdaFns',label:'Lambda',anchor:'lambda'}
-  ];
+
+  // Group rows by type
+  var byType={};
+  _inventoryData.forEach(function(r){
+    if(!byType[r.type]) byType[r.type]=[];
+    byType[r.type].push(r);
+  });
+  var typeKeys=Object.keys(byType).sort();
+
+  // Jump nav
   h+='<nav class="rpt-jump-nav">';
-  invTypes.forEach(function(t){
-    var cnt=(c[t.key]||[]).length;
-    if(cnt) h+='<a href="#s-inv-'+t.anchor+'" class="rpt-jump-link">'+t.label+'<span class="rpt-jump-ct">'+cnt+'</span></a>';
+  typeKeys.forEach(function(t){
+    var cnt=byType[t].length;
+    var anchor='s-inv-'+t.toLowerCase().replace(/\s+/g,'-');
+    h+='<a href="#'+esc(anchor)+'" class="rpt-jump-link">'+esc(t)+'<span class="rpt-jump-ct">'+cnt+'</span></a>';
   });
   h+='</nav>';
-  h+=_rptInvVPCs(c);
-  h+=_rptInvSubnets(c);
-  h+=_rptInvEC2(c);
-  h+=_rptInvRDS(c);
-  h+=_rptInvALBs(c);
-  h+=_rptInvECS(c);
-  h+=_rptInvLambda(c);
+
+  // One table per type
+  typeKeys.forEach(function(t){
+    var items=byType[t];
+    var anchor='s-inv-'+t.toLowerCase().replace(/\s+/g,'-');
+    var tableId='rpt-tbl-inv-'+t.toLowerCase().replace(/\s+/g,'-');
+    h+='<h3 id="'+esc(anchor)+'">'+esc(t)+' ('+items.length+')</h3>';
+    h+='<div class="rpt-table-wrap" id="'+esc(tableId)+'">';
+    h+=_rptBuildToolbar(tableId,{});
+    h+='<table><thead class="rpt-sticky"><tr>';
+    h+='<th>Name</th><th>ID</th><th>Config</th><th>State</th><th>VPC</th><th>Region</th>';
+    h+='</tr></thead><tbody>';
+    items.forEach(function(r){
+      h+='<tr id="res-'+esc(r.id)+'">';
+      h+='<td>'+esc(r.name||'')+'</td>';
+      h+='<td>'+esc(r.id||'')+'</td>';
+      h+='<td>'+esc(r.config||'')+'</td>';
+      h+='<td>'+esc(r.state||'')+'</td>';
+      h+='<td>'+esc(r.vpcName||r.vpcId||'')+'</td>';
+      h+='<td>'+esc(r.region||'')+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table></div>';
+  });
+
   h+='</div></section>';
   return h;
 }
@@ -3948,6 +4037,678 @@ let _iamDashState={filter:'all',search:'',sort:'name',sortDir:'asc',page:1,perPa
 let _classificationData=[];
 let _classificationOverrides={};
 let _iamReviewData=[];
+let _inventoryData=[];
+let _invState={typeFilter:'all',regionFilter:'all',accountFilter:'all',vpcFilter:'all',viewMode:'flat',search:'',sort:'type',sortDir:'asc',page:1,perPage:50};
+function _buildInventoryData(){
+  _inventoryData=[];
+  var ctx=_rlCtx;if(!ctx)return;
+  var rows=[];
+  var vpcNameMap={};
+  (ctx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
+  function tag(obj){var t=(obj.Tags||obj.tags||[]).find(function(x){return x.Key==='Name'});return t?t.Value:''}
+  function tags(obj){var m={};(obj.Tags||obj.tags||[]).forEach(function(t){m[t.Key]=t.Value});return m}
+  function mkRow(id,type,name,obj,extra){
+    return{id:id,type:type,name:name,
+      account:obj._accountId||'',region:obj._region||'',
+      vpcId:extra.vpcId||'',vpcName:extra.vpcId?vpcNameMap[extra.vpcId]||'':'',
+      subnetId:extra.subnetId||'',az:extra.az||'',
+      state:extra.state||'',config:extra.config||'',tags:tags(obj),
+      encrypted:extra.encrypted!=null?extra.encrypted:null,sgCount:extra.sgCount||0,
+      classificationTier:null,budrTier:null,budrStrategy:null,rto:null,rpo:null,
+      compliancePass:0,complianceFail:0,
+      _raw:obj,_related:extra.related||[]};
+  }
+  // 1. VPCs
+  (ctx.vpcs||[]).forEach(function(v){
+    rows.push(mkRow(v.VpcId,'VPC',tag(v)||v.VpcId,v,{vpcId:v.VpcId,config:v.CidrBlock||'',state:v.State||''}));
+  });
+  // 2. Subnets
+  (ctx.subnets||[]).forEach(function(s){
+    var isPub=ctx.pubSubs&&ctx.pubSubs.has(s.SubnetId);
+    rows.push(mkRow(s.SubnetId,'Subnet',tag(s)||s.SubnetId,s,{vpcId:s.VpcId,az:s.AvailabilityZone||'',config:(s.CidrBlock||'')+' '+(isPub?'public':'private'),state:s.State||''}));
+  });
+  // 3. EC2
+  (ctx.instances||[]).forEach(function(i){
+    var sgs=(i.SecurityGroups||[]).map(function(g){return g.GroupId});
+    rows.push(mkRow(i.InstanceId,'EC2',tag(i)||i.InstanceId,i,{vpcId:i.VpcId||'',subnetId:i.SubnetId||'',az:i.Placement?i.Placement.AvailabilityZone:'',config:i.InstanceType||'',state:i.State?i.State.Name||'':'',sgCount:sgs.length,related:sgs}));
+  });
+  // 4. RDS
+  (ctx.rdsInstances||[]).forEach(function(db){
+    var vpcId=(db.DBSubnetGroup&&db.DBSubnetGroup.VpcId)||'';
+    rows.push(mkRow(db.DBInstanceIdentifier,'RDS',db.DBInstanceIdentifier,db,{vpcId:vpcId,az:db.AvailabilityZone||'',config:(db.Engine||'')+' '+(db.DBInstanceClass||''),state:db.DBInstanceStatus||'',encrypted:!!db.StorageEncrypted}));
+  });
+  // 5. Lambda
+  (ctx.lambdaFns||[]).forEach(function(fn){
+    var vc=fn.VpcConfig||{};
+    var vpcId=vc.VpcId||'';
+    var subId=(vc.SubnetIds&&vc.SubnetIds[0])||'';
+    rows.push(mkRow(fn.FunctionName,'Lambda',fn.FunctionName,fn,{vpcId:vpcId,subnetId:subId,config:(fn.Runtime||'')+(fn.MemorySize?' '+fn.MemorySize+'MB':''),state:fn.State||'Active'}));
+  });
+  // 6. ECS — use serviceName as ID
+  (ctx.ecsServices||[]).forEach(function(svc){
+    var nc=svc.networkConfiguration&&svc.networkConfiguration.awsvpcConfiguration;
+    var subId=nc&&nc.subnets&&nc.subnets[0]?nc.subnets[0]:'';
+    var vpcId='';
+    if(subId){var subObj=(ctx.subnets||[]).find(function(s){return s.SubnetId===subId});if(subObj)vpcId=subObj.VpcId||''}
+    var cpu=svc.cpu||'';var mem=svc.memory||'';
+    rows.push(mkRow(svc.serviceName,'ECS',svc.serviceName,svc,{vpcId:vpcId,subnetId:subId,config:(svc.launchType||'')+' '+(cpu?cpu+'/':'')+(mem||''),state:svc.status||''}));
+  });
+  // 7. ALB — use LoadBalancerName as ID
+  (ctx.albs||[]).forEach(function(a){
+    rows.push(mkRow(a.LoadBalancerName,'ALB',a.LoadBalancerName,a,{vpcId:a.VpcId||'',config:(a.Type||'application')+' '+(a.Scheme||''),state:a.State?a.State.Code||'':''}));
+  });
+  // 8. ElastiCache
+  (ctx.ecacheClusters||[]).forEach(function(ec){
+    rows.push(mkRow(ec.CacheClusterId,'ElastiCache',ec.CacheClusterId,ec,{config:(ec.Engine||'')+' '+(ec.CacheNodeType||''),state:ec.CacheClusterStatus||''}));
+  });
+  // 9. Redshift
+  (ctx.redshiftClusters||[]).forEach(function(rs){
+    rows.push(mkRow(rs.ClusterIdentifier,'Redshift',rs.ClusterIdentifier,rs,{vpcId:rs.VpcId||'',config:(rs.NodeType||'')+' x'+(rs.NumberOfNodes||1),state:rs.ClusterStatus||'',encrypted:!!rs.Encrypted}));
+  });
+  // 10. Security Groups
+  (ctx.sgs||[]).forEach(function(sg){
+    var inCt=(sg.IpPermissions||[]).length;var outCt=(sg.IpPermissionsEgress||[]).length;
+    rows.push(mkRow(sg.GroupId,'SG',sg.GroupName||sg.GroupId,sg,{vpcId:sg.VpcId||'',config:inCt+' inbound / '+outCt+' outbound'}));
+  });
+  // 11. NACLs
+  (ctx.nacls||[]).forEach(function(n){
+    var ct=(n.Entries||[]).length;
+    rows.push(mkRow(n.NetworkAclId,'NACL',tag(n)||n.NetworkAclId,n,{vpcId:n.VpcId||'',config:ct+' entries'}));
+  });
+  // 12. Route Tables
+  (ctx.rts||[]).forEach(function(rt){
+    var ct=(rt.Routes||[]).length;
+    rows.push(mkRow(rt.RouteTableId,'Route Table',tag(rt)||rt.RouteTableId,rt,{vpcId:rt.VpcId||'',config:ct+' routes'}));
+  });
+  // 13. IGWs
+  (ctx.igws||[]).forEach(function(g){
+    var att=(g.Attachments||[]);var attachedVpc=att.length?att[0].VpcId:'';
+    rows.push(mkRow(g.InternetGatewayId,'IGW',tag(g)||g.InternetGatewayId,g,{vpcId:attachedVpc,config:attachedVpc?'attached: '+attachedVpc:'detached'}));
+  });
+  // 14. NAT Gateways
+  (ctx.nats||[]).forEach(function(n){
+    rows.push(mkRow(n.NatGatewayId,'NAT GW',tag(n)||n.NatGatewayId,n,{vpcId:n.VpcId||'',subnetId:n.SubnetId||'',config:(n.SubnetId||'')+' '+(n.State||''),state:n.State||''}));
+  });
+  // 15. VPC Endpoints
+  (ctx.vpces||[]).forEach(function(e){
+    rows.push(mkRow(e.VpcEndpointId,'VPC Endpoint',tag(e)||e.VpcEndpointId,e,{vpcId:e.VpcId||'',config:e.ServiceName||'',state:e.State||''}));
+  });
+  // 16. ENIs
+  (ctx.enis||[]).forEach(function(e){
+    rows.push(mkRow(e.NetworkInterfaceId,'ENI',e.Description||e.NetworkInterfaceId,e,{vpcId:e.VpcId||'',subnetId:e.SubnetId||'',az:e.AvailabilityZone||'',config:e.PrivateIpAddress||'',state:e.Status||''}));
+  });
+  // 17. EBS Volumes
+  (ctx.volumes||[]).forEach(function(vol){
+    var attInsts=(vol.Attachments||[]).map(function(a){return a.InstanceId}).filter(Boolean);
+    rows.push(mkRow(vol.VolumeId,'EBS Volume',tag(vol)||vol.VolumeId,vol,{az:vol.AvailabilityZone||'',config:vol.Size+'GB '+(vol.VolumeType||''),state:vol.State||'',encrypted:!!vol.Encrypted,related:attInsts}));
+  });
+  // 18. Snapshots
+  (ctx.snapshots||[]).forEach(function(snap){
+    rows.push(mkRow(snap.SnapshotId,'Snapshot',snap.Description||snap.SnapshotId,snap,{config:(snap.VolumeSize||'')+'GB',state:snap.State||'',encrypted:!!snap.Encrypted}));
+  });
+  // 19. S3 Buckets
+  (ctx.s3bk||[]).forEach(function(b){
+    rows.push(mkRow(b.Name,'S3 Bucket',b.Name,b,{config:b.CreationDate||''}));
+  });
+  // 20. Route 53 Zones
+  (ctx.zones||[]).forEach(function(z){
+    var recs=ctx.recsByZone&&ctx.recsByZone[z.Id]?ctx.recsByZone[z.Id].length:z.ResourceRecordSetCount||0;
+    var vis=z.Config&&z.Config.PrivateZone?'private':'public';
+    rows.push(mkRow(z.Id,'Route 53',z.Name||z.Id,z,{config:recs+' records '+vis}));
+  });
+  // 21. WAF ACLs
+  (ctx.wafAcls||[]).forEach(function(w){
+    var ruleCount=(w.Rules||[]).length;
+    rows.push(mkRow(w.Id||w.Name,'WAF',w.Name||w.Id||'',w,{config:ruleCount+' rules'}));
+  });
+  // 22. CloudFront
+  (ctx.cfDistributions||[]).forEach(function(cf){
+    rows.push(mkRow(cf.Id,'CloudFront',cf.DomainName||cf.Id,cf,{config:cf.Status||'',state:cf.Status||''}));
+  });
+  // 23. VPC Peering
+  (ctx.peerings||[]).forEach(function(p){
+    var req=p.RequesterVpcInfo?p.RequesterVpcInfo.VpcId:'';var acc=p.AccepterVpcInfo?p.AccepterVpcInfo.VpcId:'';
+    rows.push(mkRow(p.VpcPeeringConnectionId,'VPC Peering',tag(p)||p.VpcPeeringConnectionId,p,{config:req+'\u2194'+acc,state:p.Status?p.Status.Code||'':''}));
+  });
+  // 24. VPN
+  (ctx.vpns||[]).forEach(function(v){
+    rows.push(mkRow(v.VpnConnectionId,'VPN',tag(v)||v.VpnConnectionId,v,{config:(v.State||'')+' '+(v.Type||''),state:v.State||''}));
+  });
+  // 25. TGW Attachments — guard for missing ID
+  (ctx.tgwAttachments||[]).forEach(function(t){
+    var tid=t.TransitGatewayAttachmentId||(t.TransitGatewayId+'-'+(t.VpcId||''));
+    rows.push(mkRow(tid,'TGW Attachment',tag(t)||tid,t,{vpcId:t.VpcId||'',config:(t.ResourceType||'')+' '+(t.TransitGatewayId||''),state:t.State||''}));
+  });
+  // 26. Target Groups — use TargetGroupName as ID
+  (ctx.tgs||[]).forEach(function(tg){
+    rows.push(mkRow(tg.TargetGroupName,'Target Group',tg.TargetGroupName,tg,{vpcId:tg.VpcId||'',config:(tg.Protocol||'')+':'+(tg.Port||''),state:tg.TargetType||''}));
+  });
+  // === Enrichment pass ===
+  // 1. Classification tier lookup
+  var classMap={};
+  (_classificationData||[]).forEach(function(c){classMap[c.id]=c});
+  // 2. BUDR assessment lookup
+  var budrMap={};
+  (_budrAssessments||[]).forEach(function(a){
+    budrMap[a.id]={tier:a.profile?a.profile.tier:null,strategy:a.profile?a.profile.strategy:null,rto:a.profile?a.profile.rto:null,rpo:a.profile?a.profile.rpo:null};
+  });
+  // 3. Compliance findings lookup (count per resource)
+  var compMap={};
+  (_complianceFindings||[]).forEach(function(f){
+    if(!f.resource)return;
+    if(!compMap[f.resource]) compMap[f.resource]={pass:0,fail:0};
+    if(f.status==='PASS') compMap[f.resource].pass++;
+    else compMap[f.resource].fail++;
+  });
+  // 4. Apply enrichment to all rows
+  rows.forEach(function(r){
+    var cls=classMap[r.id];
+    if(cls) r.classificationTier=cls.tier;
+    var budr=budrMap[r.id];
+    if(budr){r.budrTier=budr.tier;r.budrStrategy=budr.strategy;r.rto=budr.rto;r.rpo=budr.rpo}
+    var comp=compMap[r.id];
+    if(comp){r.compliancePass=comp.pass;r.complianceFail=comp.fail}
+  });
+  _inventoryData=rows;
+}
+
+// === INVENTORY TAB RENDERER (Tasks 4-5) ===
+var _invToolbarRendered=false;
+
+var _INV_TYPE_COLORS={
+  'VPC':'#7C3AED','Subnet':'#6366f1','EC2':'#f97316','RDS':'#22d3ee',
+  'Lambda':'#f59e0b','ECS':'#10b981','ALB':'#ec4899','ElastiCache':'#8b5cf6',
+  'Redshift':'#06b6d4','SG':'#64748b','NACL':'#64748b','Route Table':'#64748b',
+  'IGW':'#34d399','NAT GW':'#34d399','VPC Endpoint':'#34d399','ENI':'#94a3b8',
+  'EBS Volume':'#fb923c','Snapshot':'#a78bfa','S3 Bucket':'#f472b6',
+  'Route 53':'#38bdf8','WAF':'#fbbf24','CloudFront':'#818cf8',
+  'VPC Peering':'#c084fc','VPN':'#2dd4bf','TGW Attachment':'#67e8f9',
+  'Target Group':'#f9a8d4'
+};
+
+var _INV_NO_MAP_TYPES={'S3 Bucket':1,'Route 53':1,'WAF':1,'CloudFront':1,'Snapshot':1,'TGW Attachment':1,'Target Group':1};
+
+function _filterInventory(){
+  var st=_invState;
+  var items=_inventoryData.slice();
+  if(st.typeFilter!=='all') items=items.filter(function(r){return r.type===st.typeFilter});
+  if(st.regionFilter!=='all') items=items.filter(function(r){return r.region===st.regionFilter});
+  if(st.accountFilter!=='all') items=items.filter(function(r){return r.account===st.accountFilter});
+  if(st.vpcFilter!=='all') items=items.filter(function(r){return r.vpcId===st.vpcFilter});
+  if(st.search){
+    var q=st.search.toLowerCase();
+    items=items.filter(function(r){
+      return (r.name||'').toLowerCase().indexOf(q)!==-1
+        ||(r.id||'').toLowerCase().indexOf(q)!==-1
+        ||(r.type||'').toLowerCase().indexOf(q)!==-1
+        ||(r.config||'').toLowerCase().indexOf(q)!==-1
+        ||(r.vpcName||'').toLowerCase().indexOf(q)!==-1
+        ||(r.region||'').toLowerCase().indexOf(q)!==-1
+        ||JSON.stringify(r.tags||{}).toLowerCase().indexOf(q)!==-1;
+    });
+  }
+  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  items.sort(function(a,b){
+    if(sortKey==='complianceFail'){return((a.complianceFail||0)-(b.complianceFail||0))*dir}
+    var av=(a[sortKey]||'').toString().toLowerCase();
+    var bv=(b[sortKey]||'').toString().toLowerCase();
+    return av<bv?-dir:av>bv?dir:0;
+  });
+  return items;
+}
+
+function _renderInventoryTab(){
+  var tb=document.getElementById('udashToolbar');
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
+  var st=_invState;
+  if(!_invToolbarRendered){
+    _invToolbarRendered=true;
+    // Collect unique values for filter dropdowns
+    var types={},regions={},accounts={},vpcs={};
+    _inventoryData.forEach(function(r){
+      if(r.type) types[r.type]=1;
+      if(r.region) regions[r.region]=1;
+      if(r.account) accounts[r.account]=1;
+      if(r.vpcId) vpcs[r.vpcId]=r.vpcName||r.vpcId;
+    });
+    var typeKeys=Object.keys(types).sort();
+    var regionKeys=Object.keys(regions).sort();
+    var accountKeys=Object.keys(accounts).sort();
+    var vpcKeys=Object.keys(vpcs).sort();
+    var th='<label>Search</label>';
+    th+='<input id="invSearch" type="text" placeholder="Filter resources..." value="'+_escHtml(st.search)+'" style="width:180px">';
+    th+='<label>Type</label>';
+    th+='<select id="invTypeFilter"><option value="all">All Types</option>';
+    typeKeys.forEach(function(t){th+='<option value="'+_escHtml(t)+'"'+(st.typeFilter===t?' selected':'')+'>'+_escHtml(t)+'</option>'});
+    th+='</select>';
+    th+='<label>Region</label>';
+    th+='<select id="invRegionFilter"><option value="all">All Regions</option>';
+    regionKeys.forEach(function(r){th+='<option value="'+_escHtml(r)+'"'+(st.regionFilter===r?' selected':'')+'>'+_escHtml(r)+'</option>'});
+    th+='</select>';
+    if(accountKeys.length>1){
+      th+='<label>Account</label>';
+      th+='<select id="invAccountFilter"><option value="all">All Accounts</option>';
+      accountKeys.forEach(function(a){th+='<option value="'+_escHtml(a)+'"'+(st.accountFilter===a?' selected':'')+'>'+_escHtml(a)+'</option>'});
+      th+='</select>';
+    }
+    th+='<label>VPC</label>';
+    th+='<select id="invVpcFilter"><option value="all">All VPCs</option>';
+    vpcKeys.forEach(function(v){th+='<option value="'+_escHtml(v)+'"'+(st.vpcFilter===v?' selected':'')+'>'+_escHtml(vpcs[v])+'</option>'});
+    th+='</select>';
+    th+='<div style="margin-left:auto;display:flex;gap:2px">';
+    th+='<button id="invViewFlat" style="padding:4px 10px;border-radius:4px 0 0 4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;border:1px solid var(--border);'+(st.viewMode==='flat'?'background:#f97316;color:#fff;border-color:#f97316':'background:var(--bg-tertiary);color:var(--text-muted)')+'">Flat</button>';
+    th+='<button id="invViewTree" style="padding:4px 10px;border-radius:0 4px 4px 0;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;border:1px solid var(--border);'+(st.viewMode==='tree'?'background:#f97316;color:#fff;border-color:#f97316':'background:var(--bg-tertiary);color:var(--text-muted)')+'">Tree</button>';
+    th+='</div>';
+    tb.innerHTML=th;
+    // Wire toolbar events
+    document.getElementById('invSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderInventoryBody()});
+    document.getElementById('invTypeFilter').addEventListener('change',function(){st.typeFilter=this.value;st.page=1;_renderInventoryBody()});
+    document.getElementById('invRegionFilter').addEventListener('change',function(){st.regionFilter=this.value;st.page=1;_renderInventoryBody()});
+    if(document.getElementById('invAccountFilter')){
+      document.getElementById('invAccountFilter').addEventListener('change',function(){st.accountFilter=this.value;st.page=1;_renderInventoryBody()});
+    }
+    document.getElementById('invVpcFilter').addEventListener('change',function(){st.vpcFilter=this.value;st.page=1;_renderInventoryBody()});
+    document.getElementById('invViewFlat').addEventListener('click',function(){
+      if(st.viewMode==='flat') return;
+      st.viewMode='flat';st.page=1;_invToolbarRendered=false;_renderInventoryTab();
+    });
+    document.getElementById('invViewTree').addEventListener('click',function(){
+      if(st.viewMode==='tree') return;
+      st.viewMode='tree';st.page=1;_invToolbarRendered=false;_renderInventoryTab();
+    });
+  }
+  _renderInventoryBody();
+}
+
+var _invFilterCache=null;var _invFilterKey='';
+function _renderInventoryBody(){
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
+  var st=_invState;
+  // Tree view
+  if(st.viewMode==='tree'){
+    _renderInventoryTree(body,footer);
+    return;
+  }
+  // Cache filtered/sorted results — only recompute when filters or sort change
+  var fk=st.typeFilter+'|'+st.regionFilter+'|'+st.accountFilter+'|'+st.vpcFilter+'|'+st.search+'|'+st.sort+'|'+st.sortDir+'|'+_inventoryData.length;
+  if(fk!==_invFilterKey){_invFilterCache=_filterInventory();_invFilterKey=fk}
+  var items=_invFilterCache;
+  // Summary cards — total + top 5 types
+  var typeCounts={};
+  items.forEach(function(r){typeCounts[r.type]=(typeCounts[r.type]||0)+1});
+  var topTypes=Object.keys(typeCounts).map(function(t){return{type:t,count:typeCounts[t]}})
+    .sort(function(a,b){return b.count-a.count}).slice(0,5);
+  var bh='<div class="gov-tier-cards" style="margin-bottom:16px">';
+  bh+='<div class="gov-tier-card" style="border-color:#f97316"><h3 style="color:#f97316">Total Resources</h3><div class="gov-tier-count" style="color:#f97316">'+items.length+'</div></div>';
+  topTypes.forEach(function(d){
+    var tc=_INV_TYPE_COLORS[d.type]||'var(--border)';
+    bh+='<div class="gov-tier-card" style="border-color:'+tc+'"><h3 style="color:'+tc+'">'+_escHtml(d.type)+'</h3><div class="gov-tier-count" style="color:'+tc+'">'+d.count+'</div></div>';
+  });
+  bh+='</div>';
+  // Columns
+  var cols=[
+    {key:'type',label:'Type'},
+    {key:'name',label:'Name'},
+    {key:'config',label:'Config'},
+    {key:'state',label:'State'},
+    {key:'vpcName',label:'VPC'},
+    {key:'region',label:'Region'},
+    {key:'classificationTier',label:'Classification'},
+    {key:'budrTier',label:'BUDR'},
+    {key:'complianceFail',label:'Compliance'}
+  ];
+  // Paginate
+  var perPage=st.perPage;
+  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  st.page=Math.min(Math.max(1,st.page),totalPages);
+  var start=(st.page-1)*perPage;
+  var pageItems=items.slice(start,start+perPage);
+  // Table
+  bh+='<table class="gov-table"><thead><tr>';
+  cols.forEach(function(c){
+    var cls='';if(st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    bh+='<th data-sort-col="'+c.key+'" class="'+cls+'">'+c.label+'</th>';
+  });
+  bh+='</tr></thead><tbody>';
+  if(!pageItems.length){
+    bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No resources match filters</td></tr>';
+  }
+  pageItems.forEach(function(r,idx){
+    var rowId='inv-r-'+(start+idx);
+    var tc=_INV_TYPE_COLORS[r.type]||'#64748b';
+    bh+='<tr data-inv-row="'+rowId+'" style="cursor:pointer">';
+    // Type badge
+    bh+='<td><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(0,0,0,.2);color:'+tc+';border:1px solid '+tc+'30;white-space:nowrap">'+_escHtml(r.type)+'</span></td>';
+    // Name
+    bh+='<td style="color:var(--accent-cyan);font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_escHtml(r.name)+'</td>';
+    // Config
+    bh+='<td style="font-size:9px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_escHtml(r.config||'\u2014')+'</td>';
+    // State
+    var stColor=(r.state||'').match(/running|available|active/i)?'#10b981':(r.state||'').match(/stopped|terminated/i)?'#ef4444':'var(--text-muted)';
+    bh+='<td style="font-size:9px;color:'+stColor+'">'+_escHtml(r.state||'\u2014')+'</td>';
+    // VPC
+    bh+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(r.vpcName||'\u2014')+'</td>';
+    // Region
+    bh+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(r.region||'\u2014')+'</td>';
+    // Classification tier
+    if(r.classificationTier){
+      bh+='<td><span class="gov-tier-badge '+r.classificationTier+'">'+r.classificationTier+'</span></td>';
+    } else {
+      bh+='<td style="font-size:9px;color:var(--text-muted)">\u2014</td>';
+    }
+    // BUDR tier
+    if(r.budrTier && _BUDR_TIER_META[r.budrTier]){
+      var bm=_BUDR_TIER_META[r.budrTier];
+      bh+='<td><span style="font-size:8px;font-weight:600;padding:2px 6px;border-radius:3px;background:rgba(0,0,0,.2);color:'+bm.color+';border:1px solid '+bm.color+'30">'+_escHtml(bm.name)+'</span></td>';
+    } else {
+      bh+='<td style="font-size:9px;color:var(--text-muted)">\u2014</td>';
+    }
+    // Compliance mini-bar
+    var cp=r.compliancePass||0;var cf=r.complianceFail||0;var ctot=cp+cf;
+    if(ctot>0){
+      var pw=Math.round(cp/ctot*100);var fw=100-pw;
+      bh+='<td><div style="display:flex;align-items:center;gap:4px"><div style="width:40px;height:6px;border-radius:3px;overflow:hidden;display:flex;background:var(--bg-tertiary)">';
+      if(cp>0) bh+='<div style="width:'+pw+'%;background:#10b981"></div>';
+      if(cf>0) bh+='<div style="width:'+fw+'%;background:#ef4444"></div>';
+      bh+='</div><span style="font-size:8px;color:var(--text-muted)">'+cp+'/'+ctot+'</span></div></td>';
+    } else {
+      bh+='<td style="font-size:9px;color:var(--text-muted)">\u2014</td>';
+    }
+    bh+='</tr>';
+    // Expandable detail row (lazy — populated on first expand)
+    bh+='<tr><td colspan="'+cols.length+'" class="gov-iam-expand" id="'+rowId+'-exp" data-inv-idx="'+(start+idx)+'"></td></tr>';
+  });
+  bh+='</tbody></table>';
+  body.innerHTML=bh;
+  body.scrollTop=0;
+  // Footer
+  var fh='<button id="invExportCSV">Export CSV</button>';
+  fh+='<button id="invExportJSON">Export JSON</button>';
+  fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_inventoryData.length+' resources</span>';
+  if(totalPages>1){
+    fh+='<button id="invPrev"'+(st.page<=1?' disabled':'')+'>&#8592; Prev</button>';
+    // Page number buttons with window
+    var winSize=2,startP=Math.max(1,st.page-winSize),endP=Math.min(totalPages,st.page+winSize);
+    if(startP>1){fh+='<button class="inv-page-num" data-p="1" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid #1e2d4a;background:transparent;color:#60a5fa;cursor:pointer">1</button>';if(startP>2)fh+='<span style="font-size:10px;color:var(--text-muted)">&hellip;</span>'}
+    for(var p=startP;p<=endP;p++){
+      var active=p===st.page;
+      fh+='<button class="inv-page-num" data-p="'+p+'" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid '+(active?'#f97316':'#1e2d4a')+';background:'+(active?'rgba(249,115,22,.2)':'transparent')+';color:'+(active?'#f97316':'#60a5fa')+';cursor:pointer;font-weight:'+(active?'700':'400')+'">'+p+'</button>';
+    }
+    if(endP<totalPages){if(endP<totalPages-1)fh+='<span style="font-size:10px;color:var(--text-muted)">&hellip;</span>';fh+='<button class="inv-page-num" data-p="'+totalPages+'" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid #1e2d4a;background:transparent;color:#60a5fa;cursor:pointer">'+totalPages+'</button>'}
+    fh+='<button id="invNext"'+(st.page>=totalPages?' disabled':'')+'>Next &#8594;</button>';
+  }
+  footer.innerHTML=fh;
+  _wireInventoryEvents(body,footer,items,cols);
+}
+
+function _buildInvExpandedDetail(r){
+  var h='';
+  // ID
+  h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">ID:</b> <code style="font-size:10px;background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--text-primary)">'+_escHtml(r.id)+'</code></div>';
+  // Account / Region / AZ
+  var locParts=[];
+  if(r.account) locParts.push('Account: '+_escHtml(r.account));
+  if(r.region) locParts.push('Region: '+_escHtml(r.region));
+  if(r.az) locParts.push('AZ: '+_escHtml(r.az));
+  if(locParts.length){
+    h+='<div style="margin-bottom:6px;font-size:10px;color:var(--text-secondary)">'+locParts.join(' &middot; ')+'</div>';
+  }
+  // Related resources
+  if(r._related && r._related.length){
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">Related:</b> ';
+    r._related.forEach(function(rid){
+      h+='<code style="font-size:9px;background:var(--bg-input);padding:1px 4px;border-radius:2px;margin-right:3px;color:var(--accent-cyan)">'+_escHtml(rid)+'</code>';
+    });
+    h+='</div>';
+  }
+  // BUDR detail
+  if(r.budrTier){
+    var bm=_BUDR_TIER_META[r.budrTier];
+    var budrColor=bm?bm.color:'var(--text-muted)';
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">BUDR:</b> ';
+    h+='<span style="font-size:9px;color:'+budrColor+';font-weight:600">'+(bm?_escHtml(bm.name):_escHtml(r.budrTier))+'</span>';
+    if(r.budrStrategy) h+=' <span style="font-size:9px;color:var(--text-muted)">Strategy: '+_escHtml(r.budrStrategy)+'</span>';
+    if(r.rto) h+=' <span style="font-size:9px;color:var(--text-muted)">RTO: '+_escHtml(r.rto)+'</span>';
+    if(r.rpo) h+=' <span style="font-size:9px;color:var(--text-muted)">RPO: '+_escHtml(r.rpo)+'</span>';
+    h+='</div>';
+  }
+  // Encryption
+  if(r.encrypted!=null){
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">Encryption:</b> ';
+    if(r.encrypted){
+      h+='<span style="font-size:10px;color:#10b981">&#128274; Encrypted</span>';
+    } else {
+      h+='<span style="font-size:10px;color:#ef4444">&#128275; Not Encrypted</span>';
+    }
+    h+='</div>';
+  }
+  // Security Groups
+  if(r.sgCount>0){
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">Security Groups:</b> <span style="font-size:10px;color:var(--text-secondary)">'+r.sgCount+'</span></div>';
+  }
+  // Compliance findings
+  var cp=r.compliancePass||0;var cf=r.complianceFail||0;
+  if(cp+cf>0){
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">Compliance:</b> <span style="font-size:9px;color:#10b981">'+cp+' pass</span> / <span style="font-size:9px;color:#ef4444">'+cf+' fail</span>';
+    // Show individual findings (up to 10)
+    var resFindings=(_complianceFindings||[]).filter(function(f){return f.resource===r.id}).slice(0,10);
+    if(resFindings.length){
+      h+='<ul style="margin:4px 0 0;padding-left:16px;list-style:none">';
+      resFindings.forEach(function(f){
+        var sColor=f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6';
+        h+='<li style="font-size:9px;color:var(--text-secondary);margin:2px 0"><span style="font-size:7px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,.2);color:'+sColor+';margin-right:4px">'+_escHtml(f.severity||'')+'</span>'+_escHtml(f.message||f.control||'')+'</li>';
+      });
+      h+='</ul>';
+    }
+    h+='</div>';
+  }
+  // Tags
+  var tagKeys=Object.keys(r.tags||{});
+  if(tagKeys.length){
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">Tags:</b> <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px">';
+    tagKeys.forEach(function(k){
+      h+='<span style="font-size:8px;background:var(--bg-input);padding:1px 5px;border-radius:2px;color:var(--text-secondary);border:1px solid var(--border)">'+_escHtml(k)+'='+_escHtml(r.tags[k])+'</span>';
+    });
+    h+='</div></div>';
+  }
+  // Go to Map button — only for types with SVG representation
+  if(!_INV_NO_MAP_TYPES[r.type]){
+    h+='<div style="margin-top:8px"><button class="inv-goto-map" data-rid="'+_escHtml(r.id)+'" style="background:rgba(34,211,238,.1);border:1px solid #22d3ee;color:#22d3ee;padding:4px 12px;border-radius:4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">Go to Map</button></div>';
+  }
+  return h;
+}
+
+function _wireInventoryEvents(body,footer,items,cols){
+  // Pagination
+  if(document.getElementById('invPrev')){
+    document.getElementById('invPrev').addEventListener('click',function(){_invState.page--;_renderInventoryBody()});
+  }
+  if(document.getElementById('invNext')){
+    document.getElementById('invNext').addEventListener('click',function(){_invState.page++;_renderInventoryBody()});
+  }
+  // Page number buttons
+  footer.querySelectorAll('.inv-page-num').forEach(function(btn){
+    btn.addEventListener('click',function(){_invState.page=parseInt(this.getAttribute('data-p'));_renderInventoryBody()});
+  });
+  // Sort headers
+  body.querySelectorAll('th[data-sort-col]').forEach(function(th){
+    th.addEventListener('click',function(){
+      var col=this.dataset.sortCol;
+      if(_invState.sort===col) _invState.sortDir=_invState.sortDir==='asc'?'desc':'asc';
+      else{_invState.sort=col;_invState.sortDir='asc'}
+      _invState.page=1;_renderInventoryBody();
+    });
+  });
+  // Row expand/collapse (lazy detail rendering)
+  body.querySelectorAll('tr[data-inv-row]').forEach(function(tr){
+    tr.addEventListener('click',function(){
+      var rowId=this.dataset.invRow;
+      var exp=document.getElementById(rowId+'-exp');
+      if(!exp) return;
+      var isOpen=exp.classList.contains('open');
+      body.querySelectorAll('.gov-iam-expand.open').forEach(function(e){e.classList.remove('open')});
+      body.querySelectorAll('tr[data-inv-row].expanded').forEach(function(r){r.classList.remove('expanded')});
+      if(!isOpen){
+        // Lazy: populate detail on first expand
+        if(!exp.dataset.loaded){
+          var idx=parseInt(exp.dataset.invIdx);
+          exp.innerHTML=_buildInvExpandedDetail(items[idx]);
+          exp.dataset.loaded='1';
+          // Wire Go to Map button inside this detail
+          var mapBtn=exp.querySelector('.inv-goto-map');
+          if(mapBtn) mapBtn.addEventListener('click',function(e){
+            e.stopPropagation();var rid=this.dataset.rid;if(!rid)return;
+            closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250);
+          });
+        }
+        exp.classList.add('open');this.classList.add('expanded');
+      }
+    });
+  });
+  // CSV export — all filtered items
+  document.getElementById('invExportCSV').addEventListener('click',function(){
+    var rows=[['Type','Name','ID','Config','State','VPC','Region','Account','AZ','Classification','BUDR','Compliance Pass','Compliance Fail','Encrypted','SG Count']];
+    items.forEach(function(r){
+      rows.push([r.type,r.name,r.id,r.config,r.state,r.vpcName||'',r.region,r.account,r.az||'',r.classificationTier||'',r.budrTier||'',r.compliancePass||0,r.complianceFail||0,r.encrypted!=null?r.encrypted:'',r.sgCount||0]);
+    });
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    downloadBlob(new Blob([csv],{type:'text/csv'}),'inventory-export.csv');
+  });
+  // JSON export — all filtered items minus _raw
+  document.getElementById('invExportJSON').addEventListener('click',function(){
+    var clean=items.map(function(r){
+      var o={};for(var k in r){if(k!=='_raw') o[k]=r[k]}return o;
+    });
+    downloadBlob(new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),'inventory-export.json');
+  });
+}
+
+function _renderInventoryTree(body,footer){
+  var items=_filterInventory();
+  var st=_invState;
+  var h='';
+  // Performance warning
+  if(items.length>500&&st.typeFilter==='all'){
+    h+='<div style="padding:8px 14px;margin-bottom:10px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:6px;font-size:10px;color:#f97316;font-family:\'IBM Plex Mono\',monospace">Showing all '+items.length+' resources. Use filters to narrow results for better performance.</div>';
+  }
+  // Build nested tree: account -> region -> vpcName -> resources
+  var tree={};
+  var accountSet={};
+  items.forEach(function(r){
+    var acct=r.account||'Unknown';
+    var rgn=r.region||'Unknown';
+    var vpc=r.vpcName||'Global / Non-VPC';
+    accountSet[acct]=1;
+    if(!tree[acct]) tree[acct]={};
+    if(!tree[acct][rgn]) tree[acct][rgn]={};
+    if(!tree[acct][rgn][vpc]) tree[acct][rgn][vpc]=[];
+    tree[acct][rgn][vpc].push(r);
+  });
+  var accountKeys=Object.keys(tree).sort();
+  var multiAccount=accountKeys.length>1;
+  var grpIdx=0;
+  accountKeys.forEach(function(acct){
+    var acctId='inv-tree-a-'+(grpIdx++);
+    if(multiAccount){
+      h+='<div class="inv-tree-group">';
+      h+='<div class="inv-tree-hdr" data-inv-toggle="'+acctId+'" style="padding:6px 10px;cursor:pointer;font-size:12px;font-weight:700;color:#f97316;font-family:\'IBM Plex Mono\',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;user-select:none">';
+      h+='<span class="inv-tree-arrow" style="font-size:10px">\u25BC</span>'+_escHtml(acct);
+      h+='</div>';
+      h+='<div class="inv-tree-body" id="'+acctId+'">';
+    }
+    var regionKeys=Object.keys(tree[acct]).sort();
+    regionKeys.forEach(function(rgn){
+      var rgnId='inv-tree-r-'+(grpIdx++);
+      h+='<div class="inv-tree-group" style="margin-left:'+(multiAccount?'12':'0')+'px">';
+      h+='<div class="inv-tree-hdr" data-inv-toggle="'+rgnId+'" style="padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;color:#22d3ee;font-family:\'IBM Plex Mono\',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;user-select:none">';
+      h+='<span class="inv-tree-arrow" style="font-size:10px">\u25BC</span>'+_escHtml(rgn);
+      h+='</div>';
+      h+='<div class="inv-tree-body" id="'+rgnId+'">';
+      var vpcKeys=Object.keys(tree[acct][rgn]).sort();
+      vpcKeys.forEach(function(vpc){
+        var vpcId='inv-tree-v-'+(grpIdx++);
+        var vpcItems=tree[acct][rgn][vpc];
+        h+='<div class="inv-tree-group" style="margin-left:12px">';
+        h+='<div class="inv-tree-hdr" data-inv-toggle="'+vpcId+'" style="padding:4px 10px;cursor:pointer;font-size:10px;font-weight:700;color:#a78bfa;font-family:\'IBM Plex Mono\',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;user-select:none">';
+        h+='<span class="inv-tree-arrow" style="font-size:10px">\u25BC</span>'+_escHtml(vpc);
+        h+='<span style="font-size:9px;font-weight:400;color:var(--text-muted);margin-left:4px">('+vpcItems.length+')</span>';
+        h+='</div>';
+        h+='<div class="inv-tree-body" id="'+vpcId+'" style="margin-left:12px">';
+        vpcItems.forEach(function(r){
+          var tc=_INV_TYPE_COLORS[r.type]||'#64748b';
+          h+='<div style="padding:4px 10px;border-bottom:1px solid rgba(255,255,255,.03);display:flex;align-items:center;gap:8px;font-family:\'IBM Plex Mono\',monospace">';
+          // Type badge
+          h+='<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(0,0,0,.2);color:'+tc+';border:1px solid '+tc+'30;white-space:nowrap;flex-shrink:0">'+_escHtml(r.type)+'</span>';
+          // Name
+          h+='<span style="font-size:10px;color:var(--accent-cyan);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">'+_escHtml(r.name)+'</span>';
+          // Config
+          if(r.config){
+            h+='<span style="font-size:9px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">'+_escHtml(r.config)+'</span>';
+          }
+          // Classification badge
+          if(r.classificationTier){
+            h+='<span class="gov-tier-badge '+r.classificationTier+'" style="font-size:7px;padding:1px 5px;flex-shrink:0">'+_escHtml(r.classificationTier)+'</span>';
+          }
+          // BUDR badge
+          if(r.budrTier&&_BUDR_TIER_META[r.budrTier]){
+            var bm=_BUDR_TIER_META[r.budrTier];
+            h+='<span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,.2);color:'+bm.color+';border:1px solid '+bm.color+'30;flex-shrink:0">'+_escHtml(bm.name)+'</span>';
+          }
+          h+='</div>';
+        });
+        h+='</div></div>'; // close vpc body + group
+      });
+      h+='</div></div>'; // close region body + group
+    });
+    if(multiAccount){
+      h+='</div></div>'; // close account body + group
+    }
+  });
+  if(!items.length){
+    h+='<div style="padding:40px;text-align:center;color:var(--text-muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px">No resources match filters</div>';
+  }
+  body.innerHTML=h;
+  body.scrollTop=0;
+  // Wire collapse/expand
+  body.querySelectorAll('[data-inv-toggle]').forEach(function(hdr){
+    hdr.addEventListener('click',function(){
+      var targetId=this.dataset.invToggle;
+      var target=document.getElementById(targetId);
+      if(!target) return;
+      var arrow=this.querySelector('.inv-tree-arrow');
+      if(target.style.display==='none'){
+        target.style.display='';
+        if(arrow) arrow.textContent='\u25BC';
+      } else {
+        target.style.display='none';
+        if(arrow) arrow.textContent='\u25B6';
+      }
+    });
+  });
+  // Footer
+  var fh='<button id="invExportCSV">Export CSV</button>';
+  fh+='<button id="invExportJSON">Export JSON</button>';
+  fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_inventoryData.length+' resources</span>';
+  footer.innerHTML=fh;
+  // Wire export listeners
+  document.getElementById('invExportCSV').addEventListener('click',function(){
+    var rows=[['Type','Name','ID','Config','State','VPC','Region','Account','AZ','Classification','BUDR','Compliance Pass','Compliance Fail','Encrypted','SG Count']];
+    items.forEach(function(r){
+      rows.push([r.type,r.name,r.id,r.config,r.state,r.vpcName||'',r.region,r.account,r.az||'',r.classificationTier||'',r.budrTier||'',r.compliancePass||0,r.complianceFail||0,r.encrypted!=null?r.encrypted:'',r.sgCount||0]);
+    });
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    downloadBlob(new Blob([csv],{type:'text/csv'}),'inventory-export.csv');
+  });
+  document.getElementById('invExportJSON').addEventListener('click',function(){
+    var clean=items.map(function(r){
+      var o={};for(var k in r){if(k!=='_raw') o[k]=r[k]}return o;
+    });
+    downloadBlob(new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),'inventory-export.json');
+  });
+}
+
 var _DEFAULT_CLASS_RULES=[
   {pattern:'prod|production',scope:'vpc',tier:'critical',weight:100},
   {pattern:'pci|complian',scope:'vpc',tier:'critical',weight:95},
@@ -8198,59 +8959,88 @@ function _renderMapInner(){
   // peering lines - horizontal connections between VPC edges, stacked by span
   const peeringG=lnL.append('g').attr('class','peering-group');
   
-  const activePeerings = peerings
+  // Deduplicate peerings by VPC pair (same peering may appear from each account)
+  const peeringMap = new Map();
+  peerings
     .filter(pcx => !pcx.Status || pcx.Status.Code === 'active')
-    .map(pcx => {
+    .forEach(pcx => {
       const rv = pcx.RequesterVpcInfo?.VpcId, av = pcx.AccepterVpcInfo?.VpcId;
       const v1 = vL.find(v => v.vpc.VpcId === rv), v2 = vL.find(v => v.vpc.VpcId === av);
-      if (!v1 || !v2) return null;
+      if (!v1 || !v2) return;
       const leftVpc = v1.x < v2.x ? v1 : v2;
       const rightVpc = v1.x < v2.x ? v2 : v1;
-      const span = (rightVpc.x) - (leftVpc.x + leftVpc.w);
-      return { pcx, leftVpc, rightVpc, span };
-    })
-    .filter(p => p !== null)
-    .sort((a, b) => a.span - b.span); // shortest first = closest to VPCs
-  
-  const globalMinY = Math.min(...vL.map(v => v.y));
-  const laneSpacing = 28;
+      const key = leftVpc.vpc.VpcId + '_' + rightVpc.vpc.VpcId;
+      if (!peeringMap.has(key)) {
+        const span = rightVpc.x - (leftVpc.x + leftVpc.w);
+        peeringMap.set(key, { pcx, leftVpc, rightVpc, span });
+      }
+    });
+  const uniquePeerings = [...peeringMap.values()].sort((a, b) => a.span - b.span);
 
-  activePeerings.forEach((p, idx) => {
+  const globalMinY = Math.min(...vL.map(v => v.y));
+  const globalMaxBottom = Math.max(...vL.map(v => v.y + v.h));
+  const laneSpacing = 28;
+  const stubLen = 15;
+  const peerStagger = 20;
+
+  // Per-VPC exit counters for above (inner) and below (outer) stubs
+  const vpcAboveExit = {}, vpcBelowExit = {};
+
+  // Each unique peering draws TWO arcs: forward (above) + inverse (below)
+  uniquePeerings.forEach((p, i) => {
     const { pcx, leftVpc, rightVpc } = p;
     const pn = gn(pcx, pcx.VpcPeeringConnectionId);
 
-    // Each peering gets its own Y lane above VPCs
-    // Shortest spans closest to VPCs, longest furthest away
-    const y = globalMinY - 40 - idx * laneSpacing;
-    
-    const stubLen = 15;
-    
-    // Exit points on VPC tops
-    const leftExitX = leftVpc.x + leftVpc.w - stubLen;
-    const rightExitX = rightVpc.x + stubLen;
-    const leftVpcTopY = leftVpc.y;
-    const rightVpcTopY = rightVpc.y;
-    
-    // Complete path: down from left VPC, across, down to right VPC
-    const d = `M${leftExitX},${leftVpcTopY} L${leftExitX},${y} L${rightExitX},${y} L${rightExitX},${rightVpcTopY}`;
-    
+    // --- Forward arc: ABOVE VPCs, inner edge stubs (facing each other) ---
+    const aL = vpcAboveExit[leftVpc.vpc.VpcId] = (vpcAboveExit[leftVpc.vpc.VpcId] || 0) + 1;
+    const aR = vpcAboveExit[rightVpc.vpc.VpcId] = (vpcAboveExit[rightVpc.vpc.VpcId] || 0) + 1;
+    const fwdLeftX = leftVpc.x + leftVpc.w - stubLen - (aL - 1) * peerStagger;
+    const fwdRightX = rightVpc.x + stubLen + (aR - 1) * peerStagger;
+    const fwdY = globalMinY - 40 - i * laneSpacing;
+    const fwdD = `M${fwdLeftX},${leftVpc.y} L${fwdLeftX},${fwdY} L${fwdRightX},${fwdY} L${fwdRightX},${rightVpc.y}`;
+
     peeringG.append('path')
       .attr('class', 'peering-line animated')
-      .attr('d', d)
+      .attr('d', fwdD)
       .attr('stroke', 'var(--pcx-color)');
-    
-    // Label at midpoint of horizontal segment
-    const midX = (leftExitX + rightExitX) / 2;
+
+    // Forward label
+    const fwdMidX = (fwdLeftX + fwdRightX) / 2;
     const pw = pn.length * 5.5 + 20;
-    const pg = lnL.append('g').attr('class','peering-label-g');
-    pg.append('rect')
-      .attr('x', midX - pw / 2).attr('y', y - 9)
+    const fwdLg = lnL.append('g').attr('class', 'peering-label-g');
+    fwdLg.append('rect')
+      .attr('x', fwdMidX - pw / 2).attr('y', fwdY - 9)
       .attr('width', pw).attr('height', 18).attr('rx', 3)
       .attr('fill', 'rgba(10,14,23,.95)').attr('stroke', '#fb923c').attr('stroke-width', .5);
-    pg.append('text')
-      .attr('x', midX).attr('y', y + 4)
+    fwdLg.append('text')
+      .attr('x', fwdMidX).attr('y', fwdY + 4)
       .attr('text-anchor', 'middle').attr('font-family', 'IBM Plex Mono')
-      .style('font-size','calc(9px * var(--txt-scale,1))').attr('fill', '#fb923c').text(pn);
+      .style('font-size', 'calc(9px * var(--txt-scale,1))').attr('fill', '#fb923c').text(pn);
+
+    // --- Inverse arc: BELOW VPCs, outer edge stubs (facing away) ---
+    const bL = vpcBelowExit[leftVpc.vpc.VpcId] = (vpcBelowExit[leftVpc.vpc.VpcId] || 0) + 1;
+    const bR = vpcBelowExit[rightVpc.vpc.VpcId] = (vpcBelowExit[rightVpc.vpc.VpcId] || 0) + 1;
+    const invLeftX = leftVpc.x + stubLen + (bL - 1) * peerStagger;
+    const invRightX = rightVpc.x + rightVpc.w - stubLen - (bR - 1) * peerStagger;
+    const invY = globalMaxBottom + 40 + i * laneSpacing;
+    const invD = `M${invLeftX},${leftVpc.y + leftVpc.h} L${invLeftX},${invY} L${invRightX},${invY} L${invRightX},${rightVpc.y + rightVpc.h}`;
+
+    peeringG.append('path')
+      .attr('class', 'peering-line animated')
+      .attr('d', invD)
+      .attr('stroke', 'var(--pcx-color)');
+
+    // Inverse label
+    const invMidX = (invLeftX + invRightX) / 2;
+    const invLg = lnL.append('g').attr('class', 'peering-label-g');
+    invLg.append('rect')
+      .attr('x', invMidX - pw / 2).attr('y', invY - 9)
+      .attr('width', pw).attr('height', 18).attr('rx', 3)
+      .attr('fill', 'rgba(10,14,23,.95)').attr('stroke', '#fb923c').attr('stroke-width', .5);
+    invLg.append('text')
+      .attr('x', invMidX).attr('y', invY + 4)
+      .attr('text-anchor', 'middle').attr('font-family', 'IBM Plex Mono')
+      .style('font-size', 'calc(9px * var(--txt-scale,1))').attr('fill', '#fb923c').text(pn);
   });
 
   // VPN marker
@@ -8358,6 +9148,9 @@ function _renderMapInner(){
         }).length;
         tx=gwLeft?(cl-baseOffset-(upCount)*sp-(tn-1)*sp):(cl+baseOffset+(upCount)*sp+(tn-1)*sp);
       }
+      // Clamp trunk outside gateway circle so the L-bend always points toward the gateway
+      if(gwLeft) tx=Math.max(tx,gp.x+GR+10);
+      else tx=Math.min(tx,gp.x-GR-10);
     }
 
     // Deduplicate connections by subnet ID
@@ -8383,7 +9176,6 @@ function _renderMapInner(){
       // Check if horizontal line would cross any gateway circle (not our own)
       let d;
       if(gwLeft){
-        // Left-side gateways: route line goes LEFT from subnet left edge
         const subLeft=c.sl.x;
         const crossingGw=vpcGwPositions.find(g=>g!==gp&&Math.abs(g.y-sy)<GR+8&&g.x<subLeft&&g.x>tx);
         if(crossingGw){
@@ -8393,7 +9185,6 @@ function _renderMapInner(){
           d=`M${subLeft},${sy} L${tx},${sy}`;
         }
       }else{
-        // Right-side gateways: route line goes RIGHT from subnet right edge
         const subRight=c.sl.x+c.sl.w;
         const crossingGw=vpcGwPositions.find(g=>g!==gp&&Math.abs(g.y-sy)<GR+8&&g.x>subRight&&g.x<tx);
         if(crossingGw){
@@ -9286,7 +10077,8 @@ function saveProject(){
     textareas:{},preferences:loadPrefs(),
     designChanges:_designMode?_designChanges.filter(c=>!c._invalid).map(c=>({id:c.id,action:c.action,target:c.target,params:c.params,timestamp:c.timestamp})):[],
     designMode:_designMode,designRegion:typeof _designRegion!=='undefined'?_designRegion:'us-east-1',
-    annotations:_annotations};
+    annotations:_annotations,
+    budrOverrides:Object.keys(_budrOverrides).length?_budrOverrides:undefined};
   document.querySelectorAll('.ji').forEach(el=>{const v=el.value.trim();if(v){try{project.textareas[el.id]=JSON.parse(v)}catch(e){project.textareas[el.id]=v}}});
   // v2.0: include loaded account contexts
   if(_loadedContexts.length>1){
@@ -9312,6 +10104,7 @@ function _loadProjectData(project){
   if(project.hubVpcName){const hv=document.getElementById('hubVpcName');if(hv)hv.value=project.hubVpcName}
   if(project.preferences){Object.entries(project.preferences).forEach(([k,v])=>savePrefs({[k]:v}))}
   if(project.annotations){_annotations=project.annotations;_saveAnnotations()}
+  if(project.budrOverrides){_budrOverrides=project.budrOverrides}
   if(project._version==='2.0'&&project.accounts&&project.accounts.length){
     _loadedContexts=[];
     if(_multiViewMode)exitMultiView();
@@ -14013,158 +14806,132 @@ function _renderIngressArrows(faG){
     var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
     if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(16,185,129,.8))').style('opacity','1');
   });
-  // Draw connected ingress path: Internet → backbone → vertical drops → trunk tops
-  _renderIngressConnectedPath(faG,ingressGids,igwToSubs);
-  // Draw bus topology: trunk + branches per IGW
-  _renderIngressFlowArrows(faG,igwToSubs);
+  // Draw backbone: Internet → backbone → drops to each gateway
+  var inetNode2=document.querySelector('.internet-node');
+  var inetCircle=inetNode2?inetNode2.querySelector('circle'):null;
+  var inetPos=null;
+  if(inetCircle){var ib=inetCircle.getBBox();inetPos={x:ib.x+ib.width/2,y:ib.y+ib.height/2}}
+  var gwPosList=[];
+  ingressGids.forEach(function(gid){
+    var gwNode2=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwCircle=gwNode2?gwNode2.querySelector('circle'):null;
+    if(!gwCircle) return;
+    var cb=gwCircle.getBBox();
+    gwPosList.push({gid:gid,cx:cb.x+cb.width/2,cy:cb.y+cb.height/2});
+  });
+  _drawFlowBackbone(faG,gwPosList,inetPos,{
+    color:'#10b981',backboneCls:'flow-ingress-backbone',
+    dropCls:'flow-ingress-arrow',arrowMarker:'url(#ingress-arrow-head)'
+  });
+  // Draw direct per-hop arrows: each gateway → its subnets
+  Object.keys(igwToSubs).forEach(function(gid){
+    var gwNode2=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwPos2=null;
+    if(gwNode2){var c=gwNode2.querySelector('circle');if(c){var cb2=c.getBBox();gwPos2={x:cb2.x+cb2.width/2,y:cb2.y+cb2.height/2}}}
+    if(!gwPos2) return;
+    igwToSubs[gid].forEach(function(sid){
+      var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+      if(!rect) return;
+      var bb=rect.getBBox();
+      var subCy=bb.y+bb.height/2;
+      var subEdgeX=(bb.x+bb.width/2)<gwPos2.x?bb.x+bb.width:bb.x;
+      var gwEdge=_circleEdge(gwPos2.x,gwPos2.y,26,subEdgeX,subCy);
+      _drawFlowHop(faG,gwEdge,{x:subEdgeX,y:subCy},{
+        cssClass:'flow-ingress-arrow',marker:'url(#ingress-branch-head)'
+      });
+    });
+  });
   // Draw ALB→backend forwarding arrows
   if(fwdLinks.length>0) _renderForwardingArrows(faG,fwdLinks);
 }
 
-function _renderIngressConnectedPath(faG,ingressGids,igwToSubs){
-  if(!ingressGids||ingressGids.size===0) return;
-  // Find Internet node center
-  var inetNode=document.querySelector('.internet-node');
-  var inetCircle=inetNode?inetNode.querySelector('circle'):null;
-  var inetPos=null;
-  if(inetCircle){var ib=inetCircle.getBBox();inetPos={x:ib.x+ib.width/2,y:ib.y+ib.height/2}}
-  // Gather IGW positions: NET vertical x + IGW icon center
-  var igwPositions=[];
-  ingressGids.forEach(function(gid){
-    var netVert=document.querySelector('[data-net-vert][data-gid="'+gid+'"]');
-    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
-    var gwCircle=gwNode?gwNode.querySelector('circle'):null;
-    if(!gwCircle) return;
-    var cb=gwCircle.getBBox();
-    var cx=cb.x+cb.width/2,cy=cb.y+cb.height/2;
-    // Use NET vertical x if available, else use IGW icon x
-    var vertX=cx;
-    if(netVert){
-      var d=netVert.getAttribute('d');
-      var m=d.match(/M([\d.]+)/);
-      if(m) vertX=parseFloat(m[1]);
-    }
-    igwPositions.push({gid:gid,vertX:vertX,cx:cx,cy:cy});
-  });
-  if(igwPositions.length===0) return;
-  // Sort by x position
-  igwPositions.sort(function(a,b){return a.vertX-b.vertX});
-  // Backbone y from NET vertical or default
+// --- Flow Primitives (composable building blocks) ---
+
+// Draw an L-shaped flow arrow between two points.
+// from/to: {x,y} — start and end positions
+// opts: {cssClass, marker}
+function _drawFlowHop(faG,from,to,opts){
+  if(!from||!to) return;
+  var cls=opts.cssClass||'flow-ingress-arrow';
+  var marker=opts.marker||null;
+  var d;
+  if(Math.abs(from.y-to.y)<3||Math.abs(from.x-to.x)<3){
+    // Nearly aligned — straight line
+    d='M'+from.x+','+from.y+' L'+to.x+','+to.y;
+  } else {
+    // Stepped orthogonal: horizontal → vertical → horizontal through midpoint
+    var midX=(from.x+to.x)/2;
+    d='M'+from.x+','+from.y+' L'+midX+','+from.y+' L'+midX+','+to.y+' L'+to.x+','+to.y;
+  }
+  var p=faG.append('path').attr('class',cls).attr('d',d);
+  if(marker) p.attr('marker-end',marker);
+  return p;
+}
+
+// Draw a backbone + drops + internet icon connecting gateways to the internet.
+// gwPositions: [{gid, cx, cy}] — gateway icon centers
+// inetPos: {x,y} or null — internet node center
+// opts: {color, backboneCls, dropCls, arrowMarker, backboneYOffset}
+function _drawFlowBackbone(faG,gwPositions,inetPos,opts){
+  if(!gwPositions||gwPositions.length===0) return;
+  var color=opts.color||'#10b981';
+  var bbCls=opts.backboneCls||'flow-ingress-backbone';
+  var dropCls=opts.dropCls||'flow-ingress-arrow';
+  var marker=opts.arrowMarker||null;
+  var yOffset=opts.backboneYOffset||0;
+  // Backbone Y from net-vert element
   var backboneY=-20;
   var netVert=document.querySelector('[data-net-vert]');
-  if(netVert){var d=netVert.getAttribute('d');var m=d.match(/[ML][\d.]+,([-\d.]+)/);if(m) backboneY=parseFloat(m[1])}
-  // Start point: Internet node or leftmost IGW
-  var startX=inetPos?inetPos.x:igwPositions[0].vertX;
-  var startY=inetPos?inetPos.y:backboneY;
-  var endX=igwPositions[igwPositions.length-1].vertX;
-  // Draw backbone: animated green line from Internet to rightmost IGW (with arrowhead)
-  faG.append('path')
-    .attr('class','flow-ingress-backbone')
-    .attr('d','M'+startX+','+startY+' L'+startX+','+backboneY+' L'+endX+','+backboneY)
-    .attr('marker-end','url(#ingress-arrow-head)');
-  // Draw bright Internet node in flow layer (parent nodes-layer is dimmed)
+  if(netVert){var dd=netVert.getAttribute('d');var mm=dd.match(/[ML][\d.]+,([-\d.]+)/);if(mm) backboneY=parseFloat(mm[1])}
+  backboneY+=yOffset;
+  gwPositions.sort(function(a,b){return a.cx-b.cx});
+  var inetX=inetPos?inetPos.x:gwPositions[0].cx;
+  var inetY=inetPos?inetPos.y:backboneY;
+  var farGwX=gwPositions[gwPositions.length-1].cx;
+  // Horizontal backbone
+  var bbPath=faG.append('path').attr('class',bbCls)
+    .attr('d','M'+inetX+','+backboneY+' L'+farGwX+','+backboneY);
+  if(marker) bbPath.attr('marker-end',marker);
+  // Vertical leg from backbone to internet icon
+  if(inetPos&&Math.abs(inetY-backboneY)>2){
+    faG.append('path').attr('class',bbCls)
+      .attr('d','M'+inetX+','+backboneY+' L'+inetX+','+inetY);
+  }
+  // Internet icon
   if(inetPos){
     var ig=faG.append('g').attr('class','flow-inet-icon');
     ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',42)
-      .attr('fill','none').attr('stroke','#10b981').attr('stroke-width',2).attr('opacity',.3);
+      .attr('fill','none').attr('stroke',color).attr('stroke-width',2).attr('opacity',.3);
     ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',36)
-      .attr('fill','rgba(16,185,129,.1)').attr('stroke','#10b981').attr('stroke-width',2);
+      .attr('fill','rgba('+_hexToRgb(color)+',.1)').attr('stroke',color).attr('stroke-width',2);
     ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',5)
-      .attr('fill','#10b981');
+      .attr('fill',color);
     ig.append('text').attr('x',inetPos.x).attr('y',inetPos.y+52)
-      .attr('text-anchor','middle').attr('fill','#10b981').attr('font-size','11px')
+      .attr('text-anchor','middle').attr('fill',color).attr('font-size','11px')
       .attr('font-family','IBM Plex Mono,monospace').text('Internet');
-    ig.style('filter','drop-shadow(0 0 10px rgba(16,185,129,.8))');
+    ig.style('filter','drop-shadow(0 0 10px rgba('+_hexToRgb(color)+',.8))');
   }
-  // Cache VPC bounding boxes for spatial lookup
-  var vpcBounds={};
-  document.querySelectorAll('.vpc-group').forEach(function(vg){
-    var r=vg.querySelector('rect');
-    var vid=vg.getAttribute('data-vpc-id');
-    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
-  });
-  function findVpcBBSpatial(pt){
-    for(var vid in vpcBounds){
-      var v=vpcBounds[vid];
-      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
-    }
-    return null;
-  }
-  // Find VPC for each IGW via data
-  function findVpcForIgw(gid){
-    var igw=(_rlCtx.igws||[]).find(function(g){return g.InternetGatewayId===gid});
-    if(!igw) return null;
-    var vpcId=(igw.Attachments||[]).length>0?igw.Attachments[0].VpcId:null;
-    return vpcId?vpcBounds[vpcId]:null;
-  }
-  // Draw drops from backbone to trunk tops (connecting to topmost branch)
-  igwPositions.forEach(function(p){
-    // Junction dot on backbone
-    faG.append('circle')
-      .attr('class','flow-ingress-drop')
-      .attr('cx',p.vertX).attr('cy',backboneY).attr('r',4)
-      .attr('fill','#10b981').attr('stroke','none');
-    // Find VPC boundary for this IGW
-    var vpcBB=findVpcForIgw(p.gid)||findVpcBBSpatial({x:p.cx,y:p.cy});
-    if(!vpcBB){
-      faG.append('path').attr('class','flow-ingress-drop')
-        .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+(backboneY+60));
-      return;
-    }
-    // Compute trunk X position (same logic as _renderIngressFlowArrows)
-    var vpcMidX=(vpcBB.left+vpcBB.right)/2;
-    var goLeft=p.cx<vpcMidX;
-    var trunkX=goLeft?vpcBB.left-25:vpcBB.right+25;
-    // Find topmost subnet CY for this IGW so drop connects to the trunk's natural start
-    var topSubY=null;
-    var sids=igwToSubs&&igwToSubs[p.gid]?Array.from(igwToSubs[p.gid]):[];
-    sids.forEach(function(sid){
-      var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
-      if(!rect) return;
-      var bb=rect.getBBox();
-      var cy=bb.y+bb.height/2;
-      if(topSubY===null||cy<topSubY) topSubY=cy;
-    });
-    // Also consider gateway position (trunk spans to it)
-    var dropEndY=topSubY!==null?topSubY:vpcBB.top+30;
-    if(p.cy<dropEndY) dropEndY=p.cy; // gwPos might be above topmost subnet
-    // Route drop: backbone → trunkX at topmost branch (with arrowhead)
-    if(Math.abs(p.vertX-trunkX)<5){
-      // Trunk aligns with backbone drop — straight line
-      faG.append('path').attr('class','flow-ingress-drop')
-        .attr('d','M'+p.vertX+','+backboneY+' L'+trunkX+','+dropEndY)
-        .attr('marker-end','url(#ingress-arrow-head)');
-    } else {
-      // L-shaped: down to jog point, horizontal to trunk X, then down to trunk start
-      var jogY=Math.min(backboneY+30,dropEndY-20);
-      faG.append('path').attr('class','flow-ingress-drop')
-        .attr('d','M'+p.vertX+','+backboneY+' L'+p.vertX+','+jogY+' L'+trunkX+','+jogY+' L'+trunkX+','+dropEndY)
-        .attr('marker-end','url(#ingress-arrow-head)');
-    }
+  // Drop lines from each gateway to backbone
+  gwPositions.forEach(function(p){
+    faG.append('circle').attr('cx',p.cx).attr('cy',backboneY).attr('r',4)
+      .attr('fill',color).attr('stroke','none');
+    var dropPath=faG.append('path').attr('class',dropCls)
+      .attr('d','M'+p.cx+','+p.cy+' L'+p.cx+','+backboneY);
+    if(marker) dropPath.attr('marker-end',marker);
   });
 }
 
-function _getGatewayCenter(gid){
-  // Find IGW icon position from its label text or circle element
-  var labels=document.querySelectorAll('.gw-label, text');
-  for(var i=0;i<labels.length;i++){
-    var el=labels[i];
-    if(el.getAttribute('data-gw-id')===gid){
-      var bbox=el.getBBox();
-      return {x:bbox.x+bbox.width/2,y:bbox.y-15};
-    }
-  }
-  // Fallback: find gateway icon circle by searching near the gateway ID in data attributes
-  var gwNode=document.querySelector('[data-gateway-id="'+gid+'"]');
-  if(gwNode){var bb=gwNode.getBBox();return {x:bb.x+bb.width/2,y:bb.y+bb.height/2}}
-  // Fallback: use the midpoint of the highlighted stubs for this gateway
-  var stubs=document.querySelectorAll('.fa-hl-ingress[data-gid="'+gid+'"]');
-  if(stubs.length>0){
-    var lastStub=stubs[stubs.length-1];
-    var bb2=lastStub.getBBox();
-    return {x:bb2.x+bb2.width+30,y:bb2.y+bb2.height/2};
-  }
-  return null;
+// Helper: convert hex color to r,g,b string
+function _hexToRgb(hex){
+  var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return r+','+g+','+b;
+}
+
+// Helper: compute point on circle boundary closest to a target point.
+// Used so arrows start/end at the circle edge, not the center.
+function _circleEdge(cx,cy,r,tx,ty){
+  var dx=tx-cx,dy=ty-cy,dist=Math.sqrt(dx*dx+dy*dy)||1;
+  return {x:cx+(dx/dist)*r,y:cy+(dy/dist)*r};
 }
 
 function _drawBusTopology(faG,opts){
@@ -14201,86 +14968,6 @@ function _drawBusTopology(faG,opts){
       .attr('d','M'+fromX+','+sp.cy+' L'+toX+','+sp.cy);
     if(opts.branchMarker) bp.attr('marker-end',opts.branchMarker);
     if(opts.onBranch) opts.onBranch(sp,idx,subEdgeX);
-  });
-}
-
-function _renderIngressFlowArrows(faG,igwToSubs){
-  // Ensure arrowhead marker
-  var svg=d3.select('#mapSvg');
-  var defs=svg.select('defs');
-  if(defs.empty()) defs=svg.append('defs');
-  if(defs.select('#ingress-arrow-head').empty()){
-    defs.append('marker').attr('id','ingress-arrow-head')
-      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
-      .attr('markerWidth',8).attr('markerHeight',8).attr('markerUnits','userSpaceOnUse')
-      .attr('orient','auto-start-reverse')
-      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
-  }
-  if(defs.select('#ingress-branch-head').empty()){
-    defs.append('marker').attr('id','ingress-branch-head')
-      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
-      .attr('markerWidth',7).attr('markerHeight',7).attr('markerUnits','userSpaceOnUse')
-      .attr('orient','auto-start-reverse')
-      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#10b981');
-  }
-  // Cache VPC bounding boxes for spatial lookup
-  var vpcBounds={};
-  document.querySelectorAll('.vpc-group').forEach(function(vg){
-    var r=vg.querySelector('rect');
-    var vid=vg.getAttribute('data-vpc-id');
-    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
-  });
-  function findVpcBB(pt){
-    for(var vid in vpcBounds){
-      var v=vpcBounds[vid];
-      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
-    }
-    return null;
-  }
-  // Bus topology per IGW: trunk outside VPC, branches into subnets
-  Object.keys(igwToSubs).forEach(function(gid){
-    var sids=Array.from(igwToSubs[gid]);
-    if(sids.length===0) return;
-    // Get IGW position for trunk side hint
-    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
-    var gwPos=null;
-    if(gwNode){
-      var circle=gwNode.querySelector('circle');
-      if(circle){var cb=circle.getBBox();gwPos={x:cb.x+cb.width/2,y:cb.y+cb.height/2}}
-    }
-    // Get all target subnet positions
-    var subPositions=[];
-    sids.forEach(function(sid){
-      var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
-      if(!rect) return;
-      var bb=rect.getBBox();
-      subPositions.push({sid:sid,x:bb.x,y:bb.y,w:bb.width,h:bb.height,cy:bb.y+bb.height/2});
-    });
-    if(subPositions.length===0) return;
-    // Find VPC boundary spatially
-    var firstSub=subPositions[0];
-    var vpcBB=findVpcBB({x:firstSub.x+firstSub.w/2,y:firstSub.cy});
-    // Trunk side: prefer side where IGW is (traffic enters from gateway side)
-    var vpcMidX=vpcBB?(vpcBB.left+vpcBB.right)/2:subPositions.reduce(function(s,sp){return s+sp.x+sp.w/2},0)/subPositions.length;
-    var goLeft=gwPos?gwPos.x<vpcMidX:true;
-    var trunkX;
-    if(vpcBB){
-      trunkX=goLeft?vpcBB.left-25:vpcBB.right+25;
-    } else {
-      trunkX=goLeft?firstSub.x-60:firstSub.x+firstSub.w+60;
-    }
-    // Sort subnets by Y
-    subPositions.sort(function(a,b){return a.cy-b.cy});
-    _drawBusTopology(faG,{
-      trunkX:trunkX,
-      subnets:subPositions,
-      gwPos:gwPos,
-      pathClass:'flow-ingress-arrow',
-      branchMarker:'url(#ingress-branch-head)',
-      gwMarker:'url(#ingress-branch-head)',
-      gwDirection:'toTrunk',
-      branchDirection:'toSubnet'
-    });
   });
 }
 
@@ -14436,7 +15123,7 @@ function _renderEgressArrows(faG){
   });
   // Collect all egress gateway IDs for outbound path
   var egressGids=new Set();
-  // Render per VPC: SINGLE trunk + branches + gateway connectors
+  // Render per VPC: direct per-hop arrows (subnet → gateway)
   Object.keys(vpcData).forEach(function(vpcId){
     var data=vpcData[vpcId];
     // Highlight all egress subnets
@@ -14447,10 +15134,9 @@ function _renderEgressArrows(faG){
       var subEl=subNode.querySelector('rect');
       if(subEl) d3.select(subEl).classed('fa-egress-source',true);
     });
-    // Draw SEPARATE bus topology per gateway (each gateway routes its own subnets)
+    // Draw per-hop arrows: each subnet → its gateway (using shared primitive)
     var gwKeys=Object.keys(data.gateways);
-    var baseTrunkX=null;
-    gwKeys.forEach(function(gid,gwIdx){
+    gwKeys.forEach(function(gid){
       egressGids.add(gid);
       var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
       var gwPos=null;
@@ -14458,115 +15144,38 @@ function _renderEgressArrows(faG){
         var circle=gwNode.querySelector('circle');
         if(circle){var cb=circle.getBBox();gwPos={x:cb.x+cb.width/2,y:cb.y+cb.height/2}}
       }
-      // Collect subnet positions for THIS gateway only
-      var subPositions=[];
+      if(!gwPos) return;
       data.gateways[gid].forEach(function(sid){
         var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
         if(!rect) return;
         var bb=rect.getBBox();
-        subPositions.push({sid:sid,x:bb.x,y:bb.y,w:bb.width,h:bb.height,cy:bb.y+bb.height/2});
+        var subCy=bb.y+bb.height/2;
+        var subEdgeX=(bb.x+bb.width/2)<gwPos.x?bb.x+bb.width:bb.x;
+        var gwEdge=_circleEdge(gwPos.x,gwPos.y,26,subEdgeX,subCy);
+        _drawFlowHop(faG,{x:subEdgeX,y:subCy},gwEdge,{
+          cssClass:'flow-egress-arrow',marker:'url(#egress-arrow-head)'
+        });
       });
-      if(subPositions.length===0) return;
-      // Find VPC boundary once
-      if(baseTrunkX===null){
-        var firstSub=subPositions[0];
-        var vb=findVpcBounds({x:firstSub.x+firstSub.w/2,y:firstSub.cy});
-        var goRight=gwPos?gwPos.x>firstSub.x+firstSub.w/2:true;
-        if(vb){baseTrunkX=goRight?vb.right+25:vb.left-25}
-        else{baseTrunkX=goRight?firstSub.x+firstSub.w+60:firstSub.x-60}
-      }
-      // Offset each gateway's trunk to prevent overlap
-      var trunkX=baseTrunkX+gwIdx*18;
-      subPositions.sort(function(a,b){return a.cy-b.cy});
-      // Draw bus topology WITHOUT gwPos — trunk spans subnets only
-      _drawBusTopology(faG,{
-        trunkX:trunkX,
-        subnets:subPositions,
-        pathClass:'flow-egress-arrow',
-        branchMarker:'url(#egress-branch-head)',
-        branchDirection:'toTrunk'
-      });
-      // Draw L-shaped connector from trunk to gateway icon
-      if(gwPos){
-        var subYs=subPositions.map(function(s){return s.cy});
-        var trunkMinY=Math.min.apply(null,subYs);
-        var trunkMaxY=Math.max.apply(null,subYs);
-        // Find nearest trunk endpoint to gateway
-        var anchorY=gwPos.y<trunkMinY?trunkMinY:gwPos.y>trunkMaxY?trunkMaxY:gwPos.y;
-        var d='M'+trunkX+','+anchorY;
-        if(Math.abs(anchorY-gwPos.y)>2) d+=' L'+trunkX+','+gwPos.y;
-        d+=' L'+gwPos.x+','+gwPos.y;
-        faG.append('path').attr('class','flow-egress-arrow')
-          .attr('d',d).attr('marker-end','url(#egress-arrow-head)');
-      }
-      // Glow on gateway icon
       if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(251,146,60,.8))').style('opacity','1');
     });
   });
-  // Draw egress outbound path: gateways → backbone → Internet
-  _renderEgressConnectedPath(faG,egressGids);
-}
-
-function _renderEgressConnectedPath(faG,egressGids){
-  if(!egressGids||egressGids.size===0) return;
-  // Find Internet node center
-  var inetNode=document.querySelector('.internet-node');
-  var inetCircle=inetNode?inetNode.querySelector('circle'):null;
-  var inetPos=null;
-  if(inetCircle){var ib=inetCircle.getBBox();inetPos={x:ib.x+ib.width/2,y:ib.y+ib.height/2}}
-  // Gather gateway positions
-  var gwPositions=[];
+  // Draw egress backbone: gateways → backbone → Internet (using shared primitive)
+  var inetNode2=document.querySelector('.internet-node');
+  var inetCircle2=inetNode2?inetNode2.querySelector('circle'):null;
+  var inetPos2=null;
+  if(inetCircle2){var ib2=inetCircle2.getBBox();inetPos2={x:ib2.x+ib2.width/2,y:ib2.y+ib2.height/2}}
+  var gwPosList2=[];
   egressGids.forEach(function(gid){
-    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
-    var gwCircle=gwNode?gwNode.querySelector('circle'):null;
-    if(!gwCircle) return;
-    var cb=gwCircle.getBBox();
-    gwPositions.push({gid:gid,cx:cb.x+cb.width/2,cy:cb.y+cb.height/2});
+    var gwNode2=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwCircle2=gwNode2?gwNode2.querySelector('circle'):null;
+    if(!gwCircle2) return;
+    var cb2=gwCircle2.getBBox();
+    gwPosList2.push({gid:gid,cx:cb2.x+cb2.width/2,cy:cb2.y+cb2.height/2});
   });
-  if(gwPositions.length===0) return;
-  gwPositions.sort(function(a,b){return a.cx-b.cx});
-  // Backbone Y: same as ingress (above VPCs)
-  var backboneY=-20;
-  var netVert=document.querySelector('[data-net-vert]');
-  if(netVert){var d=netVert.getAttribute('d');var m=d.match(/[ML][\d.]+,([-\d.]+)/);if(m) backboneY=parseFloat(m[1])}
-  // Backbone: animated orange line — reversed so dashes animate toward Internet
-  var inetX=inetPos?inetPos.x:gwPositions[0].cx;
-  var inetY=inetPos?inetPos.y:backboneY;
-  var farGwX=gwPositions[gwPositions.length-1].cx;
-  // Horizontal backbone from rightmost gateway toward Internet
-  faG.append('path')
-    .attr('class','flow-egress-backbone')
-    .attr('d','M'+farGwX+','+backboneY+' L'+inetX+','+backboneY)
-    .attr('marker-end','url(#egress-arrow-head)');
-  // Vertical leg from backbone up to Internet icon
-  if(inetPos){
-    faG.append('path')
-      .attr('class','flow-egress-backbone')
-      .attr('d','M'+inetX+','+backboneY+' L'+inetX+','+inetY);
-  }
-  // Internet icon in orange
-  if(inetPos){
-    var ig=faG.append('g').attr('class','flow-inet-icon');
-    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',42)
-      .attr('fill','none').attr('stroke','#fb923c').attr('stroke-width',2).attr('opacity',.3);
-    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',36)
-      .attr('fill','rgba(251,146,60,.1)').attr('stroke','#fb923c').attr('stroke-width',2);
-    ig.append('circle').attr('cx',inetPos.x).attr('cy',inetPos.y).attr('r',5)
-      .attr('fill','#fb923c');
-    ig.append('text').attr('x',inetPos.x).attr('y',inetPos.y+52)
-      .attr('text-anchor','middle').attr('fill','#fb923c').attr('font-size','11px')
-      .attr('font-family','IBM Plex Mono,monospace').text('Internet');
-  }
-  // Drops: from each gateway UP to the backbone (with arrowheads)
-  gwPositions.forEach(function(p){
-    // Junction dot on backbone
-    faG.append('circle')
-      .attr('cx',p.cx).attr('cy',backboneY).attr('r',4)
-      .attr('fill','#fb923c').attr('stroke','none');
-    // Animated drop from gateway to backbone with arrowhead
-    faG.append('path').attr('class','flow-egress-arrow')
-      .attr('d','M'+p.cx+','+p.cy+' L'+p.cx+','+backboneY)
-      .attr('marker-end','url(#egress-arrow-head)');
+  _drawFlowBackbone(faG,gwPosList2,inetPos2,{
+    color:'#fb923c',backboneCls:'flow-egress-backbone',
+    dropCls:'flow-egress-arrow',arrowMarker:'url(#egress-arrow-head)',
+    backboneYOffset:16
   });
 }
 
@@ -16526,7 +17135,12 @@ var _UDASH_TABS = [
     if(!_budrAssessments.length){_showToast('No resources to assess');return false}
     return true;
   }, render:function(){ _renderBUDRDash(); }},
-  {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }}
+  {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }},
+  {id:'inventory', label:'Inventory', color:'#f97316', icon:'', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    if(!_inventoryData.length) _buildInventoryData();
+    return _inventoryData.length>0;
+  }, render:function(){ _renderInventoryTab(); }}
 ];
 
 function openUnifiedDash(tabId){
@@ -16545,6 +17159,7 @@ function openUnifiedDash(tabId){
   document.getElementById('udashToolbar').style.display='';
   _govToolbarTab=null;
   _compToolbarTab=null;
+  _invToolbarRendered=false;
   el.classList.add('open');
   if(!wasOpen) el.offsetHeight; // force reflow only on first open
   _renderUdashTabs();
@@ -16569,6 +17184,7 @@ function _switchUdashTab(tabId){
   // Reset toolbar tab guards
   _govToolbarTab=null;
   _compToolbarTab=null;
+  _invToolbarRendered=false;
   tab.render();
 }
 
@@ -16663,6 +17279,8 @@ function _renderBUDRDash(){
     if(compCounts.fail)h+='<span style="color:#ef4444">'+compCounts.fail+' gaps</span>';
     h+='</div>';
   }
+  // Strategy legend
+  h+=_rptBUDRStrategyLegend();
   // Group by tier
   var groups={protected:[],partial:[],at_risk:[]};
   items.forEach(function(a){if(a.profile)groups[a.profile.tier].push(a)});
@@ -16694,8 +17312,34 @@ function _renderBUDRDash(){
       h+='<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:'+tierColors[ct]+'22;color:'+tierColors[ct]+';border:1px solid '+tierColors[ct]+'44;margin-left:auto">'+ct.toUpperCase()+'</span>';
       h+='<span style="font-size:9px;color:'+compColor+';margin-left:4px" title="'+esc(cc.issues?cc.issues.map(function(i){return i.msg}).join('; '):'')+'">'+compIcon+'</span>';
       h+='<span class="br-rto" style="margin-left:6px">RTO: '+esc(a.profile.rto)+' | RPO: '+esc(a.profile.rpo)+'</span>';
+      if(a.overridden)h+='<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(99,102,241,.15);color:#818cf8;margin-left:4px;font-weight:600">✎ OVERRIDE</span>';
+      h+='<button class="budr-cfg-btn" data-rid="'+esc(a.id)+'" title="Configure strategy override" style="margin-left:4px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;font-size:15px;color:var(--text-muted);line-height:1">⚙</button>';
       h+='</div>';
       h+='<div class="budr-res-body">';
+      // Override form (hidden by default)
+      var ov=_budrOverrides[a.id]||{};
+      h+='<div class="budr-override-form" data-rid="'+esc(a.id)+'" style="display:none;margin-bottom:8px;padding:8px 10px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:5px;font-size:11px;font-family:IBM Plex Mono,monospace">';
+      h+='<div style="color:#818cf8;font-weight:600;margin-bottom:6px">Strategy Override</div>';
+      h+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+      h+='<label style="color:var(--text-secondary)">DR Strategy</label>';
+      h+='<select class="budr-ov-strategy" style="font-size:11px;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary)">';
+      var _stratToClass={hot:'critical',warm:'high',pilot:'medium',cold:'low'};
+      [{k:'critical',label:'Critical (Hot)'},{k:'high',label:'High (Warm)'},{k:'medium',label:'Medium (Pilot Light)'},{k:'low',label:'Low (Cold)'}].forEach(function(s){
+        var cur=ov.strategy||_stratToClass[a.profile.strategy]||'low';
+        var sel=cur===s.k?' selected':'';
+        h+='<option value="'+s.k+'"'+sel+'>'+s.label+'</option>';
+      });
+      h+='</select>';
+      h+='<label style="color:var(--text-secondary);margin-left:8px">RTO</label>';
+      h+='<input class="budr-ov-rto" type="text" value="'+esc(ov.rto||a.profile.rto)+'" style="width:70px;font-size:11px;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary)" placeholder="'+esc(a.autoProfile?a.autoProfile.rto:a.profile.rto)+'">';
+      h+='<label style="color:var(--text-secondary);margin-left:8px">RPO</label>';
+      h+='<input class="budr-ov-rpo" type="text" value="'+esc(ov.rpo||a.profile.rpo)+'" style="width:70px;font-size:11px;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary)" placeholder="'+esc(a.autoProfile?a.autoProfile.rpo:a.profile.rpo)+'">';
+      h+='</div>';
+      h+='<div style="margin-top:6px;display:flex;gap:6px">';
+      h+='<button class="budr-ov-save" data-rid="'+esc(a.id)+'" style="font-size:10px;padding:3px 10px;border-radius:3px;border:none;background:#6366f1;color:#fff;cursor:pointer;font-weight:600">Save</button>';
+      if(a.overridden)h+='<button class="budr-ov-reset" data-rid="'+esc(a.id)+'" style="font-size:10px;padding:3px 10px;border-radius:3px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer">Reset to Auto</button>';
+      h+='</div>';
+      h+='</div>';
       // RTO/RPO justification
       var estM=_BUDR_EST_MINUTES[a.profileKey]||{};
       if(estM.rtoWhy||estM.rpoWhy){
@@ -16758,7 +17402,49 @@ function _renderBUDRDash(){
   });
   // Event: resource card expand
   body.querySelectorAll('.budr-res-hdr').forEach(function(hdr){
-    hdr.addEventListener('click',function(){hdr.closest('.budr-res').classList.toggle('expanded')});
+    hdr.addEventListener('click',function(e){
+      if(e.target.closest('.budr-cfg-btn'))return; // don't toggle when clicking gear
+      hdr.closest('.budr-res').classList.toggle('expanded');
+    });
+  });
+  // Event: gear button toggles override form
+  body.querySelectorAll('.budr-cfg-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var rid=btn.dataset.rid;
+      var form=body.querySelector('.budr-override-form[data-rid="'+rid+'"]');
+      if(form)form.style.display=form.style.display==='none'?'':'none';
+      // Expand card if not already
+      var card=btn.closest('.budr-res');
+      if(card&&!card.classList.contains('expanded'))card.classList.add('expanded');
+    });
+  });
+  // Event: save override
+  body.querySelectorAll('.budr-ov-save').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var rid=btn.dataset.rid;
+      var form=btn.closest('.budr-override-form');
+      var strategy=form.querySelector('.budr-ov-strategy').value;
+      var rto=form.querySelector('.budr-ov-rto').value.trim();
+      var rpo=form.querySelector('.budr-ov-rpo').value.trim();
+      _budrOverrides[rid]={strategy:strategy,rto:rto||undefined,rpo:rpo||undefined};
+      // Re-run enrichment to apply override
+      _reapplyBUDROverrides();
+      _renderBUDRDash();
+      _showToast('Override saved for '+rid);
+    });
+  });
+  // Event: reset override
+  body.querySelectorAll('.budr-ov-reset').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var rid=btn.dataset.rid;
+      delete _budrOverrides[rid];
+      _reapplyBUDROverrides();
+      _renderBUDRDash();
+      _showToast('Override removed for '+rid);
+    });
   });
   // Event: summary card click = filter
   body.querySelectorAll('.budr-card').forEach(function(card){
@@ -16777,26 +17463,27 @@ function _renderBUDRDash(){
   // Wire export listeners
   document.getElementById('budrExportCSV').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
+    var csv='Type,Resource,Name,Tier,Strategy,RTO,RPO,Override,Signals\n';
     _budrAssessments.forEach(function(a){
       var tier=a.profile?a.profile.tier:'unknown';
+      var strategy=a.profile?(_BUDR_STRATEGY[a.profile.strategy]||a.profile.strategy):'';
       var rto=a.profile?a.profile.rto:'';
       var rpo=a.profile?a.profile.rpo:'';
       var sigs=a.signals?Object.entries(a.signals).map(function(e){return e[0]+'='+e[1]}).join('; '):'';
       var ce=function(s){return String(s||'').replace(/"/g,'""')};
-      csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
+      csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(strategy)+'","'+ce(rto)+'","'+ce(rpo)+'","'+(a.overridden?'Yes':'No')+'","'+ce(sigs)+'"\n';
     });
     downloadBlob(new Blob([csv],{type:'text/csv'}),'budr-assessment.csv');
   });
   document.getElementById('budrExportJSON').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings,overrides:_budrOverrides};
     downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'budr-assessment.json');
   });
   var xlsxBtn=document.getElementById('budrExportXLSX');
   if(xlsxBtn) xlsxBtn.addEventListener('click',async function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings,overrides:_budrOverrides};
     var jsonStr=JSON.stringify(data,null,2);
     _showToast('Generating XLSX report\u2026');
     try{
@@ -16809,6 +17496,8 @@ function _renderBUDRDash(){
 }
 // BUDR button
 document.getElementById('budrBtn').addEventListener('click',openBUDRDash);
+// Inventory button
+document.getElementById('inventoryBtn').addEventListener('click',function(){openUnifiedDash('inventory')});
 
 // === GOVERNANCE DASHBOARD ===
 function _closeAllDashboardsExcept(keep){_closeAllDashboards(keep)}
@@ -18789,25 +19478,25 @@ document.getElementById('dlBash').addEventListener('click',function(){
   var script=[
 '#!/usr/bin/env bash',
 '# AWS Network Mapper — Data Export Script',
-'# Exports all AWS CLI data needed for the mapper tool.',
 '# Usage:',
-'#   ./export-aws-data.sh                   # default profile + region',
+'#   ./export-aws-data.sh                                 # default profile + region',
 '#   ./export-aws-data.sh -p prod -r us-west-2',
-'#   ./export-aws-data.sh -p prod -r us-east-1 -o ./my-export',
+'#   ./export-aws-data.sh -p prod -a                      # all regions, skip empty',
+'#   ./export-aws-data.sh -P prod,staging,dev -a           # multi-profile, all regions',
+'#   ./export-aws-data.sh -p prod -r us-east-1 -o ./out',
 'set -euo pipefail',
-'PROFILE="" ; REGION="" ; OUTDIR=""',
-'usage(){ echo "Usage: $0 [-p profile] [-r region] [-o output-dir]"; exit 1; }',
-'while getopts "p:r:o:h" opt; do case $opt in p) PROFILE="$OPTARG";; r) REGION="$OPTARG";; o) OUTDIR="$OPTARG";; *) usage;; esac; done',
+'PROFILE="";REGION="";OUTDIR="";ALL_REGIONS=false;PROFILES=""',
+'usage(){ echo "Usage: $0 [-p profile] [-r region] [-o dir] [-a all-regions] [-P profiles]"; exit 1; }',
+'while getopts "p:r:o:P:ah" opt; do case $opt in p) PROFILE="$OPTARG";; r) REGION="$OPTARG";; o) OUTDIR="$OPTARG";; P) PROFILES="$OPTARG";; a) ALL_REGIONS=true;; *) usage;; esac; done',
 '[[ -n "$PROFILE" && ! "$PROFILE" =~ ^[a-zA-Z0-9_-]+$ ]] && echo "ERROR: Invalid profile" >&2 && exit 1',
 '[[ -n "$REGION" && ! "$REGION" =~ ^[a-zA-Z0-9-]+$ ]] && echo "ERROR: Invalid region" >&2 && exit 1',
-'AWS_FLAGS=(); [ -n "$PROFILE" ] && AWS_FLAGS+=(--profile "$PROFILE"); [ -n "$REGION" ] && AWS_FLAGS+=(--region "$REGION")',
-'[ -z "$OUTDIR" ] && OUTDIR="./aws-export-${PROFILE:-default}-$(date +%Y%m%d-%H%M%S)"',
-'mkdir -p "$OUTDIR"',
-'echo "AWS Network Mapper — Data Export"',
-'echo "  Profile: ${PROFILE:-default}  Region: ${REGION:-default}  Output: $OUTDIR"',
-'echo ""',
-'run(){ local label="$1" fn="$2"; shift 2; printf "  %-35s" "$label..."; if output=$(aws "${AWS_FLAGS[@]}" "$@" 2>&1); then echo "$output" > "$OUTDIR/$fn"; echo "OK ($(wc -c < "$OUTDIR/$fn" | tr -d \' \') bytes)"; else echo "SKIP"; fi; }',
-'',
+'command -v aws &>/dev/null || { echo "ERROR: AWS CLI not found" >&2; exit 1; }',
+'_has_data(){ python3 -c "import json,sys;d=json.load(sys.stdin);sys.exit(0 if any(isinstance(v,list) and len(v)>0 for v in d.values()) else 1)" 2>/dev/null; }',
+'AWS_FLAGS=();CUR_OUT=""',
+'run(){ local label="$1" fn="$2"; shift 2; printf "  %-35s" "$label..."; if output=$(aws "${AWS_FLAGS[@]}" "$@" 2>&1); then if printf \'%s\' "$output" | _has_data; then echo "$output" > "$CUR_OUT/$fn"; echo "OK ($(wc -c < "$CUR_OUT/$fn" | tr -d \' \') bytes)"; else echo "SKIP (empty)"; fi; else echo "SKIP"; fi; }',
+'has_resources(){ local r; r=$(aws "${AWS_FLAGS[@]}" ec2 describe-vpcs --query \'Vpcs[?IsDefault==`false`].VpcId\' --output json 2>/dev/null) || return 1; [ "$(printf \'%s\' "$r" | python3 -c \'import json,sys;print(len(json.load(sys.stdin)))\' 2>/dev/null)" != "0" ]; }',
+'export_all(){',
+'mkdir -p "$CUR_OUT"',
 'echo "── Network ─────────────────────────────────"',
 'run "VPCs"                    "vpcs.json"                    ec2 describe-vpcs',
 'run "Subnets"                 "subnets.json"                 ec2 describe-subnets',
@@ -18852,27 +19541,86 @@ document.getElementById('dlBash').addEventListener('click',function(){
 'echo "── IAM ─────────────────────────────────────"',
 'run "IAM Authorization"       "iam.json"                     iam get-account-authorization-details',
 '',
-'echo "── ECS (multi-step) ────────────────────────"',
+'echo "── Multi-step ─────────────────────────────"',
+'if [ -f "$CUR_OUT/hosted-zones.json" ]; then',
+'  printf "  %-35s" "Route 53 Records..."',
+'  zones=$(python3 -c "import json;[print(z[\'Id\'].split(\'/\')[-1]) for z in json.load(open(\'$CUR_OUT/hosted-zones.json\')).get(\'HostedZones\',[])]" 2>/dev/null || true)',
+'  echo \'{"RecordSets":[]}\' > "$CUR_OUT/r53-records.json"',
+'  for zid in $zones; do',
+'    [[ ! "$zid" =~ ^[A-Z0-9]+$ ]] && continue',
+'    if rr=$(aws "${AWS_FLAGS[@]}" route53 list-resource-record-sets --hosted-zone-id "$zid" 2>/dev/null); then',
+'      printf \'%s\' "$rr" > "$CUR_OUT/_tmp_r53.json"',
+'      python3 -c "import json;a=json.load(open(\'$CUR_OUT/r53-records.json\'));b=json.load(open(\'$CUR_OUT/_tmp_r53.json\'));a[\'RecordSets\'].extend(b.get(\'ResourceRecordSets\',[]));json.dump(a,open(\'$CUR_OUT/r53-records.json\',\'w\'))" 2>/dev/null',
+'    fi',
+'  done',
+'  rm -f "$CUR_OUT/_tmp_r53.json"',
+'  count=$(python3 -c "import json;print(len(json.load(open(\'$CUR_OUT/r53-records.json\')).get(\'RecordSets\',[])))" 2>/dev/null || echo 0)',
+'  if [ "$count" = "0" ]; then rm -f "$CUR_OUT/r53-records.json"; echo "SKIP (empty)"; else echo "OK ($count records)"; fi',
+'fi',
 'printf "  %-35s" "ECS Services..."',
 'if clusters=$(aws "${AWS_FLAGS[@]}" ecs list-clusters --query \'clusterArns[]\' --output text 2>&1) && [ -n "$clusters" ] && [ "$clusters" != "None" ]; then',
-'  echo \'{"services":[]}\' > "$OUTDIR/ecs-services.json"',
+'  echo \'{"services":[]}\' > "$CUR_OUT/ecs-services.json"',
 '  for cluster in $clusters; do',
 '    [[ ! "$cluster" =~ ^arn:aws ]] && continue',
 '    svc_arns=$(aws "${AWS_FLAGS[@]}" ecs list-services --cluster "$cluster" --query \'serviceArns[]\' --output text 2>/dev/null || true)',
 '    if [ -n "$svc_arns" ] && [ "$svc_arns" != "None" ]; then',
 '      for svc_arn in $svc_arns; do',
 '        [[ ! "$svc_arn" =~ ^arn:aws ]] && continue',
-'        aws "${AWS_FLAGS[@]}" ecs describe-services --cluster "$cluster" --services "$svc_arn" > "$OUTDIR/_tmp_ecs.json" 2>/dev/null && \\',
-'        python3 -c "import json,sys;a=json.load(open(sys.argv[1]));b=json.load(open(sys.argv[2]));a[\'services\'].extend(b.get(\'services\',[]));json.dump(a,open(sys.argv[1],\'w\'))" "$OUTDIR/ecs-services.json" "$OUTDIR/_tmp_ecs.json" 2>/dev/null',
+'        aws "${AWS_FLAGS[@]}" ecs describe-services --cluster "$cluster" --services "$svc_arn" > "$CUR_OUT/_tmp_ecs.json" 2>/dev/null && \\',
+'        python3 -c "import json,sys;a=json.load(open(sys.argv[1]));b=json.load(open(sys.argv[2]));a[\'services\'].extend(b.get(\'services\',[]));json.dump(a,open(sys.argv[1],\'w\'))" "$CUR_OUT/ecs-services.json" "$CUR_OUT/_tmp_ecs.json" 2>/dev/null',
 '      done',
 '    fi',
 '  done',
-'  rm -f "$OUTDIR/_tmp_ecs.json"; echo "OK"',
+'  rm -f "$CUR_OUT/_tmp_ecs.json"; echo "OK"',
 'else echo "SKIP (no clusters)"; fi',
+'}',
 '',
+'echo "AWS Network Mapper — Data Export"',
 'echo ""',
-'echo "Done! $(ls -1 "$OUTDIR"/*.json 2>/dev/null | wc -l | tr -d \' \') files exported ($(du -sh "$OUTDIR" | cut -f1))"',
-'echo "Output: $OUTDIR"',
+'PROF_LIST=()',
+'if [[ -n "$PROFILES" ]]; then IFS=\',\' read -ra PROF_LIST <<< "$PROFILES"',
+'elif [[ -n "$PROFILE" ]]; then PROF_LIST=("$PROFILE"); fi',
+'if [[ ${#PROF_LIST[@]} -gt 0 ]]; then',
+'  [[ -z "$OUTDIR" ]] && OUTDIR="./aws-export-multi-$(date +%Y%m%d-%H%M%S)"',
+'  echo "  Profiles: ${PROF_LIST[*]}"',
+'  for prof in "${PROF_LIST[@]}"; do',
+'    prof=$(echo "$prof" | xargs)',
+'    echo ""; echo "=== Profile: $prof ==="',
+'    if $ALL_REGIONS; then',
+'      regions=$(aws --profile "$prof" ec2 describe-regions --query \'Regions[].RegionName\' --output text 2>/dev/null | tr \'\\t\' \'\\n\' | sort)',
+'      skip=0',
+'      for reg in $regions; do',
+'        AWS_FLAGS=(--profile "$prof" --region "$reg")',
+'        if ! has_resources; then skip=$((skip+1)); continue; fi',
+'        echo "  Region: $reg"; CUR_OUT="$OUTDIR/$prof/$reg"; export_all',
+'      done',
+'      [ $skip -gt 0 ] && echo "  Skipped $skip empty regions"',
+'    else',
+'      AWS_FLAGS=(--profile "$prof"); [[ -n "$REGION" ]] && AWS_FLAGS+=(--region "$REGION")',
+'      CUR_OUT="$OUTDIR/$prof"; export_all',
+'    fi',
+'  done',
+'elif $ALL_REGIONS; then',
+'  AWS_FLAGS=(); [[ -n "$PROFILE" ]] && AWS_FLAGS+=(--profile "$PROFILE")',
+'  [[ -z "$OUTDIR" ]] && OUTDIR="./aws-export-${PROFILE:-default}-allregions-$(date +%Y%m%d-%H%M%S)"',
+'  regions=$(aws "${AWS_FLAGS[@]}" ec2 describe-regions --query \'Regions[].RegionName\' --output text 2>/dev/null | tr \'\\t\' \'\\n\' | sort)',
+'  echo "  Mode: All Regions  Profile: ${PROFILE:-default}"; skip=0',
+'  for reg in $regions; do',
+'    AWS_FLAGS=(); [[ -n "$PROFILE" ]] && AWS_FLAGS+=(--profile "$PROFILE"); AWS_FLAGS+=(--region "$reg")',
+'    if ! has_resources; then echo "  $reg — empty, skipping"; skip=$((skip+1)); continue; fi',
+'    echo "  Region: $reg"; CUR_OUT="$OUTDIR/$reg"; export_all',
+'  done',
+'  [ $skip -gt 0 ] && echo "  Skipped $skip empty regions"',
+'else',
+'  AWS_FLAGS=(); [[ -n "$PROFILE" ]] && AWS_FLAGS+=(--profile "$PROFILE"); [[ -n "$REGION" ]] && AWS_FLAGS+=(--region "$REGION")',
+'  [[ -z "$OUTDIR" ]] && OUTDIR="./aws-export-${PROFILE:-default}-$(date +%Y%m%d-%H%M%S)"',
+'  echo "  Profile: ${PROFILE:-default}  Region: ${REGION:-default}  Output: $OUTDIR"',
+'  CUR_OUT="$OUTDIR"; export_all',
+'fi',
+'echo ""',
+'count=$(find "$OUTDIR" -name \'*.json\' 2>/dev/null | wc -l | tr -d \' \')',
+'size=$(du -sh "$OUTDIR" 2>/dev/null | cut -f1)',
+'echo "Done! $count files ($size) -> $OUTDIR"',
 'echo "Drag folder onto Upload JSON Files or paste individually."'
   ].join('\n');
   var blob=new Blob([script],{type:'text/x-shellscript'});
@@ -18903,13 +19651,18 @@ document.getElementById('dlPowershell').addEventListener('click',function(){
 '    ./export-aws-data.ps1',
 '    ./export-aws-data.ps1 -Profile prod -Region us-west-2',
 '    ./export-aws-data.ps1 -Profile prod -AllRegions -MaxParallel 8',
+'    ./export-aws-data.ps1 -Profiles dev,staging,prod -AllRegions',
 '#>',
 '[CmdletBinding()]',
-'param([Alias("p")][string]$Profile,[Alias("r")][string]$Region,[Alias("o")][string]$OutputDir,[switch]$AllRegions,[int]$MaxParallel=6)',
+'param([Alias("p")][string]$Profile,[Alias("r")][string]$Region,[Alias("o")][string]$OutputDir,[switch]$AllRegions,[string[]]$Profiles,[int]$MaxParallel=6)',
 '$ErrorActionPreference="Stop"',
+'if(-not $PSBoundParameters.ContainsKey(\'Profile\')){$Profile=$null}',
 'if($Profile -and $Profile -notmatch \'^[a-zA-Z0-9_-]+$\'){Write-Error "Invalid profile";exit 1}',
 'if($Region -and $Region -notmatch \'^[a-zA-Z0-9-]+$\'){Write-Error "Invalid region";exit 1}',
 'if(-not(Get-Command aws -ErrorAction SilentlyContinue)){Write-Error "AWS CLI not found";exit 1}',
+'$profileList=@()',
+'if($Profiles){$profileList=@($Profiles|ForEach-Object{$_ -split ","}|ForEach-Object{$_.Trim()}|Where-Object{$_})}',
+'if($Profile -and $profileList.Count -eq 0){$profileList=@($Profile)}',
 '$awsFlags=@(); if($Profile){$awsFlags+=@("--profile",$Profile)}',
 'function Get-BaseFlags([string]$reg){$f=@();if($Profile){$f+=@("--profile",$Profile)};if($reg){$f+=@("--region",$reg)};return $f}',
 '$exports=@(',
@@ -18954,18 +19707,45 @@ document.getElementById('dlPowershell').addEventListener('click',function(){
 '    @{services=$allSvcs}|ConvertTo-Json -Depth 10|Out-File(Join-Path $OutPath "ecs-services.json")-Encoding utf8',
 '    Write-Host " OK ($($allSvcs.Count))" -ForegroundColor Green',
 '  }catch{Write-Host " SKIP" -ForegroundColor Yellow}}',
+'function Export-R53Records{param([string[]]$Flags,[string]$OutPath)',
+'  $zf=Join-Path $OutPath "hosted-zones.json";if(-not(Test-Path $zf)){return}',
+'  $zones=(Get-Content $zf -Raw|ConvertFrom-Json).HostedZones;if(-not $zones -or $zones.Count -eq 0){return}',
+'  $all=@();foreach($z in $zones){$zid=$z.Id -replace "/hostedzone/","";if($zid -notmatch "^[A-Z0-9]+$"){continue}',
+'    Write-Host "    R53 ($zid)..." -NoNewline',
+'    try{$raw=& aws @Flags route53 list-resource-record-sets --hosted-zone-id $zid 2>&1',
+'      if($LASTEXITCODE -eq 0){$d=$raw|ConvertFrom-Json;$all+=$d.ResourceRecordSets;Write-Host " OK" -ForegroundColor Green}',
+'      else{Write-Host " SKIP" -ForegroundColor Yellow}}catch{Write-Host " SKIP" -ForegroundColor Yellow}}',
+'  if($all.Count -gt 0){@{RecordSets=$all}|ConvertTo-Json -Depth 10|Out-File(Join-Path $OutPath "r53-records.json")-Encoding utf8}}',
 'function Export-Region{param([string]$RegionName,[string]$OutPath,[int]$Parallel)',
 '  $flags=Get-BaseFlags $RegionName;New-Item -ItemType Directory -Path $OutPath -Force|Out-Null',
 '  $results=$exports|ForEach-Object -ThrottleLimit $Parallel -Parallel{',
 '    $fp=Join-Path $using:OutPath $_.File',
 '    try{$r=& aws @using:flags @($_.Cmd) 2>&1',
-'      if($LASTEXITCODE -eq 0){$r|Out-File -FilePath $fp -Encoding utf8;$sz=(Get-Item $fp).Length;@{L=$_.Label;S="OK";D="${sz} bytes"}}',
+'      if($LASTEXITCODE -eq 0){$j=($r|Out-String)|ConvertFrom-Json;$hd=$false;foreach($p in $j.PSObject.Properties){if($p.Value -is [System.Array] -and $p.Value.Count -gt 0){$hd=$true;break}};if($hd){$r|Out-File -FilePath $fp -Encoding utf8;$sz=(Get-Item $fp).Length;@{L=$_.Label;S="OK";D="${sz} bytes"}}else{@{L=$_.Label;S="SKIP";D="empty"}}}',
 '      else{$m=($r|Out-String).Trim();if($m.Length -gt 60){$m=$m.Substring(0,60)};@{L=$_.Label;S="SKIP";D=$m}}}',
 '    catch{@{L=$_.Label;S="SKIP";D=$_.Exception.Message.Substring(0,[Math]::Min(60,$_.Exception.Message.Length))}}}',
 '  foreach($r in $results){$c=if($r.S -eq "OK"){"Green"}else{"Yellow"};Write-Host("  {0,-30} {1} ({2})" -f $r.L,$r.S,$r.D)-ForegroundColor $c}',
-'  Export-EcsServices -Flags $flags -OutPath $OutPath}',
+'  Export-EcsServices -Flags $flags -OutPath $OutPath',
+'  Export-R53Records -Flags $flags -OutPath $OutPath}',
 'Write-Host "`n  AWS Network Mapper - Data Export (PowerShell)`n" -ForegroundColor Magenta',
-'if($AllRegions){',
+'function Test-HasResources([string[]]$f){try{$r=& aws @f ec2 describe-vpcs --query \'Vpcs[?IsDefault==`false`].VpcId\' --output json 2>&1;if($LASTEXITCODE -ne 0){return $false};$v=$r|ConvertFrom-Json;return($v.Count -gt 0)}catch{return $false}}',
+'if($Profiles){',
+'  if(-not $OutputDir){$ts=Get-Date -Format "yyyyMMdd-HHmmss";$OutputDir="./aws-export-multi-${ts}"}',
+'  New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null',
+'  Write-Host "  Profiles: $($profileList -join \', \')`n" -ForegroundColor Cyan',
+'  foreach($prof in $profileList){',
+'    $Profile=$prof;$awsFlags=@("--profile",$prof)',
+'    Write-Host "`n  === Profile: $prof ===" -ForegroundColor Magenta',
+'    $profDir=Join-Path $OutputDir $prof',
+'    if($AllRegions){',
+'      $rr=& aws @awsFlags ec2 describe-regions --query \'Regions[].RegionName\' --output json 2>&1',
+'      if($LASTEXITCODE -ne 0){Write-Host "  Failed to list regions" -ForegroundColor Red;continue}',
+'      $regions=$rr|ConvertFrom-Json|Sort-Object',
+'      $i=0;$skip=0;foreach($reg in $regions){$i++;$rf=Get-BaseFlags $reg;if(-not(Test-HasResources $rf)){$skip++;continue};Write-Host "  Region $i/$($regions.Count): $reg" -ForegroundColor Cyan',
+'        Export-Region -RegionName $reg -OutPath(Join-Path $profDir $reg)-Parallel $MaxParallel}',
+'      if($skip){Write-Host "  Skipped $skip empty regions" -ForegroundColor DarkGray}',
+'    }else{Export-Region -RegionName $Region -OutPath $profDir -Parallel $MaxParallel}}',
+'}elseif($AllRegions){',
 '  Write-Host "  Mode: All Regions (parallel x$MaxParallel)" -ForegroundColor Cyan',
 '  $rr=& aws @awsFlags ec2 describe-regions --query \'Regions[].RegionName\' --output json 2>&1',
 '  if($LASTEXITCODE -ne 0){Write-Error "Failed: $rr";exit 1}',
@@ -18973,8 +19753,9 @@ document.getElementById('dlPowershell').addEventListener('click',function(){
 '  if(-not $OutputDir){$ts=Get-Date -Format "yyyyMMdd-HHmmss";$lb=if($Profile){$Profile}else{"default"};$OutputDir="./aws-export-${lb}-allregions-${ts}"}',
 '  New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null',
 '  Write-Host "  $($regions.Count) regions -> $OutputDir`n"',
-'  $i=0;foreach($reg in $regions){$i++;Write-Host "  Region $i/$($regions.Count): $reg" -ForegroundColor Cyan',
+'  $i=0;$skip=0;foreach($reg in $regions){$i++;$rf=Get-BaseFlags $reg;if(-not(Test-HasResources $rf)){$skip++;Write-Host "  Region $i/$($regions.Count): $reg — empty, skipping" -ForegroundColor DarkGray;continue};Write-Host "  Region $i/$($regions.Count): $reg" -ForegroundColor Cyan',
 '    Export-Region -RegionName $reg -OutPath(Join-Path $OutputDir $reg)-Parallel $MaxParallel}',
+'  if($skip){Write-Host "  Skipped $skip empty regions" -ForegroundColor DarkGray}',
 '}else{',
 '  if(-not $OutputDir){$ts=Get-Date -Format "yyyyMMdd-HHmmss";$lb=if($Profile){$Profile}else{"default"};$OutputDir="./aws-export-${lb}-${ts}"}',
 '  Write-Host "  Profile: $($Profile ? $Profile : \'default\')  Region: $($Region ? $Region : \'default\')  Output: $OutputDir`n"',
@@ -23327,6 +24108,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='G'&&e.shiftKey){if(_udashTab==='classification'){closeUnifiedDash()}else{openUnifiedDash('classification')}return}
   if(e.key==='B'&&e.shiftKey){if(_udashTab==='budr'){closeUnifiedDash()}else{openUnifiedDash('budr')}return}
   if(e.key==='C'&&e.shiftKey){if(_udashTab==='compliance'){closeUnifiedDash()}else{openUnifiedDash('compliance')}return}
+  if(e.key==='I'&&e.shiftKey){if(_udashTab==='inventory'){closeUnifiedDash()}else{openUnifiedDash('inventory')}return}
   if(e.key==='D'&&e.shiftKey){if(_diffMode)exitDiffMode();else document.getElementById('diffFileInput').click();return}
   if(e.key==='d'&&!e.shiftKey){if(_designMode)exitDesignMode();else enterDesignMode();return}
   if(e.key==='z'&&_designMode){undoLastChange();return}

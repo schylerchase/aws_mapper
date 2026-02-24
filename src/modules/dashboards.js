@@ -32,7 +32,12 @@ var _UDASH_TABS = [
     if(!_budrAssessments.length){_showToast('No resources to assess');return false}
     return true;
   }, render:function(){ _renderBUDRDash(); }},
-  {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }}
+  {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }},
+  {id:'inventory', label:'Inventory', color:'#f97316', icon:'', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    if(!_inventoryData.length) _buildInventoryData();
+    return _inventoryData.length>0;
+  }, render:function(){ _renderInventoryTab(); }}
 ];
 
 function openUnifiedDash(tabId){
@@ -51,6 +56,7 @@ function openUnifiedDash(tabId){
   document.getElementById('udashToolbar').style.display='';
   _govToolbarTab=null;
   _compToolbarTab=null;
+  _invToolbarRendered=false;
   el.classList.add('open');
   if(!wasOpen) el.offsetHeight; // force reflow only on first open
   _renderUdashTabs();
@@ -75,6 +81,7 @@ function _switchUdashTab(tabId){
   // Reset toolbar tab guards
   _govToolbarTab=null;
   _compToolbarTab=null;
+  _invToolbarRendered=false;
   tab.render();
 }
 
@@ -841,4 +848,5 @@ function _openRulesEditor(){
 
 // Governance event listeners
 document.getElementById('govBtn').addEventListener('click',function(){openUnifiedDash('classification')});
+document.getElementById('inventoryBtn').addEventListener('click',function(){openUnifiedDash('inventory')});
 

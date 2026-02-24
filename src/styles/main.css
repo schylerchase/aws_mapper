@@ -188,7 +188,8 @@
   .route-label-g{display:none;pointer-events:none}.route-label-g.visible{display:block}
   .label-layer{pointer-events:none}
   .internet-label{font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:600;fill:var(--text-secondary)}
-  @keyframes dashFlow{from{stroke-dashoffset:0}to{stroke-dashoffset:-18}}
+  @keyframes dashFlow{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
+  @keyframes dashFlowIn{from{stroke-dashoffset:0}to{stroke-dashoffset:-18}}
   .animated{animation:dashFlow 1s linear infinite}
   .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:6;flex-direction:column}
   .export-btn{padding:8px 12px;background:rgba(17,24,39,.92);border:1px solid var(--border);border-radius:5px;color:var(--text-secondary);font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--txt-scale));font-weight:500;cursor:pointer;backdrop-filter:blur(8px);transition:all .15s;text-align:left;white-space:nowrap}
@@ -1005,6 +1006,7 @@
   .flow-step .fs-rule{font-size:9px;color:var(--accent-cyan);margin-top:2px;padding:3px 6px;background:rgba(6,182,212,.06);border-radius:3px;display:inline-block}
   .flow-step .fs-suggestion{font-size:9px;color:var(--accent-orange);margin-top:4px}
   @keyframes flow-dash{0%{stroke-dashoffset:24}100%{stroke-dashoffset:0}}
+  @keyframes flow-dash-reverse{0%{stroke-dashoffset:0}100%{stroke-dashoffset:24}}
   .flow-selecting .subnet-node,.flow-selecting .res-node,.flow-selecting .gw-node,.flow-selecting .lz-gw-node,.flow-selecting .internet-node{cursor:crosshair !important}
   .flow-selecting .subnet-node:hover rect,.flow-selecting .res-node:hover rect{filter:drop-shadow(0 0 6px #22d3ee) !important}
   .flow-selecting .internet-node:hover circle{filter:drop-shadow(0 0 8px #22d3ee) !important}
@@ -1016,9 +1018,9 @@
   .flow-fwd-arrow{fill:none;stroke:#10b981;stroke-width:2.5;stroke-dasharray:6 3;animation:flow-dash .8s linear infinite;pointer-events:none;opacity:.85}
   .fa-fwd-target{filter:drop-shadow(0 0 6px rgba(16,185,129,.5));stroke:#10b981 !important;stroke-width:2 !important}
   .fa-ingress-target{fill:rgba(16,185,129,.18) !important;filter:drop-shadow(0 0 18px rgba(16,185,129,1)) drop-shadow(0 0 8px rgba(16,185,129,.9));stroke:#10b981 !important;stroke-width:3.5 !important;opacity:1 !important}
-  .flow-egress-arrow{fill:none;stroke:#fb923c;stroke-width:2.5;stroke-dasharray:8 4;animation:flow-dash .8s linear infinite;pointer-events:none;opacity:.9}
+  .flow-egress-arrow{fill:none;stroke:#fb923c;stroke-width:3;stroke-dasharray:8 4;animation:flow-dash-reverse .8s linear infinite;pointer-events:none;opacity:.9}
   .flow-egress-gw{fill:none;stroke:#fb923c;stroke-width:3.5;stroke-dasharray:none;pointer-events:none;opacity:1}
-  .flow-egress-backbone{fill:none;stroke:#fb923c;stroke-width:4;stroke-dasharray:10 5;animation:flow-dash .9s linear infinite;pointer-events:none;opacity:.85}
+  .flow-egress-backbone{fill:none;stroke:#fb923c;stroke-width:4;stroke-dasharray:10 5;animation:flow-dash-reverse .9s linear infinite;pointer-events:none;opacity:.85}
   .fa-egress-source{fill:rgba(251,146,60,.18) !important;filter:drop-shadow(0 0 18px rgba(251,146,60,1)) drop-shadow(0 0 8px rgba(251,146,60,.8));stroke:#fb923c !important;stroke-width:3 !important;opacity:1 !important}
   .fa-bastion-target{fill:rgba(139,92,246,.18) !important;filter:drop-shadow(0 0 18px rgba(139,92,246,1)) drop-shadow(0 0 8px rgba(139,92,246,.8));stroke:#8b5cf6 !important;stroke-width:3 !important;opacity:1 !important}
   .fa-flow-bright text{paint-order:stroke fill;stroke:rgba(0,0,0,.85);stroke-width:3px;stroke-linejoin:round}
@@ -1053,10 +1055,10 @@
   .fa-active .lines-layer .peering-group{opacity:.05;transition:opacity .3s}
   .fa-active .lines-layer .peering-label-g{opacity:.05;transition:opacity .3s}
   .fa-active .label-layer{opacity:.1;transition:opacity .3s}
-  .fa-hl-ingress{stroke:#10b981 !important;stroke-width:5px !important;opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
+  .fa-hl-ingress{stroke:#10b981 !important;stroke-width:5px !important;opacity:1 !important;animation:dashFlowIn 1s linear infinite !important;stroke-dasharray:8 5 !important}
   /* Connected ingress backbone + vertical drops */
   .flow-ingress-backbone{stroke:#10b981;stroke-width:4;fill:none;opacity:.85;stroke-dasharray:10 5;animation:flow-dash .9s linear infinite}
-  .flow-ingress-drop{stroke:#10b981;stroke-width:2.5;fill:none;opacity:.7;stroke-dasharray:6 4;animation:dashFlow 1s linear infinite}
+  .flow-ingress-drop{stroke:#10b981;stroke-width:2.5;fill:none;opacity:.7;stroke-dasharray:6 4;animation:dashFlowIn 1s linear infinite}
   .fa-hl-egress{stroke:#fb923c !important;stroke-width:5px !important;opacity:1 !important;animation:dashFlow 1s linear infinite !important;stroke-dasharray:8 5 !important}
   .tier-badge{pointer-events:none;transition:opacity .2s}
   .fa-tier-row{padding:6px 10px;border-radius:4px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;font-size:10px;font-family:'IBM Plex Mono',monospace;margin-bottom:3px}

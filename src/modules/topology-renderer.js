@@ -1031,6 +1031,9 @@ function _renderMapInner(){
     return dirA-dirB;
   });
 
+  // Per-subnet exit counter: stagger X origin when multiple gateways connect to same subnet
+  const subExitCount={};
+
   sortedTgEntries.forEach(([key,conns])=>{
     const gid=conns[0].gid,vid=conns[0].vid;
     const gp=gwP.get(gid);if(!gp)return;
@@ -1099,24 +1102,38 @@ function _renderMapInner(){
       // Exit from top of subnet if going UP, bottom if going DOWN
       const sy=goingUp?(c.sl.y+6):(c.sl.y+c.sl.h-6);
 
+      // Stagger: 2nd+ connections get a visible step outside the subnet edge
+      const exitIdx=subExitCount[c.sid]=(subExitCount[c.sid]||0)+1;
+      const stepN=exitIdx-1; // 0 for first connection, 1+ for subsequent
+      const stepX=10; // horizontal distance of notch past subnet edge
+      const stepY=8;  // vertical shift per stagger level
+
       // Check if horizontal line would cross any gateway circle (not our own)
-      let d;
+      let d,endY=sy;
       if(gwLeft){
-        // Left-side gateways: route line goes LEFT from subnet left edge
         const subLeft=c.sl.x;
         const crossingGw=vpcGwPositions.find(g=>g!==gp&&Math.abs(g.y-sy)<GR+8&&g.x<subLeft&&g.x>tx);
-        if(crossingGw){
+        if(stepN>0){
+          const notchX=subLeft-stepX;
+          endY=sy+(goingUp?stepN*stepY:-stepN*stepY);
+          d=`M${subLeft},${sy} L${notchX},${sy} L${notchX},${endY} L${tx},${endY}`;
+        }else if(crossingGw){
           const jogY=sy<crossingGw.y?(crossingGw.y-GR-10):(crossingGw.y+GR+10);
+          endY=sy;
           d=`M${subLeft},${sy} L${crossingGw.x+GR+6},${sy} L${crossingGw.x+GR+6},${jogY} L${tx},${jogY} L${tx},${sy}`;
         }else{
           d=`M${subLeft},${sy} L${tx},${sy}`;
         }
       }else{
-        // Right-side gateways: route line goes RIGHT from subnet right edge
         const subRight=c.sl.x+c.sl.w;
         const crossingGw=vpcGwPositions.find(g=>g!==gp&&Math.abs(g.y-sy)<GR+8&&g.x>subRight&&g.x<tx);
-        if(crossingGw){
+        if(stepN>0){
+          const notchX=subRight+stepX;
+          endY=sy+(goingUp?stepN*stepY:-stepN*stepY);
+          d=`M${subRight},${sy} L${notchX},${sy} L${notchX},${endY} L${tx},${endY}`;
+        }else if(crossingGw){
           const jogY=sy<crossingGw.y?(crossingGw.y-GR-10):(crossingGw.y+GR+10);
+          endY=sy;
           d=`M${subRight},${sy} L${crossingGw.x-GR-6},${sy} L${crossingGw.x-GR-6},${jogY} L${tx},${jogY} L${tx},${sy}`;
         }else{
           d=`M${subRight},${sy} L${tx},${sy}`;
@@ -1124,7 +1141,7 @@ function _renderMapInner(){
       }
       structG.append('path').attr('class','route-line route-structural').attr('d',d).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
       // Solid filled square at trunk junction to cover dash-pattern gaps
-      const jd=`M${tx-3},${sy-3} L${tx+3},${sy-3} L${tx+3},${sy+3} L${tx-3},${sy+3} Z`;
+      const jd=`M${tx-3},${endY-3} L${tx+3},${endY-3} L${tx+3},${endY+3} L${tx-3},${endY+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',jd).attr('stroke',col).attr('fill',col).attr('stroke-width',1).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
       lnL.append('path').attr('class','route-hitarea').attr('d',d)
         .on('mouseenter',()=>{if(!_hlLocked)hlSub(c.sid)}).on('mouseleave',clr)
