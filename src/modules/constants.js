@@ -12,9 +12,9 @@ export const SEV_ORDER = {
 // Framework display labels
 export const FW_LABELS = {
   CIS: 'CIS Benchmark',
-  WAF: 'Well-Architected Framework',
+  WAF: 'AWS WAF',
   IAM: 'IAM Security',
-  ARCH: 'Best Practices',
+  ARCH: 'Well-Architected Framework',
   SOC2: 'SOC 2',
   PCI: 'PCI DSS 4',
   BUDR: 'Backup & DR'

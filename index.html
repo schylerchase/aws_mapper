@@ -16,7 +16,7 @@
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.0.0</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.1.0</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -82,7 +82,7 @@
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.0.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.1.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -19393,23 +19393,23 @@ async function _xlsxInjectLogo(zip){
       ctXml=ctXml.replace('</Types>','<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
     }
     zip.file('[Content_Types].xml',ctXml);
-    // Calculate size in EMUs (1 inch = 914400 EMUs), max 1.5" x 0.75"
-    var maxW=1371600,maxH=685800;
+    // Calculate size in EMUs (1 inch = 914400 EMUs), max 2" x 1"
+    var maxW=1828800,maxH=914400;
     var aspect=logo.width/logo.height;
     var w=maxW,h=maxW/aspect;
     if(h>maxH){h=maxH;w=maxH*aspect;}
-    // Drawing XML — twoCellAnchor at top-right (col 3, row 0)
+    // Drawing XML — oneCellAnchor preserves aspect ratio (not stretched to cell bounds)
     var drawXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+
-      '<xdr:twoCellAnchor editAs="oneCell">'+
-      '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'+
-      '<xdr:to><xdr:col>4</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>2</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>'+
-      '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr/></xdr:nvPicPr>'+
+      '<xdr:oneCellAnchor>'+
+      '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>38100</xdr:rowOff></xdr:from>'+
+      '<xdr:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/>'+
+      '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
       '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/>'+
       '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
       '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/></a:xfrm>'+
       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'+
-      '</xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>';
+      '</xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
     zip.file('xl/drawings/drawing1.xml',drawXml);
     // Drawing rels — link image
     zip.file('xl/drawings/_rels/drawing1.xml.rels',
