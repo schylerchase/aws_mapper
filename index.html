@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.2.0</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.3.0</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.2.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.3.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -1109,6 +1109,8 @@ function _rptCSS(){
     '.rpt-header{background:#1e293b;padding:32px;border-radius:8px;margin-bottom:32px}',
     '.rpt-header h1{margin:0 0 8px;font-size:28px;color:#f8fafc}',
     '.rpt-header .subtitle{color:#94a3b8;font-size:14px}',
+    '.rpt-logo{margin-bottom:16px}',
+    '.rpt-logo img{max-height:60px;max-width:200px;object-fit:contain}',
     '.rpt-toc{background:#1e293b;padding:20px 28px;border-radius:8px;margin-bottom:32px}',
     '.rpt-toc h2{margin:0 0 12px;font-size:18px;color:#f8fafc}',
     '.rpt-toc a{color:#60a5fa;text-decoration:none;display:block;padding:4px 0;font-size:14px}',
@@ -10442,9 +10444,55 @@ if(_isElectron){
     try{_loadProjectData(JSON.parse(content))}catch(ex){alert('Failed to load file: '+ex.message)}
   }));
 
-  // Update available
-  _unsubs.push(window.electronAPI.onUpdateAvailable(({version})=>{
-    _showToast('Update available: v'+version);
+  // Update available — show persistent banner with download/install controls
+  _unsubs.push(window.electronAPI.onUpdateAvailable(({version,currentVersion})=>{
+    var banner=document.getElementById('updateBanner');
+    if(!banner){
+      banner=document.createElement('div');banner.id='updateBanner';
+      banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#1e40af;color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;font-family:inherit';
+      document.body.appendChild(banner);
+    }
+    banner.innerHTML='';
+    var txt=document.createElement('span');
+    txt.textContent='Update available: v'+version+' (current: v'+(currentVersion||'?')+')';
+    var btn=document.createElement('button');
+    btn.textContent='Download';
+    btn.style.cssText='background:#fff;color:#1e40af;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-weight:600;font-size:12px';
+    btn.onclick=function(){
+      btn.disabled=true;btn.textContent='Downloading...';
+      window.electronAPI.downloadUpdate();
+    };
+    var dismiss=document.createElement('button');
+    dismiss.textContent='\u2715';
+    dismiss.style.cssText='background:none;border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px;opacity:.7';
+    dismiss.onclick=function(){banner.remove()};
+    banner.appendChild(txt);banner.appendChild(btn);banner.appendChild(dismiss);
+  }));
+  _unsubs.push(window.electronAPI.onUpdateDownloadProgress(({percent})=>{
+    var banner=document.getElementById('updateBanner');
+    if(!banner) return;
+    var btn=banner.querySelector('button');
+    if(btn) btn.textContent='Downloading... '+percent+'%';
+  }));
+  _unsubs.push(window.electronAPI.onUpdateDownloaded(()=>{
+    var banner=document.getElementById('updateBanner');
+    if(!banner) return;
+    banner.innerHTML='';
+    var txt=document.createElement('span');txt.textContent='Update downloaded and ready to install.';
+    var btn=document.createElement('button');
+    btn.textContent='Restart & Install';
+    btn.style.cssText='background:#fff;color:#1e40af;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-weight:600;font-size:12px';
+    btn.onclick=function(){window.electronAPI.installUpdate()};
+    var later=document.createElement('button');
+    later.textContent='Later';
+    later.style.cssText='background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px';
+    later.onclick=function(){banner.remove()};
+    banner.appendChild(txt);banner.appendChild(btn);banner.appendChild(later);
+  }));
+  _unsubs.push(window.electronAPI.onUpdateError((msg)=>{
+    var banner=document.getElementById('updateBanner');
+    if(banner) banner.remove();
+    _showToast('Update error: '+msg);
   }));
 
   // Import Folder button (native folder picker)
@@ -18881,7 +18929,11 @@ function _rptBuildHeader(){
   var sub=[];
   if(author) sub.push(author);
   if(date) sub.push(date);
-  return '<div class="rpt-header"><h1>'+title+'</h1>'+
+  var logoHtml='';
+  if(_rptState.logo&&_rptState.logo.dataUri){
+    logoHtml='<div class="rpt-logo"><img src="'+_rptState.logo.dataUri+'" alt="Logo" style="max-height:60px;max-width:200px;object-fit:contain"></div>';
+  }
+  return '<div class="rpt-header">'+logoHtml+'<h1>'+title+'</h1>'+
     (sub.length?'<div class="subtitle">'+sub.join(' &mdash; ')+'</div>':'')+
     '</div>';
 }
@@ -19471,16 +19523,15 @@ async function _xlsxInjectLogo(zip){
       ctXml=ctXml.replace('</Types>','<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
     }
     zip.file('[Content_Types].xml',ctXml);
-    // Calculate size in EMUs (1 inch = 914400 EMUs), max 1.5" x 0.75"
-    var maxW=1371600,maxH=685800;
+    // Fixed size: 1" x 0.5" in EMUs (1 inch = 914400 EMUs), anchored at A1
+    var w=914400,h=457200;
     var aspect=logo.width/logo.height;
-    var w=maxW,h=maxW/aspect;
-    if(h>maxH){h=maxH;w=maxH*aspect;}
-    // Drawing XML — oneCellAnchor preserves aspect ratio; col 4 = past data area
+    if(aspect>2){h=w/aspect;}else if(aspect<2){w=h*aspect;}
+    // Drawing XML — oneCellAnchor at A1 (col 0, row 0) with padding
     var drawXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+
       '<xdr:oneCellAnchor>'+
-      '<xdr:from><xdr:col>4</xdr:col><xdr:colOff>152400</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>38100</xdr:rowOff></xdr:from>'+
+      '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>76200</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>38100</xdr:rowOff></xdr:from>'+
       '<xdr:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/>'+
       '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
       '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/>'+

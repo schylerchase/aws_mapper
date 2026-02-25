@@ -409,38 +409,76 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
 
 // ── Auto-Update ───────────────────────────────────────────────────
 
-function checkForUpdates(manual = false) {
-  try {
-    autoUpdater.autoDownload = false;
-    autoUpdater.removeAllListeners('update-available');
-    autoUpdater.removeAllListeners('update-not-available');
-    autoUpdater.removeAllListeners('error');
-    autoUpdater.on('update-available', (info) => {
+let _updateNotified = false;
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    if (!_updateNotified) {
+      _updateNotified = true;
       mainWindow?.webContents.send('update:available', {
         version: info.version,
-        releaseNotes: info.releaseNotes
+        currentVersion: app.getVersion()
       });
+    }
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update:download-progress', {
+      percent: Math.round(progress.percent)
     });
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update:downloaded');
+  });
+
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update:error', err?.message || 'Update failed');
+  });
+}
+
+function checkForUpdates(manual = false) {
+  try {
     if (manual) {
-      autoUpdater.on('update-not-available', () => {
+      const manualNotAvail = () => {
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: 'No Updates',
-          message: `You're on the latest version (${app.getVersion()}).`
+          message: `You're on the latest version (v${app.getVersion()}).`
         });
-      });
-      autoUpdater.on('error', (err) => {
+      };
+      const manualErr = (err) => {
         dialog.showMessageBox(mainWindow, {
           type: 'warning',
           title: 'Update Check Failed',
           message: 'Could not check for updates.',
           detail: err?.message || ''
         });
-      });
+      };
+      autoUpdater.once('update-not-available', manualNotAvail);
+      autoUpdater.once('error', manualErr);
+      // Clean up one-time listeners after check completes
+      setTimeout(() => {
+        autoUpdater.removeListener('update-not-available', manualNotAvail);
+        autoUpdater.removeListener('error', manualErr);
+      }, 30000);
     }
     autoUpdater.checkForUpdates().catch((err) => { console.warn('Auto-update check failed:', err.message); });
   } catch (e) { console.warn('checkForUpdates error:', e.message); }
 }
+
+ipcMain.on('update:download', () => {
+  autoUpdater.downloadUpdate().catch((err) => {
+    mainWindow?.webContents.send('update:error', err?.message || 'Download failed');
+  });
+});
+
+ipcMain.on('update:install', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
 
 // ── Navigation Guards ─────────────────────────────────────────────
 
@@ -462,6 +500,7 @@ app.whenReady().then(() => {
   }
   buildMenu();
   createWindow();
+  setupAutoUpdater();
 
   // Check for updates after a short delay
   setTimeout(checkForUpdates, 5000);
