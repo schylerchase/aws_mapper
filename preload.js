@@ -78,6 +78,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('menu:scan-aws', handler);
   },
 
+  onMenuToggleTheme: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu:toggle-theme', handler);
+    return () => ipcRenderer.removeListener('menu:toggle-theme', handler);
+  },
+
   onFileOpened: (callback) => {
     const handler = (_event, content) => callback(content);
     ipcRenderer.on('file:opened', handler);

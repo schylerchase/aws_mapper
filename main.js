@@ -108,6 +108,12 @@ function buildMenu() {
         { role: 'resetZoom' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Toggle Light Mode',
+          accelerator: 'CmdOrCtrl+Shift+L',
+          click: () => mainWindow?.webContents.send('menu:toggle-theme')
+        },
         ...(!app.isPackaged ? [{ type: 'separator' }, { role: 'toggleDevTools' }] : [])
       ]
     },

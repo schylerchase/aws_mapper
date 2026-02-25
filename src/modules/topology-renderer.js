@@ -952,7 +952,7 @@ function _renderMapInner(){
     pg.append('rect')
       .attr('x', midX - pw / 2).attr('y', y - 9)
       .attr('width', pw).attr('height', 18).attr('rx', 3)
-      .attr('fill', 'rgba(10,14,23,.95)').attr('stroke', '#fb923c').attr('stroke-width', .5);
+      .attr('class','note-label-bg').attr('fill', 'var(--panel-bg)').attr('stroke', '#fb923c').attr('stroke-width', .5);
     pg.append('text')
       .attr('x', midX).attr('y', y + 4)
       .attr('text-anchor', 'middle').attr('font-family', 'IBM Plex Mono')
@@ -965,7 +965,7 @@ function _renderMapInner(){
     const vgwId=vpn.VpnGatewayId;if(!vgwId||!gwP.has(vgwId))return;
     const pos=gwP.get(vgwId);
     const vpnLbl='VPN: '+gn(vpn,'VPN');const vpnLblY=pos.y-GR-12;const vpnTw=vpnLbl.length*5.2+14;
-    ndL.append('rect').attr('x',pos.x-vpnTw/2).attr('y',vpnLblY-9).attr('width',vpnTw).attr('height',14).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(249,115,22,.3)').attr('stroke-width',.5);
+    ndL.append('rect').attr('x',pos.x-vpnTw/2).attr('y',vpnLblY-9).attr('width',vpnTw).attr('height',14).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','rgba(249,115,22,.3)').attr('stroke-width',.5);
     ndL.append('text').attr('x',pos.x).attr('y',vpnLblY).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','#f97316').text(vpnLbl);
   });
 
@@ -1194,7 +1194,7 @@ function _renderMapInner(){
       const anchor=(!sh&&gwLeft)?'start':'end';
       const rx=anchor==='end'?(lx-lw):lx;
       const textX=rx+lw/2;
-      lg.append('rect').attr('x',rx).attr('y',ly-8).attr('width',lw).attr('height',16).attr('rx',3).attr('fill','rgba(10,14,23,.92)').attr('stroke',colH).attr('stroke-width',.5);
+      lg.append('rect').attr('x',rx).attr('y',ly-8).attr('width',lw).attr('height',16).attr('rx',3).attr('class','route-label-bg').attr('fill','var(--panel-bg)').attr('stroke',colH).attr('stroke-width',.5);
       lg.append('text').attr('x',textX).attr('y',ly+3).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','500').attr('fill',colH).text(lt);
       allLb.push({gid,vid,shared:sh,lx:textX,lw,g:lg});
     }
@@ -1448,7 +1448,7 @@ function _renderMapInner(){
               .attr('fill',ch.col).text(ch.type);
             rG.append('text').attr('x',cx2+19).attr('y',cy2+ch2/2+2).attr('clip-path',`url(#${nameClip})`)
               .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))')
-              .attr('fill','rgba(255,255,255,.5)').text(ch.name+(ch.detail?' '+ch.detail:''));
+              .attr('fill','var(--text-secondary)').text(ch.name+(ch.detail?' '+ch.detail:''));
           });
         }
         rx+=iconW+RES_GAP;
@@ -1488,7 +1488,7 @@ function _renderMapInner(){
     const lblTxt=nm&&nm!==gw.id?nm:sid(gw.id);
     const lblClass=nm&&nm!==gw.id?'gw-name':'gw-id';
     const tw=lblTxt.length*6.2+16;
-    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
+    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
     gG.append('text').attr('class',lblClass).attr('x',pos.x).attr('y',lblY).attr('text-anchor','middle').text(lblTxt);
     gG.on('mouseenter',function(){
       if(_hlLocked) return;

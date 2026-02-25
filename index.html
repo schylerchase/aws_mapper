@@ -1,3 +1,4 @@
+<!-- #region HTML HEAD & SCRIPTS -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +6,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'">
 <title>AWS Network Topology Map</title>
+<script>
+/* Theme init — runs before CSS to avoid flash */
+(function(){
+  var saved=localStorage.getItem('theme');
+  var theme=saved||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');
+  if(theme==='light') document.documentElement.setAttribute('data-theme','light');
+})();
+function toggleTheme(){
+  var isLight=document.documentElement.getAttribute('data-theme')==='light';
+  var next=isLight?'dark':'light';
+  if(next==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem('theme',next);
+  var btn=document.getElementById('themeToggle');
+  if(btn) btn.textContent=next==='light'?'\u263E':'\u2606';
+}
+function _initThemeBtn(){
+  var btn=document.getElementById('themeToggle');
+  if(btn) btn.textContent=document.documentElement.getAttribute('data-theme')==='light'?'\u263E':'\u2606';
+}
+document.addEventListener('DOMContentLoaded',_initThemeBtn);
+</script>
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
@@ -12,6 +35,8 @@
 <link rel="stylesheet" href="src/styles/main.css?v=3">
 </head>
 <body>
+<!-- #endregion HTML HEAD & SCRIPTS -->
+<!-- #region HTML SIDEBAR -->
 <div class="sidebar">
   <div class="sidebar-header">
     <div class="brand-row">
@@ -23,6 +48,8 @@
       <button class="gtc-btn" id="gTxtDown">-</button>
       <span class="gtc-val" id="gTxtVal">100%</span>
       <button class="gtc-btn" id="gTxtUp">+</button>
+      <span style="flex:1"></span>
+      <button class="gtc-btn theme-toggle" id="themeToggle" title="Toggle light/dark mode" onclick="toggleTheme()">&#9734;</button>
     </div>
   </div>
   <div class="upload-row">
@@ -50,6 +77,8 @@
     <button class="btn btn-primary" id="renderBtn">Render Map</button>
   </div>
 </div>
+<!-- #endregion HTML SIDEBAR -->
+<!-- #region HTML MAIN CONTENT -->
 <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#x25C0;</button>
 <div class="main">
   <div class="grid-bg"></div>
@@ -514,7 +543,9 @@
     <div class="fw-fp-cli" id="fwFpCli"></div>
   </div>
 </div>
+<!-- #endregion HTML MAIN CONTENT -->
 <script>
+// #region INITIALIZATION & GLOBALS
 // Electron detection
 const _isElectron=!!(typeof window!=='undefined'&&window.electronAPI);
 
@@ -723,6 +754,8 @@ let _detailLevel=0; // 0=collapsed(VPC+subnet names), 1=normal(resources), 2=exp
 let _dnsRecordsExpanded=false; // DNS zones always show; toggle for individual record rows
 
 // Compliance engine now loaded from bundle (src/modules/compliance-engine.js)
+// #endregion INITIALIZATION & GLOBALS
+// #region BUDR ENGINE
 // === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
 const _BUDR_STRATEGY={hot:'Hot',warm:'Warm',pilot:'Pilot Light',cold:'Cold'};
 const _BUDR_STRATEGY_ORDER={hot:0,warm:1,pilot:2,cold:3};
@@ -1061,6 +1094,8 @@ const _RPT_MODULES=[
 ];
 var _rptState={order:null,title:'AWS Infrastructure Assessment',author:'',date:new Date().toISOString().slice(0,10),logo:null};
 
+// #endregion BUDR ENGINE
+// #region REPORT BUILDER
 // === REPORT RENDER FUNCTIONS ===
 
 function _rptCSS(){
@@ -2281,6 +2316,8 @@ const _complianceRefs={
   'BUDR-DR-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS DR Strategy'},
   'BUDR-DR-2':{url:'https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/ec2-backup.html',ref:'EC2 DR Strategy'},
 };
+// #endregion REPORT BUILDER
+// #region COMPLIANCE DASHBOARD
 let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:'action'};
 function renderCompliancePanel(findings,opts){
   _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:_compDashState.view||'action'};
@@ -2975,6 +3012,8 @@ function _addBUDRChip(sb2){
   sb2.appendChild(c);
 }
 
+// #endregion COMPLIANCE DASHBOARD
+// #region DESIGN MODE
 // === DESIGN MODE ===
 let _designMode=false;
 let _designChanges=[];
@@ -3939,6 +3978,8 @@ function exportCheckovCfn(){
   _showToast(count+' resources exported. Run: checkov -f checkov-template.json --framework cloudformation');
 }
 
+// #endregion DESIGN MODE
+// #region IAM ENGINE
 // === IAM OVERLAY ===
 // Helpers: ensure Statement is always an array; safe JSON parse for policy docs
 function _stmtArr(s){return Array.isArray(s)?s:s?[s]:[]}
@@ -4112,6 +4153,8 @@ function runIAMChecks(iamData){
   return f;
 }
 
+// #endregion IAM ENGINE
+// #region GOVERNANCE & INVENTORY
 // === GOVERNANCE: ASSET CLASSIFICATION ENGINE ===
 let _govDashState={tab:'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
 let _iamDashState={filter:'all',search:'',sort:'name',sortDir:'asc',page:1,perPage:50};
@@ -5256,6 +5299,8 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
   dpBody.querySelectorAll('.copyable').forEach(el=>{el.addEventListener('click',function(e){e.stopPropagation();navigator.clipboard.writeText(this.dataset.copy);const t=document.querySelector('.copy-toast');if(t){t.textContent='Copied!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1200)}})});
 }
 
+// #endregion GOVERNANCE & INVENTORY
+// #region UI UTILITIES & DETAIL PANELS
 function zoomToNode(selector){
   if(!_mapSvg||!_mapZoom||!_mapG)return;
   const el=_mapG.select(selector).node();if(!el)return;
@@ -6408,6 +6453,8 @@ function subMaxChildren(subId,ctx){
   return tree.length?Math.max(0,...tree.map(r=>(r.children||[]).length)):0;
 }
 
+// #endregion UI UTILITIES & DETAIL PANELS
+// #region TOPOLOGY RENDERER
 // Landing Zone Hub-Spoke D3 Layout
 function renderLandingZoneMap(ctx){
   const {vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,
@@ -7068,7 +7115,7 @@ function renderLandingZoneMap(ctx){
               .attr('fill',ch.col).text(ch.type);
             rG.append('text').attr('x',cx2+17).attr('y',cy2+ch2/2+2).attr('clip-path',`url(#${nameClip})`)
               .attr('font-family','IBM Plex Mono').style('font-size','calc(4px * var(--txt-scale,1))')
-              .attr('fill','rgba(255,255,255,.5)').text(ch.name+(ch.detail?' '+ch.detail:''));
+              .attr('fill','var(--text-secondary)').text(ch.name+(ch.detail?' '+ch.detail:''));
           });
         }
         rx+=iconW+LZ_RES_GAP;
@@ -7179,7 +7226,7 @@ function renderLandingZoneMap(ctx){
     const lzLblTxt=gwNm||sid(gw.id);
     const lzLblY=gwY+GR+14;
     const lzTw=lzLblTxt.length*5.2+14;
-    gG.append('rect').attr('x',gx-lzTw/2).attr('y',lzLblY-9).attr('width',lzTw).attr('height',14).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
+    gG.append('rect').attr('x',gx-lzTw/2).attr('y',lzLblY-9).attr('width',lzTw).attr('height',14).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
     gG.append('text').attr('x',gx).attr('y',lzLblY).attr('text-anchor','middle')
       .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',gwNm?'var(--text-secondary)':'var(--text-muted)').text(lzLblTxt);
 
@@ -7302,7 +7349,7 @@ function renderLandingZoneMap(ctx){
       const skLblTxt=sgNm||sid(gw.id);
       const skLblY=sgY+22;
       const skTw=skLblTxt.length*5.2+14;
-      gG.append('rect').attr('x',sgX-skTw/2).attr('y',skLblY-9).attr('width',skTw).attr('height',14).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
+      gG.append('rect').attr('x',sgX-skTw/2).attr('y',skLblY-9).attr('width',skTw).attr('height',14).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
       gG.append('text').attr('x',sgX).attr('y',skLblY).attr('text-anchor','middle')
         .attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',sgNm?'var(--text-secondary)':'var(--text-muted)').text(skLblTxt);
 
@@ -9077,7 +9124,7 @@ function _renderMapInner(){
     fwdLg.append('rect')
       .attr('x', fwdMidX - pw / 2).attr('y', fwdY - 9)
       .attr('width', pw).attr('height', 18).attr('rx', 3)
-      .attr('fill', 'rgba(10,14,23,.95)').attr('stroke', '#fb923c').attr('stroke-width', .5);
+      .attr('class','note-label-bg').attr('fill', 'var(--panel-bg)').attr('stroke', '#fb923c').attr('stroke-width', .5);
     fwdLg.append('text')
       .attr('x', fwdMidX).attr('y', fwdY + 4)
       .attr('text-anchor', 'middle').attr('font-family', 'IBM Plex Mono')
@@ -9102,7 +9149,7 @@ function _renderMapInner(){
     invLg.append('rect')
       .attr('x', invMidX - pw / 2).attr('y', invY - 9)
       .attr('width', pw).attr('height', 18).attr('rx', 3)
-      .attr('fill', 'rgba(10,14,23,.95)').attr('stroke', '#fb923c').attr('stroke-width', .5);
+      .attr('class','note-label-bg').attr('fill', 'var(--panel-bg)').attr('stroke', '#fb923c').attr('stroke-width', .5);
     invLg.append('text')
       .attr('x', invMidX).attr('y', invY + 4)
       .attr('text-anchor', 'middle').attr('font-family', 'IBM Plex Mono')
@@ -9115,7 +9162,7 @@ function _renderMapInner(){
     const vgwId=vpn.VpnGatewayId;if(!vgwId||!gwP.has(vgwId))return;
     const pos=gwP.get(vgwId);
     const vpnLbl='VPN: '+gn(vpn,'VPN');const vpnLblY=pos.y-GR-12;const vpnTw=vpnLbl.length*5.2+14;
-    ndL.append('rect').attr('x',pos.x-vpnTw/2).attr('y',vpnLblY-9).attr('width',vpnTw).attr('height',14).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(249,115,22,.3)').attr('stroke-width',.5);
+    ndL.append('rect').attr('x',pos.x-vpnTw/2).attr('y',vpnLblY-9).attr('width',vpnTw).attr('height',14).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','rgba(249,115,22,.3)').attr('stroke-width',.5);
     ndL.append('text').attr('x',pos.x).attr('y',vpnLblY).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','#f97316').text(vpnLbl);
   });
 
@@ -9330,7 +9377,7 @@ function _renderMapInner(){
       const anchor=(!sh&&gwLeft)?'start':'end';
       const rx=anchor==='end'?(lx-lw):lx;
       const textX=rx+lw/2;
-      lg.append('rect').attr('x',rx).attr('y',ly-8).attr('width',lw).attr('height',16).attr('rx',3).attr('fill','rgba(10,14,23,.92)').attr('stroke',colH).attr('stroke-width',.5);
+      lg.append('rect').attr('x',rx).attr('y',ly-8).attr('width',lw).attr('height',16).attr('rx',3).attr('class','route-label-bg').attr('fill','var(--panel-bg)').attr('stroke',colH).attr('stroke-width',.5);
       lg.append('text').attr('x',textX).attr('y',ly+3).attr('text-anchor','middle').attr('font-family','IBM Plex Mono').style('font-size','calc(8px * var(--txt-scale,1))').attr('font-weight','500').attr('fill',colH).text(lt);
       allLb.push({gid,vid,shared:sh,lx:textX,lw,g:lg});
     }
@@ -9595,7 +9642,7 @@ function _renderMapInner(){
               .attr('fill',ch.col).text(ch.type);
             rG.append('text').attr('x',cx2+19).attr('y',cy2+ch2/2+2).attr('clip-path',`url(#${nameClip})`)
               .attr('font-family','IBM Plex Mono').style('font-size','calc(6px * var(--txt-scale,1))')
-              .attr('fill','rgba(255,255,255,.5)').text(ch.name+(ch.detail?' '+ch.detail:''));
+              .attr('fill','var(--text-secondary)').text(ch.name+(ch.detail?' '+ch.detail:''));
           });
         }
         rx+=iconW+RES_GAP;
@@ -9635,7 +9682,7 @@ function _renderMapInner(){
     const lblTxt=nm&&nm!==gw.id?nm:sid(gw.id);
     const lblClass=nm&&nm!==gw.id?'gw-name':'gw-id';
     const tw=lblTxt.length*6.2+16;
-    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('fill','rgba(10,17,30,.88)').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',.5);
+    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
     gG.append('text').attr('class',lblClass).attr('x',pos.x).attr('y',lblY).attr('text-anchor','middle').text(lblTxt);
     gG.on('mouseenter',function(){
       if(_hlLocked) return;
@@ -10138,6 +10185,8 @@ document.getElementById('renderBtn').addEventListener('click',function(){
   renderMap(()=>{_autoSaveSession()});
 });
 
+// #endregion TOPOLOGY RENDERER
+// #region PROJECT IO & SEARCH
 // === SAVE / LOAD PROJECT ===
 function saveProject(){
   const project={_format:'awsmap',_version:_loadedContexts.length>1?'2.0':'1.0',created:new Date().toISOString(),
@@ -10388,6 +10437,7 @@ if(_isElectron){
   _unsubs.push(window.electronAPI.onMenuSave(()=>saveProject()));
   _unsubs.push(window.electronAPI.onMenuOpen(()=>document.getElementById('loadProjectBtn').click()));
   _unsubs.push(window.electronAPI.onMenuScanAWS(()=>_openScanModal()));
+  _unsubs.push(window.electronAPI.onMenuToggleTheme(()=>toggleTheme()));
   _unsubs.push(window.electronAPI.onFileOpened((content)=>{
     try{_loadProjectData(JSON.parse(content))}catch(ex){alert('Failed to load file: '+ex.message)}
   }));
@@ -10979,6 +11029,8 @@ function _openDetailForSearch(type,id){
   dp.classList.add('open');
 }
 
+// #endregion PROJECT IO & SEARCH
+// #region TIMELINE & ANNOTATIONS
 // === TIME-SERIES SNAPSHOTS ===
 const _SNAP_KEY=SNAP_KEY;
 const _MAX_SNAPSHOTS=MAX_SNAPSHOTS;
@@ -11367,6 +11419,8 @@ document.getElementById('snapBtn').addEventListener('click',()=>takeSnapshot());
 document.getElementById('historyReturn').addEventListener('click',_returnToCurrent);
 document.getElementById('historyRestore').addEventListener('click',_restoreSnapshot);
 
+// #endregion TIMELINE & ANNOTATIONS
+// #region MULTI-ACCOUNT
 // === MULTI-ACCOUNT / MULTI-REGION VIEW ===
 let _multiViewMode=false;
 let _loadedContexts=[];  // [{accountId, accountLabel, region, textareas, rlCtx, color, visible}]
@@ -11879,6 +11933,8 @@ document.getElementById('captureCurrentBtn').addEventListener('click',function()
   _showToast('Captured current context as account: '+ctx.accountLabel);
 });
 
+// #endregion MULTI-ACCOUNT
+// #region FIREWALL EDITOR
 // === FIREWALL EDITOR DATA MODEL ===
 let _fwEdits=[];
 let _fwSnapshot=null;
@@ -13361,6 +13417,8 @@ function _fwRenderFooter(shown,total){
 
 document.getElementById('firewallBtn').addEventListener('click',openFirewallDash);
 
+// #endregion FIREWALL EDITOR
+// #region FLOW TRACING
 // === TRAFFIC FLOW VISUALIZATION ===
 let _flowMode=false;
 let _flowSource=null;
@@ -14677,6 +14735,8 @@ document.getElementById('flowExitBtn').addEventListener('click',exitFlowMode);
 document.getElementById('flowStepBack').addEventListener('click',_stepBack);
 document.getElementById('flowStepFwd').addEventListener('click',_stepForward);
 
+// #endregion FLOW TRACING
+// #region FLOW ANALYSIS
 // === FLOW ANALYSIS — AUTO-DISCOVERY ENGINE ===
 let _flowAnalysisMode=null; // null|'tiers'|'ingress'|'egress'|'bastion'|'all'
 let _flowAnalysisCache=null;
@@ -16165,6 +16225,8 @@ document.getElementById('faDashBtn').addEventListener('click',function(){
   if(_flowAnalysisCache) _openFlowAnalysisDashboard(_flowAnalysisCache);
 });
 
+// #endregion FLOW ANALYSIS
+// #region DIFF MODE
 // === DIFF / CHANGE DETECTION ===
 let _diffMode=false;
 let _diffBaseline=null;
@@ -17253,6 +17315,8 @@ function _compareWithSnapshot(snap){
   enterDiffMode(data);
 }
 
+// #endregion DIFF MODE
+// #region DEPENDENCY GRAPH
 // === DEPENDENCY GRAPH / BLAST RADIUS ===
 let _depGraph=null;
 let _blastActive=false;
@@ -17441,6 +17505,8 @@ document.getElementById('depBlastBtn').addEventListener('click',()=>{});// overr
 document.getElementById('helpBtn').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='flex'});
 document.getElementById('helpClose').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='none'});
 
+// #endregion DEPENDENCY GRAPH
+// #region UNIFIED DASHBOARD
 // === UNIFIED DASHBOARD TAB REGISTRY ===
 var _udashTab = null;
 var _UDASH_TABS = [
@@ -18400,6 +18466,8 @@ function _openRulesEditor(){
 // Governance event listeners
 document.getElementById('govBtn').addEventListener('click',function(){openUnifiedDash('classification')});
 
+// #endregion UNIFIED DASHBOARD
+// #region REPORTS & XLSX
 // === REPORT BUILDER ===
 function _renderReportsTab(){
   document.getElementById('udashToolbar').style.display='none';
@@ -19219,6 +19287,16 @@ function _rptBuildXlsxSummary(wb){
       }
       r++;
     }
+    // Region row
+    var regions=c._regions?Array.from(c._regions):[];
+    if(regions.length){
+      var regLabel=XLSX.utils.encode_cell({r:r,c:0});
+      ws[regLabel]={v:'Regions',t:'s',s:{font:{bold:true,sz:10,color:{rgb:_XLSX_COLORS.labelFg},name:'Calibri'},border:_xlsxBorder(),alignment:{vertical:'center'}}};
+      var regVal=XLSX.utils.encode_cell({r:r,c:1});
+      ws[regVal]={v:regions.join(', '),t:'s',s:{font:{sz:10,color:{rgb:_XLSX_COLORS.valueFg},name:'Calibri'},border:_xlsxBorder(),alignment:{vertical:'center'}}};
+      ws['!merges'].push({s:{r:r,c:1},e:{r:r,c:cols-1}});
+      r++;
+    }
     r++;
   }
   // Compliance Findings section
@@ -19393,16 +19471,16 @@ async function _xlsxInjectLogo(zip){
       ctXml=ctXml.replace('</Types>','<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
     }
     zip.file('[Content_Types].xml',ctXml);
-    // Calculate size in EMUs (1 inch = 914400 EMUs), max 2" x 1"
-    var maxW=1828800,maxH=914400;
+    // Calculate size in EMUs (1 inch = 914400 EMUs), max 1.5" x 0.75"
+    var maxW=1371600,maxH=685800;
     var aspect=logo.width/logo.height;
     var w=maxW,h=maxW/aspect;
     if(h>maxH){h=maxH;w=maxH*aspect;}
-    // Drawing XML — oneCellAnchor preserves aspect ratio (not stretched to cell bounds)
+    // Drawing XML — oneCellAnchor preserves aspect ratio; col 4 = past data area
     var drawXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+
       '<xdr:oneCellAnchor>'+
-      '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>38100</xdr:rowOff></xdr:from>'+
+      '<xdr:from><xdr:col>4</xdr:col><xdr:colOff>152400</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>38100</xdr:rowOff></xdr:from>'+
       '<xdr:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/>'+
       '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
       '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/>'+
@@ -19543,6 +19621,8 @@ function _updateLogoPreview(){
   }
 }
 
+// #endregion REPORTS & XLSX
+// #region SESSION & EVENT WIRING
 // === AUTO-SAVE / CRASH RECOVERY ===
 const _SAVE_KEY='aws_mapper_session';const _SAVE_INTERVAL=30000;
 function _autoSaveSession(){try{const data={};document.querySelectorAll('.ji').forEach(el=>{if(el.value.trim())data[el.id]=el.value});
@@ -20243,6 +20323,8 @@ document.getElementById('loadDemo').addEventListener('click',()=>{
 // store layout data globally for export
 let exportData={vL:[],gwP:new Map(),allS:[],tG:{},peerings:[],shGws:[]};
 
+// #endregion SESSION & EVENT WIRING
+// #region EXPORT UTILITIES
 // helper: resolve CSS vars to hex for SVG serialization
 function resolveColor(cssVar){
   const el=document.createElement('div');el.style.color=cssVar;document.body.appendChild(el);
@@ -23001,6 +23083,8 @@ document.getElementById('btnCollapse').addEventListener('click',function(){
 // Initialize button state on load
 updateDetailBtns();
 
+// #endregion EXPORT UTILITIES
+// #region IAC GENERATOR
 // === TERRAFORM / CLOUDFORMATION EXPORT ===
 let _iacType='terraform'; // 'terraform' | 'cloudformation'
 let _iacOutput=''; // raw generated text
@@ -25762,6 +25846,7 @@ window._runAllEdgeCaseTests = function(){
   m.addEventListener('gestureend',function(e){e.preventDefault()},{passive:false});
 })();
 
+// #endregion IAC GENERATOR
 </script>
 </body>
 </html>
