@@ -241,18 +241,22 @@ ipcMain.handle('file:open-folder', async () => {
 
 // ── IPC: AWS CLI Scan ─────────────────────────────────────────────
 
-// OPTIMIZED: Cache AWS CLI check result, use async exec to avoid blocking main process
+// OPTIMIZED: Cache AWS CLI check result with 60s TTL, use async exec to avoid blocking main process
 let _awsCliCached = null;
+let _awsCliCacheTime = 0;
+const AWS_CLI_CACHE_TTL = 60000;
 async function checkAwsCli() {
-  if (_awsCliCached !== null) return _awsCliCached;
+  if (_awsCliCached !== null && (Date.now() - _awsCliCacheTime) < AWS_CLI_CACHE_TTL) return _awsCliCached;
   try {
     await execFileAsync('/usr/bin/which', ['aws'], {
       encoding: 'utf8',
       env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' }
     });
     _awsCliCached = true;
+    _awsCliCacheTime = Date.now();
   } catch {
     _awsCliCached = false;
+    _awsCliCacheTime = Date.now();
   }
   return _awsCliCached;
 }
@@ -399,7 +403,9 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
 function checkForUpdates(manual = false) {
   try {
     autoUpdater.autoDownload = false;
-    autoUpdater.removeAllListeners();
+    autoUpdater.removeAllListeners('update-available');
+    autoUpdater.removeAllListeners('update-not-available');
+    autoUpdater.removeAllListeners('error');
     autoUpdater.on('update-available', (info) => {
       mainWindow?.webContents.send('update:available', {
         version: info.version,

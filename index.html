@@ -518,11 +518,7 @@
 // Electron detection
 const _isElectron=!!(typeof window!=='undefined'&&window.electronAPI);
 
-// Preferences persistence
-const PREFS_KEY='awsNetMapPrefs';
-function loadPrefs(){try{const r=localStorage.getItem(PREFS_KEY);return r?JSON.parse(r):{}}catch(e){return {}}}
-function savePrefs(p){for(const k of Object.keys(p)){if(k==='__proto__'||k==='constructor'||k==='prototype')continue;_prefs[k]=p[k]}try{localStorage.setItem(PREFS_KEY,JSON.stringify(_prefs))}catch(e){}}
-const _prefs=loadPrefs();
+// Preferences: _prefs, loadPrefs, savePrefs provided by bundle (src/modules/prefs.js)
 var _complianceFindings=window._complianceFindings||[];
 
 // Global text size scaling - works on sidebar, canvas, and detail panel
@@ -2194,7 +2190,7 @@ function _estimateTotalEffort(resourceGroups){
   return'~'+Math.round(mins/480)+' days';
 }
 // Muted findings stored in localStorage
-const _MUTE_KEY='aws_mapper_muted_findings';
+const _MUTE_KEY=MUTE_KEY;
 let _mutedFindings=new Set();
 try{const raw=localStorage.getItem(_MUTE_KEY);if(raw)_mutedFindings=new Set(JSON.parse(raw))}catch(e){}
 function _saveMuted(){try{localStorage.setItem(_MUTE_KEY,JSON.stringify([..._mutedFindings]))}catch(e){}}
@@ -10213,10 +10209,8 @@ function loadProject(file){
     try{_loadProjectData(JSON.parse(e.target.result))}catch(ex){alert('Failed to load: '+ex.message)}
   };reader.readAsText(file);
 }
-function _showToast(msg){
-  const t=document.createElement('div');t.style.cssText='position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:300;background:var(--accent-green);color:#000;padding:8px 20px;border-radius:6px;font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:opacity .3s';
-  t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},3000);
-}
+// _showToast: thin wrapper around bundled showToast (ignores legacy 2nd-arg strings)
+function _showToast(msg){showToast(msg)}
 document.getElementById('saveProjectBtn').addEventListener('click',saveProject);
 document.getElementById('loadProjectBtn').addEventListener('click',()=>{
   if(_isElectron){
@@ -10991,8 +10985,8 @@ function _openDetailForSearch(type,id){
 }
 
 // === TIME-SERIES SNAPSHOTS ===
-const _SNAP_KEY='aws_mapper_snapshots';
-const _MAX_SNAPSHOTS=30;
+const _SNAP_KEY=SNAP_KEY;
+const _MAX_SNAPSHOTS=MAX_SNAPSHOTS;
 let _snapshots=[];
 let _viewingHistory=false;
 let _currentSnapshot=null;// saved current state when viewing history
@@ -11124,7 +11118,7 @@ const _origRenderMap=typeof renderMap==='function'?null:null;// renderMap define
 // We add this at the end of the stats bar rendering
 
 // === ANNOTATIONS / NOTES SYSTEM ===
-const _NOTES_KEY='aws_mapper_annotations';
+const _NOTES_KEY=NOTES_KEY;
 let _annotations={};// {resourceId: [{text,category,author,created,updated,pinned}]}
 let _annotationAuthor='';
 try{const s=localStorage.getItem(_NOTES_KEY);if(s)_annotations=JSON.parse(s)}catch(e){}
