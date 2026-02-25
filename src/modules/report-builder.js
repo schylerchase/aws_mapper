@@ -508,6 +508,8 @@ function _rptCapturePNG(){
 function _rptPrepClone(clone,root){
   var cloneRoot=clone.querySelector('.map-root');
   if(cloneRoot) cloneRoot.removeAttribute('transform');
+  var lt=document.documentElement.dataset.theme==='light';
+  if(lt) clone.setAttribute('data-theme','light');
   var bb=root.getBBox();var pad=40;
   clone.setAttribute('viewBox',
     (bb.x-pad)+' '+(bb.y-pad)+' '+(bb.width+pad*2)+' '+(bb.height+pad*2));
@@ -517,7 +519,7 @@ function _rptPrepClone(clone,root){
   bgRect.setAttribute('x',bb.x-pad);bgRect.setAttribute('y',bb.y-pad);
   bgRect.setAttribute('width',bb.width+pad*2);
   bgRect.setAttribute('height',bb.height+pad*2);
-  bgRect.setAttribute('fill','#0a0e17');
+  bgRect.setAttribute('fill',lt?'#f1f5f9':'#0a0e17');
   clone.insertBefore(bgRect,clone.firstChild);
   var styles=_rptCollectStyles();
   if(styles){
@@ -1801,7 +1803,9 @@ document.getElementById('expPng').addEventListener('click',()=>{
   const bgR=document.createElementNS('http://www.w3.org/2000/svg','rect');
   bgR.setAttribute('x',bb.x-pad/2);bgR.setAttribute('y',bb.y-pad/2);
   bgR.setAttribute('width',cw);bgR.setAttribute('height',ch);
-  bgR.setAttribute('fill','#0a0e17');
+  var ltPng=document.documentElement.dataset.theme==='light';
+  bgR.setAttribute('fill',ltPng?'#f1f5f9':'#0a0e17');
+  if(ltPng) clone.setAttribute('data-theme','light');
   if(cloneRoot)cloneRoot.insertBefore(bgR,cloneRoot.firstChild);
   const svgStr=new XMLSerializer().serializeToString(clone);
   const img=new Image();
@@ -1809,7 +1813,7 @@ document.getElementById('expPng').addEventListener('click',()=>{
     const canvas=document.createElement('canvas');
     canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d');
-    ctx.fillStyle='#0a0e17';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle=ltPng?'#f1f5f9':'#0a0e17';ctx.fillRect(0,0,w,h);
     ctx.drawImage(img,0,0,w,h);
     canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'aws-network-map.png')},'image/png');
   };

@@ -1208,7 +1208,7 @@ function _rptInteractiveCSS(){
     '.rpt-jump-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;padding:10px 14px;background:'+deepBg+';border:1px solid '+bd+';border-radius:8px}',
     '.rpt-jump-link{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;color:'+link+';text-decoration:none;border:1px solid '+linkBd+';background:rgba(37,99,235,.08);transition:all .15s;white-space:nowrap;letter-spacing:.2px}',
     '.rpt-jump-link:hover{background:rgba(37,99,235,.18);color:'+linkHover+';border-color:#2563eb}',
-    '.rpt-jump-link .rpt-jump-ct{font-size:10px;font-weight:700;color:'+linkPale+';background:rgba(37,99,235,.2);padding:2px 7px;border-radius:10px;min-width:20px;text-align:center;transition:all .15s}',
+    '.rpt-jump-link .rpt-jump-ct{font-size:10px;font-weight:700;color:'+(lt?'#1e40af':'#93c5fd')+';background:rgba(37,99,235,'+(lt?'.15':'.2')+');padding:2px 7px;border-radius:10px;min-width:20px;text-align:center;transition:all .15s}',
     '.rpt-jump-link:hover .rpt-jump-ct{background:rgba(37,99,235,.35);color:#bfdbfe}',
     /* ── Filter toolbar ── */
     '.rpt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;margin-bottom:4px;background:'+deepBg+';border:1px solid '+bd+';border-radius:8px}',
@@ -19082,6 +19082,9 @@ function _rptCapturePNG(){
 function _rptPrepClone(clone,root){
   var cloneRoot=clone.querySelector('.map-root');
   if(cloneRoot) cloneRoot.removeAttribute('transform');
+  var lt=document.documentElement.dataset.theme==='light';
+  // Propagate theme attribute so [data-theme="light"] CSS rules apply in standalone SVG
+  if(lt) clone.setAttribute('data-theme','light');
   var bb=root.getBBox();var pad=40;
   clone.setAttribute('viewBox',
     (bb.x-pad)+' '+(bb.y-pad)+' '+(bb.width+pad*2)+' '+(bb.height+pad*2));
@@ -19091,7 +19094,7 @@ function _rptPrepClone(clone,root){
   bgRect.setAttribute('x',bb.x-pad);bgRect.setAttribute('y',bb.y-pad);
   bgRect.setAttribute('width',bb.width+pad*2);
   bgRect.setAttribute('height',bb.height+pad*2);
-  bgRect.setAttribute('fill','#0a0e17');
+  bgRect.setAttribute('fill',lt?'#f1f5f9':'#0a0e17');
   clone.insertBefore(bgRect,clone.firstChild);
   var styles=_rptCollectStyles();
   if(styles){
@@ -20485,7 +20488,9 @@ document.getElementById('expPng').addEventListener('click',()=>{
   const bgR=document.createElementNS('http://www.w3.org/2000/svg','rect');
   bgR.setAttribute('x',bb.x-pad/2);bgR.setAttribute('y',bb.y-pad/2);
   bgR.setAttribute('width',cw);bgR.setAttribute('height',ch);
-  bgR.setAttribute('fill','#0a0e17');
+  var ltExp=document.documentElement.dataset.theme==='light';
+  bgR.setAttribute('fill',ltExp?'#f1f5f9':'#0a0e17');
+  if(ltExp) clone.setAttribute('data-theme','light');
   if(cloneRoot)cloneRoot.insertBefore(bgR,cloneRoot.firstChild);
   const svgStr=new XMLSerializer().serializeToString(clone);
   const img=new Image();
@@ -20493,7 +20498,7 @@ document.getElementById('expPng').addEventListener('click',()=>{
     const canvas=document.createElement('canvas');
     canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d');
-    ctx.fillStyle='#0a0e17';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle=ltExp?'#f1f5f9':'#0a0e17';ctx.fillRect(0,0,w,h);
     ctx.drawImage(img,0,0,w,h);
     canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'aws-network-map.png')},'image/png');
   };
