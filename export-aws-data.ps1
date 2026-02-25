@@ -154,7 +154,7 @@ function Invoke-AwsExport {
                 }
             }
             if (-not $hasData) {
-                return @{ Label=$Label; Status="SKIP"; Detail="empty" }
+                return @{ Label=$Label; Status="EMPTY"; Detail="no data" }
             }
             $result | Out-File -FilePath $filePath -Encoding utf8
             $size = (Get-Item $filePath).Length
@@ -162,13 +162,13 @@ function Invoke-AwsExport {
         } else {
             $msg = ($result | Out-String).Trim()
             if ($msg.Length -gt 60) { $msg = $msg.Substring(0, 60) }
-            return @{ Label=$Label; Status="SKIP"; Detail=$msg }
+            return @{ Label=$Label; Status="ERROR"; Detail=$msg }
         }
     } catch {
         $errMsg = if ($_.Exception.Message) {
             $_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length))
         } else { "Unknown error" }
-        return @{ Label=$Label; Status="SKIP"; Detail=$errMsg }
+        return @{ Label=$Label; Status="ERROR"; Detail=$errMsg }
     }
 }
 
@@ -273,24 +273,29 @@ function Export-Region {
                     $size = (Get-Item $filePath).Length
                     @{ Label=$_.Label; Status="OK"; Detail="${size} bytes" }
                 } else {
-                    @{ Label=$_.Label; Status="SKIP"; Detail="empty" }
+                    @{ Label=$_.Label; Status="EMPTY"; Detail="no data" }
                 }
             } else {
                 $msg = ($result | Out-String).Trim()
                 if ($msg.Length -gt 60) { $msg = $msg.Substring(0, 60) }
-                @{ Label=$_.Label; Status="SKIP"; Detail=$msg }
+                @{ Label=$_.Label; Status="ERROR"; Detail=$msg }
             }
         } catch {
             $errMsg = if ($_.Exception.Message) {
                 $_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length))
             } else { "Unknown error" }
-            @{ Label=$_.Label; Status="SKIP"; Detail=$errMsg }
+            @{ Label=$_.Label; Status="ERROR"; Detail=$errMsg }
         }
     }
 
     # Print results
     foreach ($r in $results) {
-        $color = if ($r.Status -eq "OK") { "Green" } else { "Yellow" }
+        $color = switch ($r.Status) {
+            "OK"    { "Green" }
+            "EMPTY" { "Yellow" }
+            "ERROR" { "Red" }
+            default { "Yellow" }
+        }
         $line = "  {0,-35} {1} ({2})" -f $r.Label, $r.Status, $r.Detail
         Write-Host $line -ForegroundColor $color
     }
@@ -300,6 +305,18 @@ function Export-Region {
     Write-Host "  Multi-step exports:" -ForegroundColor Cyan
     Export-Route53Records -Flags $flags -OutPath $OutPath
     Export-EcsServices -Flags $flags -OutPath $OutPath
+
+    # Write export log
+    $logEntries = @($results | ForEach-Object {
+        $entry = @{ label = $_.Label; status = $_.Status }
+        if ($_.Detail) { $entry.detail = $_.Detail }
+        if ($_.Status -eq "OK" -and $_.Detail -match '(\d+) bytes') {
+            $entry.bytes = [int]$Matches[1]
+        }
+        $entry
+    })
+    $logEntries | ConvertTo-Json -Depth 3 |
+        Out-File -FilePath (Join-Path $OutPath "_export-log.json") -Encoding utf8
 }
 
 # ─── Main ──────────────────────────────────────────────────────

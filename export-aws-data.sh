@@ -82,6 +82,9 @@ echo ""
 # Current output directory — set per-region or to $OUTDIR for single-region
 CURRENT_OUTDIR=""
 
+# Export log entries — written to _export-log.json at end
+EXPORT_LOG="["
+
 # Helper: run an AWS CLI command, save output, report status
 run() {
   local label="$1"
@@ -90,13 +93,32 @@ run() {
 
   printf "  %-35s" "$label..."
   if output=$(aws "${AWS_FLAGS[@]}" "$@" 2>&1); then
-    echo "$output" > "$CURRENT_OUTDIR/$filename"
-    local size
-    size=$(wc -c < "$CURRENT_OUTDIR/$filename" | tr -d ' ')
-    echo "OK (${size} bytes)"
+    # Check if result has any non-empty arrays (actual data)
+    local has_data
+    has_data=$(echo "$output" | grep -cE '^\s*\[?\s*\{' || true)
+    if [ "$has_data" -gt 0 ] || echo "$output" | grep -qE '\[\s*\{'; then
+      echo "$output" > "$CURRENT_OUTDIR/$filename"
+      local size
+      size=$(wc -c < "$CURRENT_OUTDIR/$filename" | tr -d ' ')
+      echo "OK (${size} bytes)"
+      EXPORT_LOG="${EXPORT_LOG}{\"label\":\"$label\",\"file\":\"$filename\",\"status\":\"OK\",\"bytes\":$size},"
+    else
+      echo "EMPTY (no data)"
+      EXPORT_LOG="${EXPORT_LOG}{\"label\":\"$label\",\"file\":\"$filename\",\"status\":\"EMPTY\"},"
+    fi
   else
-    echo "SKIP (${output:0:60})"
+    echo "ERROR (${output:0:60})"
+    local escaped_msg
+    escaped_msg=$(echo "${output:0:60}" | sed 's/"/\\"/g')
+    EXPORT_LOG="${EXPORT_LOG}{\"label\":\"$label\",\"file\":\"$filename\",\"status\":\"ERROR\",\"detail\":\"$escaped_msg\"},"
   fi
+}
+
+# Write the export log to disk
+write_export_log() {
+  # Remove trailing comma and close the array
+  EXPORT_LOG="${EXPORT_LOG%,}]"
+  echo "$EXPORT_LOG" > "$1/_export-log.json"
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -269,6 +291,8 @@ else
   CURRENT_OUTDIR="$OUTDIR"
   export_region "$REGION"
 fi
+
+write_export_log "$OUTDIR"
 
 echo ""
 echo "═════════════════════════════════════════════════════════"

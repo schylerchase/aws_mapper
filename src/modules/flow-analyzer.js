@@ -1563,49 +1563,17 @@ function _renderIngressArrows(faG){
 
 function _renderEgressArrows(faG){
   if(!_rlCtx) return;
-  var sg=document.querySelector('.struct-group');
-  if(!sg) return;
-  var seen=new Set();
-  var hlEls=[];
-  (_flowAnalysisCache.egressPaths||[]).forEach(function(p){
-    var pos=_resolveNetworkPosition(p.from.type, p.from.id, _rlCtx);
-    if(!pos||!pos.subnetId||!pos.vpcId) return;
-    if(seen.has(pos.subnetId)) return;
-    seen.add(pos.subnetId);
-    // Find the gateway used for egress (NAT or IGW)
-    var gid=null;
-    if(p.via==='nat'){
-      var nat=(_rlCtx.nats||[]).find(function(n){
-        var nSub=((_rlCtx.subnets||[]).find(function(s){return s.SubnetId===n.SubnetId})||{});
-        return nSub.VpcId===pos.vpcId;
-      });
-      if(nat) gid=nat.NatGatewayId;
-    }
-    if(!gid){
-      var igw=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
-      if(igw) gid=igw.InternetGatewayId;
-    }
-    if(!gid) return;
-    // Highlight subnet→gateway route lines
-    sg.querySelectorAll('[data-gid="'+gid+'"][data-sid="'+pos.subnetId+'"]').forEach(function(el){hlEls.push(el)});
-    sg.querySelectorAll('[data-gid="'+gid+'"][data-vid="'+pos.vpcId+'"]:not([data-sid])').forEach(function(el){hlEls.push(el)});
-    sg.querySelectorAll('[data-gid="'+gid+'"]:not([data-vid]):not([data-net-vert]):not([data-net-line])').forEach(function(el){hlEls.push(el)});
-    // For NAT egress, also highlight NAT→IGW chain if applicable
-    if(p.via==='nat'){
-      var igw2=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
-      if(igw2){
-        var igwId=igw2.InternetGatewayId;
-        sg.querySelectorAll('[data-net-vert][data-gid="'+igwId+'"]').forEach(function(el){hlEls.push(el)});
-      }
-    } else {
-      sg.querySelectorAll('[data-net-vert][data-gid="'+gid+'"]').forEach(function(el){hlEls.push(el)});
-    }
-  });
-  if(hlEls.length>0){
-    var netLine=sg.querySelector('[data-net-line]');
-    if(netLine) hlEls.push(netLine);
+  // Delegates to the flow pathing engine (defined in index.html inline).
+  // The engine draws its own directed paths — no structural highlight needed.
+  if(typeof _buildFlowGraph==='function'){
+    var graph=_buildFlowGraph(_flowAnalysisCache,_rlCtx);
+    var segments=_layoutFlowPaths(graph.gwGroups);
+    _renderFlowSegments(faG,segments);
+    graph.internetGids.forEach(function(gid){
+      var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+      if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(251,146,60,.8))').style('opacity','1');
+    });
   }
-  hlEls.forEach(function(el){el.classList.add('fa-hl-egress')});
 }
 
 function _renderBastionArrows(faG){

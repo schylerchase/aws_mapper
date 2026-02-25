@@ -71,23 +71,8 @@ function _renderMapInner(){
 
   // Multi-account: tag all resources with account ID
   const userAccount=(document.getElementById('accountLabel')||{}).value||'';
-  function tagAccount(resource){
-    if(!resource)return resource;
-    resource._accountId=detectAccountId(resource)||userAccount||'default';
-    return resource;
-  }
-  vpcs.forEach(tagAccount);subnets.forEach(tagAccount);igws.forEach(tagAccount);nats.forEach(tagAccount);
-  sgs.forEach(tagAccount);instances.forEach(tagAccount);albs.forEach(tagAccount);rdsInstances.forEach(tagAccount);
-  ecsServices.forEach(tagAccount);lambdaFns.forEach(tagAccount);peerings.forEach(tagAccount);
-  // Multi-region: tag all resources with region
-  function tagRegion(resource){
-    if(!resource)return resource;
-    resource._region=detectRegion(resource)||'unknown';
-    return resource;
-  }
-  vpcs.forEach(tagRegion);subnets.forEach(tagRegion);igws.forEach(tagRegion);nats.forEach(tagRegion);
-  sgs.forEach(tagRegion);instances.forEach(tagRegion);albs.forEach(tagRegion);rdsInstances.forEach(tagRegion);
-  ecsServices.forEach(tagRegion);lambdaFns.forEach(tagRegion);peerings.forEach(tagRegion);
+  function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
+  [vpcs,subnets,igws,nats,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(arr=>arr.forEach(tagResource));
   const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
   const _multiRegion=_regions.size>1;
   // Deduplicate: if same VpcId from same account, keep last pasted
@@ -1139,7 +1124,8 @@ function _renderMapInner(){
           d=`M${subRight},${sy} L${tx},${sy}`;
         }
       }
-      structG.append('path').attr('class','route-line route-structural').attr('d',d).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
+      const rl=structG.append('path').attr('class','route-line route-structural').attr('d',d).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
+      if(gwLeft) rl.style('animation-direction','reverse');
       // Solid filled square at trunk junction to cover dash-pattern gaps
       const jd=`M${tx-3},${endY-3} L${tx+3},${endY-3} L${tx+3},${endY+3} L${tx-3},${endY+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',jd).attr('stroke',col).attr('fill',col).attr('stroke-width',1).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
@@ -1171,9 +1157,10 @@ function _renderMapInner(){
       const lbendPath=`M${tx},${gp.y} L${gwEdgeX},${gp.y}`;
       const combinedPath=`M${tx},${vertTop} L${tx},${vertBot} M${tx},${gp.y} L${gwEdgeX},${gp.y}`;
       // Dashed vertical trunk spanning all subnets
-      structG.append('path').attr('class','route-trunk route-structural').attr('d',fullPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
+      structG.append('path').attr('class','route-trunk route-structural').attr('d',fullPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-vert','1');
       // Solid L-bend connector from trunk to gateway
-      structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
+      const lb=structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
+      if(gwLeft) lb.style('animation-direction','reverse');
       // Solid patch at L-bend corner
       const bendPatch=`M${tx-3},${gp.y-3} L${tx+3},${gp.y-3} L${tx+3},${gp.y+3} L${tx-3},${gp.y+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',bendPatch).attr('stroke',col).attr('fill',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid);
@@ -1233,7 +1220,7 @@ function _renderMapInner(){
       // Dashed trunk spanning only connected subnet range
       if(trunkTop!==trunkBot){
         const trunkPath=`M${vc.tx},${trunkTop} L${vc.tx},${trunkBot}`;
-        structG.append('path').attr('class','route-trunk route-structural').attr('d',trunkPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vpcId);
+        structG.append('path').attr('class','route-trunk route-structural').attr('d',trunkPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vpcId).attr('data-vert','1');
       }
 
       // Solid L-connector from bottom of trunk down to bus Y, then horizontal to TGW X

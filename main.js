@@ -183,7 +183,8 @@ ipcMain.handle('file:open-folder', async () => {
     await Promise.all(jsonEnts.map(async (f) => {
       const fp = path.join(dirPath, f.name);
       try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
-      files[f.name] = await fsp.readFile(fp, 'utf8');
+      const raw = await fsp.readFile(fp, 'utf8');
+      try { files[f.name] = JSON.parse(raw); } catch { files[f.name] = raw; }
     }));
     return files;
   }
@@ -215,7 +216,8 @@ ipcMain.handle('file:open-folder', async () => {
           } else if (sub.isFile() && sub.name.endsWith('.json')) {
             const fp = path.join(subdir, sub.name);
             try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
-            profFlat[sub.name] = await fsp.readFile(fp, 'utf8');
+            const raw = await fsp.readFile(fp, 'utf8');
+            try { profFlat[sub.name] = JSON.parse(raw); } catch { profFlat[sub.name] = raw; }
           }
         }));
         if (Object.keys(profRegions).length || Object.keys(profFlat).length) {
@@ -225,7 +227,8 @@ ipcMain.handle('file:open-folder', async () => {
     } else if (ent.isFile() && ent.name.endsWith('.json')) {
       const fp = path.join(dir, ent.name);
       try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
-      flatFiles[ent.name] = await fsp.readFile(fp, 'utf8');
+      const raw = await fsp.readFile(fp, 'utf8');
+      try { flatFiles[ent.name] = JSON.parse(raw); } catch { flatFiles[ent.name] = raw; }
     }
   }));
 

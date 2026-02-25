@@ -32,7 +32,8 @@
       "libs/**",
       "dist/app.bundle.js",
       "src/styles/**",
-      "src/data/**"
+      "src/data/**",
+      "logo.png"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

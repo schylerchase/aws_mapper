@@ -6,10 +6,10 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'">
 <title>AWS Network Topology Map</title>
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
-<script src="libs/d3.min.js" integrity="sha384-su5kReKyYlIFrI62mbQRKXHzFobMa7BHp1cK6julLPbnYcCW9NIZKJiTODjLPeDh" crossorigin="anonymous"></script>
-<script src="libs/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+<script src="libs/d3.min.js"></script>
+<script src="libs/jszip.min.js"></script>
 <script src="dist/app.bundle.js?v=5160277c"></script>
-<link rel="stylesheet" href="src/styles/main.css">
+<link rel="stylesheet" href="src/styles/main.css?v=3">
 </head>
 <body>
 <div class="sidebar">
@@ -8104,14 +8104,17 @@ function renderExecutiveOverview(ctx){
 }
 
 var _renderMapTimer=null;
+var _prebuiltCtx=null;
 var _parseCache={};
+function _quickHash(s){return s.length+':'+s.slice(0,64)+':'+s.slice(-64)}
 function _cachedParse(id){
   const el=document.getElementById(id);
   const val=el?el.value:'';
   if(!val||!val.trim()){delete _parseCache[id];return null}
-  if(_parseCache[id]&&_parseCache[id].raw===val)return _parseCache[id].parsed;
+  const hash=_quickHash(val);
+  if(_parseCache[id]&&_parseCache[id].hash===hash)return _parseCache[id].parsed;
   const parsed=safeParse(val);
-  _parseCache[id]={raw:val,parsed:parsed};
+  _parseCache[id]={hash:hash,parsed:parsed};
   return parsed;
 }
 function invalidateParseCache(){_parseCache={}}
@@ -8126,6 +8129,7 @@ function renderMap(cb){
 }
 function _renderMapInner(){
   try{
+  const _t0=performance.now();
   const svg=d3.select('#mapSvg');svg.selectAll('*').remove();svg.style('display','block');
   // SVG filter to prevent alpha stacking in route groups
   const defs=svg.append('defs');
@@ -8135,17 +8139,41 @@ function _renderMapInner(){
   document.getElementById('emptyState').style.display='none';
   document.getElementById('landingDash').style.display='none';
 
+  // PERF: If a prebuilt context exists (from merge), use it directly — skip all parsing
+  let vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns;
+  let volumes,snapshots,s3bk,zones,wafAcls,rdsInstances,ecsServices,lambdaFns;
+  let ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions;
+  let recsByZoneMap={};
+  const userAccount=(document.getElementById('accountLabel')||{}).value||'';
+  let _pbMaps=null; // prebuilt index maps (skip rebuild when available)
+  if(_prebuiltCtx){
+    const pc=_prebuiltCtx;_prebuiltCtx=null;
+    vpcs=pc.vpcs||[];subnets=pc.subnets||[];rts=pc.rts||[];sgs=pc.sgs||[];
+    nacls=pc.nacls||[];enis=pc.enis||[];igws=pc.igws||[];nats=pc.nats||[];
+    vpces=pc.vpces||[];instances=pc.instances||[];albs=pc.albs||[];tgs=pc.tgs||[];
+    peerings=pc.peerings||[];vpns=pc.vpns||[];volumes=pc.volumes||[];snapshots=pc.snapshots||[];
+    s3bk=pc.s3bk||[];zones=pc.zones||[];wafAcls=pc.wafAcls||[];
+    rdsInstances=pc.rdsInstances||[];ecsServices=pc.ecsServices||[];
+    lambdaFns=pc.lambdaFns||[];ecacheClusters=pc.ecacheClusters||[];
+    redshiftClusters=pc.redshiftClusters||[];tgwAttachments=pc.tgwAttachments||[];
+    cfDistributions=pc.cfDistributions||[];recsByZoneMap=pc.recsByZone||{};
+    _pbMaps={instBySub:pc.instBySub||{},albBySub:pc.albBySub||{},eniBySub:pc.eniBySub||{},
+      rdsBySub:pc.rdsBySub||{},ecsBySub:pc.ecsBySub||{},lambdaBySub:pc.lambdaBySub||{},
+      sgByVpc:pc.sgByVpc||{},volByInst:pc.volByInst||{},snapByVol:pc.snapByVol||{},
+      ecacheByVpc:pc.ecacheByVpc||{},redshiftByVpc:pc.redshiftByVpc||{},
+      wafByAlb:pc.wafByAlb||{},tgByAlb:pc.tgByAlb||{},cfByAlb:pc.cfByAlb||{}};
+  }else{
   // parse all 18 inputs (cached — skips JSON.parse if textarea unchanged)
-  let vpcs=ext(_cachedParse('in_vpcs'),['Vpcs']);
-  let subnets=ext(_cachedParse('in_subnets'),['Subnets']);
-  let rts=ext(_cachedParse('in_rts'),['RouteTables']);
-  let sgs=ext(_cachedParse('in_sgs'),['SecurityGroups']);
-  let nacls=ext(_cachedParse('in_nacls'),['NetworkAcls']);
-  let enis=ext(_cachedParse('in_enis'),['NetworkInterfaces']);
-  let igws=ext(_cachedParse('in_igws'),['InternetGateways']);
-  let nats=ext(_cachedParse('in_nats'),['NatGateways']);
-  let vpces=ext(_cachedParse('in_vpces'),['VpcEndpoints']);
-  let instances=[];
+  vpcs=ext(_cachedParse('in_vpcs'),['Vpcs']);
+  subnets=ext(_cachedParse('in_subnets'),['Subnets']);
+  rts=ext(_cachedParse('in_rts'),['RouteTables']);
+  sgs=ext(_cachedParse('in_sgs'),['SecurityGroups']);
+  nacls=ext(_cachedParse('in_nacls'),['NetworkAcls']);
+  enis=ext(_cachedParse('in_enis'),['NetworkInterfaces']);
+  igws=ext(_cachedParse('in_igws'),['InternetGateways']);
+  nats=ext(_cachedParse('in_nats'),['NatGateways']);
+  vpces=ext(_cachedParse('in_vpces'),['VpcEndpoints']);
+  instances=[];
   const eRaw=_cachedParse('in_ec2');
   if(eRaw){
     const reservations=ext(eRaw,['Reservations']);
@@ -8157,50 +8185,34 @@ function _renderMapInner(){
       else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}
     }
   }
-  let albs=ext(_cachedParse('in_albs'),['LoadBalancers']);
-  let tgs=ext(_cachedParse('in_tgs'),['TargetGroups']);
-  let peerings=ext(_cachedParse('in_peer'),['VpcPeeringConnections']);
-  let vpns=ext(_cachedParse('in_vpn'),['VpnConnections']);
-  let volumes=ext(_cachedParse('in_vols'),['Volumes']);
-  let snapshots=ext(_cachedParse('in_snaps'),['Snapshots']);
-  let s3raw=_cachedParse('in_s3');let s3bk=s3raw?ext(s3raw,['Buckets']):[];
-  let zones=ext(_cachedParse('in_r53'),['HostedZones']);
+  albs=ext(_cachedParse('in_albs'),['LoadBalancers']);
+  tgs=ext(_cachedParse('in_tgs'),['TargetGroups']);
+  peerings=ext(_cachedParse('in_peer'),['VpcPeeringConnections']);
+  vpns=ext(_cachedParse('in_vpn'),['VpnConnections']);
+  volumes=ext(_cachedParse('in_vols'),['Volumes']);
+  snapshots=ext(_cachedParse('in_snaps'),['Snapshots']);
+  let s3raw=_cachedParse('in_s3');s3bk=s3raw?ext(s3raw,['Buckets']):[];
+  zones=ext(_cachedParse('in_r53'),['HostedZones']);
   const allRecSets=ext(_cachedParse('in_r53records'),['ResourceRecordSets','RecordSets']);
-  const recsByZoneMap={};
   allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZoneMap[r.HostedZoneId]=recsByZoneMap[r.HostedZoneId]||[]).push(r)});
-  let wafAcls=ext(_cachedParse('in_waf'),['WebACLs']);
-  let rdsInstances=ext(_cachedParse('in_rds'),['DBInstances']);
-  let ecsServices=ext(_cachedParse('in_ecs'),['services','Services']);
-  let lambdaFns=(ext(_cachedParse('in_lambda'),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
-  let ecacheClusters=ext(_cachedParse('in_elasticache'),['CacheClusters']);
-  let redshiftClusters=ext(_cachedParse('in_redshift'),['Clusters']);
-  let tgwAttachments=ext(_cachedParse('in_tgwatt'),['TransitGatewayAttachments']);
-  let cfDistributions=[];
+  wafAcls=ext(_cachedParse('in_waf'),['WebACLs']);
+  rdsInstances=ext(_cachedParse('in_rds'),['DBInstances']);
+  ecsServices=ext(_cachedParse('in_ecs'),['services','Services']);
+  lambdaFns=(ext(_cachedParse('in_lambda'),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
+  ecacheClusters=ext(_cachedParse('in_elasticache'),['CacheClusters']);
+  redshiftClusters=ext(_cachedParse('in_redshift'),['Clusters']);
+  tgwAttachments=ext(_cachedParse('in_tgwatt'),['TransitGatewayAttachments']);
+  cfDistributions=[];
   const cfRaw=_cachedParse('in_cf');
   if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[];}
   // Parse IAM data
   const iamRaw=_cachedParse('in_iam');
   if(iamRaw&&!_iamData)_iamData=parseIAMData(iamRaw);
-
-  // Multi-account: tag all resources with account ID
-  const userAccount=(document.getElementById('accountLabel')||{}).value||'';
-  function tagAccount(resource){
-    if(!resource)return resource;
-    resource._accountId=detectAccountId(resource)||userAccount||'default';
-    return resource;
-  }
-  vpcs.forEach(tagAccount);subnets.forEach(tagAccount);igws.forEach(tagAccount);nats.forEach(tagAccount);
-  sgs.forEach(tagAccount);instances.forEach(tagAccount);albs.forEach(tagAccount);rdsInstances.forEach(tagAccount);
-  ecsServices.forEach(tagAccount);lambdaFns.forEach(tagAccount);peerings.forEach(tagAccount);
-  // Multi-region: tag all resources with region
-  function tagRegion(resource){
-    if(!resource)return resource;
-    resource._region=detectRegion(resource)||'unknown';
-    return resource;
-  }
-  vpcs.forEach(tagRegion);subnets.forEach(tagRegion);igws.forEach(tagRegion);nats.forEach(tagRegion);
-  sgs.forEach(tagRegion);instances.forEach(tagRegion);albs.forEach(tagRegion);rdsInstances.forEach(tagRegion);
-  ecsServices.forEach(tagRegion);lambdaFns.forEach(tagRegion);peerings.forEach(tagRegion);
+  function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
+  [vpcs,subnets,igws,nats,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(arr=>arr.forEach(tagResource));
+  } // end else (textarea parse path)
+  console.log('[PERF] parse phase: '+(performance.now()-_t0).toFixed(1)+'ms');
+  const _t1=performance.now();
   const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
   const _multiRegion=_regions.size>1;
   // Deduplicate: if same VpcId from same account, keep last pasted
@@ -8276,7 +8288,7 @@ function _renderMapInner(){
   });
 
   const subNacl={};nacls.forEach(n=>(n.Associations||[]).forEach(a=>{if(a.SubnetId)subNacl[a.SubnetId]=n}));
-  const sgByVpc={};sgs.forEach(sg=>(sgByVpc[sg.VpcId]=sgByVpc[sg.VpcId]||[]).push(sg));
+  const sgByVpc=_pbMaps?_pbMaps.sgByVpc:(()=>{const m={};sgs.forEach(sg=>(m[sg.VpcId]=m[sg.VpcId]||[]).push(sg));return m})();
   // IAM role -> resource cross-references
   const iamRoleResources={};
   if(_iamData){
@@ -8284,65 +8296,36 @@ function _renderMapInner(){
     (lambdaFns||[]).forEach(fn=>{if(fn.Role){const rn=fn.Role.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].lambda.push(fn)}});
     (ecsServices||[]).forEach(svc=>{const ra=svc.taskRoleArn||svc.executionRoleArn;if(ra){const rn=ra.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ecs.push(svc)}});
   }
-  const instBySub={};instances.forEach(i=>{if(i.SubnetId)(instBySub[i.SubnetId]=instBySub[i.SubnetId]||[]).push(i)});
-  const eniBySub={};const eniByInst={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});
-  const albBySub={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(albBySub[az.SubnetId]=albBySub[az.SubnetId]||[]).push(lb)})});
+  // PERF: reuse prebuilt indexes from merge context when available
+  const instBySub=_pbMaps?_pbMaps.instBySub:(()=>{const m={};instances.forEach(i=>{if(i.SubnetId)(m[i.SubnetId]=m[i.SubnetId]||[]).push(i)});return m})();
+  const eniByInst={};const eniBySub=_pbMaps?((()=>{enis.forEach(e=>{if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});return _pbMaps.eniBySub})()):(()=>{const m={};enis.forEach(e=>{if(e.SubnetId)(m[e.SubnetId]=m[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});return m})();
+  const albBySub=_pbMaps?_pbMaps.albBySub:(()=>{const m={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(m[az.SubnetId]=m[az.SubnetId]||[]).push(lb)})});return m})();
+  const volByInst=_pbMaps?_pbMaps.volByInst:(()=>{const m={};volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId)(m[a.InstanceId]=m[a.InstanceId]||[]).push(v)})});return m})();
 
-  // volumes per instance
-  const volByInst={};volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId)(volByInst[a.InstanceId]=volByInst[a.InstanceId]||[]).push(v)})});
-
-  // volumes by subnet (via ENI InstanceId->SubnetId for volumes whose instance isn't in EC2 data)
+  // volumes by subnet (always rebuild — needs eniByInst which is built above)
   const knownInstIds=new Set(instances.map(i=>i.InstanceId));
   const instSubFromEni={};enis.forEach(e=>{if(e.SubnetId&&e.Attachment&&e.Attachment.InstanceId)instSubFromEni[e.Attachment.InstanceId]=e.SubnetId});
   const volBySub={};volumes.forEach(v=>{
     const att=(v.Attachments||[])[0];
     if(att&&att.InstanceId){
-      if(knownInstIds.has(att.InstanceId))return; // rendered as EC2 child
+      if(knownInstIds.has(att.InstanceId))return;
       const sid=instSubFromEni[att.InstanceId];
       if(sid)(volBySub[sid]=volBySub[sid]||[]).push(v);
     }
   });
 
-  // snapshots per volume
-  const snapByVol={};snapshots.forEach(s=>{if(s.VolumeId)(snapByVol[s.VolumeId]=snapByVol[s.VolumeId]||[]).push(s)});
+  const snapByVol=_pbMaps?_pbMaps.snapByVol:(()=>{const m={};snapshots.forEach(s=>{if(s.VolumeId)(m[s.VolumeId]=m[s.VolumeId]||[]).push(s)});return m})();
+  const tgByAlb=_pbMaps?_pbMaps.tgByAlb:(()=>{const m={};tgs.forEach(tg=>{(tg.LoadBalancerArns||[]).forEach(arn=>{(m[arn]=m[arn]||[]).push(tg)})});return m})();
+  const wafByAlb=_pbMaps?_pbMaps.wafByAlb:(()=>{const m={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(m[arn]=m[arn]||[]).push(acl)})});return m})();
+  const rdsBySub=_pbMaps?_pbMaps.rdsBySub:(()=>{const m={};rdsInstances.forEach(db=>{const sg=db.DBSubnetGroup;if(!sg)return;(sg.Subnets||[]).forEach(s=>{if(s.SubnetIdentifier)(m[s.SubnetIdentifier]=m[s.SubnetIdentifier]||[]).push(db)})});return m})();
+  const ecsBySub=_pbMaps?_pbMaps.ecsBySub:(()=>{const m={};ecsServices.forEach(svc=>{const nc=svc.networkConfiguration?.awsvpcConfiguration;if(!nc)return;(nc.subnets||[]).forEach(sid=>{(m[sid]=m[sid]||[]).push(svc)})});return m})();
+  const lambdaBySub=_pbMaps?_pbMaps.lambdaBySub:(()=>{const m={};lambdaFns.forEach(fn=>{(fn.VpcConfig?.SubnetIds||[]).forEach(sid=>{(m[sid]=m[sid]||[]).push(fn)})});return m})();
+  const ecacheByVpc=_pbMaps?_pbMaps.ecacheByVpc:(()=>{const m={};ecacheClusters.forEach(c=>{if(c.VpcId)(m[c.VpcId]=m[c.VpcId]||[]).push(c)});return m})();
+  const redshiftByVpc=_pbMaps?_pbMaps.redshiftByVpc:(()=>{const m={};redshiftClusters.forEach(c=>{if(c.VpcId)(m[c.VpcId]=m[c.VpcId]||[]).push(c)});return m})();
+  const cfByAlb=_pbMaps?_pbMaps.cfByAlb:(()=>{const m={};cfDistributions.forEach(d=>{(d.Origins?.Items||[]).forEach(o=>{const matchAlb=albs.find(a=>a.DNSName&&o.DomainName&&o.DomainName.includes(a.DNSName));if(matchAlb)(m[matchAlb.LoadBalancerArn]=m[matchAlb.LoadBalancerArn]||[]).push(d)})});return m})();
 
-  // target groups per ALB (by ARN)
-  const tgByAlb={};tgs.forEach(tg=>{(tg.LoadBalancerArns||[]).forEach(arn=>{(tgByAlb[arn]=tgByAlb[arn]||[]).push(tg)})});
-
-  // WAF WebACLs per ALB (by ARN)
-  const wafByAlb={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(wafByAlb[arn]=wafByAlb[arn]||[]).push(acl)})});
-
-  // RDS by subnet
-  const rdsBySub={};rdsInstances.forEach(db=>{
-    const sg=db.DBSubnetGroup;if(!sg)return;
-    (sg.Subnets||[]).forEach(s=>{if(s.SubnetIdentifier)(rdsBySub[s.SubnetIdentifier]=rdsBySub[s.SubnetIdentifier]||[]).push(db)});
-  });
-
-  // ECS by subnet
-  const ecsBySub={};ecsServices.forEach(svc=>{
-    const nc=svc.networkConfiguration?.awsvpcConfiguration;if(!nc)return;
-    (nc.subnets||[]).forEach(sid=>{(ecsBySub[sid]=ecsBySub[sid]||[]).push(svc)});
-  });
-
-  // Lambda by subnet
-  const lambdaBySub={};lambdaFns.forEach(fn=>{
-    (fn.VpcConfig?.SubnetIds||[]).forEach(sid=>{(lambdaBySub[sid]=lambdaBySub[sid]||[]).push(fn)});
-  });
-
-  // ElastiCache by VPC
-  const ecacheByVpc={};ecacheClusters.forEach(c=>{if(c.VpcId)(ecacheByVpc[c.VpcId]=ecacheByVpc[c.VpcId]||[]).push(c)});
-
-  // Redshift by VPC
-  const redshiftByVpc={};redshiftClusters.forEach(c=>{if(c.VpcId)(redshiftByVpc[c.VpcId]=redshiftByVpc[c.VpcId]||[]).push(c)});
-
-  // CloudFront origins mapped to ALB ARNs
-  const cfByAlb={};cfDistributions.forEach(d=>{
-    (d.Origins?.Items||[]).forEach(o=>{
-      const matchAlb=albs.find(a=>a.DNSName&&o.DomainName&&o.DomainName.includes(a.DNSName));
-      if(matchAlb)(cfByAlb[matchAlb.LoadBalancerArn]=cfByAlb[matchAlb.LoadBalancerArn]||[]).push(d);
-    });
-  });
-
+  console.log('[PERF] index build: '+(performance.now()-_t1).toFixed(1)+'ms');
+  const _t2=performance.now();
   // separate per-VPC vs shared gateways; VPCEs always go to summary only
   const pvGws={},shGws=[],vpceByVpc={},vpceIds=new Set();
   [...gwSet.values()].forEach(gw=>{
@@ -8535,8 +8518,10 @@ function _renderMapInner(){
     }
   });
 
+  console.log('[PERF] layout calc: '+(performance.now()-_t2).toFixed(1)+'ms');
+  const _t3=performance.now();
   const W=document.querySelector('.main').clientWidth,H=document.querySelector('.main').clientHeight;
-  
+
   // Center known VPCs (row 1)
   const knownVL=vL.filter(v=>getVpcRegion(v.vpc)!=='unknown');
   const unknownVL=vL.filter(v=>getVpcRegion(v.vpc)==='unknown');
@@ -9275,7 +9260,8 @@ function _renderMapInner(){
           d=`M${subRight},${sy} L${tx},${sy}`;
         }
       }
-      structG.append('path').attr('class','route-line route-structural').attr('d',d).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
+      const rl=structG.append('path').attr('class','route-line route-structural').attr('d',d).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
+      if(gwLeft) rl.style('animation-direction','reverse');
       // Solid filled square at trunk junction to cover dash-pattern gaps
       const jd=`M${tx-3},${sy-3} L${tx+3},${sy-3} L${tx+3},${sy+3} L${tx-3},${sy+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',jd).attr('stroke',col).attr('fill',col).attr('stroke-width',1).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
@@ -9307,9 +9293,10 @@ function _renderMapInner(){
       const lbendPath=`M${tx},${gp.y} L${gwEdgeX},${gp.y}`;
       const combinedPath=`M${tx},${vertTop} L${tx},${vertBot} M${tx},${gp.y} L${gwEdgeX},${gp.y}`;
       // Dashed vertical trunk spanning all subnets
-      structG.append('path').attr('class','route-trunk route-structural').attr('d',fullPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
+      structG.append('path').attr('class','route-trunk route-structural').attr('d',fullPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-vert','1');
       // Solid L-bend connector from trunk to gateway
-      structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
+      const lb=structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
+      if(gwLeft) lb.style('animation-direction','reverse');
       // Solid patch at L-bend corner
       const bendPatch=`M${tx-3},${gp.y-3} L${tx+3},${gp.y-3} L${tx+3},${gp.y+3} L${tx-3},${gp.y+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',bendPatch).attr('stroke',col).attr('fill',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid);
@@ -9371,7 +9358,7 @@ function _renderMapInner(){
       // Dashed trunk spanning only connected subnet range
       if(trunkTop!==trunkBot){
         const trunkPath=`M${vc.tx},${trunkTop} L${vc.tx},${trunkBot}`;
-        structG.append('path').attr('class','route-trunk route-structural').attr('d',trunkPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vpcId);
+        structG.append('path').attr('class','route-trunk route-structural').attr('d',trunkPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vpcId).attr('data-vert','1');
       }
 
       // Vertical drop from trunk bottom to bus Y (horizontal drawn once after loop)
@@ -10095,6 +10082,8 @@ function _renderMapInner(){
   }
 
   // stats bar
+  console.log('[PERF] SVG draw: '+(performance.now()-_t3).toFixed(1)+'ms');
+  console.log('[PERF] TOTAL render: '+(performance.now()-_t0).toFixed(1)+'ms');
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
@@ -10223,6 +10212,11 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){
 });
 
 // === Folder Import (shared by Electron + browser) ===
+function _isValidData(content){
+  if(typeof content==='object'&&content!==null)return true;
+  if(typeof content==='string'){try{JSON.parse(content);return true}catch(e){return false}}
+  return false;
+}
 function importFolder(result){
   if(!result)return;
   // Legacy format: plain object without _structure (old Electron handler)
@@ -10236,7 +10230,7 @@ function importFolder(result){
       const regionFiles=result.regions[regionName];
       const textareas={};
       Object.entries(regionFiles).forEach(([fname,content])=>{
-        try{JSON.parse(content)}catch(e){return}
+        if(!_isValidData(content))return
         const inputId=matchFile(fname,content);
         if(inputId)textareas[inputId]=content;
       });
@@ -10248,9 +10242,9 @@ function importFolder(result){
     // Also load any flat (global) files alongside regions
     const globalFiles=result.files||{};
     Object.entries(globalFiles).forEach(([fname,content])=>{
-      try{JSON.parse(content)}catch(e){return}
-      const inputId=matchFile(fname,content);
-      if(inputId){const el=document.getElementById(inputId);if(el){el.value=content;el.className='ji valid'}}
+      if(!_isValidData(content))return
+      const inputId=matchFile(fname,typeof content==='object'?JSON.stringify(content):content);
+      if(inputId){const el=document.getElementById(inputId);if(el){el.value=typeof content==='string'?content:JSON.stringify(content,null,2);el.className='ji valid'}}
     });
     if(loaded>0){
       if(!_multiViewMode)enterMultiView();
@@ -10272,7 +10266,7 @@ function importFolder(result){
           const regionFiles=profRegions[regionName];
           const textareas={};
           Object.entries(regionFiles).forEach(([fname,content])=>{
-            try{JSON.parse(content)}catch(e){return}
+            if(!_isValidData(content))return
             const inputId=matchFile(fname,content);
             if(inputId)textareas[inputId]=content;
           });
@@ -10284,7 +10278,7 @@ function importFolder(result){
       }else if(Object.keys(profFlat).length){
         const textareas={};
         Object.entries(profFlat).forEach(([fname,content])=>{
-          try{JSON.parse(content)}catch(e){return}
+          if(!_isValidData(content))return
           const inputId=matchFile(fname,content);
           if(inputId)textareas[inputId]=content;
         });
@@ -10296,9 +10290,9 @@ function importFolder(result){
     });
     const globalFiles=result.files||{};
     Object.entries(globalFiles).forEach(([fname,content])=>{
-      try{JSON.parse(content)}catch(e){return}
-      const inputId=matchFile(fname,content);
-      if(inputId){const el=document.getElementById(inputId);if(el){el.value=content;el.className='ji valid'}}
+      if(!_isValidData(content))return
+      const inputId=matchFile(fname,typeof content==='object'?JSON.stringify(content):content);
+      if(inputId){const el=document.getElementById(inputId);if(el){el.value=typeof content==='string'?content:JSON.stringify(content,null,2);el.className='ji valid'}}
     });
     if(totalLoaded>0){
       if(!_multiViewMode)enterMultiView();
@@ -10313,11 +10307,12 @@ function importFolder(result){
     const entries=Object.entries(files);
     let matched=0,skipped=[];
     for(const [fname,content] of entries){
-      try{JSON.parse(content)}catch(e){skipped.push(fname+' (invalid JSON)');continue}
-      const inputId=matchFile(fname,content);
+      if(!_isValidData(content)){skipped.push(fname+' (invalid JSON)');continue}
+      const contentStr=typeof content==='string'?content:JSON.stringify(content,null,2);
+      const inputId=matchFile(fname,contentStr);
       if(!inputId){skipped.push(fname);continue}
       const el=document.getElementById(inputId);
-      if(el){el.value=content;el.className='ji valid';matched++}
+      if(el){el.value=contentStr;el.className='ji valid';matched++}
     }
     document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{
       const body=h.nextElementSibling;
@@ -11412,25 +11407,8 @@ function addAccountContext(projectData, label){
   const textareas=projectData.textareas||projectData.json_data||{};
   const acctLabel=label||projectData.accountLabel||'Account '+((_loadedContexts.length)+1);
 
-  // Fill textareas temporarily and parse
-  const origVals={};
-  document.querySelectorAll('.ji').forEach(el=>{origVals[el.id]=el.value});
-  document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});
-  Object.entries(textareas).forEach(([id,val])=>{
-    const el=document.getElementById(id);
-    if(el){el.value=typeof val==='string'?val:JSON.stringify(val,null,2)}
-  });
-  if(projectData.accountLabel){
-    const al=document.getElementById('accountLabel');
-    if(al)al.value=projectData.accountLabel;
-  }
-  // Build rlCtx by calling renderMap internals — we capture the context
-  const ctx=_buildRlCtxFromTextareas();
-
-  // Restore original textareas
-  document.querySelectorAll('.ji').forEach(el=>{el.value=origVals[el.id]||'';el.className=el.value.trim()?'ji valid':'ji'});
-  const origAcct=document.getElementById('accountLabel');
-  if(origAcct&&origVals._accountLabel)origAcct.value=origVals._accountLabel;
+  // PERF: Build rlCtx directly from data — no DOM round-trip
+  const ctx=_buildRlCtxFromData(textareas, projectData.accountLabel||acctLabel);
 
   if(!ctx||!ctx.vpcs||!ctx.vpcs.length){
     _showToast('No VPC data found in loaded file');
@@ -11563,6 +11541,93 @@ function _buildRlCtxFromTextareas(){
   }
 }
 
+// PERF: Build rlCtx directly from a {id: value} map without DOM round-trip.
+// Values can be strings (web) or pre-parsed objects (Electron).
+function _buildRlCtxFromData(textareas, accountLabel){
+  try{
+    function _val(id){const v=textareas[id];if(!v)return null;if(typeof v==='string')return safeParse(v);return v;}
+    const userAccount=accountLabel||'';
+    let vpcs=ext(_val('in_vpcs'),['Vpcs']);
+    let subnets=ext(_val('in_subnets'),['Subnets']);
+    let rts=ext(_val('in_rts'),['RouteTables']);
+    let sgs=ext(_val('in_sgs'),['SecurityGroups']);
+    let nacls=ext(_val('in_nacls'),['NetworkAcls']);
+    let enis=ext(_val('in_enis'),['NetworkInterfaces']);
+    let igwRaw=ext(_val('in_igws'),['InternetGateways']);
+    let natRaw=ext(_val('in_nats'),['NatGateways']);
+    let vpceRaw=ext(_val('in_vpces'),['VpcEndpoints','Endpoints']);
+    let instances=ext(_val('in_ec2'),['Reservations']).flatMap(r=>r.Instances||[r]);
+    let albs=ext(_val('in_albs'),['LoadBalancers']);
+    let tgs=ext(_val('in_tgs'),['TargetGroups']);
+    let peerings=ext(_val('in_peer'),['VpcPeeringConnections']);
+    let vpns=ext(_val('in_vpn'),['VpnConnections']);
+    let volumes=ext(_val('in_vols'),['Volumes']);
+    let snapshots=ext(_val('in_snaps'),['Snapshots']);
+    let rdsInstances=ext(_val('in_rds'),['DBInstances']);
+    let ecsServices=ext(_val('in_ecs'),['services','Services']);
+    let lambdaFns=ext(_val('in_lambda'),['Functions']).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
+    let ecacheClusters=ext(_val('in_elasticache'),['CacheClusters']);
+    let redshiftClusters=ext(_val('in_redshift'),['Clusters']);
+    const iamRaw2=_val('in_iam');
+    if(iamRaw2&&!_iamData)_iamData=parseIAMData(iamRaw2);
+
+    function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
+    [vpcs,subnets,igwRaw,natRaw,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(arr=>arr.forEach(tagResource));
+
+    const _accounts=new Set();
+    vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
+    const _multiAccount=_accounts.size>1;
+    const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
+    const _multiRegion=_regions.size>1;
+
+    const vpcIds=new Set(vpcs.map(v=>v.VpcId));
+    subnets=subnets.filter(s=>vpcIds.has(s.VpcId));
+    const pubSubs=new Set();
+    rts.forEach(rt=>{const hasIgw=rt.Routes&&rt.Routes.some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State!=='blackhole');if(hasIgw)(rt.Associations||[]).forEach(a=>{if(a.SubnetId)pubSubs.add(a.SubnetId)})});
+
+    const igws=[],nats=[],vpces=[];
+    igwRaw.forEach(g=>{(g.Attachments||[]).forEach(a=>{if(vpcIds.has(a.VpcId))igws.push(Object.assign({},g,{_vpcId:a.VpcId}))})});
+    natRaw.forEach(g=>{if(vpcIds.has(g.VpcId))nats.push(g)});
+    vpceRaw.forEach(g=>{if(vpcIds.has(g.VpcId))vpces.push(g)});
+
+    const instBySub=new Map(),albBySub=new Map(),eniBySub=new Map();
+    const rdsBySub=new Map(),ecsBySub=new Map(),lambdaBySub=new Map();
+    instances.forEach(i=>{const s=i.SubnetId;if(s){if(!instBySub.has(s))instBySub.set(s,[]);instBySub.get(s).push(i)}});
+    albs.forEach(a=>{(a.AvailabilityZones||[]).forEach(az=>{const s=az.SubnetId;if(s){if(!albBySub.has(s))albBySub.set(s,[]);albBySub.get(s).push(a)}})});
+    enis.forEach(e=>{const s=e.SubnetId;if(s){if(!eniBySub.has(s))eniBySub.set(s,[]);eniBySub.get(s).push(e)}});
+    rdsInstances.forEach(d=>{(d.DBSubnetGroup?.Subnets||[]).forEach(s=>{const sid2=s.SubnetIdentifier;if(sid2){if(!rdsBySub.has(sid2))rdsBySub.set(sid2,[]);rdsBySub.get(sid2).push(d)}})});
+    ecsServices.forEach(svc=>{(svc.NetworkConfiguration?.awsvpcConfiguration?.Subnets||[]).forEach(s=>{if(!ecsBySub.has(s))ecsBySub.set(s,[]);ecsBySub.get(s).push(svc)})});
+    lambdaFns.forEach(f=>{(f.VpcConfig?.SubnetIds||[]).forEach(s=>{if(!lambdaBySub.has(s))lambdaBySub.set(s,[]);lambdaBySub.get(s).push(f)})});
+
+    const subRT=new Map(),subNacl=new Map(),sgByVpc=new Map();
+    rts.forEach(rt=>{(rt.Associations||[]).forEach(a=>{if(a.SubnetId)subRT.set(a.SubnetId,rt)})});
+    nacls.forEach(n=>{(n.Associations||[]).forEach(a=>{if(a.SubnetId)subNacl.set(a.SubnetId,n)})});
+    sgs.forEach(sg=>{const v=sg.VpcId;if(v){if(!sgByVpc.has(v))sgByVpc.set(v,[]);sgByVpc.get(v).push(sg)}});
+
+    const volByInst=new Map(),snapByVol=new Map();
+    volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId){if(!volByInst.has(a.InstanceId))volByInst.set(a.InstanceId,[]);volByInst.get(a.InstanceId).push(v)}})});
+    snapshots.forEach(s=>{const vid=s.VolumeId;if(vid){if(!snapByVol.has(vid))snapByVol.set(vid,[]);snapByVol.get(vid).push(s)}});
+
+    const ecacheByVpc=new Map(),redshiftByVpc=new Map();
+    ecacheClusters.forEach(c=>{const vid=c.VpcId||(c.CacheNodes&&c.CacheNodes[0]&&c.CacheNodes[0].CustomerAvailabilityZone?'':'');if(vid){if(!ecacheByVpc.has(vid))ecacheByVpc.set(vid,[]);ecacheByVpc.get(vid).push(c)}});
+    redshiftClusters.forEach(c=>{const v=c.VpcId;if(v){if(!redshiftByVpc.has(v))redshiftByVpc.set(v,[]);redshiftByVpc.get(v).push(c)}});
+
+    const tgwAttachments=[];
+    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
+
+    function m2o(m){const o={};m.forEach((v,k)=>{o[k]=v});return o}
+    return {vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,
+      s3bk:[],zones:[],wafAcls:[],wafByAlb:{},tgByAlb:{},cfByAlb:{},
+      rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions:[],
+      instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
+      subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
+      tgwAttachments,recsByZone:{},_multiAccount,_accounts,_regions,_multiRegion};
+  }catch(e){
+    console.warn('_buildRlCtxFromData error:',e);
+    return null;
+  }
+}
+
 function removeAccountContext(index){
   if(index<0||index>=_loadedContexts.length)return;
   const removed=_loadedContexts.splice(index,1)[0];
@@ -11663,35 +11728,41 @@ function _remergeAndRender(){
     // Clear dashboard caches so they re-run with merged context
     _classificationData=[];_budrAssessments=[];
     if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();else{_complianceFindings=[]}
-    // Fill textareas from merged contexts to enable renderMap
-    const mergedTA={};
-    _loadedContexts.filter(c=>c.visible).forEach(c=>{
-      Object.entries(c.textareas||{}).forEach(([id,val])=>{
-        const existing=mergedTA[id];
-        if(existing){
-          // Merge JSON arrays
-          try{
-            const a=typeof existing==='string'?JSON.parse(existing):existing;
-            const b=typeof val==='string'?JSON.parse(val):val;
-            if(typeof a==='object'&&typeof b==='object'){
-              const merged2={};
-              Object.keys(a).concat(Object.keys(b)).forEach(k=>{
-                if(Array.isArray(a[k])&&Array.isArray(b[k]))merged2[k]=a[k].concat(b[k]);
-                else merged2[k]=b[k]||a[k];
-              });
-              mergedTA[id]=JSON.stringify(merged2,null,2);
-            }else{mergedTA[id]=val}
-          }catch(e2){mergedTA[id]=val}
-        }else{mergedTA[id]=typeof val==='string'?val:JSON.stringify(val,null,2)}
+    // PERF: Fill textareas for sidebar display (deferred to avoid blocking render)
+    // Use requestIdleCallback if available, otherwise setTimeout
+    const _fillTextareasForDisplay=()=>{
+      const mergedTA={};
+      _loadedContexts.filter(c=>c.visible).forEach(c=>{
+        Object.entries(c.textareas||{}).forEach(([id,val])=>{
+          const existing=mergedTA[id];
+          if(existing){
+            try{
+              const a=typeof existing==='object'?existing:safeParse(existing);
+              const b=typeof val==='object'?val:safeParse(val);
+              if(a&&b&&typeof a==='object'&&typeof b==='object'){
+                const merged2={};
+                const allKeys=new Set([...Object.keys(a),...Object.keys(b)]);
+                allKeys.forEach(k=>{
+                  if(Array.isArray(a[k])&&Array.isArray(b[k]))merged2[k]=a[k].concat(b[k]);
+                  else merged2[k]=b[k]||a[k];
+                });
+                mergedTA[id]=merged2;
+              }else{mergedTA[id]=val}
+            }catch(e2){mergedTA[id]=val}
+          }else{mergedTA[id]=val}
+        });
       });
-    });
-    // Apply merged textareas — clear first to avoid stale data from hidden accounts
-    document.querySelectorAll('.ji').forEach(el=>{
-      if(mergedTA[el.id]){el.value=mergedTA[el.id];el.className='ji valid'}
-      else{el.value='';el.className='ji'}
-    });
+      document.querySelectorAll('.ji').forEach(el=>{
+        if(mergedTA[el.id]){
+          el.value=typeof mergedTA[el.id]==='string'?mergedTA[el.id]:JSON.stringify(mergedTA[el.id],null,2);
+          el.className='ji valid';
+        }else{el.value='';el.className='ji'}
+      });
+    };
+    // PERF: Set prebuilt context so _renderMapInner skips textarea parsing
+    _prebuiltCtx=_mergedCtx;
     _renderMergeBannerChips();
-    renderMap(()=>{_autoSaveSession()});
+    renderMap(()=>{_autoSaveSession();_fillTextareasForDisplay()});
   }
 }
 
@@ -13185,19 +13256,19 @@ function _fwDashRender(){
     h+='<td><span class="fw-type-badge '+r.type+'">'+(r.type==='sg'?'SG':r.type==='nacl'?'NACL':'RT')+'</span></td>';
     // Name link
     h+='<td><span class="fw-link" data-fw-action="open" data-fw-type="'+r.type+'" data-fw-id="'+esc(r.id)+'" data-fw-vpc="'+esc(r.vpc||'')+'">'+esc(r.name)+'</span>';
-    if(r.desc) h+='<br><span style="font-size:9px;color:var(--text-muted)">'+esc(r.desc.substring(0,60))+'</span>';
+    if(r.desc) h+='<br><span style="font-size:10px;color:var(--text-muted)">'+esc(r.desc.substring(0,60))+'</span>';
     h+='</td>';
     // VPC link
     var vpcObj=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===r.vpc});
     var vpcLabel=vpcObj?gn(vpcObj,r.vpc):(r.vpc||'--');
     h+='<td><span class="fw-link" data-fw-action="zoom-vpc" data-fw-vpc="'+esc(r.vpc||'')+'">'+esc(vpcLabel)+'</span></td>';
     // Rules
-    h+='<td style="font-size:10px">'+r.rulesLabel+'</td>';
+    h+='<td>'+r.rulesLabel+'</td>';
     // Compliance
     if(r.comp){
-      h+='<td><span class="sev-badge sev-'+r.comp.worst+'" style="font-size:8px;padding:1px 5px">'+r.comp.worst+'</span> <span style="font-size:9px;color:var(--text-muted)">'+r.comp.count+'</span></td>';
+      h+='<td><span class="sev-badge sev-'+r.comp.worst+'" style="font-size:10px;padding:2px 6px">'+r.comp.worst+'</span> <span style="font-size:10px;color:var(--text-muted)">'+r.comp.count+'</span></td>';
     } else {
-      h+='<td><span style="color:var(--text-muted);font-size:9px">--</span></td>';
+      h+='<td><span style="color:var(--text-muted);font-size:10px">--</span></td>';
     }
     // Edits
     if(r.edits){
@@ -13852,6 +13923,9 @@ function enterFlowMode(presetSource){
   document.getElementById('flowStepFwd').style.display='none';
   var mainEl=document.querySelector('.main');
   if(mainEl){mainEl.classList.add('flow-selecting');mainEl.classList.add('flow-active');}
+  var _sb=document.getElementById('statsBar');if(_sb) _sb.style.top='44px';
+  var _eb=document.querySelector('.export-bar');if(_eb) _eb.style.top='44px';
+  var _mb=document.getElementById('mergeBanner');if(_mb&&_mb.style.display!=='none') _mb.style.display='none';
   var svg=document.getElementById('mapSvg');
   svg.addEventListener('click',_flowClickHandler,true);
   svg.addEventListener('contextmenu',_flowRightClickHandler,true);
@@ -13889,6 +13963,9 @@ function exitFlowMode(){
   banner.style.display='none';
   var mainEl=document.querySelector('.main');
   if(mainEl){mainEl.classList.remove('flow-selecting');mainEl.classList.remove('flow-active');}
+  var _sb=document.getElementById('statsBar');if(_sb) _sb.style.top='';
+  var _eb=document.querySelector('.export-bar');if(_eb) _eb.style.top='';
+  if(_multiViewMode){var _mb=document.getElementById('mergeBanner');if(_mb) _mb.style.display='flex';}
   var svg=document.getElementById('mapSvg');
   svg.removeEventListener('click',_flowClickHandler,true);
   svg.removeEventListener('contextmenu',_flowRightClickHandler,true);
@@ -14776,8 +14853,8 @@ function _renderFlowAnalysisOverlay(mode){
   // Clean up previous highlight state
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target,.fa-egress-source,.fa-bastion-target,.fa-flow-bright').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target','fa-egress-source','fa-bastion-target','fa-flow-bright');
+  document.querySelectorAll('.fa-hl-ingress,.fa-fwd-target,.fa-ingress-target,.fa-egress-source,.fa-bastion-target,.fa-flow-bright').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-fwd-target','fa-ingress-target','fa-egress-source','fa-bastion-target','fa-flow-bright');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
@@ -14902,7 +14979,8 @@ function _renderIngressArrows(faG){
   });
   _drawFlowBackbone(faG,gwPosList,inetPos,{
     color:'#10b981',backboneCls:'flow-ingress-backbone',
-    dropCls:'flow-ingress-arrow',arrowMarker:'url(#ingress-arrow-head)'
+    dropCls:'flow-ingress-arrow',arrowMarker:'url(#ingress-arrow-head)',
+    inbound:true
   });
   // Draw direct per-hop arrows: each gateway → its subnets
   Object.keys(igwToSubs).forEach(function(gid){
@@ -14928,6 +15006,200 @@ function _renderIngressArrows(faG){
 
 // --- Flow Primitives (composable building blocks) ---
 
+// === Flow Pathing Engine ===
+// Data-driven pathing: every path drawn FROM→TO in traffic direction.
+// No animation-direction hacks — direction is baked into the SVG `d` attribute.
+
+var FP_GR=20;           // gateway circle radius (matches topology-renderer GR)
+var FP_TRUNK_OFFSET=20; // base distance from subnet edge to first trunk
+var FP_TRUNK_SPACE=12;  // spacing between parallel trunks
+var FP_BUFFER=8;        // minimum clearance from element edges
+var FP_JUNC=3;          // junction patch half-size (6x6 squares)
+
+// Layer 1: Build directed flow graph from egress discovery data.
+// Returns { gwGroups: {gwId: {subs:[], vpcId, isNat, upstreamIgw}}, internetGids: Set }
+function _buildFlowGraph(cache,ctx){
+  var gwGroups={};
+  var internetGids=new Set();
+  var seen=new Set();
+  var warnings=[];
+  (cache.egressPaths||[]).forEach(function(p){
+    var pos=_resolveNetworkPosition(p.from.type,p.from.id,ctx);
+    if(!pos||!pos.subnetId||!pos.vpcId) return;
+    if(seen.has(pos.subnetId)) return;
+    seen.add(pos.subnetId);
+    // Primary: evaluate route table for this subnet's default route
+    var gid=null;
+    var rt=ctx.subRT?ctx.subRT[pos.subnetId]:null;
+    if(rt){
+      var ev=evaluateRouteTable(rt,'0.0.0.0/0');
+      if(ev.type==='igw'||ev.type==='nat') gid=ev.target;
+    }
+    // Fallback: query structural elements
+    if(!gid){
+      var sg=document.querySelector('.struct-group');
+      if(sg){
+        var cands=sg.querySelectorAll('[data-sid="'+pos.subnetId+'"][data-gid]');
+        for(var ci=0;ci<cands.length;ci++){
+          var cGid=cands[ci].getAttribute('data-gid');
+          if(cGid&&(cGid.startsWith('igw')||cGid.startsWith('nat'))){gid=cGid;break}
+        }
+      }
+    }
+    // Last resort: VPC-level gateway lookup
+    if(!gid){
+      if(p.via==='nat'){
+        var nat=(ctx.nats||[]).find(function(n){
+          var nSub=((ctx.subnets||[]).find(function(s){return s.SubnetId===n.SubnetId})||{});
+          return nSub.VpcId===pos.vpcId;
+        });
+        if(nat) gid=nat.NatGatewayId;
+      }
+      if(!gid){
+        var igw=(ctx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
+        if(igw) gid=igw.InternetGatewayId;
+      }
+    }
+    if(!gid){warnings.push('No gateway for subnet '+pos.subnetId);return}
+    internetGids.add(gid);
+    var isNat=gid.startsWith('nat');
+    if(!gwGroups[gid]) gwGroups[gid]={subs:[],vpcId:pos.vpcId,isNat:isNat,upstreamIgw:null};
+    gwGroups[gid].subs.push(pos.subnetId);
+    // For NAT gateways, find upstream IGW
+    if(isNat&&!gwGroups[gid].upstreamIgw){
+      var uIgw=(ctx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
+      if(uIgw) gwGroups[gid].upstreamIgw=uIgw.InternetGatewayId;
+    }
+  });
+  // Validation
+  if(warnings.length>0) console.warn('[FlowEngine]',warnings.join('; '));
+  var gwCount=Object.keys(gwGroups).length;
+  if(gwCount===0) console.warn('[FlowEngine] No egress gateways found');
+  return {gwGroups:gwGroups,internetGids:internetGids};
+}
+
+// Layer 2: Compute positioned path segments from the flow graph.
+// Returns array of {d, cssClass, marker, isJunction}
+function _layoutFlowPaths(gwGroups){
+  var segments=[];
+  // Collect ALL gateway circle positions for collision avoidance
+  var allGwPos=[];
+  document.querySelectorAll('.gw-node').forEach(function(gn){
+    var c=gn.querySelector('circle');
+    if(!c) return;
+    var bb=c.getBBox();
+    allGwPos.push({id:gn.getAttribute('data-gwid'),x:bb.x+bb.width/2,y:bb.y+bb.height/2});
+  });
+  // Process each gateway group
+  var gwIds=Object.keys(gwGroups);
+  gwIds.forEach(function(gid,gwIdx){
+    var grp=gwGroups[gid];
+    var cssClass=grp.isNat?'flow-egress-nat':'flow-egress-igw';
+    // Query gateway position
+    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    var gwCircle=gwNode?gwNode.querySelector('circle'):null;
+    if(!gwCircle) return;
+    var gcb=gwCircle.getBBox();
+    var gwCX=gcb.x+gcb.width/2,gwCY=gcb.y+gcb.height/2;
+    // Query subnet positions
+    var subPos=[];
+    grp.subs.forEach(function(sid){
+      var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
+      if(!rect) return;
+      var bb=rect.getBBox();
+      subPos.push({sid:sid,x:bb.x,y:bb.y,w:bb.width,h:bb.height,cy:bb.y+bb.height/2});
+    });
+    if(subPos.length===0) return;
+    // Determine gateway side (left or right of subnets)
+    var avgSubCX=0;
+    subPos.forEach(function(s){avgSubCX+=s.x+s.w/2});
+    avgSubCX/=subPos.length;
+    var gwRight=gwCX>avgSubCX;
+    // Compute trunk X with per-gateway offset
+    var trunkX;
+    if(gwRight){
+      var maxRight=0;
+      subPos.forEach(function(s){if(s.x+s.w>maxRight) maxRight=s.x+s.w});
+      trunkX=Math.round(maxRight+FP_TRUNK_OFFSET+gwIdx*FP_TRUNK_SPACE);
+    }else{
+      var minLeft=Infinity;
+      subPos.forEach(function(s){if(s.x<minLeft) minLeft=s.x});
+      trunkX=Math.round(minLeft-FP_TRUNK_OFFSET-gwIdx*FP_TRUNK_SPACE);
+    }
+    // Sort subnets by Y for ordered processing
+    subPos.sort(function(a,b){return a.cy-b.cy});
+    // Other gateway positions in this VPC (for collision avoidance on branches)
+    var vpcGwPos=allGwPos.filter(function(g){return g.id!==gid});
+    // --- Generate branch segments (subnet → trunk) ---
+    subPos.forEach(function(s){
+      var subEdgeX=gwRight?(s.x+s.w):(s.x);
+      var branchY=s.cy;
+      // Check if branch crosses another gateway circle
+      var crossGw=null;
+      vpcGwPos.forEach(function(g){
+        if(Math.abs(g.y-branchY)<FP_GR+FP_BUFFER){
+          if(gwRight&&g.x>subEdgeX&&g.x<trunkX) crossGw=g;
+          if(!gwRight&&g.x<subEdgeX&&g.x>trunkX) crossGw=g;
+        }
+      });
+      var d;
+      if(crossGw){
+        // Jog around the crossing gateway
+        var jogY=branchY<crossGw.y?(crossGw.y-FP_GR-10):(crossGw.y+FP_GR+10);
+        var clearX=gwRight?(crossGw.x+FP_GR+6):(crossGw.x-FP_GR-6);
+        d='M'+subEdgeX+','+branchY+' L'+clearX+','+branchY+' L'+clearX+','+jogY+' L'+trunkX+','+jogY;
+      }else{
+        d='M'+subEdgeX+','+branchY+' L'+trunkX+','+branchY;
+      }
+      segments.push({d:d,cssClass:cssClass,marker:null,isJunction:false});
+      // Junction patch at trunk intersection
+      var jY=crossGw?(branchY<crossGw.y?(crossGw.y-FP_GR-10):(crossGw.y+FP_GR+10)):branchY;
+      var jd='M'+(trunkX-FP_JUNC)+','+(jY-FP_JUNC)+' L'+(trunkX+FP_JUNC)+','+(jY-FP_JUNC)+' L'+(trunkX+FP_JUNC)+','+(jY+FP_JUNC)+' L'+(trunkX-FP_JUNC)+','+(jY+FP_JUNC)+' Z';
+      segments.push({d:jd,cssClass:cssClass,marker:null,isJunction:true,fill:grp.isNat?'#a78bfa':'#fb923c'});
+    });
+    // --- Generate trunk segments (split at gateway Y, each drawn TOWARD gateway) ---
+    subPos.forEach(function(s){
+      var branchEndY=s.cy;
+      // Check if this branch was jogged (same logic as above)
+      var crossGw=null;
+      var subEdgeX=gwRight?(s.x+s.w):(s.x);
+      vpcGwPos.forEach(function(g){
+        if(Math.abs(g.y-s.cy)<FP_GR+FP_BUFFER){
+          if(gwRight&&g.x>subEdgeX&&g.x<trunkX) crossGw=g;
+          if(!gwRight&&g.x<subEdgeX&&g.x>trunkX) crossGw=g;
+        }
+      });
+      if(crossGw) branchEndY=s.cy<crossGw.y?(crossGw.y-FP_GR-10):(crossGw.y+FP_GR+10);
+      // Draw trunk segment from branch junction → gateway Y (traffic direction)
+      if(Math.abs(branchEndY-gwCY)>2){
+        var td='M'+trunkX+','+branchEndY+' L'+trunkX+','+gwCY;
+        segments.push({d:td,cssClass:cssClass,marker:null,isJunction:false});
+      }
+    });
+    // --- Gateway connector (trunk → gateway circle edge) ---
+    var gwEdge=_circleEdge(gwCX,gwCY,FP_GR+4,trunkX,gwCY);
+    var cd='M'+trunkX+','+gwCY+' L'+gwEdge.x+','+gwEdge.y;
+    segments.push({d:cd,cssClass:cssClass,marker:'url(#egress-arrow-head)',isJunction:false});
+    // Junction patch at gateway connector
+    var gjd='M'+(trunkX-FP_JUNC)+','+(gwCY-FP_JUNC)+' L'+(trunkX+FP_JUNC)+','+(gwCY-FP_JUNC)+' L'+(trunkX+FP_JUNC)+','+(gwCY+FP_JUNC)+' L'+(trunkX-FP_JUNC)+','+(gwCY+FP_JUNC)+' Z';
+    segments.push({d:gjd,cssClass:cssClass,marker:null,isJunction:true,fill:grp.isNat?'#a78bfa':'#fb923c'});
+  });
+  return segments;
+}
+
+// Layer 3: Render path segments as SVG elements.
+// Every d attribute is FROM→TO — animation is always 'normal'.
+function _renderFlowSegments(faG,segments){
+  segments.forEach(function(seg){
+    var p=faG.append('path').attr('class',seg.cssClass).attr('d',seg.d);
+    if(seg.marker) p.attr('marker-end',seg.marker);
+    if(seg.isJunction){
+      p.style('stroke-dasharray','none').style('opacity','1');
+      if(seg.fill) p.attr('fill',seg.fill);
+    }
+  });
+}
+
 // Draw an L-shaped flow arrow between two points.
 // from/to: {x,y} — start and end positions
 // opts: {cssClass, marker}
@@ -14952,7 +15224,7 @@ function _drawFlowHop(faG,from,to,opts){
 // Draw a backbone + drops + internet icon connecting gateways to the internet.
 // gwPositions: [{gid, cx, cy}] — gateway icon centers
 // inetPos: {x,y} or null — internet node center
-// opts: {color, backboneCls, dropCls, arrowMarker, backboneYOffset}
+// opts: {color, backboneCls, dropCls, arrowMarker, backboneYOffset, inbound}
 function _drawFlowBackbone(faG,gwPositions,inetPos,opts){
   if(!gwPositions||gwPositions.length===0) return;
   var color=opts.color||'#10b981';
@@ -14960,6 +15232,7 @@ function _drawFlowBackbone(faG,gwPositions,inetPos,opts){
   var dropCls=opts.dropCls||'flow-ingress-arrow';
   var marker=opts.arrowMarker||null;
   var yOffset=opts.backboneYOffset||0;
+  var inbound=opts.inbound||false;
   // Backbone Y from net-vert element
   var backboneY=-20;
   var netVert=document.querySelector('[data-net-vert]');
@@ -14969,14 +15242,14 @@ function _drawFlowBackbone(faG,gwPositions,inetPos,opts){
   var inetX=inetPos?inetPos.x:gwPositions[0].cx;
   var inetY=inetPos?inetPos.y:backboneY;
   var farGwX=gwPositions[gwPositions.length-1].cx;
-  // Horizontal backbone
-  var bbPath=faG.append('path').attr('class',bbCls)
-    .attr('d','M'+inetX+','+backboneY+' L'+farGwX+','+backboneY);
+  // Horizontal backbone (direction matches traffic flow)
+  var hBB=inbound?('M'+inetX+','+backboneY+' L'+farGwX+','+backboneY):('M'+farGwX+','+backboneY+' L'+inetX+','+backboneY);
+  var bbPath=faG.append('path').attr('class',bbCls).attr('d',hBB);
   if(marker) bbPath.attr('marker-end',marker);
-  // Vertical leg from backbone to internet icon
+  // Vertical leg between backbone and internet icon
   if(inetPos&&Math.abs(inetY-backboneY)>2){
-    faG.append('path').attr('class',bbCls)
-      .attr('d','M'+inetX+','+backboneY+' L'+inetX+','+inetY);
+    var vLeg=inbound?('M'+inetX+','+inetY+' L'+inetX+','+backboneY):('M'+inetX+','+backboneY+' L'+inetX+','+inetY);
+    faG.append('path').attr('class',bbCls).attr('d',vLeg);
   }
   // Internet icon
   if(inetPos){
@@ -14992,12 +15265,12 @@ function _drawFlowBackbone(faG,gwPositions,inetPos,opts){
       .attr('font-family','IBM Plex Mono,monospace').text('Internet');
     ig.style('filter','drop-shadow(0 0 10px rgba('+_hexToRgb(color)+',.8))');
   }
-  // Drop lines from each gateway to backbone
+  // Drop lines between each gateway and backbone
   gwPositions.forEach(function(p){
     faG.append('circle').attr('cx',p.cx).attr('cy',backboneY).attr('r',4)
       .attr('fill',color).attr('stroke','none');
-    var dropPath=faG.append('path').attr('class',dropCls)
-      .attr('d','M'+p.cx+','+p.cy+' L'+p.cx+','+backboneY);
+    var dropD=inbound?('M'+p.cx+','+backboneY+' L'+p.cx+','+p.cy):('M'+p.cx+','+p.cy+' L'+p.cx+','+backboneY);
+    var dropPath=faG.append('path').attr('class',dropCls).attr('d',dropD);
     if(marker) dropPath.attr('marker-end',marker);
   });
 }
@@ -15024,11 +15297,20 @@ function _drawBusTopology(faG,opts){
   if(opts.gwPos) ys.push(opts.gwPos.y);
   var startY=opts.trunkStartY!=null?Math.min(opts.trunkStartY,Math.min.apply(null,ys)):Math.min.apply(null,ys);
   var endY=opts.trunkEndY!=null?Math.max(opts.trunkEndY,Math.max.apply(null,ys)):Math.max.apply(null,ys);
-  // 1. Vertical trunk
-  var trunkPath=faG.append('path').attr('class',opts.pathClass)
-    .attr('d','M'+tx+','+startY+' L'+tx+','+endY);
-  if(opts.trunkStyle){
-    Object.keys(opts.trunkStyle).forEach(function(k){trunkPath.style(k,opts.trunkStyle[k])});
+  // 1. Vertical trunk — split at gateway Y so dashes converge toward the gateway
+  var gwY=opts.gwPos?opts.gwPos.y:null;
+  if(gwY!=null&&startY<gwY&&endY>gwY){
+    // Split: upper half (top→gwY, dashes flow down) + lower half (bottom→gwY, dashes flow up)
+    var upperD='M'+tx+','+startY+' L'+tx+','+gwY;
+    var lowerD='M'+tx+','+endY+' L'+tx+','+gwY;
+    var up=faG.append('path').attr('class',opts.pathClass).attr('d',upperD);
+    var lo=faG.append('path').attr('class',opts.pathClass).attr('d',lowerD);
+    if(opts.trunkStyle){Object.keys(opts.trunkStyle).forEach(function(k){up.style(k,opts.trunkStyle[k]);lo.style(k,opts.trunkStyle[k])})}
+  } else {
+    // Single segment — draw toward gateway end if trunkReverse set
+    var trunkD=opts.trunkReverse?('M'+tx+','+endY+' L'+tx+','+startY):('M'+tx+','+startY+' L'+tx+','+endY);
+    var trunkPath=faG.append('path').attr('class',opts.pathClass).attr('d',trunkD);
+    if(opts.trunkStyle){Object.keys(opts.trunkStyle).forEach(function(k){trunkPath.style(k,opts.trunkStyle[k])})}
   }
   // 2. Gateway connector
   if(opts.gwPos){
@@ -15154,99 +15436,37 @@ function _renderEgressArrows(faG){
       .attr('orient','auto-start-reverse')
       .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#fb923c');
   }
-  if(defs.select('#egress-branch-head').empty()){
-    defs.append('marker').attr('id','egress-branch-head')
-      .attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
-      .attr('markerWidth',7).attr('markerHeight',7).attr('markerUnits','userSpaceOnUse')
-      .attr('orient','auto-start-reverse')
-      .append('path').attr('d','M 0 0 L 10 5 L 0 10 z').attr('fill','#fb923c');
-  }
-  // Cache VPC bounding boxes
-  var vpcBounds={};
-  document.querySelectorAll('.vpc-group').forEach(function(vg){
-    var r=vg.querySelector('rect');
-    var vid=vg.getAttribute('data-vpc-id');
-    if(r&&vid){var b=r.getBBox();vpcBounds[vid]={left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height}}
+  // Layer 1: Build flow graph from data
+  var graph=_buildFlowGraph(_flowAnalysisCache,_rlCtx);
+  // Layer 2: Compute path segments
+  var segments=_layoutFlowPaths(graph.gwGroups);
+  // Layer 3: Render SVG paths
+  _renderFlowSegments(faG,segments);
+  // Glow on egress gateway icons
+  graph.internetGids.forEach(function(gid){
+    var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
+    if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(251,146,60,.8))').style('opacity','1');
   });
-  // Also try matching by spatial containment for VPC IDs
-  function findVpcBounds(pt){
-    for(var vid in vpcBounds){
-      var v=vpcBounds[vid];
-      if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
-    }
-    return null;
-  }
-  // Collect egress data grouped by VPC
-  var vpcData={};
-  var seen=new Set();
-  (_flowAnalysisCache.egressPaths||[]).forEach(function(p){
-    var pos=_resolveNetworkPosition(p.from.type, p.from.id, _rlCtx);
-    if(!pos||!pos.subnetId||!pos.vpcId) return;
-    if(seen.has(pos.subnetId)) return;
-    seen.add(pos.subnetId);
-    var gid=null;
-    if(p.via==='nat'){
-      var nat=(_rlCtx.nats||[]).find(function(n){
-        var nSub=((_rlCtx.subnets||[]).find(function(s){return s.SubnetId===n.SubnetId})||{});
-        return nSub.VpcId===pos.vpcId;
-      });
-      if(nat) gid=nat.NatGatewayId;
-    }
-    if(!gid){
-      var igw=(_rlCtx.igws||[]).find(function(g){return (g.Attachments||[]).some(function(a){return a.VpcId===pos.vpcId})});
-      if(igw) gid=igw.InternetGatewayId;
-    }
-    if(!gid) return;
-    if(!vpcData[pos.vpcId]) vpcData[pos.vpcId]={subnets:[],gateways:{}};
-    vpcData[pos.vpcId].subnets.push(pos.subnetId);
-    if(!vpcData[pos.vpcId].gateways[gid]) vpcData[pos.vpcId].gateways[gid]=[];
-    vpcData[pos.vpcId].gateways[gid].push(pos.subnetId);
+  // Highlight egress subnet boxes
+  var allSubs=new Set();
+  Object.keys(graph.gwGroups).forEach(function(gid){
+    graph.gwGroups[gid].subs.forEach(function(sid){allSubs.add(sid)});
   });
-  // Collect all egress gateway IDs for outbound path
-  var egressGids=new Set();
-  // Render per VPC: direct per-hop arrows (subnet → gateway)
-  Object.keys(vpcData).forEach(function(vpcId){
-    var data=vpcData[vpcId];
-    // Highlight all egress subnets
-    data.subnets.forEach(function(sid){
-      var subNode=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"]');
-      if(!subNode) return;
-      d3.select(subNode).classed('fa-flow-bright',true);
-      var subEl=subNode.querySelector('rect');
-      if(subEl) d3.select(subEl).classed('fa-egress-source',true);
-    });
-    // Draw per-hop arrows: each subnet → its gateway (using shared primitive)
-    var gwKeys=Object.keys(data.gateways);
-    gwKeys.forEach(function(gid){
-      egressGids.add(gid);
-      var gwNode=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
-      var gwPos=null;
-      if(gwNode){
-        var circle=gwNode.querySelector('circle');
-        if(circle){var cb=circle.getBBox();gwPos={x:cb.x+cb.width/2,y:cb.y+cb.height/2}}
-      }
-      if(!gwPos) return;
-      data.gateways[gid].forEach(function(sid){
-        var rect=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"] rect');
-        if(!rect) return;
-        var bb=rect.getBBox();
-        var subCy=bb.y+bb.height/2;
-        var subEdgeX=(bb.x+bb.width/2)<gwPos.x?bb.x+bb.width:bb.x;
-        var gwEdge=_circleEdge(gwPos.x,gwPos.y,26,subEdgeX,subCy);
-        _drawFlowHop(faG,{x:subEdgeX,y:subCy},gwEdge,{
-          cssClass:'flow-egress-arrow',marker:'url(#egress-arrow-head)'
-        });
-      });
-      if(gwNode) d3.select(gwNode).style('filter','drop-shadow(0 0 8px rgba(251,146,60,.8))').style('opacity','1');
-    });
+  allSubs.forEach(function(sid){
+    var subNode=document.querySelector('.subnet-node[data-subnet-id="'+sid+'"]');
+    if(!subNode) return;
+    d3.select(subNode).classed('fa-flow-bright',true);
+    var subEl=subNode.querySelector('rect');
+    if(subEl) d3.select(subEl).classed('fa-egress-source',true);
   });
-  // Draw egress backbone: gateways → backbone → Internet (using shared primitive)
+  // Draw egress backbone: gateways → backbone → Internet
   var inetNode2=document.querySelector('.internet-node');
   var inetCircle2=inetNode2?inetNode2.querySelector('circle'):null;
   var inetPos2=null;
   if(inetCircle2){var ib2=inetCircle2.getBBox();inetPos2={x:ib2.x+ib2.width/2,y:ib2.y+ib2.height/2}}
   var gwPosList2=[];
-  egressGids.forEach(function(gid){
+  graph.internetGids.forEach(function(gid){
+    if(gid.startsWith('nat')) return; // NAT routes through IGW — skip to avoid overlapping drops
     var gwNode2=document.querySelector('.gw-node[data-gwid="'+gid+'"]');
     var gwCircle2=gwNode2?gwNode2.querySelector('circle'):null;
     if(!gwCircle2) return;
@@ -15258,6 +15478,17 @@ function _renderEgressArrows(faG){
     dropCls:'flow-egress-arrow',arrowMarker:'url(#egress-arrow-head)',
     backboneYOffset:16
   });
+  // Redraw TGW connections into flow layer so they appear above dimmed structural routes
+  var tgwPaths=document.querySelectorAll('.route-group path.route-trunk[stroke="var(--tgw-color)"]');
+  if(tgwPaths.length>0){
+    var tgwG=faG.append('g').attr('class','flow-tgw-overlay');
+    tgwPaths.forEach(function(p){
+      tgwG.append('path').attr('d',p.getAttribute('d'))
+        .attr('class','flow-egress-tgw')
+        .attr('stroke-width',p.getAttribute('stroke-width')||2)
+        .attr('fill','none');
+    });
+  }
 }
 
 function _renderBastionArrows(faG){
@@ -15560,10 +15791,13 @@ function enterFlowAnalysis(){
   _flowAnalysisMode='tiers';
   // Run discovery
   _flowAnalysisCache=discoverTrafficFlows(_rlCtx);
-  // Show banner
+  // Show banner, push stats bar below it
   document.getElementById('flowAnalysisBanner').style.display='flex';
   var mainEl=document.querySelector('.main');
   if(mainEl) mainEl.classList.add('flow-active');
+  var _sb=document.getElementById('statsBar');if(_sb) _sb.style.top='44px';
+  var _eb=document.querySelector('.export-bar');if(_eb) _eb.style.top='44px';
+  var _mb=document.getElementById('mergeBanner');if(_mb&&_mb.style.display!=='none') _mb.style.display='none';
   // Render
   _renderFlowAnalysisOverlay(_flowAnalysisMode);
   _renderFlowAnalysisPanel();
@@ -15578,13 +15812,16 @@ function exitFlowAnalysis(){
   document.getElementById('flowAnalysisBanner').style.display='none';
   var mainEl=document.querySelector('.main');
   if(mainEl) mainEl.classList.remove('flow-active');
+  var _sb=document.getElementById('statsBar');if(_sb) _sb.style.top='';
+  var _eb=document.querySelector('.export-bar');if(_eb) _eb.style.top='';
+  if(_multiViewMode){var _mb=document.getElementById('mergeBanner');if(_mb) _mb.style.display='flex';}
   var svg=d3.select('#mapSvg');
   svg.selectAll('.flow-analysis-layer').remove();
   // Remove route-line highlight classes and fa-active dim
   var mapRoot=svg.select('g');
   if(!mapRoot.empty()) mapRoot.classed('fa-active',false);
-  document.querySelectorAll('.fa-hl-ingress,.fa-hl-egress,.fa-fwd-target,.fa-ingress-target,.fa-egress-source,.fa-bastion-target,.fa-flow-bright').forEach(function(el){
-    el.classList.remove('fa-hl-ingress','fa-hl-egress','fa-fwd-target','fa-ingress-target','fa-egress-source','fa-bastion-target','fa-flow-bright');
+  document.querySelectorAll('.fa-hl-ingress,.fa-fwd-target,.fa-ingress-target,.fa-egress-source,.fa-bastion-target,.fa-flow-bright').forEach(function(el){
+    el.classList.remove('fa-hl-ingress','fa-fwd-target','fa-ingress-target','fa-egress-source','fa-bastion-target','fa-flow-bright');
   });
   var inetNode=document.querySelector('.internet-node');
   if(inetNode) d3.select(inetNode).style('opacity',null).style('filter',null);
@@ -15795,6 +16032,7 @@ function _openFlowAnalysisDashboard(d){
 var _FA_TIER_KEYS=['internetFacing','bastionOnly','fullyPrivate','database'];
 var _FA_SECTION_COLORS={ingress:'#10b981',egress:'#f97316',bastion:'#22d3ee',internetFacing:'#10b981',bastionOnly:'#22d3ee',fullyPrivate:'#8b5cf6',database:'#f59e0b'};
 var _FA_SECTION_LABELS={ingress:'Ingress',egress:'Egress',bastion:'Bastion',internetFacing:'Internet-Facing',bastionOnly:'Bastion-Only',fullyPrivate:'Fully Private',database:'Database'};
+var _FA_SECTION_ORDER={ingress:1,egress:2,internetFacing:3,bastionOnly:4,fullyPrivate:5,database:6,bastion:7};
 
 function _renderFaDash(closeFn){
   if(!_faDashRows) return;
@@ -15832,10 +16070,17 @@ function _renderFaDash(closeFn){
     }
     return true;
   });
-  // --- Sort ---
+  // --- Sort (always group by section, then by chosen column within groups) ---
   var sortKey=st.sort;
   var dir=st.sortDir==='asc'?1:-1;
   filtered.sort(function(a,b){
+    // Primary: group by section order
+    if(sortKey!=='section'){
+      var aOrd=_FA_SECTION_ORDER[a.section]||99;
+      var bOrd=_FA_SECTION_ORDER[b.section]||99;
+      if(aOrd!==bOrd) return aOrd-bOrd;
+    }
+    // Secondary: sort by chosen column within each section group
     var av=a[sortKey]||'';var bv=b[sortKey]||'';
     if(sortKey==='detail'){var an=parseFloat(av),bn=parseFloat(bv);if(!isNaN(an)&&!isNaN(bn)) return(an-bn)*dir}
     return av<bv?-dir:av>bv?dir:0;
@@ -15865,15 +16110,25 @@ function _renderFaDash(closeFn){
   if(!pageRows.length){
     h+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:20px;color:var(--text-muted)">No rows match current filters</td></tr>';
   } else {
+    var prevSection=null;
     pageRows.forEach(function(row){
       var sc=_FA_SECTION_COLORS[row.section]||'var(--text-muted)';
       var sl=_FA_SECTION_LABELS[row.section]||row.section;
+      // Insert section group header when section changes
+      if(row.section!==prevSection){
+        var count=pageRows.filter(function(r){return r.section===row.section}).length;
+        h+='<tr class="fa-section-divider"><td colspan="'+cols.length+'">';
+        h+='<span class="fa-section-label" style="color:'+sc+'">'+_escHtml(sl)+'</span>';
+        h+=' <span style="color:var(--text-muted);font-size:10px;margin-left:6px">'+count+'</span>';
+        h+='</td></tr>';
+        prevSection=row.section;
+      }
       h+='<tr>';
       h+='<td><span class="fa-section-badge" style="background:'+sc+'22;color:'+sc+'">'+_escHtml(sl)+'</span></td>';
       h+='<td style="color:var(--accent-cyan)">'+_escHtml(row.name)+'</td>';
       h+='<td>'+_escHtml(row.type)+'</td>';
-      h+='<td>'+_escHtml(row.detail)+(row.detail2?' <span style="color:var(--text-muted);font-size:9px">'+_escHtml(row.detail2)+'</span>':'')+'</td>';
-      h+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(row.id)+'</td>';
+      h+='<td>'+_escHtml(row.detail)+(row.detail2?' <span style="color:var(--text-muted);font-size:10px">'+_escHtml(row.detail2)+'</span>':'')+'</td>';
+      h+='<td style="font-size:10px;color:var(--text-muted)">'+_escHtml(row.id)+'</td>';
       h+='<td>';
       if(row.section==='ingress'){
         var p=row._raw;
@@ -19486,6 +19741,12 @@ const fileMap=[
 
 function matchFile(fname, content){
   const base=fname.replace(/\.json$/i,'').toLowerCase().replace(/[^a-z0-9-_]/g,'');
+  // Helper: check if content has a key (works for both objects and strings)
+  function _hasKey(k){
+    if(!content)return false;
+    if(typeof content==='object')return k in content;
+    return content.slice(0,500).includes('"'+k+'"');
+  }
   // exact match first
   for(const fm of fileMap){
     for(const p of fm.patterns){if(base===p||base===p+'s')return fm.id}
@@ -19500,41 +19761,39 @@ function matchFile(fname, content){
     const best=candidates[0].id;
     // content-override: verify filename match doesn't contradict content
     if(content&&best==='in_ec2'){
-      const snip=content.slice(0,500);
-      if(snip.includes('"DBInstances"')&&!snip.includes('"Reservations"'))return 'in_rds';
-      if(snip.includes('"CacheClusters"'))return 'in_elasticache';
+      if(_hasKey('DBInstances')&&!_hasKey('Reservations'))return 'in_rds';
+      if(_hasKey('CacheClusters'))return 'in_elasticache';
     }
     return best;
   }
   // content-based fallback — detect by JSON keys
   if(content){
-    const snip=content.slice(0,500);
-    if(snip.includes('"Reservations"'))return 'in_ec2';
-    if(snip.includes('"DBInstances"'))return 'in_rds';
-    if(snip.includes('"Vpcs"'))return 'in_vpcs';
-    if(snip.includes('"Subnets"'))return 'in_subnets';
-    if(snip.includes('"RouteTables"'))return 'in_rts';
-    if(snip.includes('"SecurityGroups"'))return 'in_sgs';
-    if(snip.includes('"NetworkAcls"'))return 'in_nacls';
-    if(snip.includes('"NetworkInterfaces"'))return 'in_enis';
-    if(snip.includes('"InternetGateways"'))return 'in_igws';
-    if(snip.includes('"NatGateways"'))return 'in_nats';
-    if(snip.includes('"VpcEndpoints"'))return 'in_vpces';
-    if(snip.includes('"LoadBalancers"'))return 'in_albs';
-    if(snip.includes('"TargetGroups"'))return 'in_tgs';
-    if(snip.includes('"VpcPeeringConnections"'))return 'in_peer';
-    if(snip.includes('"VpnConnections"'))return 'in_vpn';
-    if(snip.includes('"Volumes"'))return 'in_vols';
-    if(snip.includes('"Snapshots"'))return 'in_snaps';
-    if(snip.includes('"Buckets"'))return 'in_s3';
-    if(snip.includes('"HostedZones"'))return 'in_r53';
-    if(snip.includes('"ResourceRecordSets"'))return 'in_r53records';
-    if(snip.includes('"WebACLs"'))return 'in_waf';
-    if(snip.includes('"TransitGatewayAttachments"'))return 'in_tgwatt';
-    if(snip.includes('"DistributionList"'))return 'in_cf';
-    if(snip.includes('"CacheClusters"'))return 'in_elasticache';
-    if(snip.includes('"Clusters"')&&snip.includes('"Redshift"'))return 'in_redshift';
-    if(snip.includes('"UserDetailList"')||snip.includes('"RoleDetailList"')||snip.includes('"GroupDetailList"'))return 'in_iam';
+    if(_hasKey('Reservations'))return 'in_ec2';
+    if(_hasKey('DBInstances'))return 'in_rds';
+    if(_hasKey('Vpcs'))return 'in_vpcs';
+    if(_hasKey('Subnets'))return 'in_subnets';
+    if(_hasKey('RouteTables'))return 'in_rts';
+    if(_hasKey('SecurityGroups'))return 'in_sgs';
+    if(_hasKey('NetworkAcls'))return 'in_nacls';
+    if(_hasKey('NetworkInterfaces'))return 'in_enis';
+    if(_hasKey('InternetGateways'))return 'in_igws';
+    if(_hasKey('NatGateways'))return 'in_nats';
+    if(_hasKey('VpcEndpoints'))return 'in_vpces';
+    if(_hasKey('LoadBalancers'))return 'in_albs';
+    if(_hasKey('TargetGroups'))return 'in_tgs';
+    if(_hasKey('VpcPeeringConnections'))return 'in_peer';
+    if(_hasKey('VpnConnections'))return 'in_vpn';
+    if(_hasKey('Volumes'))return 'in_vols';
+    if(_hasKey('Snapshots'))return 'in_snaps';
+    if(_hasKey('Buckets'))return 'in_s3';
+    if(_hasKey('HostedZones'))return 'in_r53';
+    if(_hasKey('ResourceRecordSets'))return 'in_r53records';
+    if(_hasKey('WebACLs'))return 'in_waf';
+    if(_hasKey('TransitGatewayAttachments'))return 'in_tgwatt';
+    if(_hasKey('DistributionList'))return 'in_cf';
+    if(_hasKey('CacheClusters'))return 'in_elasticache';
+    if(_hasKey('Clusters')&&_hasKey('Redshift'))return 'in_redshift';
+    if(_hasKey('UserDetailList')||_hasKey('RoleDetailList')||_hasKey('GroupDetailList'))return 'in_iam';
   }
   return null;
 }
@@ -19877,7 +20136,7 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   this.value='';
   if(matched>0)renderMap();
 });
-document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none'});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_parseCache={};_iamData=null;document.getElementById('mergeBanner').style.display='none';var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
