@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'">
 <title>AWS Network Topology Map</title>
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
-<script src="libs/d3.min.js"></script>
-<script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js?v=19"></script>
+<script src="libs/d3.min.js" integrity="sha384-su5kReKyYlIFrI62mbQRKXHzFobMa7BHp1cK6julLPbnYcCW9NIZKJiTODjLPeDh" crossorigin="anonymous"></script>
+<script src="libs/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+<script src="dist/app.bundle.js?v=5160277c"></script>
 <link rel="stylesheet" href="src/styles/main.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v1.5.0</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.0.0</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -82,7 +82,7 @@
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v1.5.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.0.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -523,6 +523,7 @@ const PREFS_KEY='awsNetMapPrefs';
 function loadPrefs(){try{const r=localStorage.getItem(PREFS_KEY);return r?JSON.parse(r):{}}catch(e){return {}}}
 function savePrefs(p){for(const k of Object.keys(p)){if(k==='__proto__'||k==='constructor'||k==='prototype')continue;_prefs[k]=p[k]}try{localStorage.setItem(PREFS_KEY,JSON.stringify(_prefs))}catch(e){}}
 const _prefs=loadPrefs();
+var _complianceFindings=window._complianceFindings||[];
 
 // Global text size scaling - works on sidebar, canvas, and detail panel
 let gTxtScale=_prefs.gTxtScale||1.0;
@@ -2200,6 +2201,90 @@ function _saveMuted(){try{localStorage.setItem(_MUTE_KEY,JSON.stringify([..._mut
 function _muteKey(f){return f.control+'::'+f.resource}
 function _isMuted(f){return _mutedFindings.has(_muteKey(f))}
 function _toggleMute(f){const k=_muteKey(f);if(_mutedFindings.has(k))_mutedFindings.delete(k);else _mutedFindings.add(k);_saveMuted()}
+const _complianceRefs={
+  'CIS 5.1':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/nacl-controls.html',ref:'CIS AWS Foundations 5.1'},
+  'CIS 5.2':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html#ec2-13',ref:'CIS AWS Foundations 5.2'},
+  'CIS 5.3':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html#ec2-14',ref:'CIS AWS Foundations 5.3'},
+  'CIS 5.4':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html#ec2-2',ref:'CIS AWS Foundations 5.4'},
+  'CIS 5.5':{url:'https://docs.aws.amazon.com/vpc/latest/peering/peering-configurations-partial-access.html',ref:'CIS AWS Foundations 5.5'},
+  'NET-1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Scenario2.html',ref:'VPC Private Subnet Design'},
+  'NET-2':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'Security Group Best Practices'},
+  'WAF-1':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html',ref:'AWS WAF Rules'},
+  'WAF-2':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-rate-based-rules.html',ref:'WAF Rate-Based Rules'},
+  'WAF-3':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-protections.html',ref:'WAF ALB Protection'},
+  'WAF-4':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-default-action.html',ref:'WAF Default Action'},
+  'ARCH-N1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-ip-addressing.html',ref:'Well-Architected SEC05-BP01'},
+  'ARCH-N2':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html',ref:'Well-Architected REL-10'},
+  'ARCH-N3':{url:'https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/use-fault-isolation-to-protect-your-workload.html',ref:'Well-Architected REL-10'},
+  'ARCH-N5':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'Well-Architected SEC05-BP02'},
+  'ARCH-C1':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html',ref:'Well-Architected SEC05-BP01'},
+  'ARCH-C2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html',ref:'Well-Architected SEC08-BP02'},
+  'ARCH-C3':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html',ref:'Lambda VPC Config'},
+  'ARCH-D1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_BestPractices.Security.html',ref:'Well-Architected SEC05-BP01'},
+  'ARCH-D2':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'Well-Architected REL-09'},
+  'ARCH-D3':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html',ref:'Well-Architected SEC08-BP02'},
+  'ARCH-D4':{url:'https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/Replication.html',ref:'Well-Architected REL-09'},
+  'ARCH-D5':{url:'https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-db-encryption.html',ref:'Well-Architected SEC08-BP02'},
+  'ARCH-S1':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html',ref:'Well-Architected SEC08-BP02'},
+  'ARCH-S2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'Well-Architected REL-09'},
+  'ARCH-E1':{url:'https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html',ref:'Well-Architected PERF04-BP01'},
+  'ARCH-G1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html',ref:'Well-Architected REL-10'},
+  'ARCH-G2':{url:'https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-s3.html',ref:'Well-Architected COST07-BP01'},
+  'ARCH-X1':{url:'https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-routing.html',ref:'VPC Peering Routing'},
+  'SOC2-CC6.1':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/ec2-controls.html',ref:'SOC2 CC6.1 Logical Access Security'},
+  'SOC2-CC6.3':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html',ref:'SOC2 CC6.3 Role-Based Access'},
+  'SOC2-CC6.6':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'SOC2 CC6.6 Network Boundaries'},
+  'SOC2-CC6.7':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html',ref:'SOC2 CC6.7 Data Transmission'},
+  'SOC2-CC6.8':{url:'https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/infrastructure-protection.html',ref:'SOC2 CC6.8 Malicious Software'},
+  'SOC2-CC7.2':{url:'https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html',ref:'SOC2 CC7.2 Monitoring'},
+  'SOC2-CC8.1':{url:'https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html',ref:'SOC2 CC8.1 Change Management'},
+  'SOC2-A1.2':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'SOC2 A1.2 Availability'},
+  'SOC2-A1.3':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'SOC2 A1.3 Recovery'},
+  'SOC2-C1.1':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html',ref:'SOC2 C1.1 Confidentiality'},
+  'SOC2-C1.2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html',ref:'SOC2 C1.2 Data Protection'},
+  'SOC2-PI1.1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html',ref:'SOC2 PI1.1 Processing Integrity'},
+  'PCI-1.3.1':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html',ref:'PCI DSS 4.0 Req 1.3.1 Inbound Traffic'},
+  'PCI-1.3.2':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/security-group-rules.html',ref:'PCI DSS 4.0 Req 1.3.2 Outbound Traffic'},
+  'PCI-1.3.4':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html',ref:'PCI DSS 4.0 Req 1.3.4 Network Segmentation'},
+  'PCI-2.2.1':{url:'https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html',ref:'PCI DSS 4.0 Req 2.2.1 Configuration Standards'},
+  'PCI-3.4.1':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html',ref:'PCI DSS 4.0 Req 3.4.1 Data Encryption'},
+  'PCI-3.5.1':{url:'https://docs.aws.amazon.com/kms/latest/developerguide/overview.html',ref:'PCI DSS 4.0 Req 3.5.1 Key Management'},
+  'PCI-4.2.1':{url:'https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html',ref:'PCI DSS 4.0 Req 4.2.1 TLS'},
+  'PCI-6.4.1':{url:'https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html',ref:'PCI DSS 4.0 Req 6.4.1 Web App Firewall'},
+  'PCI-7.2.1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html',ref:'PCI DSS 4.0 Req 7.2.1 Least Privilege'},
+  'PCI-8.3.1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa.html',ref:'PCI DSS 4.0 Req 8.3.1 MFA'},
+  'PCI-10.2.1':{url:'https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html',ref:'PCI DSS 4.0 Req 10.2.1 Audit Logging'},
+  'PCI-11.3.1':{url:'https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html',ref:'PCI DSS 4.0 Req 11.3.1 Vulnerability Scanning'},
+  'PCI-12.10.1':{url:'https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html',ref:'PCI DSS 4.0 Req 12.10.1 Incident Response'},
+  'IAM-1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html',ref:'IAM Best Practices'},
+  'IAM-2':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege',ref:'IAM Least Privilege'},
+  'IAM-3':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html',ref:'Cross-Account MFA'},
+  'IAM-4':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege',ref:'IAM Service Wildcards'},
+  'IAM-5':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_finding-unused.html',ref:'Unused IAM Roles'},
+  'IAM-6':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html',ref:'External ID Best Practice'},
+  'IAM-7':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#bp-use-aws-defined-policies',ref:'Managed vs Inline Policies'},
+  'IAM-8':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html',ref:'Permission Boundaries'},
+  'CKV_AWS_79':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html',ref:'Checkov CKV_AWS_79 — IMDSv2'},
+  'CKV_AWS_126':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',ref:'Checkov CKV_AWS_126 — VPC Flow Logs'},
+  'CKV_AWS_21':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html',ref:'Checkov CKV_AWS_21 — S3 Versioning'},
+  'CKV_AWS_18':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html',ref:'Checkov CKV_AWS_18 — S3 Access Logging'},
+  'CKV_AWS_26':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'Checkov CKV_AWS_26 — RDS Backup Retention'},
+  'CKV_AWS_45':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html',ref:'Checkov CKV_AWS_45 — Lambda Env Encryption'},
+  'CKV_AWS_50':{url:'https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html',ref:'Checkov CKV_AWS_50 — Lambda X-Ray Tracing'},
+  'BUDR-HA-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS Multi-AZ Deployments'},
+  'BUDR-HA-2':{url:'https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html',ref:'EC2 Auto Scaling'},
+  'BUDR-HA-3':{url:'https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html',ref:'ECS Service Scaling'},
+  'BUDR-HA-4':{url:'https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/Replication.html',ref:'ElastiCache Replication'},
+  'BUDR-HA-5':{url:'https://docs.aws.amazon.com/redshift/latest/mgmt/managing-clusters-console.html',ref:'Redshift Cluster Management'},
+  'BUDR-HA-6':{url:'https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-subnets.html',ref:'ALB Availability Zones'},
+  'BUDR-BAK-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'RDS Automated Backups'},
+  'BUDR-BAK-2':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'EBS Snapshots'},
+  'BUDR-BAK-3':{url:'https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/backups.html',ref:'ElastiCache Backups'},
+  'BUDR-BAK-4':{url:'https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-snapshots.html',ref:'Redshift Snapshots'},
+  'BUDR-BAK-5':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'EBS Snapshot Scheduling'},
+  'BUDR-DR-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS DR Strategy'},
+  'BUDR-DR-2':{url:'https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/ec2-backup.html',ref:'EC2 DR Strategy'},
+};
 let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:'action'};
 function renderCompliancePanel(findings,opts){
   _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:_compDashState.view||'action'};
@@ -3606,7 +3691,7 @@ function injectDesignToolbar(container,context){
     let routeBtn='';
     if(_rlCtx&&_rlCtx.subRT){
       const rt=_rlCtx.subRT[context.data.SubnetId];
-      if(rt){routeBtn='<button onclick="showDesignForm(\'add_route\',{rtId:\''+rt.RouteTableId+'\',rtName:\''+gn(rt,rt.RouteTableId).replace(/'/g,"\\'")+'\',vpcId:\''+context.data.VpcId+'\'})">+ Route</button>'}
+      if(rt){routeBtn='<button onclick="showDesignForm(\'add_route\',{rtId:\''+rt.RouteTableId+'\',rtName:\''+gn(rt,rt.RouteTableId).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',vpcId:\''+context.data.VpcId+'\'})">+ Route</button>'}
     }
     tb.innerHTML='<button onclick="showDesignForm(\'split_subnet\',{subnet:_dtCtx})">Split</button><button onclick="showDesignForm(\'add_resource\',{subnet:_dtCtx})">+ Resource</button>'+routeBtn+'<button onclick="addDesignChange({action:\'remove_resource\',target:{ResourceId:_dtCtx.SubnetId,ResourceType:\'Subnet\'}})">Remove</button>';
     window._dtCtx=context.data;
@@ -3778,7 +3863,7 @@ function generateOPARego(findings){
     if(f.control==='CIS 5.2')rego='deny[msg] {\n  sg := input.resource.aws_security_group[name]\n  rule := sg.ingress[_]\n  rule.from_port <= 22\n  rule.to_port >= 22\n  rule.cidr_blocks[_] == "0.0.0.0/0"\n  msg := sprintf("SG %s allows SSH from 0.0.0.0/0 (CIS 5.2)", [name])\n}';
     else if(f.control==='CIS 5.3')rego='deny[msg] {\n  sg := input.resource.aws_security_group[name]\n  rule := sg.ingress[_]\n  rule.from_port <= 3389\n  rule.to_port >= 3389\n  rule.cidr_blocks[_] == "0.0.0.0/0"\n  msg := sprintf("SG %s allows RDP from 0.0.0.0/0 (CIS 5.3)", [name])\n}';
     else if(f.control==='NET-2')rego='deny[msg] {\n  sg := input.resource.aws_security_group[name]\n  rule := sg.ingress[_]\n  rule.protocol == "-1"\n  rule.cidr_blocks[_] == "0.0.0.0/0"\n  msg := sprintf("SG %s allows ALL traffic from 0.0.0.0/0", [name])\n}';
-    else rego='# '+f.control+': '+f.message+'\ndeny[msg] {\n  # TODO: Implement check for '+f.control+'\n  msg := "'+f.control+': '+f.message.replace(/"/g,'\\"')+'"\n}';
+    else rego='# '+f.control+': '+f.message+'\ndeny[msg] {\n  # TODO: Implement check for '+f.control+'\n  msg := "'+f.control+': '+f.message.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"\n}';
     rules.set(key,rego);
   });
   return'package aws_compliance\n\nimport input\n\n'+Array.from(rules.values()).join('\n\n')+'\n';
@@ -7692,11 +7777,11 @@ function renderLandingZoneMap(ctx){
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
-  try{_renderNoteBadges()}catch(ne){}
+  try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
-  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){}
+  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot failed:',se)}
   // Diff overlay (landing zone)
-  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){}
+  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay failed:',de)}
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
@@ -7996,7 +8081,7 @@ function renderExecutiveOverview(ctx){
   });
   const _compY=_gridY+_hdrGridH+4;
   let _compFindings=[];
-  try{_compFindings=runComplianceChecks(_rlCtx)||[]}catch(e){}
+  try{_compFindings=runComplianceChecks(_rlCtx)||[]}catch(e){console.warn('Compliance checks failed:',e)}
   const _compN=_compFindings.length;
   const _compColor=_compN===0?'#22c55e':_compN<=20?'#eab308':_compN<=50?'#f97316':'#ef4444';
   const _compG=hdrG.append('g').style('cursor','pointer');
@@ -8154,7 +8239,7 @@ function _renderMapInner(){
   const pubSubs=new Set(),subRT={},gwSet=new Map();
 
   // gateway name enrichment from dedicated JSON
-  gwNames={};
+  var gwNames={};
   igws.forEach(g=>{gwNames[g.InternetGatewayId]=gn(g,g.InternetGatewayId)});
   nats.forEach(g=>{gwNames[g.NatGatewayId]=gn(g,g.NatGatewayId)});
   vpces.forEach(g=>{gwNames[g.VpcEndpointId]=gn(g,g.VpcEndpointId)});
@@ -10023,9 +10108,9 @@ function _renderMapInner(){
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
-  try{_renderNoteBadges()}catch(ne){}
+  try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
-  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){}
+  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot failed:',se)}
   // Design validation chip (when in design mode)
   if(_designMode&&_lastDesignValidation){
     const sv=_lastDesignValidation;
@@ -10055,7 +10140,7 @@ function _renderMapInner(){
     sb2.appendChild(rgC);
   }
   // Diff overlay (grid layout)
-  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){}
+  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay failed:',de)}
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
@@ -11264,6 +11349,7 @@ function _renderComplianceBadges(){
     });
   });
 }
+function _closeAllDashboards(except){var ids=['udash','diffDash','notesPanel'];ids.forEach(function(id){if(id===except)return;var el=document.getElementById(id);if(el&&el.classList.contains('open'))el.classList.remove('open')});if(except!=='udash')_udashTab=null}
 function openNotesPanel(){
   _closeAllDashboards('notesPanel');
   document.getElementById('notesPanel').classList.add('open');
@@ -11581,7 +11667,8 @@ function _remergeAndRender(){
   if(_mergedCtx){
     _rlCtx=_mergedCtx;
     // Clear dashboard caches so they re-run with merged context
-    _classificationData=[];_budrAssessments=[];_complianceFindings=[];
+    _classificationData=[];_budrAssessments=[];
+    if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();else{_complianceFindings=[]}
     // Fill textareas from merged contexts to enable renderMap
     const mergedTA={};
     _loadedContexts.filter(c=>c.visible).forEach(c=>{
@@ -12181,7 +12268,7 @@ function _fwShowNaclEditForm(naclId, ruleNum, egress, container){
     '<input class="fw-input" data-field="portFrom" type="number" min="0" max="65535" placeholder="From" value="'+portFrom+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="portTo" type="number" min="0" max="65535" placeholder="To" value="'+portTo+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="cidr" placeholder="CIDR" value="'+_escHtml(cidr)+'" style="width:100px">'+
-    '<button class="fw-edit-btn save" data-fw-action="save-nacl" data-nacl-id="'+naclId+'" data-egress="'+isEgress+'" data-direction="'+direction+'"'+(existing?' data-editing="'+rNum+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-nacl" data-nacl-id="'+_escHtml(naclId)+'" data-egress="'+_escHtml(String(isEgress))+'" data-direction="'+_escHtml(direction)+'"'+(existing?' data-editing="'+_escHtml(String(rNum))+'"':'')+'>Save</button>'+
     '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
   row.innerHTML=formHtml;
   container.appendChild(row);
@@ -12266,7 +12353,7 @@ function _fwShowSgEditForm(sgId, ruleIdx, direction, container){
     '<input class="fw-input" data-field="portFrom" type="number" min="0" max="65535" placeholder="From" value="'+portFrom+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="portTo" type="number" min="0" max="65535" placeholder="To" value="'+portTo+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="source" placeholder="CIDR or sg-xxx" value="'+_escHtml(source)+'" style="width:110px">'+
-    '<button class="fw-edit-btn save" data-fw-action="save-sg" data-sg-id="'+sgId+'" data-direction="'+direction+'"'+(existing?' data-editing="'+ruleIdx+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-sg" data-sg-id="'+_escHtml(sgId)+'" data-direction="'+_escHtml(direction)+'"'+(existing?' data-editing="'+_escHtml(String(ruleIdx))+'"':'')+'>Save</button>'+
     '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
   row.innerHTML=formHtml;
   container.appendChild(row);
@@ -12363,7 +12450,7 @@ function _fwShowRtEditForm(rtId, routeIdx, container, vpcId, lk){
     '<input class="fw-input" data-field="dest" placeholder="Dest CIDR" value="'+_escHtml(dest)+'" style="width:110px">'+
     '<span class="p" style="margin:0 4px">-&gt;</span>'+
     '<select class="fw-select" data-field="target" style="width:160px" title="Target">'+opts+'</select>'+
-    '<button class="fw-edit-btn save" data-fw-action="save-rt" data-rt-id="'+rtId+'"'+(existing?' data-editing="'+routeIdx+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-rt" data-rt-id="'+_escHtml(rtId)+'"'+(existing?' data-editing="'+_escHtml(String(routeIdx))+'"':'')+'>Save</button>'+
     '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
   row.innerHTML=formHtml;
   container.appendChild(row);
@@ -12463,13 +12550,13 @@ function _fwRefreshFullPanel(){
       h+='<span>'+routeTgtHtml(tgt)+'</span>';
       if(!isLocal){
         h+='<span style="margin-left:auto;display:flex;gap:2px">';
-        h+='<button class="fw-edit-btn edit" data-fw-action="edit-rt" data-rt-id="'+rtId+'" data-rule-idx="'+idx+'" title="Edit">&#9998;</button>';
-        h+='<button class="fw-edit-btn del" data-fw-action="delete-rt" data-rt-id="'+rtId+'" data-rule-idx="'+idx+'" title="Delete">&#10005;</button>';
+        h+='<button class="fw-edit-btn edit" data-fw-action="edit-rt" data-rt-id="'+_escHtml(rtId)+'" data-rule-idx="'+idx+'" title="Edit">&#9998;</button>';
+        h+='<button class="fw-edit-btn del" data-fw-action="delete-rt" data-rt-id="'+_escHtml(rtId)+'" data-rule-idx="'+idx+'" title="Delete">&#10005;</button>';
         h+='</span>';
       }
       h+='</div>';
     });
-    h+='<button class="fw-edit-btn add" data-fw-action="add-rt" data-rt-id="'+rt.RouteTableId+'">+ Add Route</button>';
+    h+='<button class="fw-edit-btn add" data-fw-action="add-rt" data-rt-id="'+_escHtml(rt.RouteTableId)+'">+ Add Route</button>';
   }
 
   // Compliance findings for this resource
@@ -18626,7 +18713,7 @@ function _loadSheetJS(){
     });
   }
   return _tryLoad('xlsx.bundle.min.js').catch(function(){
-    return _tryLoad('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js');
+    return Promise.reject(new Error('SheetJS (xlsx.bundle.min.js) not found. XLSX export requires this library in the app directory.'));
   });
 }
 
@@ -23233,7 +23320,7 @@ function generateTerraform(ctx,opts){
     lines.push('# This is a skeleton. Review and customize before applying.');
     lines.push('resource "aws_cloudfront_distribution" "'+name+'" {');
     lines.push('  enabled = '+(cf.Enabled!==false?'true':'false'));
-    if(cf.Comment)lines.push('  comment = "'+cf.Comment.replace(/"/g,'\\"')+'"');
+    if(cf.Comment)lines.push('  comment = "'+cf.Comment.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"');
     lines.push('');
     lines.push('  origin {');
     lines.push('    domain_name = "PLACEHOLDER.s3.amazonaws.com"');
@@ -23293,7 +23380,7 @@ function _writeTags(lines,resource){
   lines.push('  tags = {');
   tags.forEach(t=>{
     const k=t.Key.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)?t.Key:('"'+t.Key+'"');
-    lines.push('    '+k+' = "'+((t.Value||'').replace(/"/g,'\\"'))+'"');
+    lines.push('    '+k+' = "'+((t.Value||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"'))+'"');
   });
   lines.push('  }');
 }
@@ -23312,7 +23399,7 @@ function _writeSGRule(lines,rule){
   if(v6cidrs.length)lines.push('    ipv6_cidr_blocks = '+JSON.stringify(v6cidrs));
   if(sgRefs.length)lines.push('    security_groups = ['+sgRefs.map(s=>_tfRef(s,'id')).join(', ')+']');
   const desc=(rule.IpRanges||[]).find(r=>r.Description);
-  if(desc)lines.push('    description = "'+(desc.Description||'').replace(/"/g,'\\"')+'"');
+  if(desc)lines.push('    description = "'+(desc.Description||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"');
 }
 
 function _writeSGRuleFlat(lines,rule){

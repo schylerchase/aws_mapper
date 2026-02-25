@@ -44,19 +44,40 @@ function deleteAnnotation(resourceId,noteIndex){
 }
 function _getResourceName(rid){
   if(!_rlCtx)return rid;
-  const v=(_rlCtx.vpcs||[]).find(x=>x.VpcId===rid);if(v)return gn(v,rid);
-  const s=(_rlCtx.subnets||[]).find(x=>x.SubnetId===rid);if(s)return gn(s,rid);
-  const i=(_rlCtx.instances||[]).find(x=>x.InstanceId===rid);if(i)return gn(i,rid);
-  const r=(_rlCtx.rdsInstances||[]).find(x=>x.DBInstanceIdentifier===rid);if(r)return rid;
-  const l=(_rlCtx.lambdaFns||[]).find(x=>x.FunctionName===rid);if(l)return rid;
-  const sg=(_rlCtx.sgs||[]).find(x=>x.GroupId===rid);if(sg)return sg.GroupName||rid;
-  return rid;
+  // Lazy-build name map for O(1) lookups
+  if(!_rlCtx._resourceNameMap){
+    const m=new Map();
+    (_rlCtx.vpcs||[]).forEach(x=>m.set(x.VpcId,gn(x,x.VpcId)));
+    (_rlCtx.subnets||[]).forEach(x=>m.set(x.SubnetId,gn(x,x.SubnetId)));
+    (_rlCtx.instances||[]).forEach(x=>m.set(x.InstanceId,gn(x,x.InstanceId)));
+    (_rlCtx.rdsInstances||[]).forEach(x=>m.set(x.DBInstanceIdentifier,x.DBInstanceIdentifier));
+    (_rlCtx.lambdaFns||[]).forEach(x=>m.set(x.FunctionName,x.FunctionName));
+    (_rlCtx.sgs||[]).forEach(x=>m.set(x.GroupId,x.GroupName||x.GroupId));
+    _rlCtx._resourceNameMap=m;
+  }
+  return _rlCtx._resourceNameMap.get(rid)||rid;
 }
 function _isOrphaned(rid){
   if(!_rlCtx)return false;
   if(rid.startsWith('canvas:'))return false;
-  const all=[...(_rlCtx.vpcs||[]).map(x=>x.VpcId),...(_rlCtx.subnets||[]).map(x=>x.SubnetId),...(_rlCtx.instances||[]).map(x=>x.InstanceId),...(_rlCtx.igws||[]).map(x=>x.InternetGatewayId),...(_rlCtx.nats||[]).map(x=>x.NatGatewayId),...(_rlCtx.vpces||[]).map(x=>x.VpcEndpointId),...(_rlCtx.rdsInstances||[]).map(x=>x.DBInstanceIdentifier),...(_rlCtx.lambdaFns||[]).map(x=>x.FunctionName),...(_rlCtx.sgs||[]).map(x=>x.GroupId),...(_rlCtx.albs||[]).map(x=>x.LoadBalancerName),...(_rlCtx.ecacheClusters||[]).map(x=>x.CacheClusterId),...(_rlCtx.redshiftClusters||[]).map(x=>x.ClusterIdentifier)];
-  return !all.includes(rid);
+  // Lazy-build resource ID Set for O(1) lookups
+  if(!_rlCtx._allResourceIds){
+    const s=new Set();
+    (_rlCtx.vpcs||[]).forEach(x=>s.add(x.VpcId));
+    (_rlCtx.subnets||[]).forEach(x=>s.add(x.SubnetId));
+    (_rlCtx.instances||[]).forEach(x=>s.add(x.InstanceId));
+    (_rlCtx.igws||[]).forEach(x=>s.add(x.InternetGatewayId));
+    (_rlCtx.nats||[]).forEach(x=>s.add(x.NatGatewayId));
+    (_rlCtx.vpces||[]).forEach(x=>s.add(x.VpcEndpointId));
+    (_rlCtx.rdsInstances||[]).forEach(x=>s.add(x.DBInstanceIdentifier));
+    (_rlCtx.lambdaFns||[]).forEach(x=>s.add(x.FunctionName));
+    (_rlCtx.sgs||[]).forEach(x=>s.add(x.GroupId));
+    (_rlCtx.albs||[]).forEach(x=>s.add(x.LoadBalancerName));
+    (_rlCtx.ecacheClusters||[]).forEach(x=>s.add(x.CacheClusterId));
+    (_rlCtx.redshiftClusters||[]).forEach(x=>s.add(x.ClusterIdentifier));
+    _rlCtx._allResourceIds=s;
+  }
+  return !_rlCtx._allResourceIds.has(rid);
 }
 function _relTime(iso){
   if(!iso)return '';

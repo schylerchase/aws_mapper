@@ -2,7 +2,7 @@
 // Runs automated compliance checks and generates findings
 // Extracted from index.html for modularization
 
-import { safeParse, gv } from './utils.js';
+import { safeParse, gv, gn } from './utils.js';
 import { EOL_RUNTIMES } from './constants.js';
 
 // === CHECKOV (CKV) ID MAPPING ===
@@ -40,7 +40,6 @@ const _CKV_MAP={
 };
 
 // Resource list panel - opened by clicking stats bar chips
-let _rlCtx=null; // store context for stat chip clicks
 let _mapSvg=null,_mapZoom=null,_mapG=null; // global map refs for navigation
 let _showNested=false;
 let _detailLevel=0; // 0=collapsed(VPC+subnet names), 1=normal(resources), 2=expanded(nested children)
@@ -48,6 +47,9 @@ let _dnsRecordsExpanded=false; // DNS zones always show; toggle for individual r
 
 // === COMPLIANCE ENGINE ===
 let _complianceFindings=[];
+// Shared tag-name resolver (was duplicated in runArchChecks, runSOC2Checks, runPCIDSSChecks)
+const _gn2Cache=new WeakMap();
+function _gn2(o,id){if(!o)return id;let v=_gn2Cache.get(o);if(v!==undefined)return v||id;const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');v=n?n.Value:'';_gn2Cache.set(o,v);return v||id}
 function _hasOpenCidr(perm){return(perm.IpRanges||[]).some(r=>r.CidrIp==='0.0.0.0/0')||(perm.Ipv6Ranges||[]).some(r=>r.CidrIpv6==='::/0')}
 function _hasPort(perm,port){if(perm.IpProtocol==='-1')return true;const p=String(perm.IpProtocol);if(p!=='6'&&p!=='17'&&p!=='tcp'&&p!=='udp')return false;const from=perm.FromPort,to=perm.ToPort;if(from===undefined||to===undefined)return false;return from<=port&&to>=port}
 function _naclCoversPort(e,port){if(e.Protocol==='-1')return true;const p=parseInt(e.Protocol,10);if(p!==6&&p!==17)return false;const pr=e.PortRange;if(!pr||pr.From===undefined||pr.To===undefined)return false;return pr.From<=port&&pr.To>=port}
@@ -148,7 +150,7 @@ function runWAFChecks(ctx){
   return f;
 }
 function runArchChecks(ctx){
-  const f=[];const gn2=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
+  const f=[];const gn2=_gn2;
   const pubSubs=ctx.pubSubs||new Set();const subRT=ctx.subRT||{};
   // ARCH-N1: Public subnet with no IGW route
   (ctx.subnets||[]).forEach(sub=>{
@@ -260,7 +262,7 @@ function runArchChecks(ctx){
   return f;
 }
 function runSOC2Checks(ctx){
-  const f=[];const gn2=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
+  const f=[];const gn2=_gn2;
   const pubSubs=ctx.pubSubs||new Set();
   // CC6.1 – Logical Access: SGs with 0.0.0.0/0 on sensitive ports (SSH/RDP/DB)
   const sensPorts=[22,3389,3306,5432,1433,1521,6379,27017];
@@ -330,7 +332,7 @@ function runSOC2Checks(ctx){
   return f;
 }
 function runPCIDSSChecks(ctx){
-  const f=[];const gn2=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
+  const f=[];const gn2=_gn2;
   const pubSubs=ctx.pubSubs||new Set();
   // 1.3.1 – Restrict inbound to CDE: SGs with 0.0.0.0/0 on DB ports
   const dbPorts=[3306,5432,1433,1521,6379,27017,5439];
@@ -415,7 +417,16 @@ function runPCIDSSChecks(ctx){
     f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift publicly accessible — data warehouse exposed',remediation:'Disable public access; use private subnet with VPN access only'})});
   return f;
 }
+let _complianceCacheCtx=null;
+export function invalidateComplianceCache(){
+  _complianceCacheCtx=null;
+  _complianceFindings=[];
+  window._complianceFindings=_complianceFindings;
+}
 export function runComplianceChecks(ctx){
+  // Skip recomputation if context object hasn't changed (e.g. repeated tab clicks)
+  if(_complianceCacheCtx===ctx&&_complianceFindings.length>0){return _complianceFindings}
+  _complianceCacheCtx=ctx;
   _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx)];
   try{const iamRaw=safeParse(gv('in_iam'));
   if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}

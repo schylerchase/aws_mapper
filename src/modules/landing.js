@@ -27,7 +27,7 @@ function renderLandingZoneMap(ctx){
   // Tree context for buildResTree
   const lzTreeCtx={instBySub,albBySub,rdsBySub,ecsBySub,lambdaBySub,volByInst,volBySub,enis,eniByInst,tgByAlb,wafByAlb,cfByAlb,snapByVol,eniBySub};
   const lzSubTrees={};
-  subnets.forEach(s=>{lzSubTrees[s.SubnetId]=buildResTree(s.SubnetId,lzTreeCtx)});
+  if(_detailLevel>0) subnets.forEach(s=>{lzSubTrees[s.SubnetId]=buildResTree(s.SubnetId,lzTreeCtx)});
   
   function lzSubH(sid){
     if(_detailLevel===0) return SH_BASE;

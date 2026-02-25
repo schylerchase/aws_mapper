@@ -456,7 +456,7 @@ function _fwShowNaclEditForm(naclId, ruleNum, egress, container){
     '<input class="fw-input" data-field="portFrom" type="number" min="0" max="65535" placeholder="From" value="'+portFrom+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="portTo" type="number" min="0" max="65535" placeholder="To" value="'+portTo+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="cidr" placeholder="CIDR" value="'+_escHtml(cidr)+'" style="width:100px">'+
-    '<button class="fw-edit-btn save" data-fw-action="save-nacl" data-nacl-id="'+naclId+'" data-egress="'+isEgress+'" data-direction="'+direction+'"'+(existing?' data-editing="'+rNum+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-nacl" data-nacl-id="'+_escHtml(naclId)+'" data-egress="'+_escHtml(String(isEgress))+'" data-direction="'+_escHtml(direction)+'"'+(existing?' data-editing="'+_escHtml(String(rNum))+'"':'')+'>Save</button>'+
     '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
   row.innerHTML=formHtml;
   container.appendChild(row);
@@ -541,7 +541,7 @@ function _fwShowSgEditForm(sgId, ruleIdx, direction, container){
     '<input class="fw-input" data-field="portFrom" type="number" min="0" max="65535" placeholder="From" value="'+portFrom+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="portTo" type="number" min="0" max="65535" placeholder="To" value="'+portTo+'" style="width:52px" '+disablePorts+'>'+
     '<input class="fw-input" data-field="source" placeholder="CIDR or sg-xxx" value="'+_escHtml(source)+'" style="width:110px">'+
-    '<button class="fw-edit-btn save" data-fw-action="save-sg" data-sg-id="'+sgId+'" data-direction="'+direction+'"'+(existing?' data-editing="'+ruleIdx+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-sg" data-sg-id="'+_escHtml(sgId)+'" data-direction="'+_escHtml(direction)+'"'+(existing?' data-editing="'+_escHtml(String(ruleIdx))+'"':'')+'>Save</button>'+
     '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
   row.innerHTML=formHtml;
   container.appendChild(row);
@@ -638,7 +638,7 @@ function _fwShowRtEditForm(rtId, routeIdx, container, vpcId, lk){
     '<input class="fw-input" data-field="dest" placeholder="Dest CIDR" value="'+_escHtml(dest)+'" style="width:110px">'+
     '<span class="p" style="margin:0 4px">-&gt;</span>'+
     '<select class="fw-select" data-field="target" style="width:160px" title="Target">'+opts+'</select>'+
-    '<button class="fw-edit-btn save" data-fw-action="save-rt" data-rt-id="'+rtId+'"'+(existing?' data-editing="'+routeIdx+'"':'')+'>Save</button>'+
+    '<button class="fw-edit-btn save" data-fw-action="save-rt" data-rt-id="'+_escHtml(rtId)+'"'+(existing?' data-editing="'+_escHtml(String(routeIdx))+'"':'')+'>Save</button>'+
     '<button class="fw-edit-btn cancel" data-fw-action="cancel-edit">Cancel</button>';
   row.innerHTML=formHtml;
   container.appendChild(row);

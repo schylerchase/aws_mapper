@@ -9,3 +9,4 @@ out/
 *.snap
 .DS_Store
 aws-export-*/
+docs/

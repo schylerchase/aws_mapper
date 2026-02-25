@@ -5079,7 +5079,7 @@ function generateTerraform(ctx,opts){
     lines.push('# This is a skeleton. Review and customize before applying.');
     lines.push('resource "aws_cloudfront_distribution" "'+name+'" {');
     lines.push('  enabled = '+(cf.Enabled!==false?'true':'false'));
-    if(cf.Comment)lines.push('  comment = "'+cf.Comment.replace(/"/g,'\\"')+'"');
+    if(cf.Comment)lines.push('  comment = "'+cf.Comment.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"');
     lines.push('');
     lines.push('  origin {');
     lines.push('    domain_name = "PLACEHOLDER.s3.amazonaws.com"');
@@ -5139,7 +5139,7 @@ function _writeTags(lines,resource){
   lines.push('  tags = {');
   tags.forEach(t=>{
     const k=t.Key.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)?t.Key:('"'+t.Key+'"');
-    lines.push('    '+k+' = "'+((t.Value||'').replace(/"/g,'\\"'))+'"');
+    lines.push('    '+k+' = "'+((t.Value||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"'))+'"');
   });
   lines.push('  }');
 }
@@ -5158,7 +5158,7 @@ function _writeSGRule(lines,rule){
   if(v6cidrs.length)lines.push('    ipv6_cidr_blocks = '+JSON.stringify(v6cidrs));
   if(sgRefs.length)lines.push('    security_groups = ['+sgRefs.map(s=>_tfRef(s,'id')).join(', ')+']');
   const desc=(rule.IpRanges||[]).find(r=>r.Description);
-  if(desc)lines.push('    description = "'+(desc.Description||'').replace(/"/g,'\\"')+'"');
+  if(desc)lines.push('    description = "'+(desc.Description||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"');
 }
 
 function _writeSGRuleFlat(lines,rule){

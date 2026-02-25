@@ -36,7 +36,7 @@ const _DIFF_STRUCTURAL=new Set([
 ]);
 
 function normalizeResource(resource){
-  const clone=JSON.parse(JSON.stringify(resource));
+  const clone=structuredClone(resource);
   function walk(obj){
     if(!obj||typeof obj!=='object') return obj;
     if(Array.isArray(obj)){
@@ -53,7 +53,7 @@ function normalizeResource(resource){
 }
 
 function normalizeSG(sg){
-  const clone=JSON.parse(JSON.stringify(sg));
+  const clone=structuredClone(sg);
   function sortPerms(perms){
     if(!Array.isArray(perms)) return perms;
     return perms.map(p=>{
@@ -137,21 +137,14 @@ function computeDiff(baseline,current){
       const cRes=cMap.get(key);
       const normB=type==='sgs'?normalizeSG(bRes):normalizeResource(bRes);
       const normC=type==='sgs'?normalizeSG(cRes):normalizeResource(cRes);
-      const sB=JSON.stringify(normB);
-      const sC=JSON.stringify(normC);
-      if(sB===sC){
+      const fields=_fieldDiff(normB,normC,'');
+      if(fields.length===0){
         results.unchanged.push({type,key,name:_diffResName(cRes,key),resource:cRes});
         results.total.unchanged++;
       } else {
-        const fields=_fieldDiff(normB,normC,'');
-        if(fields.length===0){
-          results.unchanged.push({type,key,name:_diffResName(cRes,key),resource:cRes});
-          results.total.unchanged++;
-        } else {
-          const hasStructural=fields.some(f=>f.kind==='structural');
-          results.modified.push({type,key,name:_diffResName(cRes,key),fields,hasStructural,resource:cRes,baseline:bRes});
-          results.total.modified++;
-        }
+        const hasStructural=fields.some(f=>f.kind==='structural');
+        results.modified.push({type,key,name:_diffResName(cRes,key),fields,hasStructural,resource:cRes,baseline:bRes});
+        results.total.modified++;
       }
     });
   });

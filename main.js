@@ -41,6 +41,16 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (_pendingOpenFile) {
+      try {
+        const content = fs.readFileSync(_pendingOpenFile, 'utf8');
+        mainWindow.webContents.send('file:opened', content);
+      } catch (e) { console.warn('file:opened - deferred read failed:', e.message); }
+      _pendingOpenFile = null;
+    }
+  });
+
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
@@ -159,62 +169,65 @@ ipcMain.handle('file:open-folder', async () => {
   if (result.canceled || !result.filePaths.length) return null;
   const dir = result.filePaths[0];
   const regionRe = /^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const entries = await fsp.readdir(dir, { withFileTypes: true });
   const regions = {};
   const flatFiles = {};
   const profiles = {};
   const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
-  for (const ent of entries) {
-    const isDir = ent.isDirectory() || ent.isSymbolicLink();
-    if (isDir) {
+  // Helper: read all JSON files in a directory (async, parallel)
+  async function readJsonDir(dirPath) {
+    const files = {};
+    const ents = await fsp.readdir(dirPath, { withFileTypes: true });
+    const jsonEnts = ents.filter(f => f.isFile() && f.name.endsWith('.json'));
+    await Promise.all(jsonEnts.map(async (f) => {
+      const fp = path.join(dirPath, f.name);
+      try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
+      files[f.name] = await fsp.readFile(fp, 'utf8');
+    }));
+    return files;
+  }
+
+  // Helper: check if path is a directory
+  async function isDir(p) {
+    try { return (await fsp.stat(p)).isDirectory(); } catch { return false; }
+  }
+
+  await Promise.all(entries.map(async (ent) => {
+    const entIsDir = ent.isDirectory() || ent.isSymbolicLink();
+    if (entIsDir) {
       const subdir = path.join(dir, ent.name);
-      try { if (!fs.statSync(subdir).isDirectory()) continue; } catch { continue; }
+      if (!(await isDir(subdir))) return;
 
       if (regionRe.test(ent.name)) {
-        // Region folder (existing behavior)
-        const regionFiles = {};
-        for (const f of fs.readdirSync(subdir, { withFileTypes: true })) {
-          if (f.isFile() && f.name.endsWith('.json')) {
-            const fp = path.join(subdir, f.name);
-            try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
-            regionFiles[f.name] = fs.readFileSync(fp, 'utf8');
-          }
-        }
+        const regionFiles = await readJsonDir(subdir);
         if (Object.keys(regionFiles).length) regions[ent.name] = regionFiles;
       } else {
-        // Potential profile folder — scan for region subdirs or flat JSON
         const profRegions = {};
         const profFlat = {};
-        for (const sub of fs.readdirSync(subdir, { withFileTypes: true })) {
+        const subs = await fsp.readdir(subdir, { withFileTypes: true });
+        await Promise.all(subs.map(async (sub) => {
           if ((sub.isDirectory() || sub.isSymbolicLink()) && regionRe.test(sub.name)) {
             const regDir = path.join(subdir, sub.name);
-            try { if (!fs.statSync(regDir).isDirectory()) continue; } catch { continue; }
-            const regFiles = {};
-            for (const f of fs.readdirSync(regDir, { withFileTypes: true })) {
-              if (f.isFile() && f.name.endsWith('.json')) {
-                const fp = path.join(regDir, f.name);
-                try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
-                regFiles[f.name] = fs.readFileSync(fp, 'utf8');
-              }
-            }
+            if (!(await isDir(regDir))) return;
+            const regFiles = await readJsonDir(regDir);
             if (Object.keys(regFiles).length) profRegions[sub.name] = regFiles;
           } else if (sub.isFile() && sub.name.endsWith('.json')) {
             const fp = path.join(subdir, sub.name);
-            try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
-            profFlat[sub.name] = fs.readFileSync(fp, 'utf8');
+            try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
+            profFlat[sub.name] = await fsp.readFile(fp, 'utf8');
           }
-        }
+        }));
         if (Object.keys(profRegions).length || Object.keys(profFlat).length) {
           profiles[ent.name] = { regions: profRegions, files: profFlat };
         }
       }
     } else if (ent.isFile() && ent.name.endsWith('.json')) {
       const fp = path.join(dir, ent.name);
-      try { if (fs.statSync(fp).size > MAX_FILE_SIZE) continue; } catch { continue; }
-      flatFiles[ent.name] = fs.readFileSync(fp, 'utf8');
+      try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
+      flatFiles[ent.name] = await fsp.readFile(fp, 'utf8');
     }
-  }
+  }));
 
   // Priority: profiles > regions > flat
   if (Object.keys(profiles).length) {
@@ -334,9 +347,9 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
   });
   if (result.canceled || !result.filePath) return null;
   if (Buffer.isBuffer(data) || ArrayBuffer.isView(data)) {
-    fs.writeFileSync(result.filePath, Buffer.from(data));
+    await fsp.writeFile(result.filePath, Buffer.from(data));
   } else {
-    fs.writeFileSync(result.filePath, data, 'utf8');
+    await fsp.writeFile(result.filePath, data, 'utf8');
   }
   return result.filePath;
 });
@@ -346,23 +359,22 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
 ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
   const tmpJson = path.join(os.tmpdir(), `budr-${Date.now()}.json`);
   const tmpXlsx = path.join(os.tmpdir(), `budr-${Date.now()}.xlsx`);
-  fs.writeFileSync(tmpJson, jsonData, 'utf8');
+  await fsp.writeFile(tmpJson, jsonData, 'utf8');
 
   const scriptPath = path.join(__dirname, 'budr_export_xlsx.py');
-  if (!fs.existsSync(scriptPath)) {
+  try { await fsp.access(scriptPath); } catch {
     return { error: 'budr_export_xlsx.py not found' };
   }
 
   try {
-    execFileSync('python3', [scriptPath, tmpJson, '-o', tmpXlsx], {
-      timeout: 30000,
-      stdio: 'pipe'
+    await execFileAsync('python3', [scriptPath, tmpJson, '-o', tmpXlsx], {
+      timeout: 30000
     });
   } catch (err) {
     return { error: err.stderr?.toString() || err.message };
   }
 
-  if (!fs.existsSync(tmpXlsx)) {
+  try { await fsp.access(tmpXlsx); } catch {
     return { error: 'XLSX generation failed — output file not created' };
   }
 
@@ -373,14 +385,12 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
   });
 
   if (result.canceled || !result.filePath) {
-    fs.unlinkSync(tmpJson);
-    fs.unlinkSync(tmpXlsx);
+    await Promise.all([fsp.unlink(tmpJson), fsp.unlink(tmpXlsx)]);
     return null;
   }
 
-  fs.copyFileSync(tmpXlsx, result.filePath);
-  fs.unlinkSync(tmpJson);
-  fs.unlinkSync(tmpXlsx);
+  await fsp.copyFile(tmpXlsx, result.filePath);
+  await Promise.all([fsp.unlink(tmpJson), fsp.unlink(tmpXlsx)]);
   return { path: result.filePath };
 });
 
@@ -451,12 +461,15 @@ app.on('window-all-closed', () => {
 });
 
 // Handle .awsmap file open (macOS: double-click file, drag to dock icon)
+let _pendingOpenFile = null;
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.webContents.isLoading()) {
     try {
       const content = fs.readFileSync(filePath, 'utf8');
       mainWindow.webContents.send('file:opened', content);
     } catch (e) { console.warn('file:opened - failed to read:', e.message); }
+  } else {
+    _pendingOpenFile = filePath;
   }
 });

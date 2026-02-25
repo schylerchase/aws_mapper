@@ -8,8 +8,10 @@ function openSearch(){const ov=document.getElementById('searchOverlay');ov.style
 function closeSearch(){document.getElementById('searchOverlay').style.display='none'}
 document.getElementById('searchBtn').addEventListener('click',openSearch);
 document.getElementById('searchBackdrop').addEventListener('click',closeSearch);
+var _searchTimer=null;
 document.getElementById('searchInput').addEventListener('input',function(){
-  const q=this.value.toLowerCase().trim();const res=document.getElementById('searchResults');
+  clearTimeout(_searchTimer);const self=this;_searchTimer=setTimeout(function(){
+  const q=self.value.toLowerCase().trim();const res=document.getElementById('searchResults');
   if(!q||!_rlCtx){res.innerHTML='';return}
   const matches=[];const isMA=_rlCtx._multiAccount;
   const add=(type,name,id,extra,acct)=>{if(matches.length<30)matches.push({type,name,id,extra,acct:acct||''})};
