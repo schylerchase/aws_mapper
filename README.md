@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.2.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Browser-lightgrey" alt="Platform">
 </p>
@@ -100,6 +100,7 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 | .awsmap | Full project save/restore |
 
 ### Other Capabilities
+- **Light/dark theme** with toggle button and `Ctrl+Shift+L` shortcut (persists via localStorage, respects OS preference)
 - Landing dashboard with feature overview and quick-start CTAs
 - IAM detail panel links directly to governance dashboard IAM tab
 - Snapshot timeline: capture, browse, and compare historical infrastructure states
@@ -187,6 +188,7 @@ The `-AllRegions` flag exports all active regions into subfolders. The PowerShel
 | `Shift+F` | Firewall Editor |
 | `Shift+G` | Governance Dashboard |
 | `Ctrl+S` | Save project |
+| `Ctrl+Shift+L` | Toggle light/dark mode |
 | `+` / `-` | Zoom in / out |
 
 ---
