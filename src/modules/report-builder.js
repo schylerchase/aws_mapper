@@ -166,7 +166,7 @@ function _renderRptPreview(){
   if(!enabled.length){
     container.textContent='';
     var p=document.createElement('p');
-    p.style.cssText='color:var(--text-muted);text-align:center;padding:60px 20px;font-family:IBM Plex Mono,monospace';
+    p.style.cssText='color:var(--text-muted);text-align:center;padding:60px 20px;font-family:Segoe UI,system-ui,sans-serif';
     p.textContent='Toggle sections on the left to build your report';
     container.appendChild(p);
     return;
@@ -974,7 +974,7 @@ function _rptBuildXlsxActionPlan(wb){
     minWidths:[14,12,14,20,14,28,40,40,14,14,12]});
 }
 
-// Inject company logo into XLSX zip (Summary sheet, top-right corner)
+// Inject company logo into XLSX zip (Summary sheet, A1 corner)
 async function _xlsxInjectLogo(zip){
   var logo=_rptState.logo;
   if(!logo) return;
@@ -995,23 +995,22 @@ async function _xlsxInjectLogo(zip){
       ctXml=ctXml.replace('</Types>','<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
     }
     zip.file('[Content_Types].xml',ctXml);
-    // Calculate size in EMUs (1 inch = 914400 EMUs), max 1.5" x 0.75"
-    var maxW=1371600,maxH=685800;
+    // Fixed size: 1" x 0.5" in EMUs (1 inch = 914400 EMUs), anchored at A1
+    var w=914400,h=457200;
     var aspect=logo.width/logo.height;
-    var w=maxW,h=maxW/aspect;
-    if(h>maxH){h=maxH;w=maxH*aspect;}
-    // Drawing XML — twoCellAnchor at top-right (col 3, row 0)
+    if(aspect>2){h=w/aspect;}else if(aspect<2){w=h*aspect;}
+    // Drawing XML — oneCellAnchor at A1 (col 0, row 0) with padding
     var drawXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+
-      '<xdr:twoCellAnchor editAs="oneCell">'+
-      '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'+
-      '<xdr:to><xdr:col>4</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>2</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>'+
-      '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr/></xdr:nvPicPr>'+
+      '<xdr:oneCellAnchor>'+
+      '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>76200</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>38100</xdr:rowOff></xdr:from>'+
+      '<xdr:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/>'+
+      '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
       '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/>'+
       '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
       '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+Math.round(w)+'" cy="'+Math.round(h)+'"/></a:xfrm>'+
       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'+
-      '</xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>';
+      '</xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
     zip.file('xl/drawings/drawing1.xml',drawXml);
     // Drawing rels — link image
     zip.file('xl/drawings/_rels/drawing1.xml.rels',
@@ -5844,7 +5843,7 @@ function generateIacPreview(){
     if(s.instances)parts.push(s.instances+' EC2');
     if(s.total)parts.push(s.total+' total resources');
     if(s.resources)parts.push(s.resources+' CFN resources');
-    if(parts.length)html+='<div style="padding:6px 20px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--text-muted);border-bottom:1px solid var(--border)">'+parts.join(' | ')+'</div>';
+    if(parts.length)html+='<div style="padding:6px 20px;font-family:Segoe UI,system-ui,sans-serif;font-size:10px;color:var(--text-muted);border-bottom:1px solid var(--border)">'+parts.join(' | ')+'</div>';
   }
 
   // Highlighted code

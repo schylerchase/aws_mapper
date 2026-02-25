@@ -196,7 +196,7 @@ var AppBundle = (() => {
     color:#000;
     padding:8px 20px;
     border-radius:6px;
-    font-family:IBM Plex Mono,monospace;
+    font-family:Segoe UI,system-ui,sans-serif;
     font-size:12px;
     font-weight:600;
     box-shadow:0 4px 12px rgba(0,0,0,.4);

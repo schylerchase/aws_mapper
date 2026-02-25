@@ -1390,8 +1390,8 @@ function _renderBUDRDash(){
   var counts=_getBUDRTierCounts();
   var total=_budrAssessments.length;
   // Toolbar: search + sort + tier pills
-  var th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:200px">';
-  th+='<select id="budrSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">';
+  var th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;width:200px">';
+  th+='<select id="budrSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">';
   th+='<option value="tier"'+(st.sort==='tier'?' selected':'')+'>Sort: Tier</option>';
   th+='<option value="name"'+(st.sort==='name'?' selected':'')+'>Sort: Name</option>';
   th+='<option value="type"'+(st.sort==='type'?' selected':'')+'>Sort: Type</option>';
@@ -1481,7 +1481,7 @@ function _renderBUDRDash(){
     });
     h+='</div></div>';
   });
-  if(!items.length)h+='<div style="padding:40px;text-align:center;color:var(--text-muted);font-family:IBM Plex Mono,monospace">No resources match current filter</div>';
+  if(!items.length)h+='<div style="padding:40px;text-align:center;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif">No resources match current filter</div>';
   body.innerHTML=h;
   body.scrollTop=0;
   // Event: section collapse
@@ -1575,7 +1575,7 @@ function _renderClassificationTab(){
     th+='<select id="govPerPage">';
     [25,50,100,0].forEach(function(v){th+='<option value="'+v+'"'+(st.perPage===v?' selected':'')+'>'+(v||'All')+'</option>'});
     th+='</select>';
-    th+='<button id="govRulesBtn" style="margin-left:auto;background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;padding:4px 12px;border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">Configure Rules</button>';
+    th+='<button id="govRulesBtn" style="margin-left:auto;background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;padding:4px 12px;border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Configure Rules</button>';
     tb.innerHTML=th;
     document.getElementById('govSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderClassificationTab()});
     document.getElementById('govFilter').addEventListener('change',function(){st.filter=this.value;st.page=1;_renderClassificationTab()});
@@ -1722,7 +1722,7 @@ function _renderIAMTab(){
     document.getElementById('govPerPage').addEventListener('change',function(){st.perPage=parseInt(this.value)||0;st.page=1;_renderIAMTab()});
   }
   if(!_iamReviewData.length){
-    body.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-muted);font-family:\'IBM Plex Mono\',monospace"><p style="font-size:14px">No IAM data loaded</p><p style="font-size:11px">Paste IAM auth details (from <code>aws iam get-account-authorization-details</code>) in the IAM section of the left panel, then re-render.</p></div>';
+    body.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif"><p style="font-size:14px">No IAM data loaded</p><p style="font-size:11px">Paste IAM auth details (from <code>aws iam get-account-authorization-details</code>) in the IAM section of the left panel, then re-render.</p></div>';
     footer.innerHTML='';
     return;
   }
@@ -1967,7 +1967,7 @@ function _openRulesEditor(){
         h+='<button class="gov-rule-del" data-del-idx="'+i+'" title="Delete rule">✕</button>';
         h+='</div>';
       });
-      h+='<div style="padding:4px 0 8px 34px"><button class="gov-rule-add-scope" data-add-scope="'+scope+'" style="background:none;border:1px dashed var(--border);border-radius:3px;padding:3px 10px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;color:var(--text-muted);cursor:pointer;transition:all .15s">+ Add '+((scopeLabels[scope]||scope).replace(' Rules',''))+' Rule</button></div>';
+      h+='<div style="padding:4px 0 8px 34px"><button class="gov-rule-add-scope" data-add-scope="'+scope+'" style="background:none;border:1px dashed var(--border);border-radius:3px;padding:3px 10px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;color:var(--text-muted);cursor:pointer;transition:all .15s">+ Add '+((scopeLabels[scope]||scope).replace(' Rules',''))+' Rule</button></div>';
       h+='</div></div>';
     });
     list.innerHTML=h;

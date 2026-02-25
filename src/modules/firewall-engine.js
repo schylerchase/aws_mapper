@@ -376,7 +376,7 @@ function _fwRenderNaclInline(nacl, sub){
   var eWarn=_fwCheckNaclShadow(nacl,'egress');
   var allWarn=iWarn.concat(eWarn);
   if(allWarn.length){
-    h+='<div style="margin-top:6px;padding:4px 6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));font-family:\'IBM Plex Mono\',monospace">';
+    h+='<div style="margin-top:6px;padding:4px 6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));font-family:Segoe UI,system-ui,sans-serif">';
     h+='<div style="color:var(--accent-orange);font-weight:600;margin-bottom:2px">Shadow Warnings</div>';
     allWarn.forEach(function(w){h+='<div style="color:var(--text-muted);margin:1px 0">'+_escHtml(w)+'</div>'});
     h+='</div>';
@@ -714,7 +714,7 @@ function _fwRefreshFullPanel(){
     // Shadow warnings for this direction
     var warns=_fwCheckNaclShadow(nacl, _fwFpDir);
     if(warns.length){
-      h+='<div style="margin-top:6px;padding:4px 6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;font-size:10px;font-family:\'IBM Plex Mono\',monospace">';
+      h+='<div style="margin-top:6px;padding:4px 6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">';
       h+='<div style="color:var(--accent-orange);font-weight:600;margin-bottom:2px">Shadow Warnings</div>';
       warns.forEach(function(w){h+='<div style="color:var(--text-muted);margin:1px 0">'+_escHtml(w)+'</div>'});
       h+='</div>';
@@ -794,7 +794,7 @@ function _fwRefreshFullPanel(){
       var vIsEgress=_fwFpDir==='egress';
       var vEntries=(vNacl.Entries||[]).filter(function(e){return vIsEgress?e.Egress:!e.Egress}).sort(function(a,b){return a.RuleNumber-b.RuleNumber});
       var vLabel=_fwFpDir==='ingress'?'INBOUND':'OUTBOUND';
-      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:\'IBM Plex Mono\',monospace">'+vLabel+' FLOW</div>';
+      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:Segoe UI,system-ui,sans-serif">'+vLabel+' FLOW</div>';
       vEntries.filter(function(e){return e.RuleNumber!==32767}).forEach(function(e){
         var cls=e.RuleAction==='allow'?'allow':'deny';
         var proto=_fwProtoLabel(e.Protocol);
@@ -811,7 +811,7 @@ function _fwRefreshFullPanel(){
     if(vSg){
       var vRules=_fwFpDir==='ingress'?(vSg.IpPermissions||[]):(vSg.IpPermissionsEgress||[]);
       var vLabel2=_fwFpDir==='ingress'?'INBOUND':'OUTBOUND';
-      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:\'IBM Plex Mono\',monospace">'+vLabel2+' FLOW</div>';
+      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:Segoe UI,system-ui,sans-serif">'+vLabel2+' FLOW</div>';
       vRules.forEach(function(p){
         var proto=p.IpProtocol==='-1'?'ALL':p.IpProtocol.toUpperCase();
         var port=p.IpProtocol==='-1'?'ALL':p.FromPort===p.ToPort?(p.FromPort||'ALL'):(p.FromPort||'*')+'-'+(p.ToPort||'*');
@@ -829,7 +829,7 @@ function _fwRefreshFullPanel(){
   } else if(_fwFpType==='route'){
     var vRt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===_fwFpResId});
     if(vRt){
-      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:\'IBM Plex Mono\',monospace">ROUTE FLOW</div>';
+      vH+='<div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;font-family:Segoe UI,system-ui,sans-serif">ROUTE FLOW</div>';
       (vRt.Routes||[]).forEach(function(r){
         var dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
         var tgt=r.GatewayId||r.NatGatewayId||r.TransitGatewayId||r.VpcPeeringConnectionId||r.VpcEndpointId||'local';
@@ -1232,9 +1232,9 @@ function _renderFirewallTab(){
   var sortOpts=[{k:'type',l:'Sort: Type'},{k:'name',l:'Sort: Name'},{k:'severity',l:'Sort: Severity'},{k:'rules',l:'Sort: Rules'}];
   var sortHtml='';sortOpts.forEach(function(o){sortHtml+='<option value="'+o.k+'"'+(_fwDashState.sort===o.k?' selected':'')+'>'+o.l+'</option>'});
   tb.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-    '<input id="fwDashSearch" type="text" placeholder="Search resources..." value="'+_escHtml(_fwDashState.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:IBM Plex Mono,monospace;width:180px">'+
-    '<select id="fwDashVpcFilter" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+vpcOpts+'</select>'+
-    '<select id="fwDashSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:IBM Plex Mono,monospace">'+sortHtml+'</select>'+
+    '<input id="fwDashSearch" type="text" placeholder="Search resources..." value="'+_escHtml(_fwDashState.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;width:180px">'+
+    '<select id="fwDashVpcFilter" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">'+vpcOpts+'</select>'+
+    '<select id="fwDashSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">'+sortHtml+'</select>'+
     '<div id="fwDashPills" style="display:flex;gap:4px;margin-left:auto"></div>'+
     '</div>';
   document.getElementById('fwDashVpcFilter').value=_fwDashState.vpcFilter;
@@ -1357,7 +1357,7 @@ function _fwDashRender(){
       cf==='open'?'No SGs with open 0.0.0.0/0 ingress':
       _fwDashState.search?'No resources match "'+_escHtml(_fwDashState.search)+'"':
       'No firewall resources found';
-    body.innerHTML=h+'<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-family:IBM Plex Mono,monospace;font-size:12px">'+emptyMsg+'</div>';
+    body.innerHTML=h+'<div style="padding:60px 20px;text-align:center;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif;font-size:12px">'+emptyMsg+'</div>';
     _fwWireCards(body);_fwRenderFooter(filtered.length,rows.length);
     return;
   }
@@ -1463,8 +1463,8 @@ function _fwRenderFooter(shown,total){
     '<span style="font-size:10px;color:var(--text-muted)">'+(totalEdits?totalEdits+' edit'+(totalEdits>1?'s':'')+' pending':'No pending edits')+
     ' | '+shown+' of '+total+' resources</span>'+
     '<div style="display:flex;gap:6px">'+
-      '<button id="fwDashExportAll" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer">Export All CLI</button>'+
-      '<button id="fwDashResetAll" style="background:rgba(239,68,68,.1);border:1px solid var(--accent-red);color:var(--accent-red);padding:4px 10px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer">Reset All</button>'+
+      '<button id="fwDashExportAll" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Export All CLI</button>'+
+      '<button id="fwDashResetAll" style="background:rgba(239,68,68,.1);border:1px solid var(--accent-red);color:var(--accent-red);padding:4px 10px;border-radius:4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Reset All</button>'+
     '</div></div>';
   document.getElementById('fwDashExportAll').addEventListener('click',function(){
     if(!_fwEdits||!_fwEdits.length){alert('No edits to export');return}

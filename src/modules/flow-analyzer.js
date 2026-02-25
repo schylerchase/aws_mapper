@@ -837,14 +837,14 @@ function _renderFlowDetail(){
   h+='<div style="margin-bottom:10px;font-size:10px;color:var(--text-muted)">Protocol: <span style="color:var(--accent-cyan)">'+_flowConfig.protocol.toUpperCase()+'</span> &nbsp; Port: <span style="color:var(--accent-cyan)">'+_flowConfig.port+'</span></div>';
   h+='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">';
   h+='<label style="font-size:9px;color:var(--text-muted)">Protocol:</label>';
-  h+='<select id="flowProtoSel" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 6px;font-size:10px;font-family:\'IBM Plex Mono\',monospace">';
+  h+='<select id="flowProtoSel" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 6px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">';
   ['tcp','udp','icmp'].forEach(function(p){
     h+='<option value="'+p+'"'+(p===_flowConfig.protocol?' selected':'')+'>'+p.toUpperCase()+'</option>';
   });
   h+='</select>';
   h+='<label style="font-size:9px;color:var(--text-muted)">Port:</label>';
-  h+='<input id="flowPortInput" type="number" min="1" max="65535" value="'+_flowConfig.port+'" style="width:60px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 6px;font-size:10px;font-family:\'IBM Plex Mono\',monospace">';
-  h+='<button id="flowRetraceBtn" style="background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 10px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">Re-trace</button>';
+  h+='<input id="flowPortInput" type="number" min="1" max="65535" value="'+_flowConfig.port+'" style="width:60px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 6px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">';
+  h+='<button id="flowRetraceBtn" style="background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 10px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer;font-weight:600">Re-trace</button>';
   h+='</div>';
   // Quick port buttons
   var quickPorts=[{label:'SSH',port:22},{label:'HTTP',port:80},{label:'HTTPS',port:443},{label:'MySQL',port:3306},{label:'Postgres',port:5432},{label:'Redis',port:6379},{label:'RDP',port:3389}];
@@ -892,7 +892,7 @@ function _renderFlowDetail(){
   // Add Waypoint button (shown when we have a completed trace)
   if(_flowPath&&_flowPath.length>0){
     h+='<div style="margin-top:12px;display:flex;gap:6px">';
-    h+='<button id="flowAddWpBtn2" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:4px 12px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">+ Add Waypoint</button>';
+    h+='<button id="flowAddWpBtn2" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:4px 12px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer;font-weight:600">+ Add Waypoint</button>';
     h+='</div>';
   }
   h+='</div>';
@@ -1130,7 +1130,7 @@ function _renderMultiFlowPath(){
     var wg=flowG.append('g').attr('class','flow-waypoint-marker');
     wg.append('circle').attr('cx',c.x).attr('cy',c.y).attr('r',14);
     wg.append('text').attr('x',c.x).attr('y',c.y+1).attr('text-anchor','middle').attr('dominant-baseline','central')
-      .attr('fill','#000').attr('font-size','9px').attr('font-weight','700').attr('font-family','IBM Plex Mono').text('W'+(i));
+      .attr('fill','#000').attr('font-size','9px').attr('font-weight','700').attr('font-family','Segoe UI,system-ui,sans-serif').text('W'+(i));
   });
 }
 
@@ -1234,13 +1234,13 @@ function _renderMultiFlowDetail(){
     } else {
       // Per-leg protocol/port controls
       h+='<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">';
-      h+='<select class="leg-proto-sel" data-leg-idx="'+li+'" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace">';
+      h+='<select class="leg-proto-sel" data-leg-idx="'+li+'" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif">';
       ['tcp','udp','icmp'].forEach(function(p){
         h+='<option value="'+p+'"'+(p===leg.config.protocol?' selected':'')+'>'+p.toUpperCase()+'</option>';
       });
       h+='</select>';
-      h+='<input class="leg-port-inp" data-leg-idx="'+li+'" type="number" min="1" max="65535" value="'+leg.config.port+'" style="width:50px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:9px;font-family:\'IBM Plex Mono\',monospace">';
-      h+='<button class="leg-retrace-btn" data-leg-idx="'+li+'" style="background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 8px;font-size:9px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">Re-trace</button>';
+      h+='<input class="leg-port-inp" data-leg-idx="'+li+'" type="number" min="1" max="65535" value="'+leg.config.port+'" style="width:50px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif">';
+      h+='<button class="leg-retrace-btn" data-leg-idx="'+li+'" style="background:var(--accent-cyan);color:#000;border:none;border-radius:3px;padding:2px 8px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer;font-weight:600">Re-trace</button>';
       h+='</div>';
       // Hops
       (leg.result.path||[]).forEach(function(hop,hi){
@@ -1262,8 +1262,8 @@ function _renderMultiFlowDetail(){
   });
   // Actions
   h+='<div style="margin-top:10px;display:flex;gap:6px">';
-  h+='<button id="mhAddWpBtn" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:4px 12px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer;font-weight:600">+ Waypoint</button>';
-  h+='<button id="mhClearBtn" style="background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;padding:4px 12px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;cursor:pointer">Clear All</button>';
+  h+='<button id="mhAddWpBtn" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:4px 12px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer;font-weight:600">+ Waypoint</button>';
+  h+='<button id="mhClearBtn" style="background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;padding:4px 12px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Clear All</button>';
   h+='</div>';
   h+='</div>';
   dpBody.innerHTML=h;
@@ -1589,7 +1589,7 @@ function _renderBastionArrows(faG){
     wg.append('text').attr('x',bc.x).attr('y',bc.y+1)
       .attr('text-anchor','middle').attr('dominant-baseline','central')
       .attr('fill','#000').attr('font-size','9px').attr('font-weight','700')
-      .attr('font-family','IBM Plex Mono').text('B');
+      .attr('font-family','Segoe UI,system-ui,sans-serif').text('B');
     // Internet → Bastion leg (if internet coords available)
     var ic=_getInternetCoords();
     if(ic){
@@ -1653,7 +1653,7 @@ function _renderFlowAnalysisPanel(){
   var _warnParts=[];
   if(!d.hasSgData) _warnParts.push('SG associations');
   if(!d.hasNaclEgress) _warnParts.push('NACL egress rules');
-  if(_warnParts.length) h+='<div style="padding:6px 8px;margin-bottom:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:4px;font-size:9px;color:#fbbf24;font-family:\'IBM Plex Mono\',monospace">'+_warnParts.join(' & ')+' missing — results based on available topology data</div>';
+  if(_warnParts.length) h+='<div style="padding:6px 8px;margin-bottom:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:4px;font-size:9px;color:#fbbf24;font-family:Segoe UI,system-ui,sans-serif">'+_warnParts.join(' & ')+' missing — results based on available topology data</div>';
   // === TIERS section ===
   if(mode==='tiers'||mode==='all'){
     h+='<h4>Access Tiers</h4>';
