@@ -19355,27 +19355,37 @@ function _rptBuildXlsxSummary(wb){
   var cols=4;
   var ws={};
   var r=0;
-  // Title row — merged across all columns
-  var titleAddr=XLSX.utils.encode_cell({r:r,c:0});
+  var hasLogo=!!_rptState.logo;
+  // When logo present, offset title/subtitle to col 1 so logo gets col 0
+  var tCol=hasLogo?1:0;
+  // Title row — merged across columns (skip col 0 when logo present)
+  var titleAddr=XLSX.utils.encode_cell({r:r,c:tCol});
   ws[titleAddr]={v:_rptState.title||'AWS Infrastructure Assessment',t:'s',
     s:{font:{bold:true,sz:18,color:{rgb:_XLSX_COLORS.titleFg},name:'Calibri'},
       alignment:{vertical:'center'},border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
-  for(var cc=1;cc<cols;cc++){
+  for(var cc=tCol+1;cc<cols;cc++){
     ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',
       s:{border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
   }
-  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:cols-1}}];
+  if(hasLogo){
+    // Empty styled cell under logo so bottom border is consistent
+    ws[XLSX.utils.encode_cell({r:r,c:0})]={v:'',t:'s',
+      s:{border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
+  }
+  ws['!merges']=[{s:{r:0,c:tCol},e:{r:0,c:cols-1}}];
+  // Row height: taller when logo present (logo is 0.5" = 36pt)
+  ws['!rows']=[{hpx:hasLogo?42:30}];
   r++;
   // Subtitle row
   var subParts=[];
   if(_rptState.author) subParts.push('Prepared by '+_rptState.author);
   subParts.push(_rptState.date||new Date().toISOString().slice(0,10));
-  var subAddr=XLSX.utils.encode_cell({r:r,c:0});
+  var subAddr=XLSX.utils.encode_cell({r:r,c:tCol});
   ws[subAddr]={v:subParts.join('  |  '),t:'s',
     s:{font:{sz:10,color:{rgb:_XLSX_COLORS.subtitleFg},name:'Calibri',italic:true},
       alignment:{vertical:'center'}}};
-  for(var cc=1;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s'};
-  ws['!merges'].push({s:{r:r,c:0},e:{r:r,c:cols-1}});
+  for(var cc=tCol+1;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s'};
+  ws['!merges'].push({s:{r:r,c:tCol},e:{r:r,c:cols-1}});
   r+=2;
   // Infrastructure Overview section
   if(c){
@@ -19462,8 +19472,9 @@ function _rptBuildXlsxSummary(wb){
   }
   // Set sheet range
   ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r,c:cols-1}});
-  ws['!cols']=[{wch:24},{wch:16},{wch:16},{wch:16}];
-  ws['!rows']=[{hpx:36}];
+  // Column widths: narrow col A for logo when present, otherwise standard
+  ws['!cols']=hasLogo?[{wch:14},{wch:24},{wch:16},{wch:16}]:[{wch:24},{wch:16},{wch:16},{wch:16}];
+  // !rows already set above (taller when logo present)
   XLSX.utils.book_append_sheet(wb,ws,'Summary');
 }
 
