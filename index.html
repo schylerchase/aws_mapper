@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.5.1</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.5.2</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.5.1 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.5.2 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -982,12 +982,12 @@ function runBUDRChecks(ctx){
 function _enrichBudrWithClassification(ctx,findings){
   // Run classification if not already done
   if(!_classificationData.length&&ctx) runClassificationEngine(ctx);
-  // Build lookup by resource id/name
-  var classMap={};
-  _classificationData.forEach(function(c){classMap[c.id]=c;classMap[c.name]=c});
+  // Build lookup by resource id/name (type-qualified keys take priority to avoid cross-type collisions)
+  var classMap={};var classMapTyped={};
+  _classificationData.forEach(function(c){classMap[c.id]=c;classMap[c.name]=c;classMapTyped[c.type+'|'+c.id]=c;classMapTyped[c.type+'|'+c.name]=c});
   // Enrich each BUDR assessment
   _budrAssessments.forEach(function(a){
-    var cls=classMap[a.id]||classMap[a.name];
+    var cls=classMapTyped[a.type+'|'+a.id]||classMapTyped[a.type+'|'+a.name]||classMap[a.id]||classMap[a.name];
     a.classTier=cls?cls.tier:'low';
     a.classVpcName=cls?cls.vpcName:'';
     // Find which profile key this assessment uses
