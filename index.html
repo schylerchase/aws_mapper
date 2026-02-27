@@ -4625,6 +4625,7 @@ function _filterInventory(){
   var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
     if(sortKey==='complianceFail'){return((a.complianceFail||0)-(b.complianceFail||0))*dir}
+    if(sortKey==='tags'){return(Object.keys(a.tags||{}).length-Object.keys(b.tags||{}).length)*dir}
     var av=(a[sortKey]||'').toString().toLowerCase();
     var bv=(b[sortKey]||'').toString().toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
@@ -4730,6 +4731,7 @@ function _renderInventoryBody(){
     {key:'state',label:'State'},
     {key:'vpcName',label:'VPC'},
     {key:'region',label:'Region'},
+    {key:'tags',label:'Tags'},
     {key:'classificationTier',label:'Classification'},
     {key:'budrTier',label:'BUDR'},
     {key:'complianceFail',label:'Compliance'}
@@ -4767,6 +4769,18 @@ function _renderInventoryBody(){
     bh+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(r.vpcName||'\u2014')+'</td>';
     // Region
     bh+='<td style="font-size:9px;color:var(--text-muted)">'+_escHtml(r.region||'\u2014')+'</td>';
+    // Tags
+    var tKeys=Object.keys(r.tags||{});
+    if(tKeys.length){
+      bh+='<td style="max-width:260px;overflow:hidden"><div style="display:flex;flex-wrap:wrap;gap:2px">';
+      tKeys.slice(0,4).forEach(function(k){
+        bh+='<span style="font-size:7px;background:var(--bg-input);padding:1px 4px;border-radius:2px;color:var(--text-secondary);border:1px solid var(--border);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="'+_escHtml(k+'='+r.tags[k])+'">'+_escHtml(k)+'='+_escHtml(r.tags[k])+'</span>';
+      });
+      if(tKeys.length>4) bh+='<span style="font-size:7px;color:var(--text-muted)">+'+(tKeys.length-4)+'</span>';
+      bh+='</div></td>';
+    } else {
+      bh+='<td style="font-size:9px;color:var(--text-muted)">\u2014</td>';
+    }
     // Classification tier
     if(r.classificationTier){
       bh+='<td><span class="gov-tier-badge '+r.classificationTier+'">'+r.classificationTier+'</span></td>';
