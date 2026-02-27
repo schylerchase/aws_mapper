@@ -18766,7 +18766,7 @@ function _openRulesEditor(){
   var workRules=JSON.parse(JSON.stringify(_classificationRules));
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
   var groupCollapsed={vpc:false,type:false,name:false};
-  var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
+  var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Resource Name Rules'};
   var scopeOrder=['vpc','type','name'];
   // Discover tag scopes from rules + data
   var disc=_discoveredTags||{};
@@ -19046,16 +19046,21 @@ function _openRulesEditor(){
   // Tag chip clicks — create starter rule for tag scope
   overlay.querySelectorAll('.gov-tag-chip').forEach(function(chip){
     chip.addEventListener('click',function(){
-      var tk=this.dataset.tagKey;var scope='tag:'+tk;
+      var chip=this;var tk=chip.dataset.tagKey;var scope='tag:'+tk;
       var hasRules=workRules.some(function(r){return r.scope===scope});
       if(!hasRules){
         workRules.push({pattern:'',scope:scope,tier:'critical',weight:120,enabled:true});
         groupCollapsed[scope]=false;
-      } else { groupCollapsed[scope]=false; }
+        chip.classList.add('active');
+      } else {
+        groupCollapsed[scope]=!groupCollapsed[scope];
+        chip.classList.toggle('active',!groupCollapsed[scope]);
+      }
       renderRules();renderPreview();
-      // Scroll to the group
-      var grp=overlay.querySelector('[data-scope="'+scope+'"]');
-      if(grp) grp.scrollIntoView({behavior:'smooth',block:'start'});
+      if(!groupCollapsed[scope]){
+        var grp=overlay.querySelector('[data-scope="'+scope+'"]');
+        if(grp) grp.scrollIntoView({behavior:'smooth',block:'start'});
+      }
     });
   });
   document.getElementById('govRuleReset').addEventListener('click',function(){
