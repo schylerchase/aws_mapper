@@ -276,6 +276,10 @@
   .dp-kv .k{color:var(--text-muted);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));flex-shrink:0}
   .dp-kv .v{color:var(--text-primary);font-size:calc(11px * var(--txt-scale) * var(--dp-txt-scale));text-align:right;word-break:break-all;cursor:pointer}
   .dp-kv .v:hover{color:var(--accent-cyan)}
+  table.dp-kv{width:100%;border-collapse:collapse;font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1))}
+  table.dp-kv td{padding:3px 0;vertical-align:top}
+  table.dp-kv td:first-child{color:var(--text-muted);white-space:nowrap;padding-right:12px;width:1%;font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1))}
+  table.dp-kv td:last-child{color:var(--text-primary);word-break:break-all;font-size:calc(11px * var(--txt-scale,1) * var(--dp-txt-scale,1))}
   .dp-badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;margin-left:4px}
   .dp-badge.running{background:rgba(16,185,129,.15);color:var(--accent-green)}
   .dp-badge.stopped{background:rgba(239,68,68,.15);color:var(--accent-red)}

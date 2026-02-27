@@ -4418,7 +4418,7 @@ function _buildInventoryData(){
   function tags(obj){var m={};(obj.Tags||obj.tags||[]).forEach(function(t){m[t.Key]=t.Value});return m}
   function mkRow(id,type,name,obj,extra){
     return{id:id,type:type,name:name,
-      account:obj._accountId||'',region:obj._region||'',
+      account:obj._accountLabel||obj._accountId||'',region:obj._region||'',
       vpcId:extra.vpcId||'',vpcName:extra.vpcId?vpcNameMap[extra.vpcId]||'':'',
       subnetId:extra.subnetId||'',az:extra.az||'',
       state:extra.state||'',config:extra.config||'',tags:tags(obj),
@@ -4723,6 +4723,37 @@ function _renderInventoryBody(){
     bh+='<div class="gov-tier-card" style="border-color:'+tc+'"><h3 style="color:'+tc+'">'+_escHtml(d.type)+'</h3><div class="gov-tier-count" style="color:'+tc+'">'+d.count+'</div></div>';
   });
   bh+='</div>';
+  // Tag summary panel — show tag keys and unique values for filtered set
+  var tagSummary={};
+  items.forEach(function(r){
+    var tk=Object.keys(r.tags||{});
+    tk.forEach(function(k){
+      if(!tagSummary[k]) tagSummary[k]={};
+      var v=r.tags[k];if(v) tagSummary[k][v]=(tagSummary[k][v]||0)+1;
+    });
+  });
+  var tagKeys=Object.keys(tagSummary).sort(function(a,b){return Object.keys(tagSummary[b]).length-Object.keys(tagSummary[a]).length});
+  if(tagKeys.length){
+    var showTags=_invState._showTags;
+    bh+='<div style="margin-bottom:12px">';
+    bh+='<button id="invToggleTags" style="font-size:11px;background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:5px 12px;border-radius:4px;cursor:pointer;font-family:inherit">'+(showTags?'▼':'▶')+' Tag Explorer ('+tagKeys.length+' keys)</button>';
+    if(showTags){
+      bh+='<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">';
+      tagKeys.forEach(function(k){
+        var vals=tagSummary[k];var vKeys=Object.keys(vals).sort(function(a,b){return vals[b]-vals[a]});
+        bh+='<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:10px 12px">';
+        bh+='<div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:6px">'+_escHtml(k)+' <span style="font-weight:400;color:var(--text-muted)">('+vKeys.length+' unique values)</span></div>';
+        bh+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+        vKeys.slice(0,20).forEach(function(v){
+          bh+='<span style="font-size:11px;background:var(--bg-input);padding:3px 8px;border-radius:3px;color:var(--text-secondary);border:1px solid var(--border);white-space:nowrap;cursor:pointer" class="inv-tag-val" data-tag-val="'+_escHtml(k+'='+v)+'" title="'+_escHtml(v)+' ('+vals[v]+')">'+_escHtml(v.length>30?v.substring(0,28)+'..':v)+' <span style="color:var(--text-muted)">'+vals[v]+'</span></span>';
+        });
+        if(vKeys.length>20) bh+='<span style="font-size:11px;color:var(--text-muted)">+'+(vKeys.length-20)+' more</span>';
+        bh+='</div></div>';
+      });
+      bh+='</div>';
+    }
+    bh+='</div>';
+  }
   // Columns
   var cols=[
     {key:'type',label:'Type'},
@@ -4772,11 +4803,11 @@ function _renderInventoryBody(){
     // Tags
     var tKeys=Object.keys(r.tags||{});
     if(tKeys.length){
-      bh+='<td style="max-width:260px;overflow:hidden"><div style="display:flex;flex-wrap:wrap;gap:2px">';
+      bh+='<td style="max-width:280px;overflow:hidden"><div style="display:flex;flex-wrap:wrap;gap:3px">';
       tKeys.slice(0,4).forEach(function(k){
-        bh+='<span style="font-size:7px;background:var(--bg-input);padding:1px 4px;border-radius:2px;color:var(--text-secondary);border:1px solid var(--border);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="'+_escHtml(k+'='+r.tags[k])+'">'+_escHtml(k)+'='+_escHtml(r.tags[k])+'</span>';
+        bh+='<span style="font-size:9px;background:var(--bg-input);padding:2px 5px;border-radius:3px;color:var(--text-secondary);border:1px solid var(--border);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis" title="'+_escHtml(k+'='+r.tags[k])+'">'+_escHtml(k)+'='+_escHtml(r.tags[k])+'</span>';
       });
-      if(tKeys.length>4) bh+='<span style="font-size:7px;color:var(--text-muted)">+'+(tKeys.length-4)+'</span>';
+      if(tKeys.length>4) bh+='<span style="font-size:9px;color:var(--text-muted)">+'+(tKeys.length-4)+'</span>';
       bh+='</div></td>';
     } else {
       bh+='<td style="font-size:9px;color:var(--text-muted)">\u2014</td>';
@@ -4834,8 +4865,13 @@ function _renderInventoryBody(){
 
 function _buildInvExpandedDetail(r){
   var h='';
-  // ID
-  h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">ID:</b> <code style="font-size:10px;background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--text-primary)">'+_escHtml(r.id)+'</code></div>';
+  // ID — hyperlinked to AWS Console
+  var idUrl=_awsConsoleUrl(r.type,r.id,r.region);
+  if(idUrl){
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">ID:</b> <a href="'+_escHtml(idUrl)+'" target="_blank" rel="noopener" style="font-size:10px;background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--accent-cyan);text-decoration:underline dotted;text-underline-offset:2px;font-family:monospace" title="Open in AWS Console">'+_escHtml(r.id)+'</a></div>';
+  } else {
+    h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">ID:</b> <code style="font-size:10px;background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--text-primary)">'+_escHtml(r.id)+'</code></div>';
+  }
   // Account / Region / AZ
   var locParts=[];
   if(r.account) locParts.push('Account: '+_escHtml(r.account));
@@ -4844,11 +4880,18 @@ function _buildInvExpandedDetail(r){
   if(locParts.length){
     h+='<div style="margin-bottom:6px;font-size:10px;color:var(--text-secondary)">'+locParts.join(' &middot; ')+'</div>';
   }
-  // Related resources
+  // Related resources — hyperlinked
   if(r._related && r._related.length){
     h+='<div style="margin-bottom:6px"><b style="color:var(--text-muted);font-size:9px">Related:</b> ';
+    var prefixTypeMap={'sg-':'Security Group','i-':'EC2','subnet-':'Subnet','vpc-':'VPC','vol-':'EBS Volume','igw-':'IGW','nat-':'NAT GW','eni-':'ENI','rtb-':'Route Table','acl-':'NACL','pcx-':'VPC Peering','vpce-':'VPC Endpoint'};
     r._related.forEach(function(rid){
-      h+='<code style="font-size:9px;background:var(--bg-input);padding:1px 4px;border-radius:2px;margin-right:3px;color:var(--accent-cyan)">'+_escHtml(rid)+'</code>';
+      var relType='';for(var px in prefixTypeMap){if(rid.indexOf(px)===0){relType=prefixTypeMap[px];break}}
+      var relUrl=relType?_awsConsoleUrl(relType,rid,r.region):'';
+      if(relUrl){
+        h+='<a href="'+_escHtml(relUrl)+'" target="_blank" rel="noopener" style="font-size:9px;background:var(--bg-input);padding:1px 4px;border-radius:2px;margin-right:3px;color:var(--accent-cyan);text-decoration:underline dotted;text-underline-offset:2px;font-family:monospace" title="Open in AWS Console">'+_escHtml(rid)+'</a>';
+      } else {
+        h+='<code style="font-size:9px;background:var(--bg-input);padding:1px 4px;border-radius:2px;margin-right:3px;color:var(--accent-cyan)">'+_escHtml(rid)+'</code>';
+      }
     });
     h+='</div>';
   }
@@ -4910,6 +4953,18 @@ function _buildInvExpandedDetail(r){
 }
 
 function _wireInventoryEvents(body,footer,items,cols){
+  // Tag explorer toggle
+  var tagToggle=document.getElementById('invToggleTags');
+  if(tagToggle) tagToggle.addEventListener('click',function(){_invState._showTags=!_invState._showTags;_renderInventoryBody()});
+  // Tag value click → search
+  body.querySelectorAll('.inv-tag-val').forEach(function(chip){
+    chip.addEventListener('click',function(e){
+      e.stopPropagation();
+      var v=this.dataset.tagVal||'';
+      var searchEl=document.getElementById('invSearch');
+      if(searchEl){searchEl.value=v;_invState.search=v;_invState.page=1;_renderInventoryBody()}
+    });
+  });
   // Pagination
   if(document.getElementById('invPrev')){
     document.getElementById('invPrev').addEventListener('click',function(){_invState.page--;_renderInventoryBody()});
@@ -5685,7 +5740,8 @@ function openResourceList(type, pushNav){
     const style=` style="border-left:3px solid ${color||'var(--border)'};padding-left:8px;margin:4px 0${action?';cursor:pointer':''}"`;
     const navBtn=action?'<span class="dp-nav-btn" data-nav="1" data-nav-t="'+esc(action.t)+'" data-nav-id="'+esc(action.id)+'" title="Navigate to resource on map">Go to</span>':'';
     const tog=details?'<span class="dp-tog">&#9660;</span>':'';
-    const det=details?'<span class="dp-det"><br><span class="k">'+esc(details)+'</span></span>':'';
+    const hasHtml=details&&/<[a-z][\s\S]*>/i.test(details);
+    const det=details?'<span class="dp-det"><br><span class="k">'+(hasHtml?details:esc(details))+'</span></span>':'';
     return '<div class="dp-row"'+act+style+'>'
       +tog+'<span class="i" style="color:'+(color||'var(--text-primary)')+'">'+main+'</span>'+navBtn
       +det+'</div>';
@@ -17076,8 +17132,8 @@ function _diffPropsHtml(type,res){
   function tags(r){
     var t=r.Tags||r.TagSet||[];
     if(!t.length) return;
-    var th=t.map(function(tg){return '<span style="background:rgba(255,255,255,.05);padding:1px 5px;border-radius:2px;margin:1px">'+esc(tg.Key)+'='+esc(tg.Value)+'</span>'}).join(' ');
-    h+='<div style="margin-top:4px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted)">Tags: '+th+'</div>';
+    var th=t.map(function(tg){return '<span style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);padding:1px 5px;border-radius:3px;margin:1px;color:#c4b5fd">'+esc(tg.Key)+'<span style="color:#a78bfa">=</span>'+esc(tg.Value)+'</span>'}).join(' ');
+    h+='<div style="margin-top:6px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted);display:flex;flex-wrap:wrap;gap:2px;align-items:center"><span style="margin-right:4px;font-weight:600">Tags:</span> '+th+'</div>';
   }
   switch(type){
     case 'vpcs':
@@ -18692,6 +18748,16 @@ function _renderIAMTab(){
   });
 }
 
+// Collect unique tag values for a given tag key from classification data
+function _collectTagValues(tagKey){
+  var vals={};
+  (_classificationData||[]).forEach(function(res){
+    var v=(res.tags||{})[tagKey];
+    if(v) vals[v]=(vals[v]||0)+1;
+  });
+  return Object.keys(vals).map(function(v){return{val:v,ct:vals[v]}}).sort(function(a,b){return b.ct-a.ct});
+}
+
 // Rules editor overlay
 function _openRulesEditor(){
   var existing=document.getElementById('govRulesOverlay');
@@ -18822,6 +18888,18 @@ function _openRulesEditor(){
         h+='<span class="gov-rule-drag" title="Drag to reorder">⠿</span>';
         h+='<div class="gov-rule-toggle'+(r.enabled!==false?' on':'')+'" data-toggle-idx="'+i+'" title="'+(r.enabled!==false?'Enabled — click to disable':'Disabled — click to enable')+'"></div>';
         h+='<input class="pattern'+((!isValid)?' invalid-pattern':'')+'" type="text" value="'+_escHtml(r.pattern)+'" data-field="pattern" placeholder="regex pattern…" title="'+((!isValid)?'Invalid regex!':'Regex pattern')+'">';
+        // Show unique values for tag-scoped rules
+        if(r.scope&&r.scope.indexOf('tag:')===0){
+          var tagKey=r.scope.substring(4);var tagVals=_collectTagValues(tagKey);
+          if(tagVals.length){
+            h+='<div class="gov-tag-vals" style="grid-column:span 2;display:flex;flex-wrap:wrap;gap:2px;padding:0 0 2px 34px">';
+            tagVals.slice(0,12).forEach(function(tv){
+              h+='<span class="gov-tag-val-chip" data-val="'+_escHtml(tv.val)+'" style="font-size:7px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);padding:1px 5px;border-radius:2px;color:#a78bfa;cursor:pointer" title="Click to use: '+_escHtml(tv.val)+' ('+tv.ct+' resources)">'+_escHtml(tv.val.length>25?tv.val.substring(0,23)+'..':tv.val)+' <span style="color:var(--text-muted)">'+tv.ct+'</span></span>';
+            });
+            if(tagVals.length>12) h+='<span style="font-size:7px;color:var(--text-muted)">+'+(tagVals.length-12)+' more</span>';
+            h+='</div>';
+          }
+        }
         h+='<select data-field="scope" style="display:none"><option value="vpc"'+(r.scope==='vpc'?' selected':'')+'>VPC Name</option><option value="type"'+(r.scope==='type'?' selected':'')+'>Type</option><option value="name"'+(r.scope==='name'?' selected':'')+'>Name</option>';
         sortedTagScopes.forEach(function(ts){h+='<option value="'+ts+'"'+(r.scope===ts?' selected':'')+'>Tag: '+ts.substring(4)+'</option>'});
         h+='</select>';
@@ -18901,6 +18979,22 @@ function _openRulesEditor(){
         else if(field==='weight') workRules[idx].weight=parseInt(this.value)||0;
         clearTimeout(previewTimer);
         previewTimer=setTimeout(renderPreview,150);
+      });
+    });
+    // Tag value chip click → populate pattern field
+    overlay.querySelectorAll('.gov-tag-val-chip').forEach(function(chip){
+      chip.addEventListener('click',function(e){
+        e.stopPropagation();
+        var val=this.dataset.val;
+        var row=this.closest('.gov-rule-row');
+        if(row){
+          var inp=row.querySelector('input.pattern');
+          if(inp){
+            var cur=inp.value;
+            inp.value=cur?(cur+'|'+val):val;
+            inp.dispatchEvent(new Event('input',{bubbles:true}));
+          }
+        }
       });
     });
   }
