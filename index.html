@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js?v=2a4ff1f2"></script>
+<script src="dist/app.bundle.js?v=ed8b7684"></script>
 <link rel="stylesheet" href="src/styles/main.css?v=3">
 </head>
 <body>
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.5.2</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.5.3</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.5.2 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.5.3 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -136,11 +136,11 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <button class="zoom-btn" id="zoomOut">-</button>
     <button class="zoom-btn" id="zoomFit">~</button>
     <div id="zoomLevel" style="font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;color:var(--text-muted);text-align:center;padding:2px 0;min-width:32px">100%</div>
-    <div id="detailBtns" style="display:flex;flex-direction:column;gap:4px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px">
+    <div id="detailBtns" style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px">
       <button class="zoom-btn wide" id="btnExpand" title="Show all resources with nested details">Expand</button>
       <button class="zoom-btn wide" id="btnCollapse" title="Collapse to VPCs and subnet names only">Collapse</button>
     </div>
-    <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;position:relative">
+    <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;position:relative;display:flex;flex-direction:column;align-items:center">
       <button class="design-btn" id="designToggle" title="Enter Design Mode to propose changes">Design</button>
       <div class="design-help" id="designHelp">
         <div class="dh-title">Design Mode</div>
@@ -756,6 +756,34 @@ let _detailLevel=0; // 0=collapsed(VPC+subnet names), 1=normal(resources), 2=exp
 let _dnsRecordsExpanded=false; // DNS zones always show; toggle for individual record rows
 
 // Compliance engine now loaded from bundle (src/modules/compliance-engine.js)
+// Content-based compliance cache — prevents recomputation on expand/collapse
+let _complianceDataFP='';
+let _complianceCachedFindings=null;
+let _budrCachedFindings=null;
+let _budrCachedAssessments=null;
+function _dataFingerprint(){
+  let fp='';
+  document.querySelectorAll('.ji').forEach(el=>{if(el.value)fp+=el.id+':'+el.value.length+';'});
+  return fp;
+}
+function _runComplianceWithCache(ctx){
+  const fp=_dataFingerprint();
+  if(fp===_complianceDataFP&&_complianceCachedFindings){
+    // Restore cached BUDR globals
+    if(_budrCachedFindings)_budrFindings=_budrCachedFindings;
+    if(_budrCachedAssessments)_budrAssessments=_budrCachedAssessments;
+    window._complianceFindings=_complianceCachedFindings;
+    return _complianceCachedFindings;
+  }
+  // Data changed — reset stale classification and recompute
+  _classificationData=[];
+  const findings=runComplianceChecks(ctx);
+  _complianceDataFP=fp;
+  _complianceCachedFindings=findings;
+  _budrCachedFindings=_budrFindings;
+  _budrCachedAssessments=_budrAssessments;
+  return findings;
+}
 // #endregion INITIALIZATION & GLOBALS
 // #region BUDR ENGINE
 // === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
@@ -4106,11 +4134,10 @@ function runIAMChecks(iamData){
   // OPTIMIZED: Pre-index policies to avoid O(roles × policies) nested find()
   const policyByArn=new Map();
   (iamData.policies||[]).forEach(p=>{if(p.Arn)policyByArn.set(p.Arn,p);if(p.PolicyName)policyByArn.set(p.PolicyName,p)});
-  // Derive own account ID from first role/user ARN to detect cross-account trusts
-  var _iamOwnAccountId='';
-  var _firstArn=(iamData.roles||[]).concat(iamData.users||[]).find(r=>r.Arn);
-  if(_firstArn){var _am=_firstArn.Arn.match(/arn:aws:iam::(\d+):/);if(_am)_iamOwnAccountId=_am[1]}
+  // Helper: derive account ID from a resource's ARN (supports merged multi-account data)
+  function _acctFromArn(r){if(!r||!r.Arn)return '';const m=r.Arn.match(/arn:aws:iam::(\d+):/);return m?m[1]:''}
   (iamData.roles||[]).forEach(role=>{
+    const _iamOwnAccountId=_acctFromArn(role);
     if(role._isAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
     if(role._hasWildcard&&!role._isAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
     // Check for cross-account trust without MFA condition
@@ -7875,7 +7902,7 @@ function renderLandingZoneMap(ctx){
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
   });
   // Compliance chip (landing zone)
-  try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
+  try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
@@ -8182,7 +8209,7 @@ function renderExecutiveOverview(ctx){
   });
   const _compY=_gridY+_hdrGridH+4;
   let _compFindings=[];
-  try{_compFindings=runComplianceChecks(_rlCtx)||[]}catch(e){console.warn('Compliance checks failed:',e)}
+  try{_compFindings=_runComplianceWithCache(_rlCtx)||[]}catch(e){console.warn('Compliance checks failed:',e)}
   const _compN=_compFindings.length;
   const _compColor=_compN===0?'#22c55e':_compN<=20?'#eab308':_compN<=50?'#f97316':'#ef4444';
   const _compG=hdrG.append('g').style('cursor','pointer');
@@ -8225,6 +8252,8 @@ function _cachedParse(id){
 function invalidateParseCache(){_parseCache={}}
 function renderMap(cb){
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
+  // In merge mode, always use the prebuilt merged context (avoid textarea re-parse divergence)
+  if(_multiViewMode&&_mergedCtx&&!_prebuiltCtx)_prebuiltCtx=_mergedCtx;
   const overlay=document.getElementById('loadingOverlay');
   overlay.style.display='flex';
   _renderMapTimer=setTimeout(()=>{
@@ -10195,7 +10224,7 @@ function _renderMapInner(){
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
   });
   // Compliance chip (grid layout)
-  try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
+  try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
@@ -10273,6 +10302,9 @@ function saveProject(){
 }
 function _loadProjectData(project){
   if(!project.textareas&&!project._format){alert('Invalid project file');return}
+  // MEMORY: Reset state from previous load
+  _iamData=null;_parseCache={};_rlCtx=null;
+  _complianceDataFP='';_complianceCachedFindings=null;
   document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});
   const ta=project.textareas||project.json_data||{};
   Object.entries(ta).forEach(([id,val])=>{const el=document.getElementById(id);if(el){el.value=typeof val==='string'?val:JSON.stringify(val,null,2);try{JSON.parse(el.value);el.className='ji valid'}catch(ex){el.className='ji invalid'}}});
@@ -11621,6 +11653,13 @@ function _buildRlCtxFromTextareas(){
     let lambdaFns=ext(safeParse(gv('in_lambda')),['Functions']).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
     let ecacheClusters=ext(safeParse(gv('in_elasticache')),['CacheClusters']);
     let redshiftClusters=ext(safeParse(gv('in_redshift')),['Clusters']);
+    // Parse resources previously skipped (S3, WAF, DNS, CF) — needed for compliance accuracy
+    let s3raw=safeParse(gv('in_s3'));let s3bk=s3raw?ext(s3raw,['Buckets']):[];
+    let zones=ext(safeParse(gv('in_r53')),['HostedZones']);
+    let wafAcls=ext(safeParse(gv('in_waf')),['WebACLs']);
+    let cfDistributions=[];const cfRaw=safeParse(gv('in_cf'));
+    if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[]}
+    let tgwAttRaw=ext(safeParse(gv('in_tgwatt')),['TransitGatewayAttachments']);
     // Parse IAM data (grid path)
     const iamRaw2=safeParse(gv('in_iam'));
     if(iamRaw2&&!_iamData)_iamData=parseIAMData(iamRaw2);
@@ -11683,16 +11722,23 @@ function _buildRlCtxFromTextareas(){
     ecacheClusters.forEach(c=>{const vid=c.VpcId||(c.CacheNodes&&c.CacheNodes[0]&&c.CacheNodes[0].CustomerAvailabilityZone?'':'');if(vid){if(!ecacheByVpc.has(vid))ecacheByVpc.set(vid,[]);ecacheByVpc.get(vid).push(c)}});
     redshiftClusters.forEach(c=>{const v=c.VpcId;if(v){if(!redshiftByVpc.has(v))redshiftByVpc.set(v,[]);redshiftByVpc.get(v).push(c)}});
 
-    const tgwAttachments=[];
-    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
-
     function m2o(m){const o={};m.forEach((v,k)=>{o[k]=v});return o}
+    // Build WAF/TG/CF lookup maps
+    const wafByAlb={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(wafByAlb[arn]=wafByAlb[arn]||[]).push(acl)})});
+    const tgByAlb={};tgs.forEach(tg=>{(tg.LoadBalancerArns||[]).forEach(arn=>{(tgByAlb[arn]=tgByAlb[arn]||[]).push(tg)})});
+    const cfByAlb={};cfDistributions.forEach(d=>{(d.Origins?.Items||[]).forEach(o=>{const matchAlb=albs.find(a=>a.DNSName&&o.DomainName&&o.DomainName.includes(a.DNSName));if(matchAlb)(cfByAlb[matchAlb.LoadBalancerArn]=cfByAlb[matchAlb.LoadBalancerArn]||[]).push(d)})});
+    const recsByZone={};
+    const allRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets','RecordSets']);
+    allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZone[r.HostedZoneId]=recsByZone[r.HostedZoneId]||[]).push(r)});
+    // Merge explicit TGW attachments with route-derived ones
+    const tgwAttachments2=[...tgwAttRaw];
+    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments2.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
     return {vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,
-      s3bk:[],zones:[],wafAcls:[],wafByAlb:{},tgByAlb:{},cfByAlb:{},
-      rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions:[],
+      s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,
+      rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,
       instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
       subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
-      tgwAttachments,recsByZone:{},_multiAccount,_accounts,_regions,_multiRegion};
+      tgwAttachments:tgwAttachments2,recsByZone,_multiAccount,_accounts,_regions,_multiRegion};
   }catch(e){
     console.warn('_buildRlCtxFromTextareas error:',e);
     return null;
@@ -11726,6 +11772,13 @@ function _buildRlCtxFromData(textareas, accountLabel){
     let lambdaFns=ext(_val('in_lambda'),['Functions']).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
     let ecacheClusters=ext(_val('in_elasticache'),['CacheClusters']);
     let redshiftClusters=ext(_val('in_redshift'),['Clusters']);
+    // Parse resources for compliance accuracy (S3, WAF, CF, DNS, TGW)
+    let s3raw=_val('in_s3');let s3bk=s3raw?ext(s3raw,['Buckets']):[];
+    let zones=ext(_val('in_r53'),['HostedZones']);
+    let wafAcls=ext(_val('in_waf'),['WebACLs']);
+    let cfDistributions=[];const cfRaw=_val('in_cf');
+    if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[]}
+    let tgwAttRaw=ext(_val('in_tgwatt'),['TransitGatewayAttachments']);
     const iamRaw2=_val('in_iam');
     if(iamRaw2&&!_iamData)_iamData=parseIAMData(iamRaw2);
 
@@ -11770,16 +11823,25 @@ function _buildRlCtxFromData(textareas, accountLabel){
     ecacheClusters.forEach(c=>{const vid=c.VpcId||(c.CacheNodes&&c.CacheNodes[0]&&c.CacheNodes[0].CustomerAvailabilityZone?'':'');if(vid){if(!ecacheByVpc.has(vid))ecacheByVpc.set(vid,[]);ecacheByVpc.get(vid).push(c)}});
     redshiftClusters.forEach(c=>{const v=c.VpcId;if(v){if(!redshiftByVpc.has(v))redshiftByVpc.set(v,[]);redshiftByVpc.get(v).push(c)}});
 
-    const tgwAttachments=[];
+    // Merge explicit TGW attachments with route-derived ones
+    const tgwAttachments=[...tgwAttRaw];
     rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
+
+    // Build WAF/TG/CF lookup maps (mirrors _buildRlCtxFromTextareas)
+    const wafByAlb={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(wafByAlb[arn]=wafByAlb[arn]||[]).push(acl)})});
+    const tgByAlb={};tgs.forEach(tg=>{(tg.LoadBalancerArns||[]).forEach(arn=>{(tgByAlb[arn]=tgByAlb[arn]||[]).push(tg)})});
+    const cfByAlb={};cfDistributions.forEach(d=>{(d.Origins?.Items||[]).forEach(o=>{const matchAlb=albs.find(a=>a.DNSName&&o.DomainName&&o.DomainName.includes(a.DNSName));if(matchAlb)(cfByAlb[matchAlb.LoadBalancerArn]=cfByAlb[matchAlb.LoadBalancerArn]||[]).push(d)})});
+    const recsByZone={};
+    const allRecSets=ext(_val('in_r53records'),['ResourceRecordSets','RecordSets']);
+    allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZone[r.HostedZoneId]=recsByZone[r.HostedZoneId]||[]).push(r)});
 
     function m2o(m){const o={};m.forEach((v,k)=>{o[k]=v});return o}
     return {vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,
-      s3bk:[],zones:[],wafAcls:[],wafByAlb:{},tgByAlb:{},cfByAlb:{},
-      rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions:[],
+      s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,
+      rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,
       instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
       subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
-      tgwAttachments,recsByZone:{},_multiAccount,_accounts,_regions,_multiRegion};
+      tgwAttachments,recsByZone,_multiAccount,_accounts,_regions,_multiRegion};
   }catch(e){
     console.warn('_buildRlCtxFromData error:',e);
     return null;
@@ -11797,6 +11859,8 @@ function removeAccountContext(index){
 function mergeContexts(contexts){
   const visible=contexts.filter(c=>c.visible);
   if(!visible.length)return null;
+  // MEMORY: Lazily rebuild rlCtx from textareas if previously released
+  visible.forEach(c=>{if(!c.rlCtx&&c.textareas)c.rlCtx=_buildRlCtxFromData(c.textareas,c.accountLabel)});
   if(visible.length===1)return visible[0].rlCtx;
 
   // Merge all rlCtx fields
@@ -11875,7 +11939,7 @@ function exitMultiView(){
   document.getElementById('mergeBanner').style.display='none';
   var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');
   document.getElementById('mergeViewBtn').textContent='Merge View';
-  renderMap(()=>{_autoSaveSession()});
+  renderMap(()=>{_autoSaveSession();_parseCache={}});
   _renderAccountPanel();
 }
 
@@ -11885,6 +11949,7 @@ function _remergeAndRender(){
     _rlCtx=_mergedCtx;
     // Clear dashboard caches so they re-run with merged context
     _classificationData=[];_budrAssessments=[];
+    _complianceDataFP='';_complianceCachedFindings=null;
     if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();else{_complianceFindings=[]}
     // PERF: Fill textareas for sidebar display (deferred to avoid blocking render)
     // Use requestIdleCallback if available, otherwise setTimeout
@@ -11917,10 +11982,29 @@ function _remergeAndRender(){
         }else{el.value='';el.className='ji'}
       });
     };
+    // Fill IAM textarea synchronously BEFORE render — compliance engine reads it via gv('in_iam')
+    // Other textareas are deferred (they're only for sidebar display)
+    const _iamTA=document.getElementById('in_iam');
+    if(_iamTA){
+      let mergedIAM=null;
+      _loadedContexts.filter(c=>c.visible).forEach(c=>{
+        const val=c.textareas?.in_iam;if(!val)return;
+        const b=typeof val==='object'?val:safeParse(val);if(!b||typeof b!=='object')return;
+        if(!mergedIAM){mergedIAM=b;return}
+        const allKeys=new Set([...Object.keys(mergedIAM),...Object.keys(b)]);
+        allKeys.forEach(k=>{
+          if(Array.isArray(mergedIAM[k])&&Array.isArray(b[k]))mergedIAM[k]=mergedIAM[k].concat(b[k]);
+          else if(b[k]!==undefined)mergedIAM[k]=b[k];
+        });
+      });
+      if(mergedIAM){_iamTA.value=JSON.stringify(mergedIAM);_iamTA.className='ji valid'}
+    }
     // PERF: Set prebuilt context so _renderMapInner skips textarea parsing
     _prebuiltCtx=_mergedCtx;
+    // MEMORY: Release per-account rlCtx — merged copy has all data
+    _loadedContexts.forEach(c=>{c.rlCtx=null});
     _renderMergeBannerChips();
-    renderMap(()=>{_autoSaveSession();_fillTextareasForDisplay()});
+    renderMap(()=>{_autoSaveSession();_fillTextareasForDisplay();_parseCache={}});
   }
 }
 
@@ -20335,9 +20419,9 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   status.textContent=msg;
   status.style.color=skipped.length?'var(--accent-orange)':'var(--accent-green)';
   this.value='';
-  if(matched>0)renderMap();
+  if(matched>0){_iamData=null;_parseCache={};renderMap()}
 });
-document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_parseCache={};_iamData=null;document.getElementById('mergeBanner').style.display='none';var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_parseCache={};_iamData=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
@@ -20439,6 +20523,8 @@ document.getElementById('loadDemo').addEventListener('click',()=>{
   if(dInsts.length>5)addAnnotation(dInsts[5].InstanceId,'This instance handles payment processing - PCI scope','warning',true);
   // Enter multi-account view
   enterMultiView();
+  // MEMORY: Release demo data — now stored in _loadedContexts textareas
+  demo=null;
 });
 
 // store layout data globally for export

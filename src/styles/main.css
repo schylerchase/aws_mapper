@@ -157,7 +157,7 @@
   .legend-item{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--text-secondary)}
   .legend-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
   .legend-hint{font-family:"Segoe UI",system-ui,sans-serif;font-size:8px;color:var(--text-muted);margin-top:4px;padding-top:4px;border-top:1px solid var(--border);opacity:.7}
-  .zoom-controls{position:absolute;bottom:72px;right:12px;display:flex;flex-direction:column;gap:4px;z-index:5}
+  .zoom-controls{position:absolute;bottom:72px;right:12px;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:5}
   .zoom-btn{width:32px;height:32px;background:var(--overlay-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:"Segoe UI",system-ui,sans-serif;transition:all .15s;backdrop-filter:blur(8px)}
   .zoom-btn:hover{background:var(--bg-tertiary);color:var(--text-primary)}
   .zoom-btn.wide{width:auto;padding:0 10px;font-size:9px;letter-spacing:.5px}
