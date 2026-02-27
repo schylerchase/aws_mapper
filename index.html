@@ -5317,6 +5317,56 @@ function runClassificationEngine(ctx){
     var meta=_TIER_RPO_RTO[tier];
     results.push({id:name,name:name,type:'Redshift',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
+  // Classify Security Groups
+  (ctx.sgs||[]).forEach(function(sg){
+    var id=sg.GroupId;var name=gn(sg,id);
+    var vpcId=sg.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(sg);
+    var sc=_scoreClassification(name,'security-group',vpcName,null,tm);
+    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:id,name:name,type:'Security Group',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
+  });
+  // Classify VPCs
+  (ctx.vpcs||[]).forEach(function(v){
+    var id=v.VpcId;var name=gn(v,id);var tm=_getTagMap(v);
+    var sc=_scoreClassification(name,'vpc',name,null,tm);
+    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:id,name:name,type:'VPC',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:id,vpcName:name,tags:tm});
+  });
+  // Classify Subnets
+  (ctx.subnets||[]).forEach(function(s){
+    var id=s.SubnetId;var name=gn(s,id);var vpcId=s.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(s);
+    var sc=_scoreClassification(name,'subnet',vpcName,null,tm);
+    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:id,name:name,type:'Subnet',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
+  });
+  // Classify IGWs
+  (ctx.igws||[]).forEach(function(gw){
+    var id=gw.InternetGatewayId;var name=gn(gw,id);var vpcId=(gw.Attachments&&gw.Attachments[0])?gw.Attachments[0].VpcId:'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(gw);
+    var sc=_scoreClassification(name,'igw',vpcName,null,tm);
+    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:id,name:name,type:'IGW',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
+  });
+  // Classify NAT GWs
+  (ctx.natGws||[]).forEach(function(ng){
+    var id=ng.NatGatewayId;var name=gn(ng,id);var vpcId=ng.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(ng);
+    var sc=_scoreClassification(name,'nat-gateway',vpcName,null,tm);
+    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:id,name:name,type:'NAT GW',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
+  });
+  // Classify VPC Endpoints
+  (ctx.vpces||[]).forEach(function(ve){
+    var id=ve.VpcEndpointId;var name=ve.ServiceName||id;var vpcId=ve.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(ve);
+    var sc=_scoreClassification(name,'vpc-endpoint',vpcName,null,tm);
+    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:id,name:name,type:'VPC Endpoint',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
+  });
+  // Classify S3 Buckets
+  (ctx.s3bk||[]).forEach(function(b){
+    var name=b.Name||'';var tm=_getTagMap(b);
+    var sc=_scoreClassification(name,'s3',''  ,null,tm);
+    var tier=_classificationOverrides[name]||sc.tier;var meta=_TIER_RPO_RTO[tier];
+    results.push({id:name,name:name,type:'S3',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:'',vpcName:'',tags:tm});
+  });
   _classificationData=results;
   _discoveredTags=_discoverTagKeys(ctx);
   return results;
@@ -18834,6 +18884,13 @@ function _openRulesEditor(){
     (_rlCtx.lambdaFns||[]).forEach(function(fn){classify(fn.FunctionName,'lambda',vpcNameMap[(fn.VpcConfig||{}).VpcId]||'',fn.FunctionName,fn)});
     (_rlCtx.ecsServices||[]).forEach(function(svc){classify(svc.serviceName||'','ecs','',svc.serviceName||'',svc)});
     (_rlCtx.redshiftClusters||[]).forEach(function(rs){classify(rs.ClusterIdentifier,'redshift',vpcNameMap[rs.VpcId]||'',rs.ClusterIdentifier,rs)});
+    (_rlCtx.sgs||[]).forEach(function(sg){classify(gn(sg,sg.GroupId),'security-group',vpcNameMap[sg.VpcId]||'',sg.GroupId,sg)});
+    (_rlCtx.vpcs||[]).forEach(function(v){var n=gn(v,v.VpcId);classify(n,'vpc',n,v.VpcId,v)});
+    (_rlCtx.subnets||[]).forEach(function(s){classify(gn(s,s.SubnetId),'subnet',vpcNameMap[s.VpcId]||'',s.SubnetId,s)});
+    (_rlCtx.igws||[]).forEach(function(gw){var vid=(gw.Attachments&&gw.Attachments[0])?gw.Attachments[0].VpcId:'';classify(gn(gw,gw.InternetGatewayId),'igw',vpcNameMap[vid]||'',gw.InternetGatewayId,gw)});
+    (_rlCtx.natGws||[]).forEach(function(ng){classify(gn(ng,ng.NatGatewayId),'nat-gateway',vpcNameMap[ng.VpcId]||'',ng.NatGatewayId,ng)});
+    (_rlCtx.vpces||[]).forEach(function(ve){classify(ve.ServiceName||ve.VpcEndpointId,'vpc-endpoint',vpcNameMap[ve.VpcId]||'',ve.VpcEndpointId,ve)});
+    (_rlCtx.s3bk||[]).forEach(function(b){classify(b.Name||'','s3','',b.Name||'',b)});
     return {critical:counts.critical,high:counts.high,medium:counts.medium,low:counts.low,total:counts.critical+counts.high+counts.medium+counts.low,samples:samples};
   }
   function renderPreview(){
