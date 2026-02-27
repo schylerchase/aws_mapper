@@ -5194,7 +5194,9 @@ function _scoreClassification(name,type,vpcName,rules,tagMap){
   var bestTier='low';var bestWeight=-1;
   rules.forEach(function(rule){
     if(rule.enabled===false) return;
-    var re;try{re=new RegExp(rule.pattern,'i')}catch(e){return}
+    var p=rule.pattern;if(!p) return;
+    p=p.replace(/^\|+|\|+$/g,'').replace(/\|{2,}/g,'|');if(!p) return;
+    var re;try{re=new RegExp(p,'i')}catch(e){return}
     var text='';
     if(rule.scope==='vpc') text=vpcName||'';
     else if(rule.scope==='type') text=type||'';
