@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.0</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.1</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.6.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.6.1 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -4408,6 +4408,9 @@ let _classificationOverrides={};
 let _iamReviewData=[];
 let _inventoryData=[];
 let _invState={typeFilter:'all',regionFilter:'all',accountFilter:'all',vpcFilter:'all',viewMode:'flat',search:'',sort:'type',sortDir:'asc',page:1,perPage:50};
+let _appRegistry=[];
+let _appSummaryState={search:'',sort:'tier',sortDir:'asc',adding:false,editing:-1};
+var _APP_TYPE_SUGGESTIONS=['Web App','Database','Monitoring','CI/CD','Security','Analytics','Storage','Infrastructure'];
 function _buildInventoryData(){
   _inventoryData=[];
   var ctx=_rlCtx;if(!ctx)return;
@@ -5198,7 +5201,8 @@ function _scoreClassification(name,type,vpcName,rules,tagMap){
     p=p.replace(/^\|+|\|+$/g,'').replace(/\|{2,}/g,'|');if(!p) return;
     var re;try{re=new RegExp(p,'i')}catch(e){return}
     var text='';
-    if(rule.scope==='vpc') text=vpcName||'';
+    if(rule.scope==='any') text=(name||'')+' '+(type||'')+' '+(vpcName||'')+' '+Object.values(tagMap).join(' ');
+    else if(rule.scope==='vpc') text=vpcName||'';
     else if(rule.scope==='type') text=type||'';
     else if(rule.scope==='name') text=name||'';
     else if(rule.scope.indexOf('tag:')===0) text=tagMap[rule.scope.substring(4)]||'';
@@ -18114,6 +18118,11 @@ var _UDASH_TABS = [
     if(!_classificationData.length) runClassificationEngine(_rlCtx);
     return true;
   }, render:function(){ _renderClassificationTab(); }},
+  {id:'appsummary', label:'App Summary', color:'#34d399', icon:'', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    if(!_classificationData.length) runClassificationEngine(_rlCtx);
+    return true;
+  }, render:function(){ _renderAppSummaryTab(); }},
   {id:'iam', label:'IAM Review', color:'#f472b6', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_iamReviewData.length){
@@ -18650,6 +18659,186 @@ function _renderClassificationTab(){
   });
 }
 
+// === APP SUMMARY TAB ===
+function _autoDiscoverApps(){
+  if(_appRegistry.length) return; // already populated
+  var seen={};
+  var candidates=['Application','app','App','Service','service','Product','product','Component','component','Project','project'];
+  _classificationData.forEach(function(r){
+    if(!r.tags) return;
+    candidates.forEach(function(tk){
+      var val=r.tags[tk];
+      if(!val) return;
+      var key=val.toLowerCase();
+      if(seen[key]) return;
+      seen[key]=true;
+      _appRegistry.push({name:val,pattern:val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[\s_-]+/g,'[\\s_-]+'),type:'',tier:'',auto:true});
+    });
+  });
+}
+
+function _matchAppResources(app){
+  if(!app.pattern) return[];
+  var matched=[];
+  try{var re=new RegExp(app.pattern,'i')}catch(e){return[]}
+  _classificationData.forEach(function(r){
+    var text=(r.name||'')+' '+(r.type||'')+' '+(r.vpcName||'')+' '+Object.values(r.tags||{}).join(' ');
+    if(re.test(text)) matched.push(r);
+  });
+  return matched;
+}
+
+function _buildAppRows(){
+  var tierPri={critical:1,high:2,medium:3,low:4};
+  return _appRegistry.map(function(app,idx){
+    var matched=_matchAppResources(app);
+    var bestTier='low';
+    var types={};var vpcs={};
+    matched.forEach(function(r){
+      if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier;
+      types[r.type]=true;
+      if(r.vpcName) vpcs[r.vpcName]=true;
+    });
+    var tier=app.tier||bestTier;
+    var meta=_TIER_RPO_RTO[tier]||_TIER_RPO_RTO.low;
+    return{idx:idx,name:app.name,pattern:app.pattern,type:app.type||'',tier:tier,autoTier:!app.tier,rpo:meta.rpo,rto:meta.rto,count:matched.length,types:Object.keys(types).join(', '),vpcs:Object.keys(vpcs).join(', '),auto:app.auto};
+  });
+}
+
+function _renderAppSummaryTab(){
+  var tb=document.getElementById('udashToolbar');
+  var body=document.getElementById('udashBody');
+  var footer=document.getElementById('udashFooter');
+  var st=_appSummaryState;
+  _autoDiscoverApps();
+  // Toolbar
+  var th='<label>Search</label>';
+  th+='<input id="appSearch" type="text" placeholder="Filter apps..." value="'+_escHtml(st.search)+'">';
+  th+='<button id="appAddBtn" style="margin-left:auto;background:rgba(52,211,153,.15);border:1px solid #34d399;color:#34d399;padding:4px 14px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">+ Add App</button>';
+  tb.innerHTML=th;
+  document.getElementById('appSearch').addEventListener('input',function(){st.search=this.value;_renderAppSummaryTab()});
+  document.getElementById('appAddBtn').addEventListener('click',function(){st.adding=true;st.editing=-1;_renderAppSummaryTab()});
+  // Build rows
+  var apps=_buildAppRows();
+  if(st.search){var q=st.search.toLowerCase();apps=apps.filter(function(a){return a.name.toLowerCase().indexOf(q)!==-1||(a.type||'').toLowerCase().indexOf(q)!==-1||a.types.toLowerCase().indexOf(q)!==-1})}
+  // Sort
+  var tierPri={critical:1,high:2,medium:3,low:4};
+  var dir=st.sortDir==='asc'?1:-1;
+  apps.sort(function(a,b){
+    if(st.sort==='tier') return((tierPri[a.tier]||99)-(tierPri[b.tier]||99))*dir;
+    if(st.sort==='count') return(a.count-b.count)*dir;
+    var av=(a[st.sort]||'').toLowerCase();var bv=(b[st.sort]||'').toLowerCase();
+    return av<bv?-dir:av>bv?dir:0;
+  });
+  // Tier summary cards
+  var tierCounts={critical:0,high:0,medium:0,low:0};
+  apps.forEach(function(a){tierCounts[a.tier]=(tierCounts[a.tier]||0)+1});
+  var bh='<div class="gov-tier-cards">';
+  [{t:'critical',l:'Critical'},{t:'high',l:'High'},{t:'medium',l:'Medium'},{t:'low',l:'Low'}].forEach(function(d){
+    var meta=_TIER_RPO_RTO[d.t];
+    bh+='<div class="gov-tier-card" style="border-color:'+meta.color+'">';
+    bh+='<h3 style="color:'+meta.color+'">'+d.l+'</h3>';
+    bh+='<div class="gov-tier-count" style="color:'+meta.color+'">'+(tierCounts[d.t]||0)+'</div>';
+    bh+='</div>';
+  });
+  bh+='</div>';
+  // Add/Edit form
+  if(st.adding||st.editing>=0){
+    var ed=st.editing>=0?_appRegistry[st.editing]:null;
+    bh+='<div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.25);border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">';
+    bh+='<div style="display:flex;flex-direction:column;gap:2px"><label style="font-size:9px;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif">App Name</label>';
+    bh+='<input id="appFormName" type="text" placeholder="e.g. Quark" value="'+_escHtml(ed?ed.name:'')+'" style="width:140px;padding:4px 8px;font-size:11px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:Segoe UI,system-ui,sans-serif"></div>';
+    bh+='<div style="display:flex;flex-direction:column;gap:2px"><label style="font-size:9px;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif">Match Pattern <span style="opacity:.5">(regex)</span></label>';
+    bh+='<input id="appFormPattern" type="text" placeholder="auto from name" value="'+_escHtml(ed?ed.pattern:'')+'" style="width:140px;padding:4px 8px;font-size:11px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:monospace"></div>';
+    bh+='<div style="display:flex;flex-direction:column;gap:2px"><label style="font-size:9px;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif">Type</label>';
+    bh+='<input id="appFormType" list="appTypeSuggestions" type="text" placeholder="e.g. Web App" value="'+_escHtml(ed?ed.type:'')+'" style="width:120px;padding:4px 8px;font-size:11px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:Segoe UI,system-ui,sans-serif">';
+    bh+='<datalist id="appTypeSuggestions">';
+    _APP_TYPE_SUGGESTIONS.forEach(function(t){bh+='<option value="'+t+'">'});
+    bh+='</datalist></div>';
+    bh+='<button id="appFormSave" style="padding:4px 16px;font-size:11px;background:#34d399;border:none;border-radius:4px;color:#000;cursor:pointer;font-weight:600;font-family:Segoe UI,system-ui,sans-serif">'+(ed?'Update':'Add')+'</button>';
+    bh+='<button id="appFormCancel" style="padding:4px 12px;font-size:11px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer;font-family:Segoe UI,system-ui,sans-serif">Cancel</button>';
+    bh+='</div>';
+  }
+  // Table
+  var cols=[{key:'name',label:'Application'},{key:'type',label:'Type'},{key:'tier',label:'Criticality'},{key:'count',label:'Resources'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'actions',label:'',nosort:true}];
+  bh+='<table class="gov-table"><thead><tr>';
+  cols.forEach(function(c){
+    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
+  });
+  bh+='</tr></thead><tbody>';
+  if(!apps.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No apps defined — click <b>+ Add App</b> to get started</td></tr>';
+  apps.forEach(function(a){
+    bh+='<tr data-app-idx="'+a.idx+'">';
+    bh+='<td><span style="font-weight:500">'+_escHtml(a.name)+'</span>'+(a.auto?' <span style="font-size:8px;color:var(--text-muted);opacity:.6">auto</span>':'')+'<br><span style="font-size:9px;color:var(--text-muted);font-family:monospace">'+_escHtml(a.pattern)+'</span></td>';
+    bh+='<td style="font-size:10px">'+_escHtml(a.type||'—')+'</td>';
+    bh+='<td><span class="gov-tier-badge '+a.tier+'">'+a.tier+'</span>'+(a.autoTier?' <span style="font-size:8px;color:var(--text-muted)">auto</span>':'')+'</td>';
+    bh+='<td style="text-align:center">'+a.count+'</td>';
+    bh+='<td style="font-size:10px;color:var(--text-muted)">'+a.rpo+'</td>';
+    bh+='<td style="font-size:10px;color:var(--text-muted)">'+a.rto+'</td>';
+    bh+='<td><button class="app-edit-btn" data-idx="'+a.idx+'" style="font-size:9px;padding:2px 8px;cursor:pointer;background:none;border:1px solid var(--border);border-radius:3px;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif;margin-right:4px">Edit</button>';
+    bh+='<button class="app-del-btn" data-idx="'+a.idx+'" style="font-size:9px;padding:2px 8px;cursor:pointer;background:none;border:1px solid rgba(239,68,68,.3);border-radius:3px;color:#ef4444;font-family:Segoe UI,system-ui,sans-serif">Del</button></td>';
+    bh+='</tr>';
+  });
+  bh+='</tbody></table>';
+  body.innerHTML=bh;
+  body.scrollTop=0;
+  // Footer
+  var fh='<button id="appExportCSV">Export CSV</button>';
+  fh+='<button id="appExportJSON">Export JSON</button>';
+  fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+_appRegistry.length+' apps · '+_classificationData.length+' total resources</span>';
+  footer.innerHTML=fh;
+  // Wire form events
+  if(st.adding||st.editing>=0){
+    document.getElementById('appFormCancel').addEventListener('click',function(){st.adding=false;st.editing=-1;_renderAppSummaryTab()});
+    document.getElementById('appFormSave').addEventListener('click',function(){
+      var name=document.getElementById('appFormName').value.trim();
+      if(!name){_showToast('App name is required','warn');return}
+      var pattern=document.getElementById('appFormPattern').value.trim()||name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[\s_-]+/g,'[\\s_-]+');
+      var type=document.getElementById('appFormType').value.trim();
+      if(st.editing>=0){
+        _appRegistry[st.editing].name=name;
+        _appRegistry[st.editing].pattern=pattern;
+        _appRegistry[st.editing].type=type;
+        _appRegistry[st.editing].auto=false;
+      }else{
+        _appRegistry.push({name:name,pattern:pattern,type:type,tier:'',auto:false});
+      }
+      st.adding=false;st.editing=-1;
+      _renderAppSummaryTab();
+    });
+  }
+  // Wire table events
+  body.querySelectorAll('th[data-sort-col]').forEach(function(hdr){
+    hdr.addEventListener('click',function(){
+      var col=this.dataset.sortCol;
+      if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
+      else{st.sort=col;st.sortDir='asc'}
+      _renderAppSummaryTab();
+    });
+  });
+  body.querySelectorAll('.app-edit-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){st.editing=parseInt(this.dataset.idx);st.adding=false;_renderAppSummaryTab()});
+  });
+  body.querySelectorAll('.app-del-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var idx=parseInt(this.dataset.idx);
+      _appRegistry.splice(idx,1);
+      st.editing=-1;
+      _renderAppSummaryTab();
+    });
+  });
+  document.getElementById('appExportCSV').addEventListener('click',function(){
+    var rows=[['Application','Type','Criticality','RPO','RTO','Resources','Resource Types','VPCs']];
+    apps.forEach(function(a){rows.push([a.name,a.type,a.tier,a.rpo,a.rto,a.count,a.types,a.vpcs])});
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    downloadBlob(new Blob([csv],{type:'text/csv'}),'app-summary.csv');
+  });
+  document.getElementById('appExportJSON').addEventListener('click',function(){
+    downloadBlob(new Blob([JSON.stringify(apps,null,2)],{type:'application/json'}),'app-summary.json');
+  });
+}
+
 function _renderIAMTab(){
   var tb=document.getElementById('udashToolbar');
   var body=document.getElementById('udashBody');
@@ -18817,9 +19006,9 @@ function _openRulesEditor(){
   // Working copy of rules
   var workRules=JSON.parse(JSON.stringify(_classificationRules));
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
-  var groupCollapsed={vpc:false,type:false,name:false};
-  var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Resource Name Rules'};
-  var scopeOrder=['vpc','type','name'];
+  var groupCollapsed={any:false,vpc:false,type:false,name:false};
+  var scopeLabels={any:'Any (Name + Tags + VPC)',vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Resource Name Rules'};
+  var scopeOrder=['any','vpc','type','name'];
   // Discover tag scopes from rules + data
   var disc=_discoveredTags||{};
   var tagScopes={};
@@ -18856,7 +19045,8 @@ function _openRulesEditor(){
     var ct=0;
     (_classificationData||[]).forEach(function(res){
       var text='';
-      if(rule.scope==='vpc') text=res.vpcName||'';
+      if(rule.scope==='any') text=(res.name||'')+' '+(res.type||'')+' '+(res.vpcName||'')+' '+Object.values(res.tags||{}).join(' ');
+      else if(rule.scope==='vpc') text=res.vpcName||'';
       else if(rule.scope==='type') text=res.type||'';
       else if(rule.scope==='name') text=res.name||'';
       else if(rule.scope.indexOf('tag:')===0) text=(res.tags||{})[rule.scope.substring(4)]||'';
@@ -18960,7 +19150,7 @@ function _openRulesEditor(){
         h+='<span class="gov-rule-drag" title="Drag to reorder">⠿</span>';
         h+='<div class="gov-rule-toggle'+(r.enabled!==false?' on':'')+'" data-toggle-idx="'+i+'" title="'+(r.enabled!==false?'Enabled — click to disable':'Disabled — click to enable')+'"></div>';
         h+='<input class="pattern'+((!isValid)?' invalid-pattern':'')+'" type="text" value="'+_escHtml(r.pattern)+'" data-field="pattern" placeholder="regex pattern…" title="'+((!isValid)?'Invalid regex!':'Regex pattern')+'">';
-        h+='<select data-field="scope" class="gov-scope-sel" title="Match scope — what this pattern is tested against"><option value="vpc"'+(r.scope==='vpc'?' selected':'')+'>VPC</option><option value="type"'+(r.scope==='type'?' selected':'')+'>Type</option><option value="name"'+(r.scope==='name'?' selected':'')+'>Name</option>';
+        h+='<select data-field="scope" class="gov-scope-sel" title="Match scope — what this pattern is tested against"><option value="any"'+(r.scope==='any'?' selected':'')+'>Any</option><option value="vpc"'+(r.scope==='vpc'?' selected':'')+'>VPC</option><option value="type"'+(r.scope==='type'?' selected':'')+'>Type</option><option value="name"'+(r.scope==='name'?' selected':'')+'>Name</option>';
         sortedTagScopes.forEach(function(ts){h+='<option value="'+ts+'"'+(r.scope===ts?' selected':'')+'>tag:'+ts.substring(4)+'</option>'});
         h+='</select>';
         h+='<select data-field="tier"><option value="critical"'+(r.tier==='critical'?' selected':'')+'>Critical</option><option value="high"'+(r.tier==='high'?' selected':'')+'>High</option><option value="medium"'+(r.tier==='medium'?' selected':'')+'>Medium</option><option value="low"'+(r.tier==='low'?' selected':'')+'>Low</option></select>';
@@ -19004,7 +19194,7 @@ function _openRulesEditor(){
     overlay.querySelectorAll('[data-add-scope]').forEach(function(btn){
       btn.addEventListener('click',function(){
         var sc=this.dataset.addScope;
-        var dw=sc.indexOf('tag:')===0?120:sc==='name'?100:sc==='type'?80:60;
+        var dw=sc==='any'?130:sc.indexOf('tag:')===0?120:sc==='name'?100:sc==='type'?80:60;
         workRules.push({pattern:'',scope:sc,tier:'medium',weight:dw,enabled:true});
         renderRules();renderPreview();
       });
