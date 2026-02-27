@@ -18558,13 +18558,25 @@ function _renderClassificationTab(){
     bh+='</div>';
   });
   bh+='</div>';
+  // Build resource→app lookup from registry
+  var _resAppMap={};
+  _appRegistry.forEach(function(app){
+    if(!app.pattern) return;
+    try{var re=new RegExp(app.pattern,'i')}catch(e){return}
+    _classificationData.forEach(function(r){
+      if(_resAppMap[r.id]) return;
+      var text=(r.name||'')+' '+(r.type||'')+' '+(r.vpcName||'')+' '+Object.values(r.tags||{}).join(' ');
+      if(re.test(text)) _resAppMap[r.id]=app.name;
+    });
+  });
   // Filter + sort
   var items=_classificationData.slice();
   if(st.filter!=='all') items=items.filter(function(r){return r.tier===st.filter});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
+  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1||(_resAppMap[r.id]||'').toLowerCase().indexOf(q)!==-1})}
   var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
     if(sortKey==='tier') return((_TIER_RPO_RTO[a.tier]||{priority:99}).priority-(_TIER_RPO_RTO[b.tier]||{priority:99}).priority)*dir;
+    if(sortKey==='app'){var av=(_resAppMap[a.id]||'').toLowerCase();var bv=(_resAppMap[b.id]||'').toLowerCase();return av<bv?-dir:av>bv?dir:0}
     var av=(a[sortKey]||'').toLowerCase();var bv=(b[sortKey]||'').toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
@@ -18575,7 +18587,7 @@ function _renderClassificationTab(){
   var start=(st.page-1)*perPage;
   var pageItems=items.slice(start,start+perPage);
   // Table
-  var cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
+  var cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'app',label:'App'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
   bh+='<table class="gov-table"><thead><tr>';
   cols.forEach(function(c){
     var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
@@ -18587,6 +18599,8 @@ function _renderClassificationTab(){
     bh+='<tr>';
     bh+='<td><span class="gov-res-link" data-rid="'+_escHtml(r.id)+'" style="color:var(--accent-cyan);cursor:pointer">'+_escHtml(r.name)+'</span></td>';
     bh+='<td>'+_escHtml(r.type)+'</td>';
+    var appName=_resAppMap[r.id]||'';
+    bh+='<td style="font-size:10px">'+(appName?'<span style="background:rgba(52,211,153,.12);color:#34d399;padding:1px 6px;border-radius:3px;font-size:9px">'+_escHtml(appName)+'</span>':'<span style="color:var(--text-muted)">—</span>')+'</td>';
     bh+='<td><span class="gov-tier-badge '+r.tier+'">'+r.tier+'</span></td>';
     bh+='<td>'+_escHtml(r.rpo)+'</td>';
     bh+='<td>'+_escHtml(r.rto)+'</td>';
@@ -18649,8 +18663,8 @@ function _renderClassificationTab(){
   })});
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
-    var rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
-    items.forEach(function(r){rows.push([r.name,r.type,r.tier,r.rpo,r.rto,r.auto?'Auto':'Manual',r.vpcName||''])});
+    var rows=[['Resource','Type','App','Tier','RPO','RTO','Classification','VPC']];
+    items.forEach(function(r){rows.push([r.name,r.type,_resAppMap[r.id]||'',r.tier,r.rpo,r.rto,r.auto?'Auto':'Manual',r.vpcName||''])});
     var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
     downloadBlob(new Blob([csv],{type:'text/csv'}),'asset-classification.csv');
   });
