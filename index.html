@@ -18837,6 +18837,11 @@ function _renderAppSummaryTab(){
     bh+='<datalist id="appTypeSuggestions">';
     _APP_TYPE_SUGGESTIONS.forEach(function(t){bh+='<option value="'+t+'">'});
     bh+='</datalist></div>';
+    bh+='<div style="display:flex;flex-direction:column;gap:2px"><label style="font-size:9px;color:var(--text-muted);font-family:Segoe UI,system-ui,sans-serif">Criticality</label>';
+    bh+='<select id="appFormTier" style="width:110px;padding:4px 8px;font-size:11px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:Segoe UI,system-ui,sans-serif">';
+    bh+='<option value=""'+((!ed||!ed.tier)?' selected':'')+'>(auto)</option>';
+    ['critical','high','medium','low'].forEach(function(t){bh+='<option value="'+t+'"'+((ed&&ed.tier===t)?' selected':'')+'>'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>'});
+    bh+='</select></div>';
     bh+='<button id="appFormSave" style="padding:4px 16px;font-size:11px;background:#34d399;border:none;border-radius:4px;color:#000;cursor:pointer;font-weight:600;font-family:Segoe UI,system-ui,sans-serif">'+(ed?'Update':'Add')+'</button>';
     bh+='<button id="appFormCancel" style="padding:4px 12px;font-size:11px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer;font-family:Segoe UI,system-ui,sans-serif">Cancel</button>';
     bh+='</div>';
@@ -18856,7 +18861,7 @@ function _renderAppSummaryTab(){
     bh+='<td><input type="checkbox" class="app-sel-cb" data-idx="'+a.idx+'" style="cursor:pointer"></td>';
     bh+='<td><span style="font-weight:500">'+_escHtml(a.name)+'</span>'+(a.auto?' <span style="font-size:8px;color:var(--text-muted);opacity:.6">auto</span>':'')+'<br><span style="font-size:9px;color:var(--text-muted);font-family:monospace">'+_escHtml(a.pattern)+'</span></td>';
     bh+='<td style="font-size:10px">'+_escHtml(a.type||'—')+'</td>';
-    bh+='<td><span class="gov-tier-badge '+a.tier+'">'+a.tier+'</span>'+(a.autoTier?' <span style="font-size:8px;color:var(--text-muted)">auto</span>':'')+'</td>';
+    bh+='<td><span class="gov-tier-badge '+a.tier+'">'+a.tier+'</span>'+(a.autoTier&&a.auto?' <span style="font-size:8px;color:var(--text-muted)">auto</span>':'')+'</td>';
     bh+='<td style="text-align:center">'+a.count+'</td>';
     bh+='<td style="font-size:10px;color:var(--text-muted)">'+a.rpo+'</td>';
     bh+='<td style="font-size:10px;color:var(--text-muted)">'+a.rto+'</td>';
@@ -18880,13 +18885,15 @@ function _renderAppSummaryTab(){
       if(!name){_showToast('App name is required','warn');return}
       var pattern=document.getElementById('appFormPattern').value.trim()||name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[\s_-]+/g,'[\\s_-]+');
       var type=document.getElementById('appFormType').value.trim();
+      var tier=document.getElementById('appFormTier').value;
       if(st.editing>=0){
         _appRegistry[st.editing].name=name;
         _appRegistry[st.editing].pattern=pattern;
         _appRegistry[st.editing].type=type;
+        _appRegistry[st.editing].tier=tier;
         _appRegistry[st.editing].auto=false;
       }else{
-        _appRegistry.push({name:name,pattern:pattern,type:type,tier:'',auto:false});
+        _appRegistry.push({name:name,pattern:pattern,type:type,tier:tier,auto:false});
       }
       st.adding=false;st.editing=-1;
       _renderAppSummaryTab();
