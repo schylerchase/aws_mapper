@@ -5168,10 +5168,10 @@ var _DEFAULT_CLASS_RULES=[
   {pattern:'alb|elb|loadbalancer|nlb',scope:'type',tier:'high',weight:65},
   {pattern:'lambda|fargate|ecs',scope:'type',tier:'medium',weight:40},
   {pattern:'bastion|jump|ssh',scope:'name',tier:'medium',weight:35},
-  // Tag-based rules (disabled by default — enable when tag data is available)
-  {pattern:'prod|production',scope:'tag:Environment',tier:'critical',weight:120,enabled:false},
-  {pattern:'staging|stage|uat',scope:'tag:Environment',tier:'medium',weight:110,enabled:false},
-  {pattern:'dev|develop|sandbox|test',scope:'tag:Environment',tier:'low',weight:110,enabled:false}
+  // Tag-based rules — Environment tag is strongest classification signal
+  {pattern:'prod|production|prd',scope:'tag:Environment',tier:'critical',weight:120},
+  {pattern:'staging|stage|uat|qa',scope:'tag:Environment',tier:'medium',weight:110},
+  {pattern:'dev|develop|sandbox|test',scope:'tag:Environment',tier:'low',weight:110}
 ];
 var _classificationRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
 var _discoveredTags={};
