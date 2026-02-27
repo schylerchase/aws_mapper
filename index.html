@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.1</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.2</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.6.1 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.6.2 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -1156,6 +1156,10 @@ const _RPT_MODULES=[
    available:function(){return _complianceFindings.length>0||_budrFindings.length>0},
    desc:function(){return (_complianceFindings.length+_budrFindings.length)+' items'},
    render:function(ctx,opts){return _rptActionPlan(ctx,opts)}},
+  {id:'app-summary',name:'App Summary',icon:'',category:'overview',enabled:true,
+   available:function(){return _appRegistry.length>0},
+   desc:function(){return _appRegistry.length+' apps defined'},
+   render:function(ctx,opts){return _rptAppSummary(ctx,opts)}},
   {id:'iac-recs',name:'IaC Recommendations',icon:'',category:'remediation',enabled:false,
    available:function(){return _complianceFindings.length>0},
    desc:function(){return 'Terraform/CF snippets'},
@@ -1765,6 +1769,63 @@ function _rptExecBUDR(){
     h+='<span class="lbl">'+esc(t.label)+'</span></div>';
   });
   h+='</div>';
+  return h;
+}
+
+function _rptAppSummary(ctx, opts){
+  if(!_appRegistry.length) return '';
+  var tierPri={critical:1,high:2,medium:3,low:4};
+  var h='<section class="rpt-section" id="s-app-summary"><h2>Application Summary</h2>';
+  h+='<p>'+_appRegistry.length+' applications identified across '+_classificationData.length+' resources.</p>';
+  // Build app data with matched resources
+  var appRows=[];
+  _appRegistry.forEach(function(app){
+    var matched=_matchAppResources(app);
+    var bestTier='low';
+    matched.forEach(function(r){if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier});
+    var tier=app.tier||bestTier;
+    appRows.push({name:app.name,type:app.type||'—',tier:tier,matched:matched});
+  });
+  appRows.sort(function(a,b){return(tierPri[a.tier]||99)-(tierPri[b.tier]||99)});
+  // Summary table
+  var tierColors={critical:'#ef4444',high:'#f59e0b',medium:'#22d3ee',low:'#64748b'};
+  h+='<table class="rpt-tbl" style="width:100%;border-collapse:collapse;margin:12px 0 20px">';
+  h+='<thead><tr><th style="text-align:left;padding:6px 10px;border-bottom:2px solid #334155">Application</th>';
+  h+='<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #334155">Type</th>';
+  h+='<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #334155">Criticality</th>';
+  h+='<th style="text-align:center;padding:6px 10px;border-bottom:2px solid #334155">Resources</th>';
+  h+='<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #334155">RPO</th>';
+  h+='<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #334155">RTO</th></tr></thead><tbody>';
+  appRows.forEach(function(a){
+    var meta=_TIER_RPO_RTO[a.tier]||_TIER_RPO_RTO.low;
+    h+='<tr><td style="padding:5px 10px;border-bottom:1px solid #1e293b;font-weight:500">'+esc(a.name)+'</td>';
+    h+='<td style="padding:5px 10px;border-bottom:1px solid #1e293b">'+esc(a.type)+'</td>';
+    h+='<td style="padding:5px 10px;border-bottom:1px solid #1e293b"><span style="color:'+meta.color+';font-weight:600;text-transform:uppercase">'+a.tier+'</span></td>';
+    h+='<td style="padding:5px 10px;border-bottom:1px solid #1e293b;text-align:center">'+a.matched.length+'</td>';
+    h+='<td style="padding:5px 10px;border-bottom:1px solid #1e293b">'+meta.rpo+'</td>';
+    h+='<td style="padding:5px 10px;border-bottom:1px solid #1e293b">'+meta.rto+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  // Per-app resource detail
+  appRows.forEach(function(a){
+    if(!a.matched.length) return;
+    var meta=_TIER_RPO_RTO[a.tier]||_TIER_RPO_RTO.low;
+    h+='<h3 style="margin-top:18px;color:'+meta.color+'">'+esc(a.name)+' <span style="font-weight:normal;font-size:12px;color:#94a3b8">('+a.matched.length+' resources)</span></h3>';
+    h+='<table class="rpt-tbl" style="width:100%;border-collapse:collapse;margin:6px 0 16px;font-size:12px">';
+    h+='<thead><tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #334155">Resource</th>';
+    h+='<th style="text-align:left;padding:4px 8px;border-bottom:1px solid #334155">Type</th>';
+    h+='<th style="text-align:left;padding:4px 8px;border-bottom:1px solid #334155">Tier</th>';
+    h+='<th style="text-align:left;padding:4px 8px;border-bottom:1px solid #334155">VPC</th></tr></thead><tbody>';
+    a.matched.forEach(function(r){
+      var rm=_TIER_RPO_RTO[r.tier]||_TIER_RPO_RTO.low;
+      h+='<tr><td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.name)+'</td>';
+      h+='<td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.type)+'</td>';
+      h+='<td style="padding:3px 8px;border-bottom:1px solid #1e293b;color:'+rm.color+'">'+r.tier+'</td>';
+      h+='<td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.vpcName||'—')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  });
+  h+='</section>';
   return h;
 }
 
@@ -4409,6 +4470,7 @@ let _iamReviewData=[];
 let _inventoryData=[];
 let _invState={typeFilter:'all',regionFilter:'all',accountFilter:'all',vpcFilter:'all',viewMode:'flat',search:'',sort:'type',sortDir:'asc',page:1,perPage:50};
 let _appRegistry=[];
+let _appAutoDiscovered=false;
 let _appSummaryState={search:'',sort:'tier',sortDir:'asc',adding:false,editing:-1};
 var _APP_TYPE_SUGGESTIONS=['Web App','Database','Monitoring','CI/CD','Security','Analytics','Storage','Infrastructure'];
 function _buildInventoryData(){
@@ -18675,7 +18737,8 @@ function _renderClassificationTab(){
 
 // === APP SUMMARY TAB ===
 function _autoDiscoverApps(){
-  if(_appRegistry.length) return; // already populated
+  if(_appAutoDiscovered) return;
+  _appAutoDiscovered=true;
   var seen={};
   var candidates=['Application','app','App','Service','service','Product','product','Component','component','Project','project'];
   _classificationData.forEach(function(r){
@@ -18728,10 +18791,15 @@ function _renderAppSummaryTab(){
   // Toolbar
   var th='<label>Search</label>';
   th+='<input id="appSearch" type="text" placeholder="Filter apps..." value="'+_escHtml(st.search)+'">';
-  th+='<button id="appAddBtn" style="margin-left:auto;background:rgba(52,211,153,.15);border:1px solid #34d399;color:#34d399;padding:4px 14px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">+ Add App</button>';
+  th+='<span style="margin-left:auto;display:flex;gap:6px">';
+  th+='<button id="appDelSelBtn" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;padding:4px 12px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer;display:none">Delete Selected</button>';
+  th+='<button id="appClearAutoBtn" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Clear Auto</button>';
+  th+='<button id="appAddBtn" style="background:rgba(52,211,153,.15);border:1px solid #34d399;color:#34d399;padding:4px 14px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">+ Add App</button>';
+  th+='</span>';
   tb.innerHTML=th;
   document.getElementById('appSearch').addEventListener('input',function(){st.search=this.value;_renderAppSummaryTab()});
   document.getElementById('appAddBtn').addEventListener('click',function(){st.adding=true;st.editing=-1;_renderAppSummaryTab()});
+  document.getElementById('appClearAutoBtn').addEventListener('click',function(){_appRegistry=_appRegistry.filter(function(a){return!a.auto});_renderAppSummaryTab()});
   // Build rows
   var apps=_buildAppRows();
   if(st.search){var q=st.search.toLowerCase();apps=apps.filter(function(a){return a.name.toLowerCase().indexOf(q)!==-1||(a.type||'').toLowerCase().indexOf(q)!==-1||a.types.toLowerCase().indexOf(q)!==-1})}
@@ -18776,14 +18844,16 @@ function _renderAppSummaryTab(){
   // Table
   var cols=[{key:'name',label:'Application'},{key:'type',label:'Type'},{key:'tier',label:'Criticality'},{key:'count',label:'Resources'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'actions',label:'',nosort:true}];
   bh+='<table class="gov-table"><thead><tr>';
+  bh+='<th style="width:28px"><input type="checkbox" id="appSelAll" style="cursor:pointer"></th>';
   cols.forEach(function(c){
     var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
     bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
   });
   bh+='</tr></thead><tbody>';
-  if(!apps.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No apps defined — click <b>+ Add App</b> to get started</td></tr>';
+  if(!apps.length) bh+='<tr><td colspan="'+(cols.length+1)+'" style="text-align:center;padding:30px;color:var(--text-muted)">No apps defined — click <b>+ Add App</b> to get started</td></tr>';
   apps.forEach(function(a){
     bh+='<tr data-app-idx="'+a.idx+'">';
+    bh+='<td><input type="checkbox" class="app-sel-cb" data-idx="'+a.idx+'" style="cursor:pointer"></td>';
     bh+='<td><span style="font-weight:500">'+_escHtml(a.name)+'</span>'+(a.auto?' <span style="font-size:8px;color:var(--text-muted);opacity:.6">auto</span>':'')+'<br><span style="font-size:9px;color:var(--text-muted);font-family:monospace">'+_escHtml(a.pattern)+'</span></td>';
     bh+='<td style="font-size:10px">'+_escHtml(a.type||'—')+'</td>';
     bh+='<td><span class="gov-tier-badge '+a.tier+'">'+a.tier+'</span>'+(a.autoTier?' <span style="font-size:8px;color:var(--text-muted)">auto</span>':'')+'</td>';
@@ -18841,6 +18911,27 @@ function _renderAppSummaryTab(){
       st.editing=-1;
       _renderAppSummaryTab();
     });
+  });
+  // Checkbox select-all + delete selected
+  var delSelBtn=document.getElementById('appDelSelBtn');
+  function _updateDelBtn(){
+    var checked=body.querySelectorAll('.app-sel-cb:checked').length;
+    delSelBtn.style.display=checked?'':'none';
+    delSelBtn.textContent='Delete Selected ('+checked+')';
+  }
+  var selAll=document.getElementById('appSelAll');
+  if(selAll) selAll.addEventListener('change',function(){
+    var checked=this.checked;
+    body.querySelectorAll('.app-sel-cb').forEach(function(cb){cb.checked=checked});
+    _updateDelBtn();
+  });
+  body.querySelectorAll('.app-sel-cb').forEach(function(cb){cb.addEventListener('change',_updateDelBtn)});
+  delSelBtn.addEventListener('click',function(){
+    var toDelete={};
+    body.querySelectorAll('.app-sel-cb:checked').forEach(function(cb){toDelete[cb.dataset.idx]=true});
+    _appRegistry=_appRegistry.filter(function(_,i){return!toDelete[i]});
+    st.editing=-1;
+    _renderAppSummaryTab();
   });
   document.getElementById('appExportCSV').addEventListener('click',function(){
     var rows=[['Application','Type','Criticality','RPO','RTO','Resources','Resource Types','VPCs']];
@@ -20570,6 +20661,35 @@ async function _xlsxPostProcess(wbBuf,sheetNames){
   return result;
 }
 
+function _rptBuildXlsxAppSummary(wb){
+  if(!_appRegistry.length) return;
+  var tierPri={critical:1,high:2,medium:3,low:4};
+  // Summary sheet
+  var sumHeaders=['Application','Type','Criticality','Resources','RPO','RTO'];
+  var sumRows=[];
+  var detailRows=[];
+  _appRegistry.forEach(function(app){
+    var matched=_matchAppResources(app);
+    var bestTier='low';
+    matched.forEach(function(r){if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier});
+    var tier=app.tier||bestTier;
+    var meta=_TIER_RPO_RTO[tier]||_TIER_RPO_RTO.low;
+    sumRows.push([app.name,app.type||'',tier.toUpperCase(),matched.length,meta.rpo,meta.rto]);
+    matched.forEach(function(r){
+      detailRows.push([app.name,r.name,r.type,r.tier.toUpperCase(),r.vpcName||'',r.id]);
+    });
+  });
+  sumRows.sort(function(a,b){return(tierPri[a[2].toLowerCase()]||99)-(tierPri[b[2].toLowerCase()]||99)});
+  var ws1=XLSX.utils.aoa_to_sheet([sumHeaders].concat(sumRows));
+  ws1['!cols']=[{wch:25},{wch:15},{wch:12},{wch:10},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws1,'App Summary');
+  // Detail sheet
+  var detHeaders=['Application','Resource','Type','Tier','VPC','ID'];
+  var ws2=XLSX.utils.aoa_to_sheet([detHeaders].concat(detailRows));
+  ws2['!cols']=[{wch:25},{wch:30},{wch:15},{wch:10},{wch:20},{wch:25}];
+  XLSX.utils.book_append_sheet(wb,ws2,'App Resources');
+}
+
 async function _generateXlsx(){
   var btn=document.getElementById('rptExportXLSX');
   if(btn){btn.textContent='Loading...';btn.disabled=true;}
@@ -20583,6 +20703,7 @@ async function _generateXlsx(){
     if(enabled.indexOf('budr')>=0) _rptBuildXlsxBUDR(wb);
     if(enabled.indexOf('inventory')>=0) _rptBuildXlsxInventory(wb);
     if(enabled.indexOf('action-plan')>=0) _rptBuildXlsxActionPlan(wb);
+    if(enabled.indexOf('app-summary')>=0) _rptBuildXlsxAppSummary(wb);
     var slug=_rptSlugify(_rptState.title);
     var date=_rptState.date||new Date().toISOString().slice(0,10);
     var fname=slug+'-'+date+'.xlsx';
