@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
 <script src="dist/app.bundle.js?v=ed8b7684"></script>
-<link rel="stylesheet" href="src/styles/main.css?v=3">
+<link rel="stylesheet" href="src/styles/main.css?v=4">
 </head>
 <body>
 <!-- #endregion HTML HEAD & SCRIPTS -->
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.5.3</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.0</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.5.3 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.6.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <svg id="mapSvg"></svg>
   <div class="stats-bar" id="statsBar"></div>
@@ -361,9 +361,10 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   </div>
   <!-- Multi-Account Merge Banner -->
   <div class="account-merge-banner" id="mergeBanner" style="display:none">
-    <span>MULTI-ACCOUNT VIEW</span>
+    <span class="merge-label" id="mergeBannerLabel" style="cursor:pointer" title="Click to collapse">MULTI-ACCOUNT VIEW</span>
     <span id="mergeAcctChips" style="display:flex;gap:4px;align-items:center"></span>
     <button id="mergeExitBtn">Exit Merge</button>
+    <button id="mergeBannerCollapse" title="Collapse banner" style="padding:2px 6px;font-size:9px">▲</button>
   </div>
   <!-- Flow Mode Banner -->
   <div class="flow-banner" id="flowBanner" style="display:none">
@@ -664,8 +665,9 @@ function detectAccountId(resource){
 }
 function detectRegion(resource){
   if(!resource)return null;
-  // 1. Parse region from ARN
-  const arnFields=['Arn','FunctionArn','LoadBalancerArn','TargetGroupArn','DBInstanceArn','ServiceArn','CacheClusterArn'];
+  // 1. Parse region from ARN (check all common ARN field names)
+  const arnFields=['Arn','FunctionArn','LoadBalancerArn','TargetGroupArn','DBInstanceArn','ServiceArn','CacheClusterArn',
+    'WebACLArn','VpnConnectionId','ClusterArn','DistributionARN','HostedZoneArn'];
   for(const f of arnFields){
     const arn=resource[f];
     if(arn&&typeof arn==='string'){const m=arn.match(/arn:aws[^:]*:[^:]+:([a-z]{2}-[a-z]+-\d+):/);if(m)return m[1]}
@@ -673,6 +675,8 @@ function detectRegion(resource){
   // 2. AvailabilityZone fallback
   const az=resource.AvailabilityZone||(resource.Placement&&resource.Placement.AvailabilityZone)||null;
   if(az&&typeof az==='string')return az.replace(/[a-z]$/,'');
+  // 3. S3 LocationConstraint fallback
+  if(resource.LocationConstraint)return resource.LocationConstraint;
   return null;
 }
 
@@ -778,6 +782,21 @@ function _runComplianceWithCache(ctx){
   // Data changed — reset stale classification and recompute
   _classificationData=[];
   const findings=runComplianceChecks(ctx);
+  // Enrich findings with account/region/vpc from tagged resources
+  const _fResLookup={};
+  (ctx.sgs||[]).forEach(r=>{_fResLookup[r.GroupId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.nacls||[]).forEach(r=>{_fResLookup[r.NetworkAclId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.routeTables||[]).forEach(r=>{_fResLookup[r.RouteTableId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.instances||[]).forEach(r=>{_fResLookup[r.InstanceId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.vpcs||[]).forEach(r=>{_fResLookup[r.VpcId]={a:r._accountId||'',r:r._region||'',v:r.VpcId}});
+  (ctx.subnets||[]).forEach(r=>{_fResLookup[r.SubnetId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.rdsInstances||[]).forEach(r=>{_fResLookup[r.DBInstanceIdentifier]={a:r._accountId||'',r:r._region||'',v:(r.DBSubnetGroup&&r.DBSubnetGroup.VpcId)||''}});
+  (ctx.lambdaFns||[]).forEach(r=>{_fResLookup[r.FunctionName]={a:r._accountId||'',r:r._region||'',v:(r.VpcConfig&&r.VpcConfig.VpcId)||''}});
+  (ctx.albs||[]).forEach(r=>{_fResLookup[r.LoadBalancerName||r.LoadBalancerArn]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.s3bk||[]).forEach(r=>{_fResLookup[r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
+  (ctx.ecacheClusters||[]).forEach(r=>{_fResLookup[r.CacheClusterId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.redshiftClusters||[]).forEach(r=>{_fResLookup[r.ClusterIdentifier]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  findings.forEach(f=>{const info=_fResLookup[f.resource];if(info){f._accountId=info.a;f._region=info.r;f._vpcId=info.v}});
   _complianceDataFP=fp;
   _complianceCachedFindings=findings;
   _budrCachedFindings=_budrFindings;
@@ -1001,6 +1020,22 @@ function runBUDRChecks(ctx){
       f.push({severity:'HIGH',control:'BUDR-S3-1',framework:'BUDR',resource:id,resourceName:name,message:'S3 bucket has no versioning \u2014 data loss risk',remediation:'Enable versioning to protect against accidental deletes and overwrites'})}
     assessments.push({type:'S3',id,name,profile,signals:{Versioned:versioned,MFADelete:mfaDel}});
   });
+  // Enrich assessments with account/vpc/region from raw resources
+  var _budrLookup={};
+  var _bSubVpc={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)_bSubVpc[s.SubnetId]=s.VpcId||''});
+  (ctx.rdsInstances||[]).forEach(function(r){_budrLookup['RDS:'+r.DBInstanceIdentifier]={a:r._accountId||'',r:r._region||'',v:(r.DBSubnetGroup&&r.DBSubnetGroup.VpcId)||''}});
+  (ctx.instances||[]).forEach(function(r){_budrLookup['EC2:'+r.InstanceId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||_bSubVpc[r.SubnetId]||''}});
+  (ctx.ecsServices||[]).forEach(function(r){var nc=r.networkConfiguration&&r.networkConfiguration.awsvpcConfiguration;var sid=nc&&nc.subnets&&nc.subnets[0]?nc.subnets[0]:'';_budrLookup['ECS:'+(r.serviceName||r.serviceArn)]={a:r._accountId||'',r:r._region||'',v:sid?_bSubVpc[sid]||'':''}});
+  (ctx.lambdaFns||[]).forEach(function(r){_budrLookup['Lambda:'+r.FunctionName]={a:r._accountId||'',r:r._region||'',v:(r.VpcConfig&&r.VpcConfig.VpcId)||''}});
+  (ctx.ecacheClusters||[]).forEach(function(r){_budrLookup['ElastiCache:'+r.CacheClusterId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.redshiftClusters||[]).forEach(function(r){_budrLookup['Redshift:'+r.ClusterIdentifier]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.albs||[]).forEach(function(r){_budrLookup['ALB:'+(r.LoadBalancerName||r.LoadBalancerArn)]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.s3bk||[]).forEach(function(r){_budrLookup['S3:'+r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
+  assessments.forEach(function(a){var info=_budrLookup[a.type+':'+a.id];if(info){a.account=info.a;a.region=info.r;a.vpcId=info.v}});
+  // Enrich BUDR findings with account/region (for Action Plan sheet)
+  var _bResLookup={};
+  Object.keys(_budrLookup).forEach(function(k){var id=k.split(':').slice(1).join(':');_bResLookup[id]=_budrLookup[k]});
+  f.forEach(function(finding){var info=_bResLookup[finding.resource];if(info){finding._accountId=info.a;finding._region=info.r;finding._vpcId=info.v}});
   _budrFindings=f;
   _budrAssessments=assessments;
   // Cross-reference with classification engine for tier compliance
@@ -1109,6 +1144,10 @@ const _RPT_MODULES=[
    available:function(){return _budrAssessments.length>0},
    desc:function(){return _budrAssessments.length+' resources assessed'},
    render:function(ctx,opts){return _rptBUDR(ctx,opts)}},
+  {id:'iam-review',name:'IAM Review',icon:'',category:'security',enabled:true,
+   available:function(){return !!_iamData||!!safeParse(gv('in_iam'))},
+   desc:function(){if(!_iamReviewData.length){var r=safeParse(gv('in_iam'));if(r){var p=parseIAMData(r);if(p)prepareIAMReviewData(p)}}return _iamReviewData.length?_iamReviewData.length+' roles/users':'No IAM data'},
+   render:function(ctx,opts){return _rptIAMReview(ctx,opts)}},
   {id:'inventory',name:'Resource Inventory',icon:'',category:'data',enabled:true,
    available:function(){return !!_rlCtx},
    desc:function(){if(!_rlCtx)return 'No data';if(!_inventoryData.length)_buildInventoryData();return _inventoryData.length+' resources across all resource types'},
@@ -1127,6 +1166,49 @@ var _rptState={order:null,title:'AWS Infrastructure Assessment',author:'',date:n
 // #endregion BUDR ENGINE
 // #region REPORT BUILDER
 // === REPORT RENDER FUNCTIONS ===
+
+function _awsConsoleUrl(type,id,region){
+  if(!id) return '';
+  var r=region&&region!=='global'&&region!=='-'?region:'us-east-1';
+  var base='https://'+r+'.console.aws.amazon.com/';
+  var map={
+    'VPC':       'vpc/home?region='+r+'#VpcDetails:VpcId='+id,
+    'Subnet':    'vpc/home?region='+r+'#subnets:SubnetId='+id,
+    'EC2':       'ec2/home?region='+r+'#InstanceDetails:instanceId='+id,
+    'RDS':       'rds/home?region='+r+'#database:id='+id+';is-cluster=false',
+    'ALB':       'ec2/home?region='+r+'#LoadBalancers:search='+encodeURIComponent(id),
+    'Lambda':    'lambda/home?region='+r+'#/functions/'+encodeURIComponent(id),
+    'ECS':       'ecs/home?region='+r+'#/services',
+    'ElastiCache':'elasticache/home?region='+r+'#/redis/'+encodeURIComponent(id),
+    'Redshift':  'redshiftv2/home?region='+r+'#cluster-details?cluster='+encodeURIComponent(id),
+    'Security Group':'vpc/home?region='+r+'#SecurityGroup:groupId='+id,
+    'SG':        'vpc/home?region='+r+'#SecurityGroup:groupId='+id,
+    'NACL':      'vpc/home?region='+r+'#NetworkAclDetails:networkAclId='+id,
+    'Route Table':'vpc/home?region='+r+'#RouteTableDetails:RouteTableId='+id,
+    'IGW':       'vpc/home?region='+r+'#InternetGateway:internetGatewayId='+id,
+    'NAT Gateway':'vpc/home?region='+r+'#NatGateway:natGatewayId='+id,
+    'VPC Endpoint':'vpc/home?region='+r+'#Endpoints:vpcEndpointId='+id,
+    'EBS Volume':'ec2/home?region='+r+'#VolumeDetails:volumeId='+id,
+    'EBS Snapshot':'ec2/home?region='+r+'#SnapshotDetails:snapshotId='+id,
+    'ENI':       'ec2/home?region='+r+'#NetworkInterface:networkInterfaceId='+id,
+    'S3 Bucket': 's3/buckets/'+encodeURIComponent(id)+'?region='+r,
+    'CloudFront':'cloudfront/home#/distributions/'+id,
+    'Route 53':  'route53/home#/hostedzone/'+id.replace(/^\/hostedzone\//,''),
+    'WAF':       'wafv2/homev2/web-acl/'+id+'?region='+r,
+    'VPN':       'vpc/home?region='+r+'#VpnConnections:vpnConnectionId='+id,
+    'TGW Attachment':'vpc/home?region='+r+'#TransitGatewayAttachments:transitGatewayAttachmentId='+id,
+    'Target Group':'ec2/home?region='+r+'#TargetGroups:search='+encodeURIComponent(id),
+    'VPC Peering':'vpc/home?region='+r+'#PeeringConnections:vpcPeeringConnectionId='+id
+  };
+  var path=map[type];
+  if(!path) return '';
+  return base+path;
+}
+function _rptLink(type,id,region,text){
+  var url=_awsConsoleUrl(type,id,region);
+  if(!url) return esc(text||id||'');
+  return '<a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted;text-underline-offset:2px" title="Open in AWS Console">'+esc(text||id)+'</a>';
+}
 
 function _rptCSS(){
   var lt=document.documentElement.dataset.theme==='light';
@@ -1183,7 +1265,11 @@ function _rptCSS(){
     'white-space:pre-wrap;margin:8px 0;overflow-x:auto}',
     '.rpt-footer-bar{margin-top:40px;padding:16px;text-align:center;',
     'font-size:12px;color:'+dm+';border-top:1px solid '+bd+'}',
-    '.diagram-img{max-width:100%;height:auto;border-radius:8px;margin:16px 0}'
+    '.diagram-img{max-width:100%;height:auto;border-radius:8px;margin:16px 0}',
+    '.rpt-kv-grid{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0}',
+    '.rpt-kv{display:flex;flex-direction:column;min-width:130px;background:'+card+';border:1px solid '+bd+';border-radius:8px;padding:12px 16px}',
+    '.rpt-kv-label{font-size:12px;color:'+mt+';margin-bottom:4px}',
+    '.rpt-kv-val{font-size:24px;font-weight:700}'
   ].join('\n');
 }
 
@@ -1957,6 +2043,72 @@ function _rptFormatSignals(sigs){
   }).join(', ');
 }
 
+function _rptIAMReview(ctx, opts){
+  // Ensure IAM review data is prepared
+  if(!_iamReviewData.length){
+    var raw=safeParse(gv('in_iam'));
+    if(raw){var p=parseIAMData(raw);if(p)prepareIAMReviewData(p)}
+  }
+  var h='<section class="rpt-section" id="s-iam-review"><h2 class="rpt-section-toggle">IAM Review</h2>';
+  if(!_iamReviewData.length){return h+'<p>No IAM data available.</p></section>'}
+  h+='<div class="rpt-section-body">';
+  var roles=_iamReviewData.filter(function(r){return r.type==='Role'});
+  var users=_iamReviewData.filter(function(r){return r.type==='User'});
+  var admins=_iamReviewData.filter(function(r){return r.isAdmin});
+  var withFindings=_iamReviewData.filter(function(r){return r.findings.length>0});
+  var crossAcct=_iamReviewData.filter(function(r){return r.crossAccounts.length>0});
+  // Summary
+  h+='<div class="rpt-kv-grid">';
+  h+='<div class="rpt-kv"><span class="rpt-kv-label">Total Entities</span><span class="rpt-kv-val">'+_iamReviewData.length+'</span></div>';
+  h+='<div class="rpt-kv"><span class="rpt-kv-label">Roles</span><span class="rpt-kv-val">'+roles.length+'</span></div>';
+  h+='<div class="rpt-kv"><span class="rpt-kv-label">Users</span><span class="rpt-kv-val">'+users.length+'</span></div>';
+  h+='<div class="rpt-kv"><span class="rpt-kv-label" style="color:#ef4444">Admin Access</span><span class="rpt-kv-val" style="color:#ef4444">'+admins.length+'</span></div>';
+  h+='<div class="rpt-kv"><span class="rpt-kv-label" style="color:#f59e0b">Cross-Account Trusts</span><span class="rpt-kv-val" style="color:#f59e0b">'+crossAcct.length+'</span></div>';
+  h+='<div class="rpt-kv"><span class="rpt-kv-label" style="color:#f97316">With Findings</span><span class="rpt-kv-val" style="color:#f97316">'+withFindings.length+'</span></div>';
+  h+='</div>';
+  // Admin entities table
+  if(admins.length){
+    h+='<h4 style="color:#ef4444;margin-top:16px">Admin Access Entities ('+admins.length+')</h4>';
+    h+='<table><thead><tr><th>Name</th><th>Type</th><th>Created</th><th>Last Used</th><th>Policies</th><th>Findings</th></tr></thead><tbody>';
+    admins.forEach(function(r){
+      h+='<tr><td>'+esc(r.name)+'</td><td>'+esc(r.type)+'</td>';
+      h+='<td>'+(r.created?r.created.toISOString().split('T')[0]:'—')+'</td>';
+      h+='<td>'+(r.lastUsed?r.lastUsed.toISOString().split('T')[0]:'Never')+'</td>';
+      h+='<td>'+r.policies+'</td>';
+      h+='<td>'+(r.findings.length||'—')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  // Cross-account trusts table
+  if(crossAcct.length){
+    h+='<h4 style="color:#f59e0b;margin-top:16px">Cross-Account Trust Roles ('+crossAcct.length+')</h4>';
+    h+='<table><thead><tr><th>Role</th><th>Trusted Accounts</th><th>Admin</th><th>Findings</th></tr></thead><tbody>';
+    crossAcct.forEach(function(r){
+      h+='<tr><td>'+esc(r.name)+'</td><td>'+r.crossAccounts.map(esc).join(', ')+'</td>';
+      h+='<td>'+(r.isAdmin?'<span style="color:#ef4444">Yes</span>':'No')+'</td>';
+      h+='<td>'+(r.findings.length||'—')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  // Users with findings
+  var usersWithIssues=users.filter(function(u){return u.findings.length>0||u.isAdmin||!u.hasMFA&&u.hasConsole});
+  if(usersWithIssues.length){
+    h+='<h4 style="color:#f97316;margin-top:16px">Users Requiring Attention ('+usersWithIssues.length+')</h4>';
+    h+='<table><thead><tr><th>User</th><th>MFA</th><th>Console</th><th>Active Keys</th><th>Admin</th><th>Findings</th></tr></thead><tbody>';
+    usersWithIssues.forEach(function(u){
+      h+='<tr><td>'+esc(u.name)+'</td>';
+      h+='<td>'+(u.hasMFA?'Yes':'<span style="color:#ef4444">No</span>')+'</td>';
+      h+='<td>'+(u.hasConsole?'Yes':'No')+'</td>';
+      h+='<td>'+(u.activeKeys||0)+'</td>';
+      h+='<td>'+(u.isAdmin?'<span style="color:#ef4444">Yes</span>':'No')+'</td>';
+      h+='<td>'+(u.findings.length||'—')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  h+='</div></section>';
+  return h;
+}
+
 function _rptInventory(ctx, opts){
   var h='<section class="rpt-section" id="s-inventory"><h2 class="rpt-section-toggle">Resource Inventory</h2>';
   if(!_rlCtx){return h+'<p>No data loaded.</p></section>'}
@@ -1981,25 +2133,33 @@ function _rptInventory(ctx, opts){
   });
   h+='</nav>';
 
-  // One table per type
+  // One table per type — skip columns that are entirely empty for this type
   typeKeys.forEach(function(t){
     var items=byType[t];
     var anchor='s-inv-'+t.toLowerCase().replace(/\s+/g,'-');
     var tableId='rpt-tbl-inv-'+t.toLowerCase().replace(/\s+/g,'-');
+    // Detect which optional columns have data
+    var hasConfig=items.some(function(r){return r.config&&r.config!=='-'});
+    var hasState=items.some(function(r){return r.state&&r.state!=='-'});
+    var hasVpc=items.some(function(r){return !!r.vpcId});
     h+='<h3 id="'+esc(anchor)+'">'+esc(t)+' ('+items.length+')</h3>';
     h+='<div class="rpt-table-wrap" id="'+esc(tableId)+'">';
     h+=_rptBuildToolbar(tableId,{});
     h+='<table><thead class="rpt-sticky"><tr>';
-    h+='<th>Name</th><th>ID</th><th>Config</th><th>State</th><th>VPC</th><th>Region</th>';
+    h+='<th>Name</th><th>ID</th>';
+    if(hasConfig) h+='<th>Config</th>';
+    if(hasState) h+='<th>State</th>';
+    if(hasVpc) h+='<th>VPC</th>';
+    h+='<th>Region</th>';
     h+='</tr></thead><tbody>';
     items.forEach(function(r){
       h+='<tr id="res-'+esc(r.id)+'">';
       h+='<td>'+esc(r.name||'')+'</td>';
-      h+='<td>'+esc(r.id||'')+'</td>';
-      h+='<td>'+esc(r.config||'')+'</td>';
-      h+='<td>'+esc(r.state||'')+'</td>';
-      h+='<td>'+esc(r.vpcName||r.vpcId||'')+'</td>';
-      h+='<td>'+esc(r.region||'')+'</td>';
+      h+='<td>'+_rptLink(r.type,r.id,r.region,r.id)+'</td>';
+      if(hasConfig) h+='<td>'+esc(r.config||'')+'</td>';
+      if(hasState) h+='<td>'+esc(r.state||'-')+'</td>';
+      if(hasVpc) h+='<td>'+(r.vpcId?_rptLink('VPC',r.vpcId,r.region,r.vpcName||r.vpcId):'-')+'</td>';
+      h+='<td>'+esc(r.region||'-')+'</td>';
       h+='</tr>';
     });
     h+='</tbody></table></div>';
@@ -2024,7 +2184,7 @@ function _rptInvVPCs(c){
   h+='<th>CIDR</th><th>State</th></tr></thead><tbody>';
   items.forEach(function(v){
     h+='<tr id="res-'+esc(v.VpcId)+'"><td>'+esc(_rptTagName(v))+'</td>';
-    h+='<td>'+esc(v.VpcId)+'</td>';
+    h+='<td>'+_rptLink('VPC',v.VpcId,v._region,v.VpcId)+'</td>';
     h+='<td>'+esc(v.CidrBlock)+'</td>';
     h+='<td>'+esc(v.State)+'</td></tr>';
   });
@@ -2043,7 +2203,7 @@ function _rptInvSubnets(c){
   items.forEach(function(s){
     var pub=c.pubSubs&&c.pubSubs.has(s.SubnetId)?'Yes':'No';
     h+='<tr id="res-'+esc(s.SubnetId)+'"><td>'+esc(_rptTagName(s))+'</td>';
-    h+='<td>'+esc(s.SubnetId)+'</td>';
+    h+='<td>'+_rptLink('Subnet',s.SubnetId,s._region,s.SubnetId)+'</td>';
     h+='<td>'+esc(s.CidrBlock)+'</td>';
     h+='<td>'+esc(s.AvailabilityZone)+'</td>';
     h+='<td>'+esc(pub)+'</td></tr>';
@@ -2064,7 +2224,7 @@ function _rptInvEC2(c){
     var state=i.State?i.State.Name:'';
     var az=i.Placement?i.Placement.AvailabilityZone:'';
     h+='<tr id="res-'+esc(i.InstanceId)+'"><td>'+esc(_rptTagName(i))+'</td>';
-    h+='<td>'+esc(i.InstanceId)+'</td>';
+    h+='<td>'+_rptLink('EC2',i.InstanceId,i._region,i.InstanceId)+'</td>';
     h+='<td>'+esc(i.InstanceType)+'</td>';
     h+='<td>'+esc(state)+'</td>';
     h+='<td>'+esc(az)+'</td></tr>';
@@ -2082,7 +2242,7 @@ function _rptInvRDS(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Identifier</th><th>Engine</th>';
   h+='<th>Class</th><th>Multi-AZ</th></tr></thead><tbody>';
   items.forEach(function(d){
-    h+='<tr id="res-'+esc(d.DBInstanceIdentifier)+'"><td>'+esc(d.DBInstanceIdentifier)+'</td>';
+    h+='<tr id="res-'+esc(d.DBInstanceIdentifier)+'"><td>'+_rptLink('RDS',d.DBInstanceIdentifier,d._region,d.DBInstanceIdentifier)+'</td>';
     h+='<td>'+esc(d.Engine)+'</td>';
     h+='<td>'+esc(d.DBInstanceClass)+'</td>';
     h+='<td>'+esc(d.MultiAZ?'Yes':'No')+'</td></tr>';
@@ -2101,7 +2261,7 @@ function _rptInvALBs(c){
   h+='<th>Scheme</th><th>AZs</th></tr></thead><tbody>';
   items.forEach(function(a){
     var azCount=(a.AvailabilityZones||[]).length;
-    h+='<tr id="res-'+esc(a.LoadBalancerName||a.LoadBalancerArn)+'"><td>'+esc(a.LoadBalancerName)+'</td>';
+    h+='<tr id="res-'+esc(a.LoadBalancerName||a.LoadBalancerArn)+'"><td>'+_rptLink('ALB',a.LoadBalancerName,a._region,a.LoadBalancerName)+'</td>';
     h+='<td>'+esc(a.Type)+'</td>';
     h+='<td>'+esc(a.Scheme)+'</td>';
     h+='<td>'+azCount+'</td></tr>';
@@ -2119,7 +2279,7 @@ function _rptInvECS(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Service</th><th>Desired</th>';
   h+='<th>Running</th><th>Launch Type</th></tr></thead><tbody>';
   items.forEach(function(s){
-    h+='<tr id="res-'+esc(s.serviceName||s.serviceArn)+'"><td>'+esc(s.serviceName)+'</td>';
+    h+='<tr id="res-'+esc(s.serviceName||s.serviceArn)+'"><td>'+_rptLink('ECS',s.serviceName,s._region,s.serviceName)+'</td>';
     h+='<td>'+esc(s.desiredCount)+'</td>';
     h+='<td>'+esc(s.runningCount)+'</td>';
     h+='<td>'+esc(s.launchType||'')+'</td></tr>';
@@ -2137,7 +2297,7 @@ function _rptInvLambda(c){
   h+='<table><thead class="rpt-sticky"><tr><th>Function</th><th>Runtime</th>';
   h+='<th>Memory (MB)</th><th>Timeout (s)</th></tr></thead><tbody>';
   items.forEach(function(fn){
-    h+='<tr id="res-'+esc(fn.FunctionName)+'"><td>'+esc(fn.FunctionName)+'</td>';
+    h+='<tr id="res-'+esc(fn.FunctionName)+'"><td>'+_rptLink('Lambda',fn.FunctionName,fn._region,fn.FunctionName)+'</td>';
     h+='<td>'+esc(fn.Runtime)+'</td>';
     h+='<td>'+esc(fn.MemorySize)+'</td>';
     h+='<td>'+esc(fn.Timeout)+'</td></tr>';
@@ -4267,6 +4427,9 @@ function _buildInventoryData(){
       compliancePass:0,complianceFail:0,
       _raw:obj,_related:extra.related||[]};
   }
+  // Shared lookups: subnet→VPC, instance→VPC
+  var subVpcMap={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)subVpcMap[s.SubnetId]=s.VpcId||''});
+  var instVpcMap={};(ctx.instances||[]).forEach(function(i){if(i.InstanceId)instVpcMap[i.InstanceId]=i.VpcId||subVpcMap[i.SubnetId]||''});
   // 1. VPCs
   (ctx.vpcs||[]).forEach(function(v){
     rows.push(mkRow(v.VpcId,'VPC',tag(v)||v.VpcId,v,{vpcId:v.VpcId,config:v.CidrBlock||'',state:v.State||''}));
@@ -4279,7 +4442,7 @@ function _buildInventoryData(){
   // 3. EC2
   (ctx.instances||[]).forEach(function(i){
     var sgs=(i.SecurityGroups||[]).map(function(g){return g.GroupId});
-    rows.push(mkRow(i.InstanceId,'EC2',tag(i)||i.InstanceId,i,{vpcId:i.VpcId||'',subnetId:i.SubnetId||'',az:i.Placement?i.Placement.AvailabilityZone:'',config:i.InstanceType||'',state:i.State?i.State.Name||'':'',sgCount:sgs.length,related:sgs}));
+    rows.push(mkRow(i.InstanceId,'EC2',tag(i)||i.InstanceId,i,{vpcId:i.VpcId||subVpcMap[i.SubnetId]||'',subnetId:i.SubnetId||'',az:i.Placement?i.Placement.AvailabilityZone:'',config:i.InstanceType||'',state:i.State?i.State.Name||'':'',sgCount:sgs.length,related:sgs}));
   });
   // 4. RDS
   (ctx.rdsInstances||[]).forEach(function(db){
@@ -4308,7 +4471,9 @@ function _buildInventoryData(){
   });
   // 8. ElastiCache
   (ctx.ecacheClusters||[]).forEach(function(ec){
-    rows.push(mkRow(ec.CacheClusterId,'ElastiCache',ec.CacheClusterId,ec,{config:(ec.Engine||'')+' '+(ec.CacheNodeType||''),state:ec.CacheClusterStatus||''}));
+    var vpcId=ec.VpcId||(ec.CacheSubnetGroupName?'':'');
+    if(!vpcId&&ec.CacheNodes&&ec.CacheNodes[0]){var cn=ec.CacheNodes[0];if(cn.SubnetId)vpcId=subVpcMap[cn.SubnetId]||''}
+    rows.push(mkRow(ec.CacheClusterId,'ElastiCache',ec.CacheClusterId,ec,{vpcId:vpcId,config:(ec.Engine||'')+' '+(ec.CacheNodeType||''),state:ec.CacheClusterStatus||''}));
   });
   // 9. Redshift
   (ctx.redshiftClusters||[]).forEach(function(rs){
@@ -4349,7 +4514,8 @@ function _buildInventoryData(){
   // 17. EBS Volumes
   (ctx.volumes||[]).forEach(function(vol){
     var attInsts=(vol.Attachments||[]).map(function(a){return a.InstanceId}).filter(Boolean);
-    rows.push(mkRow(vol.VolumeId,'EBS Volume',tag(vol)||vol.VolumeId,vol,{az:vol.AvailabilityZone||'',config:vol.Size+'GB '+(vol.VolumeType||''),state:vol.State||'',encrypted:!!vol.Encrypted,related:attInsts}));
+    var vpcId='';if(attInsts.length)vpcId=instVpcMap[attInsts[0]]||'';
+    rows.push(mkRow(vol.VolumeId,'EBS Volume',tag(vol)||vol.VolumeId,vol,{vpcId:vpcId,az:vol.AvailabilityZone||'',config:vol.Size+'GB '+(vol.VolumeType||''),state:vol.State||'',encrypted:!!vol.Encrypted,related:attInsts}));
   });
   // 18. Snapshots
   (ctx.snapshots||[]).forEach(function(snap){
@@ -4932,9 +5098,14 @@ var _DEFAULT_CLASS_RULES=[
   {pattern:'elasticache|redis|memcache|cache',scope:'type',tier:'high',weight:70},
   {pattern:'alb|elb|loadbalancer|nlb',scope:'type',tier:'high',weight:65},
   {pattern:'lambda|fargate|ecs',scope:'type',tier:'medium',weight:40},
-  {pattern:'bastion|jump|ssh',scope:'name',tier:'medium',weight:35}
+  {pattern:'bastion|jump|ssh',scope:'name',tier:'medium',weight:35},
+  // Tag-based rules (disabled by default — enable when tag data is available)
+  {pattern:'prod|production',scope:'tag:Environment',tier:'critical',weight:120,enabled:false},
+  {pattern:'staging|stage|uat',scope:'tag:Environment',tier:'medium',weight:110,enabled:false},
+  {pattern:'dev|develop|sandbox|test',scope:'tag:Environment',tier:'low',weight:110,enabled:false}
 ];
 var _classificationRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+var _discoveredTags={};
 
 var _TIER_RPO_RTO={
   critical:{rpo:'Hourly',rto:'2-4 hours',priority:1,color:'#ef4444'},
@@ -4943,8 +5114,14 @@ var _TIER_RPO_RTO={
   low:{rpo:'Weekly',rto:'24 hours',priority:4,color:'#64748b'}
 };
 
-function _scoreClassification(name,type,vpcName,rules){
+function _getTagMap(obj){
+  var arr=obj.Tags||obj.tags||obj.TagList||[];
+  var m={};arr.forEach(function(t){if(t.Key)m[t.Key]=t.Value||''});return m;
+}
+
+function _scoreClassification(name,type,vpcName,rules,tagMap){
   rules=rules||_classificationRules;
+  tagMap=tagMap||{};
   var bestTier='low';var bestWeight=-1;
   rules.forEach(function(rule){
     if(rule.enabled===false) return;
@@ -4953,10 +5130,33 @@ function _scoreClassification(name,type,vpcName,rules){
     if(rule.scope==='vpc') text=vpcName||'';
     else if(rule.scope==='type') text=type||'';
     else if(rule.scope==='name') text=name||'';
+    else if(rule.scope.indexOf('tag:')===0) text=tagMap[rule.scope.substring(4)]||'';
     else text=(name||'')+' '+(type||'')+' '+(vpcName||'');
     if(re.test(text)&&rule.weight>bestWeight){bestWeight=rule.weight;bestTier=rule.tier}
   });
   return {tier:bestTier,weight:bestWeight};
+}
+
+function _discoverTagKeys(ctx){
+  if(!ctx) return {};
+  var disc={};
+  function scan(arr,typeName){
+    (arr||[]).forEach(function(obj){
+      var tagArr=obj.Tags||obj.tags||obj.TagList||[];
+      tagArr.forEach(function(t){
+        if(!t.Key||t.Key.indexOf('aws:')===0) return;
+        if(!disc[t.Key]) disc[t.Key]={count:0,samples:[],types:{}};
+        var d=disc[t.Key];d.count++;d.types[typeName]=true;
+        if(d.samples.length<5&&t.Value&&d.samples.indexOf(t.Value)<0) d.samples.push(t.Value);
+      });
+    });
+  }
+  scan(ctx.instances,'EC2');scan(ctx.rdsInstances,'RDS');scan(ctx.ecacheClusters,'ElastiCache');
+  scan(ctx.albs,'ALB');scan(ctx.lambdaFns,'Lambda');scan(ctx.ecsServices,'ECS');
+  scan(ctx.redshiftClusters,'Redshift');scan(ctx.vpcs,'VPC');scan(ctx.subnets,'Subnet');
+  scan(ctx.sgs,'SG');scan(ctx.s3bk,'S3');
+  Object.keys(disc).forEach(function(k){disc[k].types=Object.keys(disc[k].types)});
+  return disc;
 }
 
 function runClassificationEngine(ctx){
@@ -4973,30 +5173,33 @@ function runClassificationEngine(ctx){
     var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
     var vpcId=resolveVpc(inst.VpcId,inst.SubnetId);
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'instance',vpcName);
+    var tm=_getTagMap(inst);
+    var sc=_scoreClassification(name,'instance',vpcName,null,tm);
     var tier=_classificationOverrides[inst.InstanceId]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:inst.InstanceId,name:name,type:'EC2',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[inst.InstanceId],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:inst.InstanceId,name:name,type:'EC2',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[inst.InstanceId],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify RDS
   (ctx.rdsInstances||[]).forEach(function(db){
     var name=db.DBInstanceIdentifier;
     var vpcId=db.DBSubnetGroup?db.DBSubnetGroup.VpcId:'';
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'rds',vpcName);
+    var tm=_getTagMap(db);
+    var sc=_scoreClassification(name,'rds',vpcName,null,tm);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'RDS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:name,name:name,type:'RDS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify ElastiCache
   (ctx.ecacheClusters||[]).forEach(function(ec){
     var name=ec.CacheClusterId;
     var vpcId=ec.VpcId||'';
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'elasticache',vpcName);
+    var tm=_getTagMap(ec);
+    var sc=_scoreClassification(name,'elasticache',vpcName,null,tm);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ElastiCache',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:name,name:name,type:'ElastiCache',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify ALBs
   (ctx.albs||[]).forEach(function(alb){
@@ -5004,10 +5207,11 @@ function runClassificationEngine(ctx){
     var name=alb.LoadBalancerName||albId;
     var vpcId=alb.VpcId||'';
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'alb',vpcName);
+    var tm=_getTagMap(alb);
+    var sc=_scoreClassification(name,'alb',vpcName,null,tm);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ALB',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:name,name:name,type:'ALB',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify Lambda
   (ctx.lambdaFns||[]).forEach(function(fn){
@@ -5015,10 +5219,11 @@ function runClassificationEngine(ctx){
     var vpcId=fn.VpcConfig?fn.VpcConfig.VpcId:'';
     if(!vpcId&&fn.VpcConfig&&fn.VpcConfig.SubnetIds&&fn.VpcConfig.SubnetIds[0]) vpcId=subnetVpcMap[fn.VpcConfig.SubnetIds[0]]||'';
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'lambda',vpcName);
+    var tm=_getTagMap(fn);
+    var sc=_scoreClassification(name,'lambda',vpcName,null,tm);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'Lambda',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:name,name:name,type:'Lambda',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify ECS
   (ctx.ecsServices||[]).forEach(function(svc){
@@ -5026,22 +5231,25 @@ function runClassificationEngine(ctx){
     var nc=svc.networkConfiguration&&svc.networkConfiguration.awsvpcConfiguration;
     var vpcId=nc&&nc.subnets&&nc.subnets[0]?subnetVpcMap[nc.subnets[0]]||'':'';
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'ecs',vpcName);
+    var tm=_getTagMap(svc);
+    var sc=_scoreClassification(name,'ecs',vpcName,null,tm);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ECS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:name,name:name,type:'ECS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify Redshift
   (ctx.redshiftClusters||[]).forEach(function(rs){
     var name=rs.ClusterIdentifier;
     var vpcId=rs.VpcId||'';
     var vpcName=vpcNameMap[vpcId]||'';
-    var sc=_scoreClassification(name,'redshift',vpcName);
+    var tm=_getTagMap(rs);
+    var sc=_scoreClassification(name,'redshift',vpcName,null,tm);
     var tier=_classificationOverrides[name]||sc.tier;
     var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'Redshift',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName});
+    results.push({id:name,name:name,type:'Redshift',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   _classificationData=results;
+  _discoveredTags=_discoverTagKeys(ctx);
   return results;
 }
 
@@ -11669,19 +11877,41 @@ function _buildRlCtxFromTextareas(){
       resource._accountId=detectAccountId(resource)||userAccount||'default';
       return resource;
     }
-    vpcs.forEach(tagAccount);subnets.forEach(tagAccount);igwRaw.forEach(tagAccount);
-    natRaw.forEach(tagAccount);sgs.forEach(tagAccount);instances.forEach(tagAccount);
-    albs.forEach(tagAccount);rdsInstances.forEach(tagAccount);
-    ecsServices.forEach(tagAccount);lambdaFns.forEach(tagAccount);peerings.forEach(tagAccount);
     function tagRegion(resource){
       if(!resource)return resource;
       resource._region=detectRegion(resource)||'unknown';
       return resource;
     }
-    vpcs.forEach(tagRegion);subnets.forEach(tagRegion);igwRaw.forEach(tagRegion);
-    natRaw.forEach(tagRegion);sgs.forEach(tagRegion);instances.forEach(tagRegion);
-    albs.forEach(tagRegion);rdsInstances.forEach(tagRegion);
-    ecsServices.forEach(tagRegion);lambdaFns.forEach(tagRegion);peerings.forEach(tagRegion);
+    [vpcs,subnets,igwRaw,natRaw,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,
+     peerings,volumes,snapshots,enis,ecacheClusters,redshiftClusters,
+     nacls,rts,vpceRaw,vpns,s3bk,zones,wafAcls,cfDistributions,tgs].forEach(function(arr){arr.forEach(function(r){tagAccount(r);tagRegion(r)})});
+    // VPC→region fallback: derive from subnets' AZs, propagate to VPC-linked resources
+    var vpcRegion={};
+    subnets.forEach(function(s){if(s.VpcId&&s._region&&s._region!=='unknown')vpcRegion[s.VpcId]=s._region});
+    var subVpcLookup={};subnets.forEach(function(s){if(s.SubnetId)subVpcLookup[s.SubnetId]=s.VpcId||''});
+    function fillRegion(r){if(r&&r._region==='unknown'&&r.VpcId&&vpcRegion[r.VpcId])r._region=vpcRegion[r.VpcId]}
+    [vpcs,sgs,nacls,rts,vpceRaw,igwRaw,natRaw,enis,ecacheClusters,redshiftClusters].forEach(function(arr){arr.forEach(fillRegion)});
+    // IGW region fallback via attachment VpcId
+    igwRaw.forEach(function(g){if(g._region==='unknown'){var att=(g.Attachments||[])[0];if(att&&att.VpcId&&vpcRegion[att.VpcId])g._region=vpcRegion[att.VpcId]}});
+    // ECS region fallback via subnet→VPC→region
+    ecsServices.forEach(function(svc){if(svc._region==='unknown'){var nc=svc.networkConfiguration&&svc.networkConfiguration.awsvpcConfiguration;var sid=nc&&nc.subnets&&nc.subnets[0];if(sid){var vid=subVpcLookup[sid];if(vid&&vpcRegion[vid])svc._region=vpcRegion[vid]}}});
+    // VPN region fallback via VpnGatewayId→VPC (limited — VPN doesn't always carry VpcId)
+    vpns.forEach(function(v){if(v._region==='unknown'){var vgw=v.VpnGatewayId;if(vgw){vpcs.forEach(function(vpc){if(vpc._region&&vpc._region!=='unknown'){var gws=(vpc.VpnGateways||[]);gws.forEach(function(g){if(g.VpnGatewayId===vgw)v._region=vpc._region})}})}}});
+    // Peering region fallback via RequesterVpcInfo/AccepterVpcInfo
+    peerings.forEach(function(p){if(p._region==='unknown'){var rv=p.RequesterVpcInfo&&p.RequesterVpcInfo.VpcId;var av=p.AccepterVpcInfo&&p.AccepterVpcInfo.VpcId;if(rv&&vpcRegion[rv])p._region=vpcRegion[rv];else if(av&&vpcRegion[av])p._region=vpcRegion[av]}});
+    // Snapshot region fallback via volume→region
+    var volRegion={};volumes.forEach(function(v){if(v.VolumeId&&v._region&&v._region!=='unknown')volRegion[v.VolumeId]=v._region});
+    snapshots.forEach(function(s){if(s._region==='unknown'&&s.VolumeId&&volRegion[s.VolumeId])s._region=volRegion[s.VolumeId]});
+    // WAF region fallback via associated ALB ARNs
+    var albArnRegion={};albs.forEach(function(a){if(a.LoadBalancerArn&&a._region&&a._region!=='unknown')albArnRegion[a.LoadBalancerArn]=a._region});
+    wafAcls.forEach(function(w){if(w._region==='unknown'){(w.ResourceArns||[]).some(function(arn){if(albArnRegion[arn]){w._region=albArnRegion[arn];return true}})}});
+    // Global services: mark as "global" instead of "unknown"
+    zones.forEach(function(z){if(z._region==='unknown')z._region='global'});
+    cfDistributions.forEach(function(d){if(d._region==='unknown')d._region='global'});
+    // Final account→region sweep: fill remaining "unknown" from account's primary region
+    var acctRegion={};
+    [vpcs,subnets,instances].forEach(function(arr){arr.forEach(function(r){if(r._accountId&&r._region&&r._region!=='unknown'&&r._region!=='global'&&!acctRegion[r._accountId])acctRegion[r._accountId]=r._region})});
+    [vpcs,sgs,nacls,rts,igwRaw,natRaw,vpceRaw,enis,s3bk,snapshots,wafAcls,vpns,peerings,volumes,tgs,ecacheClusters,redshiftClusters,ecsServices,lambdaFns,albs,rdsInstances].forEach(function(arr){arr.forEach(function(r){if(r._region==='unknown'&&r._accountId&&acctRegion[r._accountId])r._region=acctRegion[r._accountId]})});
 
     const _accounts=new Set();
     vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
@@ -11732,7 +11962,9 @@ function _buildRlCtxFromTextareas(){
     allRecSets.forEach(r=>{if(r.HostedZoneId)(recsByZone[r.HostedZoneId]=recsByZone[r.HostedZoneId]||[]).push(r)});
     // Merge explicit TGW attachments with route-derived ones
     const tgwAttachments2=[...tgwAttRaw];
-    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments2.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
+    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){var vid=rt.VpcId||((rt.Associations||[])[0]||{}).VpcId;tgwAttachments2.push({TransitGatewayId:r.TransitGatewayId,VpcId:vid,_accountId:rt._accountId||'',_region:rt._region||(vid&&vpcRegion[vid])||'unknown'})}})});
+    tgwAttRaw.forEach(function(t){tagAccount(t);tagRegion(t);fillRegion(t)});
+    tgwAttachments2.forEach(function(t){if((!t._region||t._region==='unknown')&&t._accountId&&acctRegion[t._accountId])t._region=acctRegion[t._accountId];if(!t._region||t._region==='unknown'){var vid=t.VpcId;if(vid&&vpcRegion[vid])t._region=vpcRegion[vid]}});
     return {vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,
       s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,
@@ -11749,7 +11981,7 @@ function _buildRlCtxFromTextareas(){
 // Values can be strings (web) or pre-parsed objects (Electron).
 function _buildRlCtxFromData(textareas, accountLabel){
   try{
-    function _val(id){const v=textareas[id];if(!v)return null;if(typeof v==='string')return safeParse(v);return v;}
+    function _val(id){const v=textareas[id];if(!v)return null;if(typeof v==='string'){const p=safeParse(v);if(p!==null)textareas[id]=p;return p;}return v;}
     const userAccount=accountLabel||'';
     let vpcs=ext(_val('in_vpcs'),['Vpcs']);
     let subnets=ext(_val('in_subnets'),['Subnets']);
@@ -11783,7 +12015,36 @@ function _buildRlCtxFromData(textareas, accountLabel){
     if(iamRaw2&&!_iamData)_iamData=parseIAMData(iamRaw2);
 
     function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
-    [vpcs,subnets,igwRaw,natRaw,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(arr=>arr.forEach(tagResource));
+    [vpcs,subnets,igwRaw,natRaw,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,
+     peerings,volumes,snapshots,enis,ecacheClusters,redshiftClusters,
+     nacls,rts,vpceRaw,vpns,s3bk,zones,wafAcls,cfDistributions,tgs].forEach(arr=>arr.forEach(tagResource));
+    // VPC→region fallback: derive from subnets' AZs, propagate to VPC-linked resources
+    const vpcRegion={};
+    subnets.forEach(s=>{if(s.VpcId&&s._region&&s._region!=='unknown')vpcRegion[s.VpcId]=s._region});
+    function fillRegion(r){if(r&&r._region==='unknown'&&r.VpcId&&vpcRegion[r.VpcId])r._region=vpcRegion[r.VpcId]}
+    [vpcs,sgs,nacls,rts,vpceRaw,igwRaw,natRaw,enis,ecacheClusters,redshiftClusters].forEach(arr=>arr.forEach(fillRegion));
+    // IGWs use _vpcId from attachment
+    igwRaw.forEach(g=>{if(g._region==='unknown'){const att=(g.Attachments||[])[0];if(att&&att.VpcId&&vpcRegion[att.VpcId])g._region=vpcRegion[att.VpcId]}});
+    // ECS region fallback via subnet→VPC→region
+    const subVpcLookup={};subnets.forEach(s=>{if(s.SubnetId)subVpcLookup[s.SubnetId]=s.VpcId||''});
+    ecsServices.forEach(svc=>{if(svc._region==='unknown'){const nc=svc.networkConfiguration&&svc.networkConfiguration.awsvpcConfiguration;const sid=nc&&nc.subnets&&nc.subnets[0];if(sid){const vid=subVpcLookup[sid];if(vid&&vpcRegion[vid])svc._region=vpcRegion[vid]}}});
+    // VPN region fallback
+    vpns.forEach(v=>{if(v._region==='unknown'){const vgw=v.VpnGatewayId;if(vgw)vpcs.forEach(vpc=>{if(vpc._region&&vpc._region!=='unknown'){(vpc.VpnGateways||[]).forEach(g=>{if(g.VpnGatewayId===vgw)v._region=vpc._region})}})}});
+    // Peering region fallback via RequesterVpcInfo/AccepterVpcInfo
+    peerings.forEach(p=>{if(p._region==='unknown'){const rv=p.RequesterVpcInfo&&p.RequesterVpcInfo.VpcId;const av=p.AccepterVpcInfo&&p.AccepterVpcInfo.VpcId;if(rv&&vpcRegion[rv])p._region=vpcRegion[rv];else if(av&&vpcRegion[av])p._region=vpcRegion[av]}});
+    // Snapshot region fallback via volume→region
+    const volRegion={};volumes.forEach(v=>{if(v.VolumeId&&v._region&&v._region!=='unknown')volRegion[v.VolumeId]=v._region});
+    snapshots.forEach(s=>{if(s._region==='unknown'&&s.VolumeId&&volRegion[s.VolumeId])s._region=volRegion[s.VolumeId]});
+    // WAF region fallback via associated ALB ARNs
+    const albArnRegion={};albs.forEach(a=>{if(a.LoadBalancerArn&&a._region&&a._region!=='unknown')albArnRegion[a.LoadBalancerArn]=a._region});
+    wafAcls.forEach(w=>{if(w._region==='unknown'){(w.ResourceArns||[]).some(arn=>{if(albArnRegion[arn]){w._region=albArnRegion[arn];return true}})}});
+    // Global services: mark as "global" instead of "unknown"
+    zones.forEach(z=>{if(z._region==='unknown')z._region='global'});
+    cfDistributions.forEach(d=>{if(d._region==='unknown')d._region='global'});
+    // Final account→region sweep: fill remaining "unknown" from account's primary region
+    const acctRegion={};
+    [vpcs,subnets,instances].forEach(arr=>{arr.forEach(r=>{if(r._accountId&&r._region&&r._region!=='unknown'&&r._region!=='global'&&!acctRegion[r._accountId])acctRegion[r._accountId]=r._region})});
+    [vpcs,sgs,nacls,rts,igwRaw,natRaw,vpceRaw,enis,s3bk,snapshots,wafAcls,vpns,peerings,volumes,tgs,ecacheClusters,redshiftClusters,ecsServices,lambdaFns,albs,rdsInstances].forEach(arr=>{arr.forEach(r=>{if(r._region==='unknown'&&r._accountId&&acctRegion[r._accountId])r._region=acctRegion[r._accountId]})});
 
     const _accounts=new Set();
     vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
@@ -11825,7 +12086,9 @@ function _buildRlCtxFromData(textareas, accountLabel){
 
     // Merge explicit TGW attachments with route-derived ones
     const tgwAttachments=[...tgwAttRaw];
-    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){tgwAttachments.push({TransitGatewayId:r.TransitGatewayId,VpcId:rt.VpcId||((rt.Associations||[])[0]||{}).VpcId})}})});
+    rts.forEach(rt=>{(rt.Routes||[]).forEach(r=>{if(r.TransitGatewayId){const vid=rt.VpcId||((rt.Associations||[])[0]||{}).VpcId;tgwAttachments.push({TransitGatewayId:r.TransitGatewayId,VpcId:vid,_accountId:rt._accountId||'',_region:rt._region||(vid&&vpcRegion[vid])||'unknown'})}})});
+    tgwAttRaw.forEach(t=>{tagResource(t);fillRegion(t)});
+    tgwAttachments.forEach(t=>{if((!t._region||t._region==='unknown')&&t._accountId&&acctRegion[t._accountId])t._region=acctRegion[t._accountId];if(!t._region||t._region==='unknown'){const vid=t.VpcId;if(vid&&vpcRegion[vid])t._region=vpcRegion[vid]}});
 
     // Build WAF/TG/CF lookup maps (mirrors _buildRlCtxFromTextareas)
     const wafByAlb={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(wafByAlb[arn]=wafByAlb[arn]||[]).push(acl)})});
@@ -11948,15 +12211,15 @@ function _remergeAndRender(){
   if(_mergedCtx){
     _rlCtx=_mergedCtx;
     // Clear dashboard caches so they re-run with merged context
-    _classificationData=[];_budrAssessments=[];
+    _classificationData=[];_budrAssessments=[];_iamData=null;_iamReviewData=[];
     _complianceDataFP='';_complianceCachedFindings=null;
     if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();else{_complianceFindings=[]}
-    // PERF: Fill textareas for sidebar display (deferred to avoid blocking render)
-    // Use requestIdleCallback if available, otherwise setTimeout
+    // PERF: Fill textareas for sidebar display — chunked via requestIdleCallback
     const _fillTextareasForDisplay=()=>{
       const mergedTA={};
       _loadedContexts.filter(c=>c.visible).forEach(c=>{
         Object.entries(c.textareas||{}).forEach(([id,val])=>{
+          if(id==='in_iam')return; // IAM filled separately — skip to avoid serializing 100MB+
           const existing=mergedTA[id];
           if(existing){
             try{
@@ -11975,36 +12238,51 @@ function _remergeAndRender(){
           }else{mergedTA[id]=val}
         });
       });
-      document.querySelectorAll('.ji').forEach(el=>{
-        if(mergedTA[el.id]){
-          el.value=typeof mergedTA[el.id]==='string'?mergedTA[el.id]:JSON.stringify(mergedTA[el.id],null,2);
-          el.className='ji valid';
-        }else{el.value='';el.className='ji'}
-      });
+      // Chunk DOM writes via requestIdleCallback to avoid blocking main thread
+      const els=[...document.querySelectorAll('.ji')].filter(el=>el.id!=='in_iam');
+      const CHUNK=8;
+      let idx=0;
+      const writeChunk=(deadline)=>{
+        while(idx<els.length&&(typeof deadline==='undefined'||deadline.timeRemaining()>2)){
+          const el=els[idx++];
+          if(mergedTA[el.id]){
+            el.value=typeof mergedTA[el.id]==='string'?mergedTA[el.id]:JSON.stringify(mergedTA[el.id]);
+            el.className='ji valid';
+          }else{el.value='';el.className='ji'}
+          if(idx%CHUNK===0&&typeof deadline!=='undefined')break;
+        }
+        if(idx<els.length){
+          if(typeof requestIdleCallback==='function')requestIdleCallback(writeChunk);
+          else setTimeout(()=>writeChunk(),16);
+        }
+      };
+      if(typeof requestIdleCallback==='function')requestIdleCallback(writeChunk);
+      else setTimeout(()=>writeChunk(),16);
     };
-    // Fill IAM textarea synchronously BEFORE render — compliance engine reads it via gv('in_iam')
-    // Other textareas are deferred (they're only for sidebar display)
-    const _iamTA=document.getElementById('in_iam');
-    if(_iamTA){
-      let mergedIAM=null;
-      _loadedContexts.filter(c=>c.visible).forEach(c=>{
-        const val=c.textareas?.in_iam;if(!val)return;
-        const b=typeof val==='object'?val:safeParse(val);if(!b||typeof b!=='object')return;
-        if(!mergedIAM){mergedIAM=b;return}
-        const allKeys=new Set([...Object.keys(mergedIAM),...Object.keys(b)]);
-        allKeys.forEach(k=>{
-          if(Array.isArray(mergedIAM[k])&&Array.isArray(b[k]))mergedIAM[k]=mergedIAM[k].concat(b[k]);
-          else if(b[k]!==undefined)mergedIAM[k]=b[k];
-        });
+    // Merge IAM data directly into _iamData — avoids serializing 100MB+ to textarea
+    let mergedIAM=null;
+    _loadedContexts.filter(c=>c.visible).forEach(c=>{
+      const val=c.textareas?.in_iam;if(!val)return;
+      const b=typeof val==='object'?val:safeParse(val);if(!b||typeof b!=='object')return;
+      if(!mergedIAM){mergedIAM=b;return}
+      const allKeys=new Set([...Object.keys(mergedIAM),...Object.keys(b)]);
+      allKeys.forEach(k=>{
+        if(Array.isArray(mergedIAM[k])&&Array.isArray(b[k]))mergedIAM[k]=mergedIAM[k].concat(b[k]);
+        else if(b[k]!==undefined)mergedIAM[k]=b[k];
       });
-      if(mergedIAM){_iamTA.value=JSON.stringify(mergedIAM);_iamTA.className='ji valid'}
+    });
+    if(mergedIAM){
+      _iamData=parseIAMData(mergedIAM);
+      // Defer textarea fill — compliance engine uses _iamData directly
+      const _iamTA=document.getElementById('in_iam');
+      if(_iamTA)requestIdleCallback(()=>{_iamTA.value=JSON.stringify(mergedIAM);_iamTA.className='ji valid'});
     }
     // PERF: Set prebuilt context so _renderMapInner skips textarea parsing
     _prebuiltCtx=_mergedCtx;
     // MEMORY: Release per-account rlCtx — merged copy has all data
     _loadedContexts.forEach(c=>{c.rlCtx=null});
     _renderMergeBannerChips();
-    renderMap(()=>{_autoSaveSession();_fillTextareasForDisplay();_parseCache={}});
+    renderMap(()=>{_autoSaveSession();_parseCache={};_fillTextareasForDisplay()});
   }
 }
 
@@ -12110,6 +12388,17 @@ document.getElementById('mergeViewBtn').addEventListener('click',function(){
   else enterMultiView();
 });
 document.getElementById('mergeExitBtn').addEventListener('click',exitMultiView);
+document.getElementById('mergeBannerCollapse').addEventListener('click',function(){
+  var banner=document.getElementById('mergeBanner');
+  var chips=document.getElementById('mergeAcctChips');
+  var exitBtn=document.getElementById('mergeExitBtn');
+  var label=document.getElementById('mergeBannerLabel');
+  if(banner.classList.contains('collapsed')){
+    banner.classList.remove('collapsed');chips.style.display='flex';exitBtn.style.display='';label.textContent='MULTI-ACCOUNT VIEW';this.textContent='▲';this.title='Collapse banner';
+  }else{
+    banner.classList.add('collapsed');chips.style.display='none';exitBtn.style.display='none';label.textContent='MERGE';this.textContent='▼';this.title='Expand banner';
+  }
+});
 document.getElementById('captureCurrentBtn').addEventListener('click',function(){
   const ctx=_captureCurrentAsContext();
   if(!ctx){_showToast('Render map first before capturing');return}
@@ -18399,6 +18688,20 @@ function _openRulesEditor(){
   var groupCollapsed={vpc:false,type:false,name:false};
   var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
   var scopeOrder=['vpc','type','name'];
+  // Discover tag scopes from rules + data
+  var disc=_discoveredTags||{};
+  var tagScopes={};
+  workRules.forEach(function(r){if(r.scope&&r.scope.indexOf('tag:')===0) tagScopes[r.scope]=true});
+  Object.keys(disc).forEach(function(k){tagScopes['tag:'+k]=true});
+  var sortedTagScopes=Object.keys(tagScopes).sort(function(a,b){
+    var ac=(disc[a.substring(4)]||{}).count||0,bc=(disc[b.substring(4)]||{}).count||0;return bc-ac;
+  });
+  sortedTagScopes.forEach(function(ts){
+    var tk=ts.substring(4);var info=disc[tk];
+    scopeOrder.push(ts);
+    scopeLabels[ts]='Tag: '+tk+(info?' ('+info.count+' resources)':'');
+    groupCollapsed[ts]=true;
+  });
   var overlay=document.createElement('div');
   overlay.id='govRulesOverlay';
   overlay.className='gov-rules-overlay';
@@ -18424,6 +18727,7 @@ function _openRulesEditor(){
       if(rule.scope==='vpc') text=res.vpcName||'';
       else if(rule.scope==='type') text=res.type||'';
       else if(rule.scope==='name') text=res.name||'';
+      else if(rule.scope.indexOf('tag:')===0) text=(res.tags||{})[rule.scope.substring(4)]||'';
       if(re.test(text)) ct++;
     });
     return ct;
@@ -18434,21 +18738,22 @@ function _openRulesEditor(){
     var samples=[];
     var vpcNameMap={};
     (_rlCtx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
-    function classify(name,type,vpcName,id){
-      var tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules).tier);
+    function classify(name,type,vpcName,id,obj){
+      var tm=_getTagMap(obj||{});
+      var tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules,tm).tier);
       counts[tier]=(counts[tier]||0)+1;
       if(samples.length<12) samples.push({name:name,type:type,tier:tier});
     }
     (_rlCtx.instances||[]).forEach(function(inst){
       var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-      classify(name,'instance',vpcNameMap[inst.VpcId]||'',inst.InstanceId);
+      classify(name,'instance',vpcNameMap[inst.VpcId]||'',inst.InstanceId,inst);
     });
-    (_rlCtx.rdsInstances||[]).forEach(function(db){classify(db.DBInstanceIdentifier,'rds',vpcNameMap[(db.DBSubnetGroup||{}).VpcId]||'',db.DBInstanceIdentifier)});
-    (_rlCtx.ecacheClusters||[]).forEach(function(ec){classify(ec.CacheClusterId,'elasticache','',ec.CacheClusterId)});
-    (_rlCtx.albs||[]).forEach(function(alb){classify(alb.LoadBalancerName||'','alb',vpcNameMap[alb.VpcId]||'',alb.LoadBalancerName||'')});
-    (_rlCtx.lambdaFns||[]).forEach(function(fn){classify(fn.FunctionName,'lambda',vpcNameMap[(fn.VpcConfig||{}).VpcId]||'',fn.FunctionName)});
-    (_rlCtx.ecsServices||[]).forEach(function(svc){classify(svc.serviceName||'','ecs','',svc.serviceName||'')});
-    (_rlCtx.redshiftClusters||[]).forEach(function(rs){classify(rs.ClusterIdentifier,'redshift',vpcNameMap[rs.VpcId]||'',rs.ClusterIdentifier)});
+    (_rlCtx.rdsInstances||[]).forEach(function(db){classify(db.DBInstanceIdentifier,'rds',vpcNameMap[(db.DBSubnetGroup||{}).VpcId]||'',db.DBInstanceIdentifier,db)});
+    (_rlCtx.ecacheClusters||[]).forEach(function(ec){classify(ec.CacheClusterId,'elasticache','',ec.CacheClusterId,ec)});
+    (_rlCtx.albs||[]).forEach(function(alb){classify(alb.LoadBalancerName||'','alb',vpcNameMap[alb.VpcId]||'',alb.LoadBalancerName||'',alb)});
+    (_rlCtx.lambdaFns||[]).forEach(function(fn){classify(fn.FunctionName,'lambda',vpcNameMap[(fn.VpcConfig||{}).VpcId]||'',fn.FunctionName,fn)});
+    (_rlCtx.ecsServices||[]).forEach(function(svc){classify(svc.serviceName||'','ecs','',svc.serviceName||'',svc)});
+    (_rlCtx.redshiftClusters||[]).forEach(function(rs){classify(rs.ClusterIdentifier,'redshift',vpcNameMap[rs.VpcId]||'',rs.ClusterIdentifier,rs)});
     return {critical:counts.critical,high:counts.high,medium:counts.medium,low:counts.low,total:counts.critical+counts.high+counts.medium+counts.low,samples:samples};
   }
   function renderPreview(){
@@ -18503,7 +18808,9 @@ function _openRulesEditor(){
         h+='<span class="gov-rule-drag" title="Drag to reorder">⠿</span>';
         h+='<div class="gov-rule-toggle'+(r.enabled!==false?' on':'')+'" data-toggle-idx="'+i+'" title="'+(r.enabled!==false?'Enabled — click to disable':'Disabled — click to enable')+'"></div>';
         h+='<input class="pattern'+((!isValid)?' invalid-pattern':'')+'" type="text" value="'+_escHtml(r.pattern)+'" data-field="pattern" placeholder="regex pattern…" title="'+((!isValid)?'Invalid regex!':'Regex pattern')+'">';
-        h+='<select data-field="scope" style="display:none"><option value="vpc"'+(r.scope==='vpc'?' selected':'')+'>VPC Name</option><option value="type"'+(r.scope==='type'?' selected':'')+'>Type</option><option value="name"'+(r.scope==='name'?' selected':'')+'>Name</option></select>';
+        h+='<select data-field="scope" style="display:none"><option value="vpc"'+(r.scope==='vpc'?' selected':'')+'>VPC Name</option><option value="type"'+(r.scope==='type'?' selected':'')+'>Type</option><option value="name"'+(r.scope==='name'?' selected':'')+'>Name</option>';
+        sortedTagScopes.forEach(function(ts){h+='<option value="'+ts+'"'+(r.scope===ts?' selected':'')+'>Tag: '+ts.substring(4)+'</option>'});
+        h+='</select>';
         h+='<select data-field="tier"><option value="critical"'+(r.tier==='critical'?' selected':'')+'>Critical</option><option value="high"'+(r.tier==='high'?' selected':'')+'>High</option><option value="medium"'+(r.tier==='medium'?' selected':'')+'>Medium</option><option value="low"'+(r.tier==='low'?' selected':'')+'>Low</option></select>';
         h+='<input class="weight" type="number" value="'+r.weight+'" data-field="weight" title="Weight (higher wins)">';
         h+='<span class="gov-rule-match-ct'+(mc>0?' has-matches':'')+'" title="'+(mc<0?'Invalid regex':mc+' resources match')+'">'+((mc<0)?'!':mc)+'</span>';
@@ -18594,6 +18901,17 @@ function _openRulesEditor(){
   h+='</div></div>';
   h+='<div class="gov-rules-content">';
   h+='<div class="gov-rules-left"><p style="font-size:10px;color:var(--text-muted);margin:0 0 12px;line-height:1.5">Regex patterns matched against scope. Higher weight wins when multiple rules match. Toggle rules on/off to test without deleting.</p>';
+  // Tag discovery chips
+  var dKeys=Object.keys(disc).sort(function(a,b){return (disc[b].count||0)-(disc[a].count||0)});
+  if(dKeys.length){
+    h+='<div class="gov-tag-discovery"><div style="font-size:9px;color:var(--text-muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Discovered Tags</div><div class="gov-tag-chips">';
+    dKeys.forEach(function(k){
+      var d=disc[k];var hasRules=workRules.some(function(r){return r.scope==='tag:'+k});
+      h+='<button class="gov-tag-chip'+(hasRules?' active':'')+'" data-tag-key="'+_escHtml(k)+'" title="'+d.count+' resources across '+d.types.join(', ')+'\nSamples: '+d.samples.join(', ')+'">';
+      h+=_escHtml(k)+' <span class="ct">'+d.count+'</span></button>';
+    });
+    h+='</div></div>';
+  }
   h+='<div id="govRulesList"></div></div>';
   h+='<div class="gov-rules-right"><h4>Live Preview</h4><div id="govRulesPreview"></div></div>';
   h+='</div>';
@@ -18609,6 +18927,21 @@ function _openRulesEditor(){
   // Shell events
   document.getElementById('govRulesClose').addEventListener('click',function(){overlay.remove()});
   overlay.addEventListener('click',function(e){if(e.target===overlay) overlay.remove()});
+  // Tag chip clicks — create starter rule for tag scope
+  overlay.querySelectorAll('.gov-tag-chip').forEach(function(chip){
+    chip.addEventListener('click',function(){
+      var tk=this.dataset.tagKey;var scope='tag:'+tk;
+      var hasRules=workRules.some(function(r){return r.scope===scope});
+      if(!hasRules){
+        workRules.push({pattern:'',scope:scope,tier:'critical',weight:120,enabled:true});
+        groupCollapsed[scope]=false;
+      } else { groupCollapsed[scope]=false; }
+      renderRules();renderPreview();
+      // Scroll to the group
+      var grp=overlay.querySelector('[data-scope="'+scope+'"]');
+      if(grp) grp.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
   document.getElementById('govRuleReset').addEventListener('click',function(){
     workRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
     workRules.forEach(function(r){r.enabled=true});
@@ -18741,7 +19074,7 @@ function _renderRptPicker(){
   var presetsEl=document.getElementById('rptPresets');
   var presets=[
     {id:'full',label:'Full Assessment',modules:_RPT_MODULES.map(function(m){return m.id})},
-    {id:'compliance',label:'Compliance Only',modules:['exec-summary','compliance','action-plan']},
+    {id:'compliance',label:'Compliance Only',modules:['exec-summary','compliance','iam-review','action-plan']},
     {id:'budr',label:'BUDR Only',modules:['exec-summary','budr','action-plan']},
     {id:'diagram',label:'Diagram + Inventory',modules:['architecture','inventory']}
   ];
@@ -19395,6 +19728,20 @@ function _xlsxAddSheet(wb,name,headers,rows,opts){
       else if(ws[addr]&&ws[addr].s&&!ws[addr].s.border) ws[addr].s.border=_border;
     }
   }
+  // Apply hyperlinks (opts.links = [{r:rowIdx, c:colIdx, url:string}])
+  if(opts.links&&opts.links.length){
+    var linkStyle={font:{name:'Calibri',sz:10,color:{rgb:_XLSX_COLORS.linkFg},underline:true},
+      alignment:{vertical:'center',wrapText:true},border:_xlsxBorder()};
+    var linkStripeStyle={font:{name:'Calibri',sz:10,color:{rgb:_XLSX_COLORS.linkFg},underline:true},
+      fill:{fgColor:{rgb:_XLSX_COLORS.stripeBg}},alignment:{vertical:'center',wrapText:true},border:_xlsxBorder()};
+    opts.links.forEach(function(lk){
+      var addr=XLSX.utils.encode_cell({r:lk.r+1,c:lk.c}); // +1 for header row
+      if(ws[addr]&&lk.url){
+        ws[addr].l={Target:lk.url,Tooltip:'Open in AWS Console'};
+        ws[addr].s=(lk.r+1)%2===0?linkStripeStyle:linkStyle;
+      }
+    });
+  }
   // Row height for header
   ws['!rows']=[{hpx:28}];
   // Autofilter — enables sort/filter dropdowns
@@ -19565,7 +19912,7 @@ function _rptBuildXlsxSummary(wb){
 function _rptBuildXlsxCompliance(wb){
   var f=_complianceFindings;
   if(!f||!f.length) return;
-  var headers=['Priority','Effort','Severity','Framework','Control','CKV','Resource','Finding','Remediation'];
+  var headers=['Account','Region','Priority','Effort','Severity','Framework','Control','CKV','Resource','Finding','Remediation'];
   var sorted=f.slice().sort(function(a,b){
     var ta=_classifyTier(a),tb=_classifyTier(b);
     if(ta!==tb) return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);
@@ -19574,16 +19921,16 @@ function _rptBuildXlsxCompliance(wb){
   var rows=sorted.map(function(x){
     var tier=_classifyTier(x);
     var effort=_EFFORT_LABELS[_getEffort(x)]||'Med';
-    return [_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
+    return [x._accountId||'',x._region||'',_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
       x.ckv||'',x.resourceName||x.resource,x.message,x.remediation];
   });
-  _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:2,tierCol:0,effortCol:1,
-    minWidths:[14,14,12,20,14,14,28,40,40]});
+  _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:4,tierCol:2,effortCol:3,
+    minWidths:[16,14,14,14,12,20,14,14,28,40,40]});
 }
 
 function _rptBuildXlsxBUDR(wb){
   if(!_budrAssessments||!_budrAssessments.length) return;
-  var headers=['Resource Type','Resource ID','Name','DR Tier','RTO','RPO','Backup Signals'];
+  var headers=['Account','Region','VPC','Resource Type','Resource ID','Name','DR Tier','RTO','RPO','Backup Signals'];
   var tierOrder={at_risk:0,partial:1,protected:2};
   var sorted=_budrAssessments.slice().sort(function(a,b){
     return (tierOrder[a.profile?a.profile.tier:'']||9)-(tierOrder[b.profile?b.profile.tier:'']||9);
@@ -19593,49 +19940,141 @@ function _rptBuildXlsxBUDR(wb){
     var rto=a.profile?a.profile.rto:'N/A';
     var rpo=a.profile?a.profile.rpo:'N/A';
     var sigs=a.signals?Object.keys(a.signals).map(function(k){return k+': '+a.signals[k]}).join(', '):'';
-    return [a.type,a.id,a.name||'',tier,rto,rpo,sigs];
+    return [a.account||'',a.region||'',a.vpcId||'',a.type,a.id,a.name||'',tier,rto,rpo,sigs];
   });
-  _xlsxAddSheet(wb,'BUDR',headers,rows,{tierCol:3,
-    minWidths:[16,24,20,14,10,10,40]});
+  var budrLinks=[];
+  rows.forEach(function(row,ri){
+    var region=row[1],type=row[3],id=row[4];
+    var url=_awsConsoleUrl(type,id,region);
+    if(url) budrLinks.push({r:ri,c:4,url:url});
+  });
+  _xlsxAddSheet(wb,'BUDR',headers,rows,{tierCol:6,
+    minWidths:[16,14,16,16,24,20,14,10,10,40],links:budrLinks});
 }
 
 function _rptBuildXlsxInventory(wb){
   var c=_rlCtx;
   if(!c) return;
-  var headers=['Type','ID','Name','Configuration','State / AZ','Details'];
+  var headers=['Account','Region','VPC','Type','ID','Name','Configuration','State / AZ','Details'];
   var rows=[];
+  var links=[];
+  // Shared lookups
+  var _invSubVpc={};(c.subnets||[]).forEach(function(s){if(s.SubnetId)_invSubVpc[s.SubnetId]=s.VpcId||''});
+  var _invInstVpc={};(c.instances||[]).forEach(function(i){if(i.InstanceId)_invInstVpc[i.InstanceId]=i.VpcId||_invSubVpc[i.SubnetId]||''});
+  function _a(r){return r._accountId||''}
+  function _r(r){return r._region||''}
   (c.vpcs||[]).forEach(function(v){
-    rows.push(['VPC',v.VpcId,_rptTagName(v),v.CidrBlock,v.State||'available','']);
+    rows.push([_a(v),_r(v),v.VpcId,'VPC',v.VpcId,_rptTagName(v),v.CidrBlock,v.State||'available','']);
   });
   (c.subnets||[]).forEach(function(s){
     var pub=c.pubSubs&&c.pubSubs.has(s.SubnetId)?'Public':'Private';
-    rows.push(['Subnet',s.SubnetId,_rptTagName(s),s.CidrBlock,s.AvailabilityZone,pub]);
+    rows.push([_a(s),_r(s),s.VpcId||'','Subnet',s.SubnetId,_rptTagName(s),s.CidrBlock,s.AvailabilityZone,pub]);
   });
   (c.instances||[]).forEach(function(i){
     var state=i.State?i.State.Name:'';
     var az=i.Placement?i.Placement.AvailabilityZone:'';
-    rows.push(['EC2',i.InstanceId,_rptTagName(i),i.InstanceType,state,az]);
+    rows.push([_a(i),_r(i),i.VpcId||_invSubVpc[i.SubnetId]||'','EC2',i.InstanceId,_rptTagName(i),i.InstanceType,state,az]);
   });
   (c.rdsInstances||[]).forEach(function(d){
-    rows.push(['RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine+' / '+d.DBInstanceClass,d.MultiAZ?'Multi-AZ':'Single-AZ',d.StorageType||'']);
+    var vpc=(d.DBSubnetGroup&&d.DBSubnetGroup.VpcId)||'';
+    rows.push([_a(d),_r(d),vpc,'RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine+' / '+d.DBInstanceClass,d.MultiAZ?'Multi-AZ':'Single-AZ',d.StorageType||'']);
   });
   (c.albs||[]).forEach(function(a){
-    rows.push(['ALB',a.LoadBalancerName||'',a.LoadBalancerName,a.Type||'application',a.Scheme||'',(a.AvailabilityZones||[]).length+' AZs']);
+    rows.push([_a(a),_r(a),a.VpcId||'','ALB',a.LoadBalancerName||'',a.LoadBalancerName,a.Type||'application',a.Scheme||'',(a.AvailabilityZones||[]).length+' AZs']);
   });
   (c.ecsServices||[]).forEach(function(s){
-    rows.push(['ECS',s.serviceName||'',s.serviceName,s.launchType||'FARGATE',s.runningCount+'/'+s.desiredCount+' tasks','']);
+    var nc=s.networkConfiguration&&s.networkConfiguration.awsvpcConfiguration;
+    var sid=nc&&nc.subnets&&nc.subnets[0]?nc.subnets[0]:'';
+    rows.push([_a(s),_r(s),sid?_invSubVpc[sid]||'':'','ECS',s.serviceName||'',s.serviceName,s.launchType||'FARGATE',s.runningCount+'/'+s.desiredCount+' tasks','']);
   });
   (c.lambdaFns||[]).forEach(function(fn){
-    rows.push(['Lambda',fn.FunctionName||'',fn.FunctionName,fn.Runtime||'',fn.MemorySize+'MB / '+fn.Timeout+'s','']);
+    var vpc=(fn.VpcConfig&&fn.VpcConfig.VpcId)||'';
+    rows.push([_a(fn),_r(fn),vpc,'Lambda',fn.FunctionName||'',fn.FunctionName,fn.Runtime||'',fn.MemorySize+'MB / '+fn.Timeout+'s','']);
+  });
+  (c.sgs||[]).forEach(function(sg){
+    var rules=(sg.IpPermissions||[]).length+' inbound, '+(sg.IpPermissionsEgress||[]).length+' outbound';
+    rows.push([_a(sg),_r(sg),sg.VpcId||'','Security Group',sg.GroupId,sg.GroupName||_rptTagName(sg),rules,'','']);
+  });
+  (c.nacls||[]).forEach(function(n){
+    var entries=(n.Entries||[]).length+' rules';
+    rows.push([_a(n),_r(n),n.VpcId||'','NACL',n.NetworkAclId,_rptTagName(n),entries,n.IsDefault?'Default':'Custom','']);
+  });
+  (c.rts||[]).forEach(function(rt){
+    var routes=(rt.Routes||[]).length+' routes';
+    rows.push([_a(rt),_r(rt),rt.VpcId||'','Route Table',rt.RouteTableId,_rptTagName(rt),routes,'','']);
+  });
+  (c.volumes||[]).forEach(function(v){
+    var att=(v.Attachments||[])[0];
+    var vpc=att?_invInstVpc[att.InstanceId]||'':'';
+    rows.push([_a(v),_r(v),vpc,'EBS Volume',v.VolumeId,_rptTagName(v),v.VolumeType+' / '+v.Size+'GB',v.State||'',att?att.Device||'':'unattached']);
+  });
+  (c.snapshots||[]).forEach(function(s){
+    rows.push([_a(s),_r(s),'','EBS Snapshot',s.SnapshotId,_rptTagName(s),s.VolumeSize+'GB',s.State||'',s.Description||'']);
+  });
+  (c.enis||[]).forEach(function(e){
+    rows.push([_a(e),_r(e),e.VpcId||'','ENI',e.NetworkInterfaceId,_rptTagName(e),e.InterfaceType||'',e.Status||'',e.PrivateIpAddress||'']);
+  });
+  (c.igws||[]).forEach(function(g){
+    var att=(g.Attachments||[])[0];
+    rows.push([_a(g),_r(g),att?att.VpcId||'':'','IGW',g.InternetGatewayId,_rptTagName(g),'',att?att.State||'':'detached','']);
+  });
+  (c.nats||[]).forEach(function(n){
+    rows.push([_a(n),_r(n),n.VpcId||'','NAT Gateway',n.NatGatewayId,_rptTagName(n),'',n.State||'',n.SubnetId||'']);
+  });
+  (c.vpces||[]).forEach(function(ep){
+    rows.push([_a(ep),_r(ep),ep.VpcId||'','VPC Endpoint',ep.VpcEndpointId,ep.ServiceName||'',ep.VpcEndpointType||'',ep.State||'','']);
+  });
+  (c.ecacheClusters||[]).forEach(function(ec){
+    rows.push([_a(ec),_r(ec),ec.VpcId||'','ElastiCache',ec.CacheClusterId,ec.CacheClusterId,ec.Engine+' / '+ec.CacheNodeType,ec.CacheClusterStatus||'',ec.NumCacheNodes+' nodes']);
+  });
+  (c.redshiftClusters||[]).forEach(function(rs){
+    rows.push([_a(rs),_r(rs),rs.VpcId||'','Redshift',rs.ClusterIdentifier,rs.ClusterIdentifier,rs.NodeType,rs.ClusterStatus||'',rs.NumberOfNodes+' nodes']);
+  });
+  (c.s3bk||[]).forEach(function(b){
+    rows.push([_a(b),_r(b),'','S3 Bucket',b.Name,b.Name,'','',b.CreationDate||'']);
+  });
+  (c.peerings||[]).forEach(function(p){
+    var req=p.RequesterVpcInfo||{};var acc=p.AccepterVpcInfo||{};
+    rows.push([_a(p),_r(p),req.VpcId||'','VPC Peering',p.VpcPeeringConnectionId,_rptTagName(p),req.CidrBlock+' <> '+acc.CidrBlock,p.Status?p.Status.Code:'','']);
+  });
+  (c.zones||[]).forEach(function(z){
+    var recs=c.recsByZone&&c.recsByZone[z.Id]?c.recsByZone[z.Id].length:z.ResourceRecordSetCount||0;
+    var vis=z.Config&&z.Config.PrivateZone?'private':'public';
+    rows.push([_a(z),_r(z),'','Route 53',z.Id,z.Name||z.Id,recs+' records',vis,'']);
+  });
+  (c.wafAcls||[]).forEach(function(w){
+    var ruleCount=(w.Rules||[]).length;
+    rows.push([_a(w),_r(w),'','WAF',w.Id||w.Name,w.Name||w.Id||'',ruleCount+' rules','','']);
+  });
+  (c.cfDistributions||[]).forEach(function(cf){
+    rows.push([_a(cf),_r(cf),'','CloudFront',cf.Id,cf.DomainName||cf.Id,cf.Status||'','','']);
+  });
+  (c.vpns||[]).forEach(function(v){
+    rows.push([_a(v),_r(v),'','VPN',v.VpnConnectionId,_rptTagName(v)||(v.VpnConnectionId),v.Type||'',v.State||'','']);
+  });
+  (c.tgwAttachments||[]).forEach(function(t){
+    rows.push([_a(t),_r(t),t.VpcId||'','TGW Attachment',t.TransitGatewayAttachmentId||t.TransitGatewayId||'',_rptTagName(t)||'',t.ResourceType||'',t.State||'','']);
+  });
+  (c.tgs||[]).forEach(function(tg){
+    rows.push([_a(tg),_r(tg),tg.VpcId||'','Target Group',tg.TargetGroupName||'',tg.TargetGroupName||'',tg.Protocol+':'+tg.Port,tg.TargetType||'','']);
   });
   if(!rows.length) return;
-  _xlsxAddSheet(wb,'Inventory',headers,rows,{minWidths:[12,24,22,22,18,14]});
+  // Replace empty cells with "-" so XLSX has no blank gaps
+  rows.forEach(function(row){for(var i=0;i<row.length;i++){if(row[i]==='')row[i]='-'}});
+  // Generate hyperlinks for ID column (4) and VPC column (2)
+  rows.forEach(function(row,ri){
+    var region=row[1],type=row[3],id=row[4],vpc=row[2];
+    var idUrl=_awsConsoleUrl(type,id,region);
+    if(idUrl) links.push({r:ri,c:4,url:idUrl});
+    if(vpc&&vpc!=='-'){var vUrl=_awsConsoleUrl('VPC',vpc,region);if(vUrl) links.push({r:ri,c:2,url:vUrl})}
+  });
+  _xlsxAddSheet(wb,'Inventory',headers,rows,{minWidths:[16,14,16,16,24,22,22,18,14],links:links});
 }
 
 function _rptBuildXlsxActionPlan(wb){
   var all=(_complianceFindings||[]).concat(_budrFindings||[]);
   if(!all.length) return;
-  var headers=['Priority','Severity','Effort','Framework','Control','Resource','Finding',
+  var headers=['Account','Region','Priority','Severity','Effort','Framework','Control','Resource','Finding',
     'Remediation','Owner','Target Date','Status'];
   var tiers=_getTierGroups(all);
   var rows=[];
@@ -19646,14 +20085,14 @@ function _rptBuildXlsxActionPlan(wb){
     rgs.forEach(function(rg){
       rg.findings.forEach(function(f){
         var effort=_EFFORT_MAP[f.control]||'med';
-        rows.push([tierName,f.severity,_EFFORT_LABELS[effort]||effort,
+        rows.push([f._accountId||'',f._region||'',tierName,f.severity,_EFFORT_LABELS[effort]||effort,
           _FW_LABELS[f.framework]||f.framework||'',f.control,
           f.resourceName||f.resource,f.message,f.remediation,'','','Open']);
       });
     });
   });
-  _xlsxAddSheet(wb,'Action Plan',headers,rows,{sevCol:1,tierCol:0,effortCol:2,
-    minWidths:[14,12,14,20,14,28,40,40,14,14,12]});
+  _xlsxAddSheet(wb,'Action Plan',headers,rows,{sevCol:3,tierCol:2,effortCol:4,
+    minWidths:[16,14,14,12,14,20,14,28,40,40,14,14,12]});
 }
 
 // Inject company logo into XLSX zip (Summary sheet, top-right corner)
@@ -20421,7 +20860,7 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   this.value='';
   if(matched>0){_iamData=null;_parseCache={};renderMap()}
 });
-document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_parseCache={};_iamData=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_prebuiltCtx=null;_parseCache={};_iamData=null;_iamReviewData=[];_inventoryData=[];demo=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];/* Reset analysis caches */_flowAnalysisCache=null;_faDashRows=null;_depGraph=null;_diffBaseline=null;_diffResults=null;_diffFlatRows=null;_snapshots=[];_iacOutput='';_tfIdMap={};if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=document.querySelector('.main');if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{

@@ -227,7 +227,7 @@
   @keyframes dashFlowIn{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
   @keyframes dashStruct{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
   .animated{animation:dashStruct 1s linear infinite}
-  .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:6;flex-direction:column}
+  .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:10;flex-direction:column}
   .export-btn{padding:8px 12px;background:var(--overlay-bg);border:1px solid var(--border);border-radius:5px;color:var(--text-secondary);font-family:"Segoe UI",system-ui,sans-serif;font-size:calc(11px * var(--txt-scale));font-weight:500;cursor:pointer;backdrop-filter:blur(8px);transition:all .15s;text-align:left;white-space:nowrap}
   .export-btn:hover{background:var(--bg-tertiary);color:var(--text-primary);border-color:var(--accent-blue)}
   .export-btn span{color:var(--text-muted);font-size:7px;display:block;margin-top:1px}
@@ -699,6 +699,12 @@
   .gov-preview-delta .up{color:#10b981}
   .gov-preview-delta .down{color:#ef4444}
   .gov-preview-delta .same{color:var(--text-muted)}
+  .gov-tag-discovery{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+  .gov-tag-chips{display:flex;flex-wrap:wrap;gap:4px}
+  .gov-tag-chip{background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font-size:9px;font-family:"Segoe UI",system-ui,sans-serif;color:var(--text-secondary);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+  .gov-tag-chip:hover{border-color:#8b5cf6;color:var(--text-primary)}
+  .gov-tag-chip.active{background:rgba(139,92,246,.12);border-color:#8b5cf6;color:#8b5cf6}
+  .gov-tag-chip .ct{font-size:7px;background:rgba(255,255,255,.08);padding:0 4px;border-radius:6px;color:var(--text-muted)}
 
   /* === REPORT BUILDER === */
   .rpt-hdr{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0}
@@ -1178,6 +1184,7 @@
   .account-toggle:hover{border-color:var(--accent-blue);color:var(--text-primary)}
   .account-toggle.hidden-acct{opacity:.5;text-decoration:line-through}
   .account-merge-banner{position:fixed;top:6px;left:50%;transform:translateX(-50%);height:32px;background:linear-gradient(90deg,#1a0c3e,#0c2d4a);z-index:55;display:flex;align-items:center;justify-content:center;gap:12px;font-family:"Segoe UI",system-ui,sans-serif;font-size:12px;color:var(--accent-purple);font-weight:600;border-radius:8px;padding:0 16px;border:1px solid rgba(168,85,247,.2);box-shadow:0 4px 12px var(--shadow-color)}
+  .account-merge-banner.collapsed{gap:6px;padding:0 10px}
   .account-merge-banner button{background:rgba(0,0,0,.3);border:1px solid rgba(139,92,246,.4);color:var(--accent-purple);padding:2px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:"Segoe UI",system-ui,sans-serif}
   .account-merge-banner button:hover{background:rgba(139,92,246,.15)}
   .merge-acct-chip{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:9px;font-family:"Segoe UI",system-ui,sans-serif;cursor:pointer;border:1px solid rgba(255,255,255,.15);transition:all .15s;user-select:none}
