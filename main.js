@@ -6,6 +6,7 @@ const { spawn, execSync, execFile, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const os = require('os');
+const { randomUUID } = require('crypto');
 const { autoUpdater } = require('electron-updater');
 
 app.setName('AWS Network Mapper');
@@ -35,16 +36,17 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     }
   });
 
   mainWindow.loadFile('index.html');
 
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-finish-load', async () => {
     if (_pendingOpenFile) {
       try {
-        const content = fs.readFileSync(_pendingOpenFile, 'utf8');
+        const content = await fsp.readFile(_pendingOpenFile, 'utf8');
         mainWindow.webContents.send('file:opened', content);
       } catch (e) { console.warn('file:opened - deferred read failed:', e.message); }
       _pendingOpenFile = null;
@@ -265,33 +267,43 @@ async function checkAwsCli() {
     _awsCliCacheTime = Date.now();
   } catch {
     _awsCliCached = false;
-    _awsCliCacheTime = Date.now();
+    _awsCliCacheTime = 0; // don't cache failures — retry next time
   }
   return _awsCliCached;
 }
 
 ipcMain.handle('aws:check-cli', async () => await checkAwsCli());
 
+function safeSend(sender, channel, data) {
+  if (sender && !sender.isDestroyed()) sender.send(channel, data);
+}
+
 ipcMain.handle('aws:scan', async (event, { profile, region }) => {
+  // Kill any existing scan before starting a new one
+  if (activeScan) {
+    activeScan.kill('SIGTERM');
+    activeScan = null;
+  }
+
   if (!(await checkAwsCli())) {
-    event.sender.send('aws:scan:error', 'AWS CLI not found. Install it from https://aws.amazon.com/cli/');
+    safeSend(event.sender, 'aws:scan:error', 'AWS CLI not found. Install it from https://aws.amazon.com/cli/');
     return;
   }
 
   // Validate inputs to prevent command injection
   if (profile && !SAFE_INPUT.test(profile)) {
-    event.sender.send('aws:scan:error', 'Invalid profile name. Use only letters, numbers, hyphens, underscores.');
+    safeSend(event.sender, 'aws:scan:error', 'Invalid profile name. Use only letters, numbers, hyphens, underscores.');
     return;
   }
   if (region && !SAFE_INPUT.test(region)) {
-    event.sender.send('aws:scan:error', 'Invalid region name. Use only letters, numbers, hyphens, underscores.');
+    safeSend(event.sender, 'aws:scan:error', 'Invalid region name. Use only letters, numbers, hyphens, underscores.');
     return;
   }
 
   const scriptPath = path.join(__dirname, 'export-aws-data.sh');
 
   // Ensure script is executable
-  try { fs.chmodSync(scriptPath, 0o755); } catch {}
+  try { await fsp.chmod(scriptPath, 0o755); } catch {}
 
   const args = [];
   if (profile) args.push('-p', profile);
@@ -308,38 +320,42 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
   proc.stdout.on('data', (data) => {
     const text = data.toString();
     stdout += text;
-    event.sender.send('aws:scan:progress', text);
+    safeSend(event.sender, 'aws:scan:progress', text);
   });
 
   proc.stderr.on('data', (data) => {
-    event.sender.send('aws:scan:progress', '[stderr] ' + data.toString());
+    safeSend(event.sender, 'aws:scan:progress', '[stderr] ' + data.toString());
   });
 
-  proc.on('close', (code) => {
+  proc.on('close', async (code) => {
     activeScan = null;
     if (code === 0) {
       // Parse output directory from stdout
       const match = stdout.match(/Output\s*:\s*(.+)/);
       const outDir = match ? match[1].trim() : null;
-      // Auto-read JSON files from output directory
+      // Auto-read JSON files from output directory (validate path prefix)
       let files = null;
-      if (outDir && fs.existsSync(outDir)) {
-        files = {};
-        for (const fname of fs.readdirSync(outDir)) {
-          if (fname.endsWith('.json')) {
-            try { files[fname] = fs.readFileSync(path.join(outDir, fname), 'utf8'); } catch (e) { console.warn('aws:scan - failed to read', fname, ':', e.message); }
+      const resolvedDir = outDir ? path.resolve(__dirname, outDir) : null;
+      try {
+        if (resolvedDir && (resolvedDir.startsWith(__dirname + '/') || resolvedDir.startsWith(os.tmpdir()))) {
+          await fsp.access(resolvedDir);
+          files = {};
+          for (const fname of await fsp.readdir(resolvedDir)) {
+            if (fname.endsWith('.json')) {
+              try { files[fname] = await fsp.readFile(path.join(resolvedDir, fname), 'utf8'); } catch (e) { console.warn('aws:scan - failed to read', fname, ':', e.message); }
+            }
           }
         }
-      }
-      event.sender.send('aws:scan:complete', { code, outDir, files });
+      } catch { /* outDir doesn't exist, files stays null */ }
+      safeSend(event.sender, 'aws:scan:complete', { code, files });
     } else {
-      event.sender.send('aws:scan:error', 'Scan exited with code ' + code);
+      safeSend(event.sender, 'aws:scan:error', 'Scan exited with code ' + code);
     }
   });
 
   proc.on('error', (err) => {
     activeScan = null;
-    event.sender.send('aws:scan:error', err.message);
+    safeSend(event.sender, 'aws:scan:error', err.message);
   });
 });
 
@@ -370,12 +386,14 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
 // ── BUDR XLSX Export ──────────────────────────────────────────────
 
 ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
-  const tmpJson = path.join(os.tmpdir(), `budr-${Date.now()}.json`);
-  const tmpXlsx = path.join(os.tmpdir(), `budr-${Date.now()}.xlsx`);
+  const id = randomUUID();
+  const tmpJson = path.join(os.tmpdir(), `budr-${id}.json`);
+  const tmpXlsx = path.join(os.tmpdir(), `budr-${id}.xlsx`);
   await fsp.writeFile(tmpJson, jsonData, 'utf8');
 
   const scriptPath = path.join(__dirname, 'budr_export_xlsx.py');
   try { await fsp.access(scriptPath); } catch {
+    await fsp.unlink(tmpJson).catch(() => {});
     return { error: 'budr_export_xlsx.py not found' };
   }
 
@@ -384,10 +402,12 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
       timeout: 30000
     });
   } catch (err) {
+    await Promise.all([fsp.unlink(tmpJson).catch(() => {}), fsp.unlink(tmpXlsx).catch(() => {})]);
     return { error: err.stderr?.toString() || err.message };
   }
 
   try { await fsp.access(tmpXlsx); } catch {
+    await fsp.unlink(tmpJson).catch(() => {});
     return { error: 'XLSX generation failed — output file not created' };
   }
 
@@ -444,6 +464,7 @@ function checkForUpdates(manual = false) {
   try {
     if (manual) {
       const manualNotAvail = () => {
+        if (!mainWindow) return;
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: 'No Updates',
@@ -451,6 +472,7 @@ function checkForUpdates(manual = false) {
         });
       };
       const manualErr = (err) => {
+        if (!mainWindow) return;
         dialog.showMessageBox(mainWindow, {
           type: 'warning',
           title: 'Update Check Failed',
@@ -482,9 +504,10 @@ ipcMain.on('update:install', () => {
 
 // ── Navigation Guards ─────────────────────────────────────────────
 
+const appOrigin = 'file://' + __dirname + '/';
 app.on('web-contents-created', (event, contents) => {
   contents.on('will-navigate', (ev, url) => {
-    if (!url.startsWith('file://')) ev.preventDefault();
+    if (!url.startsWith(appOrigin)) ev.preventDefault();
   });
   contents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
@@ -519,10 +542,9 @@ let _pendingOpenFile = null;
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
   if (mainWindow && !mainWindow.webContents.isLoading()) {
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
+    fsp.readFile(filePath, 'utf8').then(content => {
       mainWindow.webContents.send('file:opened', content);
-    } catch (e) { console.warn('file:opened - failed to read:', e.message); }
+    }).catch(e => { console.warn('file:opened - failed to read:', e.message); });
   } else {
     _pendingOpenFile = filePath;
   }

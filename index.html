@@ -754,6 +754,7 @@ const _CKV_MAP={
 
 // Resource list panel - opened by clicking stats bar chips
 let _rlCtx=null; // store context for stat chip clicks
+var gwNames={}; // gateway name lookup — populated by _renderMapInner, used globally
 let _mapSvg=null,_mapZoom=null,_mapG=null; // global map refs for navigation
 let _showNested=false;
 let _detailLevel=0; // 0=collapsed(VPC+subnet names), 1=normal(resources), 2=expanded(nested children)
@@ -786,7 +787,7 @@ function _runComplianceWithCache(ctx){
   const _fResLookup={};
   (ctx.sgs||[]).forEach(r=>{_fResLookup[r.GroupId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
   (ctx.nacls||[]).forEach(r=>{_fResLookup[r.NetworkAclId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.routeTables||[]).forEach(r=>{_fResLookup[r.RouteTableId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  (ctx.rts||[]).forEach(r=>{_fResLookup[r.RouteTableId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
   (ctx.instances||[]).forEach(r=>{_fResLookup[r.InstanceId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
   (ctx.vpcs||[]).forEach(r=>{_fResLookup[r.VpcId]={a:r._accountId||'',r:r._region||'',v:r.VpcId}});
   (ctx.subnets||[]).forEach(r=>{_fResLookup[r.SubnetId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
@@ -2057,7 +2058,7 @@ function _rptBUDRAssessmentTable(){
   var sorted=_budrAssessments.slice().sort(function(a,b){
     var ta=a.profile?tierOrder[a.profile.tier]:9;
     var tb=b.profile?tierOrder[b.profile.tier]:9;
-    if(ta!==tb) return(_PRIORITY_ORDER[ta]||9)-(_PRIORITY_ORDER[tb]||9);
+    if(ta!==tb) return ta-tb;
     var sa=a.profile?(_BUDR_STRATEGY_ORDER[a.profile.strategy]||9):9;
     var sb=b.profile?(_BUDR_STRATEGY_ORDER[b.profile.strategy]||9):9;
     return sa-sb;
@@ -2946,7 +2947,7 @@ function _filterCompFindings(options){
 }
 function _exportComplianceExcel(findings,options){
   const filtered=_filterCompFindings(options);
-  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const sevBg={CRITICAL:'#fecaca',HIGH:'#fee2e2',MEDIUM:'#fef3c7',LOW:'#dbeafe'};
   const sevTxt={CRITICAL:'#991b1b',HIGH:'#b91c1c',MEDIUM:'#92400e',LOW:'#1e40af'};
   const tierBg={Critical:'#fecaca',High:'#fed7aa',Medium:'#fef3c7',Low:'#dbeafe'};
@@ -3070,7 +3071,7 @@ function _exportFilteredCSV(findings,options){
 }
 function _exportComplianceHTML(findings,options){
   const filtered=_filterCompFindings(options);
-  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const now=new Date().toISOString().slice(0,19).replace('T',' ');
   const overall=_calcComplianceScore(filtered);
   const sevColors={CRITICAL:{bg:'#fecaca',text:'#991b1b',bar:'#dc2626'},HIGH:{bg:'#fee2e2',text:'#b91c1c',bar:'#ef4444'},MEDIUM:{bg:'#fef3c7',text:'#92400e',bar:'#f59e0b'},LOW:{bg:'#dbeafe',text:'#1e40af',bar:'#3b82f6'}};
@@ -3880,8 +3881,8 @@ function showDesignForm(formType,context){
     if(!halves){dpBody.innerHTML='<div class="design-form"><div class="form-error">Cannot split a /32 subnet</div></div>';dp.classList.add('open');return}
     h='<div class="design-form"><label>This will create two subnets:</label>';
     h+='<div class="form-hint" style="margin:6px 0">'+halves[0]+' and '+halves[1]+'</div>';
-    h+='<label>Name A</label><input id="df_name_a" value="'+gn(context.subnet,'')+'_a">';
-    h+='<label>Name B</label><input id="df_name_b" value="'+gn(context.subnet,'')+'_b">';
+    h+='<label>Name A</label><input id="df_name_a" value="'+esc(gn(context.subnet,''))+'_a">';
+    h+='<label>Name B</label><input id="df_name_b" value="'+esc(gn(context.subnet,''))+'_b">';
     h+='<div class="form-actions"><button class="btn-confirm" id="df_ok">Split</button><button class="btn-cancel" onclick="document.getElementById(\'detailPanel\').classList.remove(\'open\')">Cancel</button></div></div>';
     dpBody.innerHTML=h;dp.classList.add('open');
     document.getElementById('df_ok').addEventListener('click',()=>{
@@ -4033,10 +4034,12 @@ function injectDesignToolbar(container,context){
     let routeBtn='';
     if(_rlCtx&&_rlCtx.subRT){
       const rt=_rlCtx.subRT[context.data.SubnetId];
-      if(rt){routeBtn='<button onclick="showDesignForm(\'add_route\',{rtId:\''+rt.RouteTableId+'\',rtName:\''+gn(rt,rt.RouteTableId).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',vpcId:\''+context.data.VpcId+'\'})">+ Route</button>'}
+      if(rt){routeBtn='<button class="design-add-route-btn" data-rt-id="'+esc(rt.RouteTableId)+'" data-rt-name="'+esc(gn(rt,rt.RouteTableId))+'" data-vpc-id="'+esc(context.data.VpcId)+'">+ Route</button>'}
     }
     tb.innerHTML='<button onclick="showDesignForm(\'split_subnet\',{subnet:_dtCtx})">Split</button><button onclick="showDesignForm(\'add_resource\',{subnet:_dtCtx})">+ Resource</button>'+routeBtn+'<button onclick="addDesignChange({action:\'remove_resource\',target:{ResourceId:_dtCtx.SubnetId,ResourceType:\'Subnet\'}})">Remove</button>';
     window._dtCtx=context.data;
+    var _arBtn=tb.querySelector('.design-add-route-btn');
+    if(_arBtn)_arBtn.addEventListener('click',function(){showDesignForm('add_route',{rtId:this.dataset.rtId,rtName:this.dataset.rtName,vpcId:this.dataset.vpcId})});
   } else if(context.type==='gateway'){
     const gwType=context.gwType;
     const gwId=context.data;
@@ -4061,8 +4064,8 @@ function renderChangeLog(){
     const desc=_changeDesc(ch);
     const chId=ch.id;
     let icon='<span style="color:var(--accent-green);margin-right:4px" title="Valid">&#10003;</span>';
-    if(ch._invalid)icon='<span style="color:#dc2626;margin-right:4px" title="'+((ch._validation||{}).errors||[]).join('; ')+'">&#10007;</span>';
-    else if(ch._validation&&ch._validation.warnings.length)icon='<span style="color:var(--accent-orange);margin-right:4px" title="'+ch._validation.warnings.join('; ')+'">&#9888;</span>';
+    if(ch._invalid)icon='<span style="color:#dc2626;margin-right:4px" title="'+esc(((ch._validation||{}).errors||[]).join('; '))+'">&#10007;</span>';
+    else if(ch._validation&&ch._validation.warnings.length)icon='<span style="color:var(--accent-orange);margin-right:4px" title="'+esc(ch._validation.warnings.join('; '))+'">&#9888;</span>';
     h+='<div class="change-log-item" style="'+(ch._invalid?'opacity:.5;text-decoration:line-through':'')+'"><span class="cl-desc">'+icon+desc+'</span><button class="cl-undo" onclick="_designChanges=_designChanges.filter(c=>c.id!==\''+chId+'\');renderChangeLog();applyDesignChanges()">x</button></div>';
   });
   // Full-state validation summary
@@ -4084,15 +4087,15 @@ function renderChangeLog(){
 function _changeDesc(ch){
   const action=ch.action;
   let badge='',label='';
-  if(action==='add_vpc'){badge='<span class="cl-action-badge add">+vpc</span>';label=(ch.params.Name||'New VPC')+' ('+ch.params.CidrBlock+')'}
-  else if(action==='add_subnet'){badge='<span class="cl-action-badge add">+subnet</span>';label=ch.params.Name||ch.params.CidrBlock||'new'}
-  else if(action==='split_subnet'){badge='<span class="cl-action-badge split">split</span>';label=ch.target.SubnetId||'subnet'}
-  else if(action==='add_gateway'){badge='<span class="cl-action-badge add">+'+(ch.params.GatewayType||'gw').toLowerCase()+'</span>';label=ch.params.Name||'new'}
-  else if(action==='add_route'){badge='<span class="cl-action-badge modify">+route</span>';label=(ch.params.DestinationCidrBlock||'?')+' → '+sid(ch.params.TargetId||'')}
-  else if(action==='add_resource'){badge='<span class="cl-action-badge add">+'+(ch.params.ResourceType||'res').toLowerCase()+'</span>';label=ch.params.Name||'new'}
-  else if(action==='add_security_group'){badge='<span class="cl-action-badge add">+sg</span>';label=ch.params.Name||'new'}
-  else if(action==='remove_resource'){badge='<span class="cl-action-badge remove">remove</span>';label=(ch.target.ResourceType||'')+' '+sid(ch.target.ResourceId||'')}
-  else{badge='';label=action.replace(/_/g,' ')}
+  if(action==='add_vpc'){badge='<span class="cl-action-badge add">+vpc</span>';label=esc(ch.params.Name||'New VPC')+' ('+esc(ch.params.CidrBlock)+')'}
+  else if(action==='add_subnet'){badge='<span class="cl-action-badge add">+subnet</span>';label=esc(ch.params.Name||ch.params.CidrBlock||'new')}
+  else if(action==='split_subnet'){badge='<span class="cl-action-badge split">split</span>';label=esc(ch.target.SubnetId||'subnet')}
+  else if(action==='add_gateway'){badge='<span class="cl-action-badge add">+'+(ch.params.GatewayType||'gw').toLowerCase()+'</span>';label=esc(ch.params.Name||'new')}
+  else if(action==='add_route'){badge='<span class="cl-action-badge modify">+route</span>';label=esc(ch.params.DestinationCidrBlock||'?')+' → '+esc(sid(ch.params.TargetId||''))}
+  else if(action==='add_resource'){badge='<span class="cl-action-badge add">+'+(ch.params.ResourceType||'res').toLowerCase()+'</span>';label=esc(ch.params.Name||'new')}
+  else if(action==='add_security_group'){badge='<span class="cl-action-badge add">+sg</span>';label=esc(ch.params.Name||'new')}
+  else if(action==='remove_resource'){badge='<span class="cl-action-badge remove">remove</span>';label=esc(ch.target.ResourceType||'')+' '+esc(sid(ch.target.ResourceId||''))}
+  else{badge='';label=esc(action.replace(/_/g,' '))}
   return badge+label;
 }
 
@@ -5253,6 +5256,12 @@ function _getTagMap(obj){
   var m={};arr.forEach(function(t){if(t.Key)m[t.Key]=t.Value||''});return m;
 }
 
+function _safeRegex(pattern){
+  try{var re=new RegExp(pattern,'i');
+    if(/(\+|\*|\{)\s*\)(\+|\*|\{)/.test(pattern)) return null;
+    return re;
+  }catch(e){return null}
+}
 function _scoreClassification(name,type,vpcName,rules,tagMap){
   rules=rules||_classificationRules;
   tagMap=tagMap||{};
@@ -5261,7 +5270,7 @@ function _scoreClassification(name,type,vpcName,rules,tagMap){
     if(rule.enabled===false) return;
     var p=rule.pattern;if(!p) return;
     p=p.replace(/^\|+|\|+$/g,'').replace(/\|{2,}/g,'|');if(!p) return;
-    var re;try{re=new RegExp(p,'i')}catch(e){return}
+    var re=_safeRegex(p);if(!re) return;
     var text='';
     if(rule.scope==='any') text=(name||'')+' '+(type||'')+' '+(vpcName||'')+' '+Object.values(tagMap).join(' ');
     else if(rule.scope==='vpc') text=vpcName||'';
@@ -5415,7 +5424,7 @@ function runClassificationEngine(ctx){
     results.push({id:id,name:name,type:'IGW',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
   });
   // Classify NAT GWs
-  (ctx.natGws||[]).forEach(function(ng){
+  (ctx.nats||[]).forEach(function(ng){
     var id=ng.NatGatewayId;var name=gn(ng,id);var vpcId=ng.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(ng);
     var sc=_scoreClassification(name,'nat-gateway',vpcName,null,tm);
     var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
@@ -5861,7 +5870,7 @@ function openResourceList(type, pushNav){
     const hasHtml=details&&/<[a-z][\s\S]*>/i.test(details);
     const det=details?'<span class="dp-det"><br><span class="k">'+(hasHtml?details:esc(details))+'</span></span>':'';
     return '<div class="dp-row"'+act+style+'>'
-      +tog+'<span class="i" style="color:'+(color||'var(--text-primary)')+'">'+main+'</span>'+navBtn
+      +tog+'<span class="i" style="color:'+(color||'var(--text-primary)')+'">'+esc(main)+'</span>'+navBtn
       +det+'</div>';
   }
 
@@ -5885,7 +5894,7 @@ function openResourceList(type, pushNav){
         const grouped={};d.forEach(v=>{const a=v._accountLabel||v._accountId||'default';(grouped[a]=grouped[a]||[]).push(v)});
         Object.entries(grouped).forEach(([acct,vpcList])=>{
           const acCol=vpcList[0]._ctxColor||getAccountColor(acct);
-          items.push('<div style="font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));font-weight:600;color:'+(acCol||'var(--text-secondary)')+';padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:6px;text-transform:uppercase;letter-spacing:.5px">'+acct+'</div>');
+          items.push('<div style="font-size:calc(9px * var(--txt-scale) * var(--dp-txt-scale));font-weight:600;color:'+(acCol||'var(--text-secondary)')+';padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:6px;text-transform:uppercase;letter-spacing:.5px">'+esc(acct)+'</div>');
           vpcList.forEach(v=>{
             const sc=(ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).length;
             items.push(row(gn(v,v.VpcId),'ID: '+v.VpcId+' | CIDR: '+(v.CidrBlock||'?')+' | '+sc+' subnets','#7C3AED',{t:'vpc',id:v.VpcId}));
@@ -5962,7 +5971,7 @@ function openResourceList(type, pushNav){
         let det='Type: '+(a.Type||'?')+' | Scheme: '+(a.Scheme||'?')+' | TGs: '+tgc;
         if(wc)det+=' | WAF: '+wc;
         if(cfc)det+=' | CF: '+cfc;
-        det+='<br>DNS: '+(a.DNSName||'?');
+        det+='<br>DNS: '+esc(a.DNSName||'?');
         const sid=findSubForAlb(a.LoadBalancerArn);
         items.push(row(esc(a.LoadBalancerName)+'<span class="k" style="margin-left:6px">'+(a.Scheme||'')+'</span>',det,'#38bdf8',sid?{t:'sub',id:sid}:null));
       });break;
@@ -5972,7 +5981,7 @@ function openResourceList(type, pushNav){
       d.forEach(tg=>{
         const tc=(tg.Targets||[]).length;
         const vid=tg.VpcId;
-        items.push(row(esc(tg.TargetGroupName),'Protocol: '+(tg.Protocol||'?')+':'+(tg.Port||'?')+' | Type: '+(tg.TargetType||'?')+' | Targets: '+tc+(tg.HealthCheckPath?' | HC: '+tg.HealthCheckPath:''),'#06b6d4',vid?{t:'vpc',id:vid}:null));
+        items.push(row(esc(tg.TargetGroupName),'Protocol: '+(tg.Protocol||'?')+':'+(tg.Port||'?')+' | Type: '+(tg.TargetType||'?')+' | Targets: '+tc+(tg.HealthCheckPath?' | HC: '+esc(tg.HealthCheckPath):''),'#06b6d4',vid?{t:'vpc',id:vid}:null));
       });break;
     }
     case 'RDS':{
@@ -5981,7 +5990,7 @@ function openResourceList(type, pushNav){
         let det='Engine: '+db.Engine+' | Class: '+db.DBInstanceClass+' | Status: '+db.DBInstanceStatus;
         if(db.MultiAZ)det+=' | Multi-AZ';
         det+=' | Storage: '+db.AllocatedStorage+'GB';
-        if(db.Endpoint)det+='<br>Endpoint: '+db.Endpoint.Address+':'+db.Endpoint.Port;
+        if(db.Endpoint)det+='<br>Endpoint: '+esc(db.Endpoint.Address)+':'+esc(db.Endpoint.Port);
         const sid=findSubForRds(db.DBInstanceIdentifier);
         items.push(row(esc(db.DBInstanceIdentifier),det,'#3b82f6',sid?{t:'sub',id:sid}:null));
       });break;
@@ -6005,20 +6014,20 @@ function openResourceList(type, pushNav){
       const d=ctx.ecacheClusters||[];title='ElastiCache Clusters';sub=d.length+' total';
       d.forEach(c=>{
         const ep=(c.CacheNodes||[]).length>0?c.CacheNodes[0].Endpoint?.Address:'--';
-        items.push(row(esc(c.CacheClusterId),'Engine: '+c.Engine+' | Type: '+c.CacheNodeType+' | Nodes: '+c.NumCacheNodes+' | VPC: '+vpcName(c.VpcId)+(ep?'<br>Endpoint: '+ep:''),'#ef4444',c.VpcId?{t:'vpc',id:c.VpcId}:null));
+        items.push(row(esc(c.CacheClusterId),'Engine: '+c.Engine+' | Type: '+c.CacheNodeType+' | Nodes: '+c.NumCacheNodes+' | VPC: '+vpcName(c.VpcId)+(ep?'<br>Endpoint: '+esc(ep):''),'#ef4444',c.VpcId?{t:'vpc',id:c.VpcId}:null));
       });break;
     }
     case 'Redshift':{
       const d=ctx.redshiftClusters||[];title='Redshift Clusters';sub=d.length+' total';
       d.forEach(c=>{
-        items.push(row(esc(c.ClusterIdentifier),'Type: '+c.NodeType+' | Nodes: '+c.NumberOfNodes+' | Status: '+c.ClusterStatus+' | VPC: '+vpcName(c.VpcId)+(c.Endpoint?'<br>Endpoint: '+c.Endpoint.Address+':'+c.Endpoint.Port:''),'#dc2626',c.VpcId?{t:'vpc',id:c.VpcId}:null));
+        items.push(row(esc(c.ClusterIdentifier),'Type: '+c.NodeType+' | Nodes: '+c.NumberOfNodes+' | Status: '+c.ClusterStatus+' | VPC: '+vpcName(c.VpcId)+(c.Endpoint?'<br>Endpoint: '+esc(c.Endpoint.Address)+':'+esc(c.Endpoint.Port):''),'#dc2626',c.VpcId?{t:'vpc',id:c.VpcId}:null));
       });break;
     }
     case 'Peering':{
       const d=ctx.peerings||[];title='VPC Peering';sub=d.length+' total';
       d.forEach(p=>{
         const req=p.RequesterVpcInfo||{};const acc=p.AccepterVpcInfo||{};
-        items.push(row(gn(p,p.VpcPeeringConnectionId),'Status: '+(p.Status?.Code||'?')+' | Requester: '+vpcName(req.VpcId)+' ('+((req.CidrBlock)||'?')+') | Accepter: '+vpcName(acc.VpcId)+' ('+(acc.CidrBlock||'?')+')','#fb923c',req.VpcId?{t:'vpc',id:req.VpcId}:null));
+        items.push(row(esc(gn(p,p.VpcPeeringConnectionId)),'Status: '+(p.Status?.Code||'?')+' | Requester: '+vpcName(req.VpcId)+' ('+((req.CidrBlock)||'?')+') | Accepter: '+vpcName(acc.VpcId)+' ('+(acc.CidrBlock||'?')+')','#fb923c',req.VpcId?{t:'vpc',id:req.VpcId}:null));
       });break;
     }
     case 'VPNs':{
@@ -6199,7 +6208,7 @@ function openResourceList(type, pushNav){
     const tb=document.createElement('div');tb.className='design-toolbar';
     let tbHtml='<button onclick="showDesignForm(\'add_vpc\',{})">+ VPC</button>';
     if(ctx.vpcs&&ctx.vpcs.length){
-      tbHtml+=ctx.vpcs.map(v=>'<button onclick="showDesignForm(\'add_subnet\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ Sub ('+gn(v,v.VpcId)+')</button><button onclick="showDesignForm(\'add_gateway\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ GW ('+gn(v,v.VpcId)+')</button><button onclick="showDesignForm(\'add_security_group\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ SG ('+gn(v,v.VpcId)+')</button>').join('');
+      tbHtml+=ctx.vpcs.map(v=>'<button onclick="showDesignForm(\'add_subnet\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ Sub ('+esc(gn(v,v.VpcId))+')</button><button onclick="showDesignForm(\'add_gateway\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ GW ('+esc(gn(v,v.VpcId))+')</button><button onclick="showDesignForm(\'add_security_group\',{vpc:_rlCtx.vpcs.find(x=>x.VpcId===\''+v.VpcId+'\')})">+ SG ('+esc(gn(v,v.VpcId))+')</button>').join('');
     }
     tb.innerHTML=tbHtml;
     dpBody.insertBefore(tb,dpBody.firstChild);
@@ -6323,7 +6332,7 @@ function openSubnetPanel(sub,vpcId,lk){
     _navStack.push({fn:()=>openResourceList(savedType,false)});
   }
   const backBtn=_navStack.length>0?'<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale) * var(--dp-txt-scale));font-family:Segoe UI,system-ui,sans-serif;margin-right:8px" title="Back">&lt; Back</span>':'';
-  dpTitle.innerHTML=backBtn+gn(sub,sub.SubnetId)+' <span class="dp-badge '+(isPub?'pub':'prv')+'">'+(isPub?'PUBLIC':'PRIVATE')+'</span>';
+  dpTitle.innerHTML=backBtn+esc(gn(sub,sub.SubnetId))+' <span class="dp-badge '+(isPub?'pub':'prv')+'">'+(isPub?'PUBLIC':'PRIVATE')+'</span>';
   // IP capacity calculation
   const subPrefix=parseInt((sub.CidrBlock||'').split('/')[1],10);
   const totalIps=isNaN(subPrefix)?0:Math.pow(2,32-subPrefix);
@@ -6574,7 +6583,9 @@ function openSubnetPanel(sub,vpcId,lk){
   h='<div style="display:flex;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span id="dpExpandAll" style="font-family:Segoe UI,system-ui,sans-serif;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Expand All</span><span id="dpCollapseAll" style="font-family:Segoe UI,system-ui,sans-serif;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:var(--accent-blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;background:rgba(59,130,246,.08)">Collapse All</span><span id="dpTraceFrom" style="font-family:Segoe UI,system-ui,sans-serif;font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale));color:#22d3ee;cursor:pointer;padding:3px 8px;border:1px solid rgba(34,211,238,.3);border-radius:4px;background:rgba(34,211,238,.08)">Trace</span></div>'+h;
   dpBody.innerHTML=h;
   dp.classList.add('open');
-  dpBody.addEventListener('click', function(ev){ _fwHandleAction(ev, sub, vpcId, lk); });
+  if(window._fwDpBodyHandler) dpBody.removeEventListener('click', window._fwDpBodyHandler);
+  window._fwDpBodyHandler = function(ev){ _fwHandleAction(ev, sub, vpcId, lk); };
+  dpBody.addEventListener('click', window._fwDpBodyHandler);
   injectDesignToolbar(dpBody,{type:'subnet',data:sub});
   applyDpScale();
   document.getElementById('dpExpandAll')?.addEventListener('click',()=>{
@@ -8777,7 +8788,7 @@ function _renderMapInner(){
   const pubSubs=new Set(),subRT={},gwSet=new Map();
 
   // gateway name enrichment from dedicated JSON
-  var gwNames={};
+  gwNames={};
   igws.forEach(g=>{gwNames[g.InternetGatewayId]=gn(g,g.InternetGatewayId)});
   nats.forEach(g=>{gwNames[g.NatGatewayId]=gn(g,g.NatGatewayId)});
   vpces.forEach(g=>{gwNames[g.VpcEndpointId]=gn(g,g.VpcEndpointId)});
@@ -10733,8 +10744,7 @@ function loadProject(file){
     try{_loadProjectData(JSON.parse(e.target.result))}catch(ex){alert('Failed to load: '+ex.message)}
   };reader.readAsText(file);
 }
-// _showToast: thin wrapper around bundled showToast (ignores legacy 2nd-arg strings)
-function _showToast(msg){showToast(msg)}
+function _showToast(msg,type){showToast(msg,type)}
 document.getElementById('saveProjectBtn').addEventListener('click',saveProject);
 document.getElementById('loadProjectBtn').addEventListener('click',()=>{
   if(_isElectron){
@@ -11823,7 +11833,7 @@ function _showEditNote(rid,ni){
   document.getElementById('noteEditSave').addEventListener('click',()=>{updateAnnotation(rid,ni,document.getElementById('noteEditText').value,document.getElementById('noteEditCat').value,document.getElementById('noteEditPinned').checked)});
   document.getElementById('noteEditCancel').addEventListener('click',()=>{_renderNotesPanel()});
 }
-function _escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function _escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function _renderNoteBadges(){
   if(!_mapG)return;
   _mapG.selectAll('.note-badge').remove();
@@ -14127,7 +14137,7 @@ function _ipToNum(ip){
   if(!ip) return null;
   const p=ip.split('.');
   if(p.length!==4) return null;
-  return ((parseInt(p[0])<<24)|(parseInt(p[1])<<16)|(parseInt(p[2])<<8)|parseInt(p[3]))>>>0;
+  return ((parseInt(p[0],10)<<24)|(parseInt(p[1],10)<<16)|(parseInt(p[2],10)<<8)|parseInt(p[3],10))>>>0;
 }
 
 function _ipFromCidr(cidr){
@@ -15040,9 +15050,7 @@ function _hopTypeLabel(type){
   return labels[type]||type;
 }
 
-function _escHtml(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// _escHtml defined above at notes module — reuse global
 
 function _stepForward(){
   if(!_flowPath||_flowPath.length===0) return;
@@ -18624,7 +18632,7 @@ function _renderClassificationTab(){
   var _resAppMap={};
   _appRegistry.forEach(function(app){
     if(!app.pattern) return;
-    try{var re=new RegExp(app.pattern,'i')}catch(e){return}
+    var re=_safeRegex(app.pattern);if(!re) return;
     _classificationData.forEach(function(r){
       if(_resAppMap[r.id]) return;
       var text=(r.name||'')+' '+(r.type||'')+' '+(r.vpcName||'')+' '+Object.values(r.tags||{}).join(' ');
@@ -18757,7 +18765,7 @@ function _autoDiscoverApps(){
 function _matchAppResources(app){
   if(!app.pattern) return[];
   var matched=[];
-  try{var re=new RegExp(app.pattern,'i')}catch(e){return[]}
+  var re=_safeRegex(app.pattern);if(!re) return[];
   _classificationData.forEach(function(r){
     var text=(r.name||'')+' '+(r.type||'')+' '+(r.vpcName||'')+' '+Object.values(r.tags||{}).join(' ');
     if(re.test(text)) matched.push(r);
@@ -19153,7 +19161,7 @@ function _openRulesEditor(){
   }
   function countMatches(rule){
     if(!rule.pattern||rule.enabled===false) return 0;
-    var re;try{re=new RegExp(rule.pattern,'i')}catch(e){return -1}
+    var re=_safeRegex(rule.pattern);if(!re) return -1;
     var ct=0;
     (_classificationData||[]).forEach(function(res){
       var text='';
@@ -19192,7 +19200,7 @@ function _openRulesEditor(){
     (_rlCtx.vpcs||[]).forEach(function(v){var n=gn(v,v.VpcId);classify(n,'vpc',n,v.VpcId,v)});
     (_rlCtx.subnets||[]).forEach(function(s){classify(gn(s,s.SubnetId),'subnet',vpcNameMap[s.VpcId]||'',s.SubnetId,s)});
     (_rlCtx.igws||[]).forEach(function(gw){var vid=(gw.Attachments&&gw.Attachments[0])?gw.Attachments[0].VpcId:'';classify(gn(gw,gw.InternetGatewayId),'igw',vpcNameMap[vid]||'',gw.InternetGatewayId,gw)});
-    (_rlCtx.natGws||[]).forEach(function(ng){classify(gn(ng,ng.NatGatewayId),'nat-gateway',vpcNameMap[ng.VpcId]||'',ng.NatGatewayId,ng)});
+    (_rlCtx.nats||[]).forEach(function(ng){classify(gn(ng,ng.NatGatewayId),'nat-gateway',vpcNameMap[ng.VpcId]||'',ng.NatGatewayId,ng)});
     (_rlCtx.vpces||[]).forEach(function(ve){classify(ve.ServiceName||ve.VpcEndpointId,'vpc-endpoint',vpcNameMap[ve.VpcId]||'',ve.VpcEndpointId,ve)});
     (_rlCtx.s3bk||[]).forEach(function(b){classify(b.Name||'','s3','',b.Name||'',b)});
     return {critical:counts.critical,high:counts.high,medium:counts.medium,low:counts.low,total:counts.critical+counts.high+counts.medium+counts.low,samples:samples};
@@ -20784,16 +20792,16 @@ const _SAVE_KEY='aws_mapper_session';const _SAVE_INTERVAL=30000;
 function _autoSaveSession(){try{const data={};document.querySelectorAll('.ji').forEach(el=>{if(el.value.trim())data[el.id]=el.value});
   data._accountLabel=(document.getElementById('accountLabel')||{}).value||'';data._layout=(document.getElementById('layoutMode')||{}).value||'grid';
   if(_rptState.logo)data._rptLogo=_rptState.logo;data._ts=Date.now();
-  localStorage.setItem(_SAVE_KEY,JSON.stringify(data))}catch(e){}}
-function _restoreSession(){try{const raw=localStorage.getItem(_SAVE_KEY);if(!raw)return false;const data=JSON.parse(raw);if(!data._ts)return false;
-  if(Date.now()-data._ts>7*24*60*60*1000){localStorage.removeItem(_SAVE_KEY);return false}
+  sessionStorage.setItem(_SAVE_KEY,JSON.stringify(data))}catch(e){console.warn('[auto-save] failed:',e)}}
+function _restoreSession(){try{const raw=sessionStorage.getItem(_SAVE_KEY);if(!raw)return false;const data=JSON.parse(raw);if(!data._ts)return false;
+  if(Date.now()-data._ts>7*24*60*60*1000){sessionStorage.removeItem(_SAVE_KEY);return false}
   let hasData=false;Object.entries(data).forEach(([k,v])=>{if(k.startsWith('_'))return;const el=document.getElementById(k);if(el){el.value=v;el.className='ji valid';hasData=true}});
   if(data._accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=data._accountLabel}
   if(data._layout){const lm=document.getElementById('layoutMode');if(lm)lm.value=data._layout}
   if(data._rptLogo){_rptState.logo=data._rptLogo}
-  return hasData}catch(e){return false}}
+  return hasData}catch(e){console.warn('[session-restore] failed:',e);return false}}
 setInterval(()=>{if(_rlCtx)_autoSaveSession()},_SAVE_INTERVAL);
-(function(){try{const raw=localStorage.getItem(_SAVE_KEY);if(!raw)return;const data=JSON.parse(raw);if(!data._ts||Date.now()-data._ts>7*24*60*60*1000)return;
+(function(){try{const raw=sessionStorage.getItem(_SAVE_KEY);if(!raw)return;const data=JSON.parse(raw);if(!data._ts||Date.now()-data._ts>7*24*60*60*1000)return;
   let count=Object.keys(data).filter(k=>!k.startsWith('_')).length;if(count===0)return;
   const banner=document.createElement('div');banner.id='restoreBanner';
   banner.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;background:var(--bg-tertiary);border:1px solid var(--accent-cyan);border-radius:8px;padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.5)';
@@ -20803,7 +20811,7 @@ setInterval(()=>{if(_rlCtx)_autoSaveSession()},_SAVE_INTERVAL);
   document.getElementById('restoreYes').addEventListener('click',()=>{if(_restoreSession()){renderMap(()=>{_autoSaveSession()})}banner.remove()});
   document.getElementById('restoreNo').addEventListener('click',()=>{banner.remove()});
   setTimeout(()=>{if(banner.parentNode)banner.remove()},15000);
-}catch(e){}})();
+}catch(e){console.warn('[session-restore] banner failed:',e)}})();
 
 // Design mode toggle
 document.getElementById('designToggle').addEventListener('click',()=>{
@@ -22135,7 +22143,7 @@ const ICON_MAP={
 
 // Landing Zone Hub-Spoke Layout
 function buildLandingZoneLayout(ctx){
-  console.log('buildLandingZoneLayout called with', Object.keys(ctx));
+  // buildLandingZoneLayout
   try{
   const {vpcs,subByVpc,sgByVpc,pubSubs,rts,instances,albs,enis,nacls,subRT,
     igws,nats,vpceList,peerings,sharedGws,gwByVpc,vpceByVpc,gwSet2L,
@@ -22943,7 +22951,7 @@ function buildLandingZoneLayout(ctx){
   // Build final export - format must match buildLucidExport
   const doc={version:1,pages:[{id:'page1',title:'AWS-Landing-Zone',shapes,lines}]};
   
-  console.log('Landing Zone layout complete:', shapes.length, 'shapes,', lines.length, 'lines');
+  // Landing Zone layout complete
   return {doc,iconSet};
   }catch(e){
     console.error('Landing Zone layout error:', e);
@@ -23084,11 +23092,11 @@ function buildLucidExport(){
   // Get layout mode from selector
   const layoutMode=document.getElementById('layoutMode')?.value||'grid';
   const userHubName=(document.getElementById('hubVpcName')?.value||'').toLowerCase().trim();
-  console.log('buildLucidExport: layoutMode=', layoutMode, 'userHubName=', userHubName);
+  // buildLucidExport
 
   // Landing Zone layout mode
   if(layoutMode==='landingzone'){
-    console.log('Using Landing Zone layout mode, calling buildLandingZoneLayout...');
+    // Landing Zone layout mode
     const result=buildLandingZoneLayout({
       vpcs:activeVpcs,subByVpc,sgByVpc,pubSubs,rts,instances,albs,enis,nacls:subNacl,
       subRT,igws,nats,vpceList,peerings,sharedGws,gwByVpc,vpceByVpc,gwSet2L,
@@ -23096,7 +23104,7 @@ function buildLucidExport(){
       s3bk,snapshots,snapByVol,tgByAlb,tgs,wafAcls,wafByAlb,
       instBySub,albBySub,eniBySub,volByInst,volBySub,rdsBySub,ecsBySub,lambdaBySub,cfByAlb,recsByZone
     });
-    console.log('buildLandingZoneLayout returned:', result?'success':'null');
+    // buildLandingZoneLayout returned
     return result;
   }
 
