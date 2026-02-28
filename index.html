@@ -156,15 +156,17 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   </div>
   <div class="change-log" id="changeLog"></div>
   <div class="export-bar collapsed" id="exportBar">
-    <button class="eb-toggle" id="ebToggle">Export &#9654;</button>
-    <div style="display:flex;align-items:center;gap:8px;margin-right:12px;padding-right:12px;border-right:1px solid var(--border)">
-      <label style="font-family:"Segoe UI",system-ui,sans-serif;font-size:8px;color:var(--text-muted);text-transform:uppercase">Layout</label>
-      <select id="layoutMode" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;padding:4px 6px;cursor:pointer">
-        <option value="grid">Grid (columns)</option>
-        <option value="landingzone">Landing Zone (hub-spoke)</option>
-        <option value="executive">Executive Overview</option>
-      </select>
-      <input type="text" id="hubVpcName" placeholder="Hub VPC name (auto)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;padding:4px 6px;width:120px;display:none" title="Specify hub VPC name or leave blank for auto-detect">
+    <div class="eb-row">
+      <div class="eb-layout-controls">
+        <label class="eb-label">Layout</label>
+        <select id="layoutMode" class="eb-select">
+          <option value="grid">Grid (columns)</option>
+          <option value="landingzone">Landing Zone (hub-spoke)</option>
+          <option value="executive">Executive Overview</option>
+        </select>
+        <input type="text" id="hubVpcName" class="eb-select" placeholder="Hub VPC name (auto)" style="width:120px;display:none" title="Specify hub VPC name or leave blank for auto-detect">
+      </div>
+      <button class="eb-toggle" id="ebToggle">Export &#9654;</button>
     </div>
     <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
     <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>

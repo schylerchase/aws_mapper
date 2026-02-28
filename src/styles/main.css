@@ -123,8 +123,8 @@
   @keyframes cardUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
   .landing-footer{margin-top:32px;text-align:center;font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;color:var(--text-muted);opacity:.5}
   .landing-footer a{color:var(--accent-cyan);text-decoration:none}
-  .stats-bar{position:absolute;top:12px;left:0;right:0;display:none;gap:5px;flex-wrap:wrap;z-index:5;justify-content:center;padding:0 440px 0 40px;transition:padding-right .2s}
-  .main:has(.detail-panel.open) .stats-bar{padding-right:860px}
+  .stats-bar{position:absolute;top:12px;left:0;right:0;display:none;gap:5px;flex-wrap:wrap;z-index:5;justify-content:center;padding:0 380px 0 40px;transition:padding-right .2s}
+  .main:has(.detail-panel.open) .stats-bar{padding-right:780px}
   .main:has(.detail-panel.open) .export-bar{right:432px}
   .stat-chip{font-family:"Segoe UI",system-ui,sans-serif;font-size:calc(11px * var(--txt-scale));font-weight:500;padding:5px 10px;border-radius:8px;background:rgba(17,24,39,.9);border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:border-color .15s,background .15s}
   .stat-chip:hover{border-color:var(--accent-blue);background:rgba(59,130,246,.12)}
@@ -227,7 +227,11 @@
   @keyframes dashFlowIn{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
   @keyframes dashStruct{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
   .animated{animation:dashStruct 1s linear infinite}
-  .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:10;flex-direction:column}
+  .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:10;flex-direction:column;align-items:flex-end}
+  .eb-row{display:flex;align-items:center;gap:6px}
+  .eb-layout-controls{display:flex;align-items:center;gap:6px;padding-right:8px;border-right:1px solid var(--border)}
+  .eb-label{font-family:"Segoe UI",system-ui,sans-serif;font-size:8px;color:var(--text-muted);text-transform:uppercase}
+  .eb-select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;padding:4px 6px;cursor:pointer}
   .export-btn{padding:8px 12px;background:var(--overlay-bg);border:1px solid var(--border);border-radius:5px;color:var(--text-secondary);font-family:"Segoe UI",system-ui,sans-serif;font-size:calc(11px * var(--txt-scale));font-weight:500;cursor:pointer;backdrop-filter:blur(8px);transition:all .15s;text-align:left;white-space:nowrap}
   .export-btn:hover{background:var(--bg-tertiary);color:var(--text-primary);border-color:var(--accent-blue)}
   .export-btn span{color:var(--text-muted);font-size:7px;display:block;margin-top:1px}
@@ -1236,8 +1240,8 @@
     .sidebar-toggle{left:300px}
     .sidebar.collapsed~.sidebar-toggle{left:4px}
     .detail-panel{width:360px}
-    .stats-bar{padding:0 380px 0 32px}
-    .main:has(.detail-panel.open) .stats-bar{padding-right:740px}
+    .stats-bar{padding:0 340px 0 32px}
+    .main:has(.detail-panel.open) .stats-bar{padding-right:700px}
     .main:has(.detail-panel.open) .export-bar{right:372px}
     .notes-panel{width:360px}
     .account-panel{width:300px}
@@ -1302,11 +1306,8 @@
     .export-btn{padding:8px 12px;font-size:calc(11px * var(--txt-scale))}
     .eb-toggle{padding:5px 10px;font-size:9px}
 
-    /* Hide layout selector row in export bar on mobile */
-    .export-bar>div:has(#layoutMode){display:none}
-
-    /* Layout select in export bar: stack vertically */
-    .export-bar>div[style*="layout"]{flex-direction:column;gap:4px}
+    /* Hide layout controls on mobile */
+    .eb-layout-controls{display:none}
 
     /* Zoom controls: above bottomToolbar (inline bottom:12px + ~34px tall + 6px gap) */
     .zoom-controls{bottom:52px;right:10px}
