@@ -3,10 +3,10 @@
 
 // Severity ordering for sorting findings
 export const SEV_ORDER = {
-  CRITICAL: 0,
-  HIGH: 1,
-  MEDIUM: 2,
-  LOW: 3
+  CRITICAL: 1,
+  HIGH: 2,
+  MEDIUM: 3,
+  LOW: 4
 };
 
 // Framework display labels
@@ -77,10 +77,10 @@ export const TIER_META = PRIORITY_META;
 
 // Priority ordering for sorting
 export const PRIORITY_ORDER = {
-  crit: 0,
-  high: 1,
-  med: 2,
-  low: 3
+  crit: 1,
+  high: 2,
+  med: 3,
+  low: 4
 };
 
 // Priority keys in order
