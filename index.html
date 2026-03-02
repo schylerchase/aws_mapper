@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.3</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.6.4</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.6.3 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.6.4 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <div class="stats-bar" id="statsBar"></div>
   <svg id="mapSvg"></svg>
@@ -1503,8 +1503,14 @@ function _rptInteractiveJS(){
   '    rows.forEach(function(tr){\n'+
   '      var vis=true;\n'+
   '      Object.keys(active).forEach(function(attr){\n'+
-  '        var val=(tr.dataset[attr]||"").toUpperCase();\n'+
-  '        if(active[attr].indexOf(val)===-1)vis=false;\n'+
+  '        var raw=(tr.dataset[attr]||"").toUpperCase();\n'+
+  '        if(attr==="account"&&raw.indexOf("|")!==-1){\n'+
+  '          var parts=raw.split("|");\n'+
+  '          var match=parts.some(function(p){return active[attr].indexOf(p)!==-1});\n'+
+  '          if(!match)vis=false;\n'+
+  '        }else{\n'+
+  '          if(active[attr].indexOf(raw)===-1)vis=false;\n'+
+  '        }\n'+
   '      });\n'+
   '      if(vis&&query){\n'+
   '        if(tr.textContent.toLowerCase().indexOf(query)===-1)vis=false;\n'+
@@ -1513,7 +1519,11 @@ function _rptInteractiveJS(){
   '      if(vis)shown++;\n'+
   '      ["sev","tier","fw","strategy","account"].forEach(function(attr){\n'+
   '        var v=(tr.dataset[attr]||"").toUpperCase();\n'+
-  '        if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}\n'+
+  '        if(attr==="account"&&v.indexOf("|")!==-1){\n'+
+  '          v.split("|").forEach(function(p){if(p){if(!attrCounts[p])attrCounts[p]=0;if(vis)attrCounts[p]++}});\n'+
+  '        }else{\n'+
+  '          if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}\n'+
+  '        }\n'+
   '      });\n'+
   '    });\n'+
   '    var badge=wrap.querySelector(".rpt-row-count");\n'+
@@ -1984,7 +1994,9 @@ function _rptGroupedFindingsTable(items){
   h+='</tr></thead><tbody>';
   groups.forEach(function(g){
     var sev=g.severity;
-    h+='<tr class="rpt-ctrl-row" data-sev="'+esc(sev)+'">';
+    var accts={};g.resources.forEach(function(f){if(f._accountId)accts[f._accountId]=1});
+    var acctStr=Object.keys(accts).join('|');
+    h+='<tr class="rpt-ctrl-row" data-sev="'+esc(sev)+'"'+(acctStr?' data-account="'+esc(acctStr)+'"':'')+'>';
     h+='<td><span class="sev-badge sev-'+esc(sev)+'">'+esc(sev)+'</span></td>';
     h+='<td><span class="rpt-ctrl-toggle">&#9654;</span> '+esc(g.control)+'</td>';
     h+='<td>'+g.resources.length+'</td>';
@@ -20534,15 +20546,25 @@ function _rptInitInteractive(root){
     rows.forEach(function(tr){
       var vis=true;
       Object.keys(active).forEach(function(attr){
-        var val=(tr.dataset[attr]||'').toUpperCase();
-        if(active[attr].indexOf(val)===-1)vis=false;
+        var raw=(tr.dataset[attr]||'').toUpperCase();
+        if(attr==='account'&&raw.indexOf('|')!==-1){
+          var parts=raw.split('|');
+          var match=parts.some(function(p){return active[attr].indexOf(p)!==-1});
+          if(!match)vis=false;
+        }else{
+          if(active[attr].indexOf(raw)===-1)vis=false;
+        }
       });
       if(vis&&query){if(tr.textContent.toLowerCase().indexOf(query)===-1)vis=false}
       tr.dataset.filtered=vis?'1':'0';
       if(vis)shown++;
-      ['sev','tier','fw','strategy'].forEach(function(attr){
+      ['sev','tier','fw','strategy','account'].forEach(function(attr){
         var v=(tr.dataset[attr]||'').toUpperCase();
-        if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}
+        if(attr==='account'&&v.indexOf('|')!==-1){
+          v.split('|').forEach(function(p){if(p){if(!attrCounts[p])attrCounts[p]=0;if(vis)attrCounts[p]++}});
+        }else{
+          if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}
+        }
       });
     });
     var badge=wrap.querySelector('.rpt-row-count');
