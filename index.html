@@ -2472,8 +2472,7 @@ function _rptActionPlan(ctx, opts){
   h+='<nav class="rpt-jump-nav">';
   _PRIORITY_KEYS.forEach(function(t){
     var rgs=tiers[t];if(!rgs||!rgs.length) return;
-    var sevMap={crit:'CRITICAL',high:'HIGH',med:'MEDIUM',low:'LOW'};
-    var total=0;rgs.forEach(function(rg){rg.findings.forEach(function(f){if(f.severity===sevMap[t])total++})});
+    var total=0;rgs.forEach(function(rg){rg.findings.forEach(function(f){if(_classifyTier(f)===t)total++})});
     h+='<a href="#s-action-'+tierNames[t]+'" class="rpt-jump-link" style="color:'+_TIER_META[t].color+'">'+_TIER_META[t].name+'<span class="rpt-jump-ct" style="color:'+_TIER_META[t].color+'">'+total+'</span></a>';
   });
   h+='</nav>';
@@ -2481,10 +2480,9 @@ function _rptActionPlan(ctx, opts){
     var rgs=tiers[t];
     if(!rgs||!rgs.length) return;
     var meta=_TIER_META[t];
-    var sevMap={crit:'CRITICAL',high:'HIGH',med:'MEDIUM',low:'LOW'};
     h+='<h3 id="s-action-'+tierNames[t]+'" style="color:'+meta.color+'">'+esc(meta.name);
     var total=0;
-    rgs.forEach(function(rg){rg.findings.forEach(function(f){if(f.severity===sevMap[t])total++})});
+    rgs.forEach(function(rg){rg.findings.forEach(function(f){if(_classifyTier(f)===t)total++})});
     h+=' ('+total+' findings)</h3>';
     var tableId='rpt-tbl-action-'+t;
     h+='<div class="rpt-table-wrap" id="'+tableId+'">';
@@ -2851,8 +2849,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
   h+='<div class="comp-action-summary">';
   _PRIORITY_KEYS.forEach(function(t){
     var meta=_TIER_META[t];var rgs=allTiers[t];
-    var sevMap={crit:'CRITICAL',high:'HIGH',med:'MEDIUM',low:'LOW'};
-    var findingCount=rgs.reduce(function(s,rg){return s+rg.findings.filter(function(f){return f.severity===sevMap[t]}).length},0);
+    var findingCount=rgs.reduce(function(s,rg){return s+rg.findings.filter(function(f){return _classifyTier(f)===t}).length},0);
     var effort=_estimateTotalEffort(rgs);
     h+='<div class="comp-action-card" style="background:'+meta.bg+';border-color:'+meta.border+';color:'+meta.color+'">';
     h+='<div class="ac-count">'+findingCount+'</div>';
@@ -2866,8 +2863,7 @@ function _renderActionPlan(filtered,allFindings,unfilteredFindings){
   _PRIORITY_KEYS.forEach(function(t){
     var meta=_TIER_META[t];var rgs=tiers[t];
     if(!rgs.length)return;
-    var sevMap2={crit:'CRITICAL',high:'HIGH',med:'MEDIUM',low:'LOW'};
-    var sevFindings=rgs.reduce(function(s,rg){return s+rg.findings.filter(function(f){return f.severity===sevMap2[t]}).length},0);
+    var sevFindings=rgs.reduce(function(s,rg){return s+rg.findings.filter(function(f){return _classifyTier(f)===t}).length},0);
     var effort=_estimateTotalEffort(rgs);
     var collapsed=t==='low';
     h+='<div class="comp-tier-section" data-tier="'+t+'">';
