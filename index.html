@@ -1779,10 +1779,14 @@ function _rptExecSummary(ctx, opts){
   if(!c&&_importedReportData){
     var h='<section class="rpt-section" id="s-exec-summary"><h2>Executive Summary</h2>';
     h+='<p class="rpt-import-notice">Data imported from previous report'+(_importedReportData.date?' ('+esc(_importedReportData.date)+')':'')+'.</p>';
+    var _acctF=_rptGetAccountFilter();
+    var _efF=_rptFilterByAccount(_complianceFindings||[],_acctF);
+    var _ebF=_rptFilterByAccount(_budrAssessments||[],_acctF);
+    var _eiF=_rptFilterByAccount(_inventoryData||[],_acctF);
     h+='<div class="stat-grid">';
-    h+='<div class="stat-box"><span class="val">'+_complianceFindings.length+'</span><span class="lbl">Findings</span></div>';
-    h+='<div class="stat-box"><span class="val">'+_budrAssessments.length+'</span><span class="lbl">BUDR Assessments</span></div>';
-    h+='<div class="stat-box"><span class="val">'+_inventoryData.length+'</span><span class="lbl">Inventory Resources</span></div>';
+    h+='<div class="stat-box"><span class="val">'+_efF.length+'</span><span class="lbl">Findings</span></div>';
+    h+='<div class="stat-box"><span class="val">'+_ebF.length+'</span><span class="lbl">BUDR Assessments</span></div>';
+    h+='<div class="stat-box"><span class="val">'+_eiF.length+'</span><span class="lbl">Inventory Resources</span></div>';
     h+='</div>';
     h+=_rptExecCompliance();
     h+=_rptExecBUDR();
@@ -1960,7 +1964,8 @@ function _rptCompliance(ctx, opts){
     h+='<div id="s-compliance-'+esc(fw)+'">';
     h+='<h3>'+esc(label)+' ('+items.length+')</h3>';
     h+='<div class="rpt-table-wrap" id="'+tableId+'">';
-    h+=_rptBuildToolbar(tableId,{severities:true,accounts:_rptUniqueAccounts()});
+    var hasAcctData=items.some(function(f){return!!f._accountId});
+    h+=_rptBuildToolbar(tableId,{severities:true,accounts:hasAcctData?_rptUniqueAccounts():[]});
     h+=_rptGroupedFindingsTable(items);
     h+='</div></div>';
   });
@@ -2063,7 +2068,7 @@ function _rptBUDR(ctx, opts){
   h+='</nav>';
   h+='<div id="s-budr-summary">';
   h+=_rptBUDRStatGrid(counts);
-  h+=_rptBUDRStrategyGrid();
+  h+=_rptBUDRStrategyGrid(_filteredBudr);
   h+='</div>';
   h+=_rptBUDRAssessmentTable(_filteredBudr);
   if(filteredBudrFindings.length){
@@ -2096,7 +2101,7 @@ function _rptBUDRStatGrid(counts){
   return h;
 }
 
-function _rptBUDRStrategyGrid(){
+function _rptBUDRStrategyGrid(filteredAssessments){
   var strats=[
     {k:'hot',label:'Hot',color:'#ef4444'},
     {k:'warm',label:'Warm',color:'#f59e0b'},
@@ -2104,7 +2109,7 @@ function _rptBUDRStrategyGrid(){
     {k:'cold',label:'Cold',color:'#64748b'}
   ];
   var counts={};
-  _budrAssessments.forEach(function(a){
+  (filteredAssessments||_budrAssessments).forEach(function(a){
     var s=a.profile?a.profile.strategy:'unknown';
     counts[s]=(counts[s]||0)+1;
   });
@@ -2774,14 +2779,19 @@ function _renderCompDash(){
       _openCompExportModal();
     });
   }
-  // Update severity pills (always refresh counts)
-  var crit=findings.filter(function(f){return f.severity==='CRITICAL'}).length;
-  var high=findings.filter(function(f){return f.severity==='HIGH'}).length;
-  var med=findings.filter(function(f){return f.severity==='MEDIUM'}).length;
-  var low=findings.filter(function(f){return f.severity==='LOW'}).length;
+  // Base filter: framework + search + muted (no severity) — used by pills & action plan cards
+  var baseFiltered=findings.slice();
+  if(_compDashState.fwFilter!=='all')baseFiltered=baseFiltered.filter(function(f){return f.framework===_compDashState.fwFilter});
+  if(_compDashState.search){var q=_compDashState.search.toLowerCase();baseFiltered=baseFiltered.filter(function(f){return(f.message||'').toLowerCase().indexOf(q)!==-1||(f.resource||'').toLowerCase().indexOf(q)!==-1||(f.resourceName||'').toLowerCase().indexOf(q)!==-1||(f.control||'').toLowerCase().indexOf(q)!==-1||(f.ckv||'').toLowerCase().indexOf(q)!==-1||(f.remediation||'').toLowerCase().indexOf(q)!==-1})}
+  if(!_compDashState.showMuted)baseFiltered=baseFiltered.filter(function(f){return !_isMuted(f)});
+  // Severity pills — counts reflect active framework/search/muted but not severity
+  var crit=baseFiltered.filter(function(f){return f.severity==='CRITICAL'}).length;
+  var high=baseFiltered.filter(function(f){return f.severity==='HIGH'}).length;
+  var med=baseFiltered.filter(function(f){return f.severity==='MEDIUM'}).length;
+  var low=baseFiltered.filter(function(f){return f.severity==='LOW'}).length;
   var mutedCount=findings.filter(function(f){return _isMuted(f)}).length;
   var pillBox=document.getElementById('compSevPills');if(pillBox){pillBox.innerHTML='';
-  [{sev:'ALL',label:'All ('+findings.length+')'},{sev:'CRITICAL',label:'Critical ('+crit+')'},{sev:'HIGH',label:'High ('+high+')'},{sev:'MEDIUM',label:'Medium ('+med+')'},{sev:'LOW',label:'Low ('+low+')'}].forEach(function(p){
+  [{sev:'ALL',label:'All ('+baseFiltered.length+')'},{sev:'CRITICAL',label:'Critical ('+crit+')'},{sev:'HIGH',label:'High ('+high+')'},{sev:'MEDIUM',label:'Medium ('+med+')'},{sev:'LOW',label:'Low ('+low+')'}].forEach(function(p){
     var btn=document.createElement('span');btn.className='comp-sev-pill'+(_compDashState.sevFilter===p.sev?' active':'');
     btn.dataset.sev=p.sev;btn.textContent=p.label;
     btn.addEventListener('click',function(){_compDashState.sevFilter=p.sev;_renderCompDash()});pillBox.appendChild(btn);
@@ -2794,18 +2804,15 @@ function _renderCompDash(){
     b.style.color=isActive?'#000':'var(--text-muted)';
   });
   var mcEl=document.getElementById('compMutedCount');if(mcEl)mcEl.textContent=mutedCount>0?mutedCount+' finding(s) muted':'';
-  // Filter
-  var filtered=findings.slice();
+  // Full filter: add severity on top of baseFiltered
+  var filtered=baseFiltered.slice();
   if(_compDashState.sevFilter!=='ALL')filtered=filtered.filter(function(f){return f.severity===_compDashState.sevFilter});
-  if(_compDashState.fwFilter!=='all')filtered=filtered.filter(function(f){return f.framework===_compDashState.fwFilter});
-  if(_compDashState.search){var q=_compDashState.search.toLowerCase();filtered=filtered.filter(function(f){return(f.message||'').toLowerCase().indexOf(q)!==-1||(f.resource||'').toLowerCase().indexOf(q)!==-1||(f.resourceName||'').toLowerCase().indexOf(q)!==-1||(f.control||'').toLowerCase().indexOf(q)!==-1||(f.ckv||'').toLowerCase().indexOf(q)!==-1||(f.remediation||'').toLowerCase().indexOf(q)!==-1})}
-  if(!_compDashState.showMuted)filtered=filtered.filter(function(f){return !_isMuted(f)});
   filtered.sort(function(a,b){if(_compDashState.sort==='severity')return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
   // Executive summary
   var summaryHtml='';
   if(_compDashState.execSummary){summaryHtml='<div id="compExecSummary"></div>'}
-  // Action plan view
-  if(_compDashState.view==='action'){body.innerHTML=summaryHtml;if(_compDashState.execSummary)_renderExecSummary();_renderActionPlan(filtered,findings,findings);return}
+  // Action plan view — cards use baseFiltered (no sev), sections use filtered
+  if(_compDashState.view==='action'){body.innerHTML=summaryHtml;if(_compDashState.execSummary)_renderExecSummary();_renderActionPlan(filtered,findings,baseFiltered);return}
   // Table view
   var h=summaryHtml;
   h+='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody>';
@@ -13196,9 +13203,6 @@ function _renderAccountPanel(){
   }
   let h='';
   _loadedContexts.forEach((ctx,i)=>{
-    const vpcCount=(ctx.rlCtx&&ctx.rlCtx.vpcs)?ctx.rlCtx.vpcs.length:0;
-    const subCount=(ctx.rlCtx&&ctx.rlCtx.subnets)?ctx.rlCtx.subnets.length:0;
-    const instCount=(ctx.rlCtx&&ctx.rlCtx.instances)?ctx.rlCtx.instances.length:0;
     const visClass=ctx.visible?'':'hidden-acct';
     h+='<div class="account-card" style="'+(ctx.visible?'':'opacity:.5')+'">';
     h+='<div class="ac-top">';
@@ -13207,7 +13211,24 @@ function _renderAccountPanel(){
     h+='<span class="ac-region"'+(ctx._isRegion?' style="color:#60a5fa"':'')+'>'+esc(ctx.region)+'</span>';
     h+='</div>';
     h+='<div class="ac-meta">';
-    h+=vpcCount+' VPC'+(vpcCount!==1?'s':'')+' &middot; '+subCount+' Subnet'+(subCount!==1?'s':'')+' &middot; '+instCount+' EC2';
+    if(ctx.rlCtx){
+      const vc=(ctx.rlCtx.vpcs||[]).length;
+      const sc=(ctx.rlCtx.subnets||[]).length;
+      const ic=(ctx.rlCtx.instances||[]).length;
+      h+=vc+' VPC'+(vc!==1?'s':'')+' &middot; '+sc+' Subnet'+(sc!==1?'s':'')+' &middot; '+ic+' EC2';
+    }else if(_importedReportData){
+      var aid=ctx.accountId;
+      var fc=(_complianceFindings||[]).filter(function(f){return(f._accountId||'')===aid}).length;
+      var bc=(_budrAssessments||[]).filter(function(a){return(a.account||'')===aid}).length;
+      var nc=(_inventoryData||[]).filter(function(r){return(r.account||'')===aid}).length;
+      var parts=[];
+      if(fc)parts.push(fc+' finding'+(fc!==1?'s':''));
+      if(bc)parts.push(bc+' BUDR');
+      if(nc)parts.push(nc+' resource'+(nc!==1?'s':''));
+      h+=parts.length?parts.join(' &middot; '):'Imported data';
+    }else{
+      h+='0 VPCs &middot; 0 Subnets &middot; 0 EC2';
+    }
     h+='</div>';
     h+='<div class="ac-actions">';
     h+='<button class="account-toggle '+visClass+'" onclick="toggleAccountVisibility('+i+')">'+(ctx.visible?'Hide':'Show')+'</button>';
@@ -21193,12 +21214,13 @@ function _rptBuildXlsxSummary(wb){
     }
     r++;
   }
-  // Compliance Findings section
-  if(_complianceFindings&&_complianceFindings.length){
+  // Compliance Findings section (account-filtered to match detail sheets)
+  var _sumFindings=_rptFilterByAccount(_complianceFindings||[],_rptGetAccountFilter());
+  if(_sumFindings.length){
     _xlsxSummarySection(ws,r,'COMPLIANCE FINDINGS',cols);r++;
-    _xlsxSummaryRow(ws,r,'Total Findings',_complianceFindings.length,cols);r++;
+    _xlsxSummaryRow(ws,r,'Total Findings',_sumFindings.length,cols);r++;
     var sevs={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
-    _complianceFindings.forEach(function(f){sevs[f.severity]=(sevs[f.severity]||0)+1});
+    _sumFindings.forEach(function(f){sevs[f.severity]=(sevs[f.severity]||0)+1});
     ['CRITICAL','HIGH','MEDIUM','LOW'].forEach(function(s){
       var addr=XLSX.utils.encode_cell({r:r,c:0});
       ws[addr]={v:s,t:'s',s:_xlsxSevStyle(s)};
@@ -21218,7 +21240,7 @@ function _rptBuildXlsxSummary(wb){
     ws[XLSX.utils.encode_cell({r:r,c:3})]={v:'High',t:'s',s:_xlsxHeaderStyle()};
     r++;
     fws.forEach(function(fw){
-      var ff=_complianceFindings.filter(function(f){return f.framework===fw});
+      var ff=_sumFindings.filter(function(f){return f.framework===fw});
       if(!ff.length) return;
       var isStripe=(r%2===0);
       ws[XLSX.utils.encode_cell({r:r,c:0})]={v:_FW_LABELS[fw]||fw,t:'s',s:_xlsxCellStyle(isStripe)};
@@ -21231,11 +21253,13 @@ function _rptBuildXlsxSummary(wb){
     });
     r++;
   }
-  // BUDR section
-  if(_budrAssessments&&_budrAssessments.length){
+  // BUDR section (account-filtered to match detail sheets)
+  var _sumBudr=_rptFilterByAccount(_budrAssessments||[],_rptGetAccountFilter());
+  if(_sumBudr.length){
     _xlsxSummarySection(ws,r,'BACKUP & DISASTER RECOVERY',cols);r++;
-    _xlsxSummaryRow(ws,r,'Total Assessments',_budrAssessments.length,cols);r++;
-    var tc=_getBUDRTierCounts();
+    _xlsxSummaryRow(ws,r,'Total Assessments',_sumBudr.length,cols);r++;
+    var tc={protected:0,partial:0,at_risk:0};
+    _sumBudr.forEach(function(a){if(a.profile&&tc[a.profile.tier]!==undefined)tc[a.profile.tier]++});
     [['Protected',tc.protected||0,'protected'],['Partial',tc.partial||0,'partial'],['At Risk',tc.at_risk||0,'at_risk']].forEach(function(t){
       ws[XLSX.utils.encode_cell({r:r,c:0})]={v:t[0],t:'s',s:_xlsxTierStyle(t[2])};
       ws[XLSX.utils.encode_cell({r:r,c:1})]={v:t[1],t:'n',s:{font:{bold:true,sz:11,name:'Calibri'},alignment:{horizontal:'center'},border:_xlsxBorder()}};
