@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.6.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.7.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Browser-lightgrey" alt="Platform">
 </p>
@@ -196,6 +196,26 @@ The `-AllRegions` flag exports all active regions into subfolders. The PowerShel
 ## See Also
 
 - **[Azure Network Mapper](https://github.com/schylerchase/azure_mapper)** -- the Azure equivalent with VNets, NSGs, Azure Firewall, and 30+ Azure resource types
+
+---
+
+## Changelog
+
+### v2.7.0
+- **Global account filter toggle** on all dashboard tabs — click an account button to filter Compliance, Classification, App Summary, IAM, Firewall, BUDR, and Inventory to a single account
+- **Account indicator pills** on all dashboard tab rows showing which account each resource belongs to
+- **Report count filtering** — sidebar module counts, footer stats, and XLSX Summary sheet now respect the selected account filter
+- **Dashboard-to-Reports sync** — selecting an account in the dashboard header auto-sets the Reports dropdown
+- **Detail panel fullscreen icon** replaced with SVG expand/collapse arrows (was rendering as a confusing second X)
+- **Detail panel grid layout** — fullscreen mode uses CSS Grid instead of CSS columns, eliminating empty space gaps
+- **Flow analysis hop roles** — each hop pill now shows a role description (e.g., "Stateless filter", "Path selection")
+
+### v2.6.4
+- Priority tier classification for compliance finding counts
+- Consistent count filtering across dashboard, exports, and reports
+- Account pill counts on grouped compliance tables
+- Report import with legacy HTML parser
+- Export bar layout fix for overlapping controls
 
 ---
 
