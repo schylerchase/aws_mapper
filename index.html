@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.7.0</span></h1><p>Infrastructure topology & compliance</p></div>
+      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.7.1</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="landing-card"><h3>IaC Export</h3><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
     <div class="landing-card"><h3>Governance</h3><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
   </div>
-  <div class="landing-footer">v2.7.0 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+  <div class="landing-footer">v2.7.1 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
 </div>
   <div class="stats-bar" id="statsBar"></div>
   <svg id="mapSvg"></svg>
@@ -808,19 +808,34 @@ function _runComplianceWithCache(ctx){
   const findings=runComplianceChecks(ctx);
   // Enrich findings with account/region/vpc from tagged resources
   const _fResLookup={};
-  (ctx.sgs||[]).forEach(r=>{_fResLookup[r.GroupId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.nacls||[]).forEach(r=>{_fResLookup[r.NetworkAclId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.rts||[]).forEach(r=>{_fResLookup[r.RouteTableId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.instances||[]).forEach(r=>{_fResLookup[r.InstanceId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.vpcs||[]).forEach(r=>{_fResLookup[r.VpcId]={a:r._accountId||'',r:r._region||'',v:r.VpcId}});
-  (ctx.subnets||[]).forEach(r=>{_fResLookup[r.SubnetId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.rdsInstances||[]).forEach(r=>{_fResLookup[r.DBInstanceIdentifier]={a:r._accountId||'',r:r._region||'',v:(r.DBSubnetGroup&&r.DBSubnetGroup.VpcId)||''}});
-  (ctx.lambdaFns||[]).forEach(r=>{_fResLookup[r.FunctionName]={a:r._accountId||'',r:r._region||'',v:(r.VpcConfig&&r.VpcConfig.VpcId)||''}});
-  (ctx.albs||[]).forEach(r=>{_fResLookup[r.LoadBalancerName||r.LoadBalancerArn]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.s3bk||[]).forEach(r=>{_fResLookup[r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
-  (ctx.ecacheClusters||[]).forEach(r=>{_fResLookup[r.CacheClusterId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.redshiftClusters||[]).forEach(r=>{_fResLookup[r.ClusterIdentifier]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
+  const _fAdd=function(id,r,v){if(id)_fResLookup[id]={a:r._accountId||'',r:r._region||'',v:v||''}};
+  (ctx.sgs||[]).forEach(r=>{_fAdd(r.GroupId,r,r.VpcId)});
+  (ctx.nacls||[]).forEach(r=>{_fAdd(r.NetworkAclId,r,r.VpcId)});
+  (ctx.rts||[]).forEach(r=>{_fAdd(r.RouteTableId,r,r.VpcId)});
+  (ctx.instances||[]).forEach(r=>{_fAdd(r.InstanceId,r,r.VpcId)});
+  (ctx.vpcs||[]).forEach(r=>{_fAdd(r.VpcId,r,r.VpcId)});
+  (ctx.subnets||[]).forEach(r=>{_fAdd(r.SubnetId,r,r.VpcId)});
+  (ctx.rdsInstances||[]).forEach(r=>{_fAdd(r.DBInstanceIdentifier,r,(r.DBSubnetGroup&&r.DBSubnetGroup.VpcId))});
+  (ctx.lambdaFns||[]).forEach(r=>{_fAdd(r.FunctionName,r,(r.VpcConfig&&r.VpcConfig.VpcId));_fAdd(r.FunctionArn,r,(r.VpcConfig&&r.VpcConfig.VpcId))});
+  (ctx.albs||[]).forEach(r=>{_fAdd(r.LoadBalancerName,r,r.VpcId);_fAdd(r.LoadBalancerArn,r,r.VpcId)});
+  (ctx.s3bk||[]).forEach(r=>{_fAdd(r.Name,r,'')});
+  (ctx.ecacheClusters||[]).forEach(r=>{_fAdd(r.CacheClusterId,r,r.VpcId)});
+  (ctx.redshiftClusters||[]).forEach(r=>{_fAdd(r.ClusterIdentifier,r,r.VpcId)});
+  (ctx.volumes||[]).forEach(r=>{_fAdd(r.VolumeId,r,'')});
+  (ctx.snapshots||[]).forEach(r=>{_fAdd(r.SnapshotId,r,'')});
+  (ctx.ecsServices||[]).forEach(r=>{_fAdd(r.serviceName||r.ServiceName,r,r.VpcId||'');_fAdd(r.serviceArn||r.ServiceArn,r,r.VpcId||'')});
+  (ctx.enis||[]).forEach(r=>{_fAdd(r.NetworkInterfaceId,r,r.VpcId)});
+  (ctx.igws||[]).forEach(r=>{_fAdd(r.InternetGatewayId,r,'')});
+  (ctx.nats||[]).forEach(r=>{_fAdd(r.NatGatewayId,r,r.VpcId)});
+  (ctx.vpces||[]).forEach(r=>{_fAdd(r.VpcEndpointId,r,r.VpcId)});
+  (ctx.tgs||[]).forEach(r=>{_fAdd(r.TargetGroupName,r,r.VpcId);_fAdd(r.TargetGroupArn,r,r.VpcId)});
+  (ctx.vpns||[]).forEach(r=>{_fAdd(r.VpnConnectionId,r,'')});
+  (ctx.wafAcls||[]).forEach(r=>{_fAdd(r.WebACLId||r.Name,r,'');_fAdd(r.WebACLArn,r,'')});
+  (ctx.peerings||[]).forEach(r=>{_fAdd(r.VpcPeeringConnectionId,r,'')});
   findings.forEach(f=>{const info=_fResLookup[f.resource];if(info){f._accountId=info.a;f._region=info.r;f._vpcId=info.v}});
+  // Fallback: any finding still missing _accountId gets the primary account
+  var _accts=new Set();(ctx.vpcs||[]).forEach(r=>{if(r._accountId&&r._accountId!=='default')_accts.add(r._accountId)});
+  if(_accts.size>=1){var _pAcct=[..._accts][0];findings.forEach(f=>{if(!f._accountId)f._accountId=_pAcct})};
   _complianceDataFP=fp;
   _complianceCachedFindings=findings;
   _budrCachedFindings=_budrFindings;
@@ -1055,11 +1070,17 @@ function runBUDRChecks(ctx){
   (ctx.redshiftClusters||[]).forEach(function(r){_budrLookup['Redshift:'+r.ClusterIdentifier]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
   (ctx.albs||[]).forEach(function(r){_budrLookup['ALB:'+(r.LoadBalancerName||r.LoadBalancerArn)]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
   (ctx.s3bk||[]).forEach(function(r){_budrLookup['S3:'+r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
+  (ctx.volumes||[]).forEach(function(r){_budrLookup['EBS:'+r.VolumeId]={a:r._accountId||'',r:r._region||'',v:''}});
+  (ctx.snapshots||[]).forEach(function(r){_budrLookup['Snapshot:'+r.SnapshotId]={a:r._accountId||'',r:r._region||'',v:''}});
   assessments.forEach(function(a){var info=_budrLookup[a.type+':'+a.id];if(info){a.account=info.a;a.region=info.r;a.vpcId=info.v}});
+  // Fallback: unmatched assessments get primary account
+  var _bAccts=new Set();(ctx.vpcs||[]).forEach(function(v){if(v._accountId&&v._accountId!=='default')_bAccts.add(v._accountId)});
+  if(_bAccts.size>=1){var _bPri=[..._bAccts][0];assessments.forEach(function(a){if(!a.account)a.account=_bPri})}
   // Enrich BUDR findings with account/region (for Action Plan sheet)
   var _bResLookup={};
   Object.keys(_budrLookup).forEach(function(k){var id=k.split(':').slice(1).join(':');_bResLookup[id]=_budrLookup[k]});
   f.forEach(function(finding){var info=_bResLookup[finding.resource];if(info){finding._accountId=info.a;finding._region=info.r;finding._vpcId=info.v}});
+  if(_bAccts.size>=1){var _bPri2=[..._bAccts][0];f.forEach(function(finding){if(!finding._accountId)finding._accountId=_bPri2})};
   _budrFindings=f;
   _budrAssessments=assessments;
   // Cross-reference with classification engine for tier compliance
@@ -1181,7 +1202,7 @@ const _RPT_MODULES=[
    desc:function(){var a=typeof _rptGetAccountFilter==='function'?_rptGetAccountFilter():'all';var f=_rptFilterByAccount(_complianceFindings||[],a);return f.length+' items'},
    render:function(ctx,opts){return _rptActionPlan(ctx,opts)}},
   {id:'app-summary',name:'App Summary',icon:'',category:'overview',enabled:true,
-   available:function(){return _appRegistry.length>0},
+   available:function(){if(!_appRegistry.length&&typeof _autoDiscoverApps==='function'){if(!_classificationData.length&&_rlCtx)runClassificationEngine(_rlCtx);_autoDiscoverApps()}return _appRegistry.length>0},
    desc:function(){return _appRegistry.length+' apps defined'},
    render:function(ctx,opts){return _rptAppSummary(ctx,opts)}},
   {id:'iac-recs',name:'IaC Recommendations',icon:'',category:'remediation',enabled:false,
@@ -9234,6 +9255,8 @@ function _renderMapInner(){
   vpcs=[...seenVpcs.values()];
   // Collect unique accounts for rendering
   const _accounts=new Set();vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
+  // Replace 'default' fallback with the primary detected account ID
+  if(_accounts.size===1){var _primaryAcct=[..._accounts][0];[vpcs,subnets,igws,nats,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(function(arr){arr.forEach(function(r){if(r&&r._accountId==='default')r._accountId=_primaryAcct})})}
   const _multiAccount=_accounts.size>1;
 
   if(!vpcs.length&&!subnets.length){
@@ -13062,6 +13085,8 @@ function _buildRlCtxFromData(textareas, accountLabel){
 
     const _accounts=new Set();
     vpcs.forEach(v=>{if(v._accountId&&v._accountId!=='default')_accounts.add(v._accountId)});
+    // Replace 'default' fallback with the primary detected account ID
+    if(_accounts.size>=1){var _prAcct=[..._accounts][0];[vpcs,subnets,sgs,nacls,rts,igwRaw,natRaw,vpceRaw,enis,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings,ecacheClusters,redshiftClusters,volumes,snapshots,s3bk,tgs,wafAcls,vpns].forEach(function(arr){arr.forEach(function(r){if(r&&r._accountId==='default')r._accountId=_prAcct})})}
     const _multiAccount=_accounts.size>1;
     const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
     const _multiRegion=_regions.size>1;
@@ -19755,8 +19780,8 @@ function _renderClassificationTab(){
 // === APP SUMMARY TAB ===
 function _autoDiscoverApps(){
   if(_appAutoDiscovered) return;
-  _appAutoDiscovered=true;
   if(!_classificationData.length) return;
+  _appAutoDiscovered=true;
   var seen={};
   var candidates=['Application','app','App','Service','service','Product','product','Component','component','Project','project'];
   _classificationData.forEach(function(r){
@@ -19793,7 +19818,7 @@ function _buildAppRows(){
       if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier;
       types[r.type]=true;
       if(r.vpcName) vpcs[r.vpcName]=true;
-      if(r._accountId) accts[r._accountId]=true;
+      if(r._accountId){var _al=typeof _rptAccountLabel==='function'?(_rptAccountLabel(r._accountId)||r._accountId):r._accountId;accts[_al]=true}
     });
     var tier=app.tier||bestTier;
     var meta=_TIER_RPO_RTO[tier]||_TIER_RPO_RTO.low;
@@ -21509,7 +21534,7 @@ function _rptBuildXlsxCompliance(wb, preFiltered){
   var rows=sorted.map(function(x){
     var tier=_classifyTier(x);
     var effort=_EFFORT_LABELS[_getEffort(x)]||'Med';
-    return [x._accountId||'',x._region||'',_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
+    return [_rptAccountLabel(x._accountId)||'',x._region||'',_TIER_META[tier].name,effort,x.severity,_FW_LABELS[x.framework]||x.framework||'',x.control,
       x.ckv||'',x.resourceName||x.resource,x.message,x.remediation];
   });
   _xlsxAddSheet(wb,'Compliance',headers,rows,{sevCol:4,tierCol:2,effortCol:3,
@@ -21529,7 +21554,7 @@ function _rptBuildXlsxBUDR(wb){
     var rto=a.profile?a.profile.rto:'N/A';
     var rpo=a.profile?a.profile.rpo:'N/A';
     var sigs=a.signals?Object.keys(a.signals).map(function(k){return k+': '+a.signals[k]}).join(', '):'';
-    return [a.account||'',a.region||'',a.vpcId||'',a.type,a.id,a.name||'',tier,rto,rpo,sigs];
+    return [_rptAccountLabel(a._accountId||a.account)||'',a.region||'',a.vpcId||'',a.type,a.id,a.name||'',tier,rto,rpo,sigs];
   });
   var budrLinks=[];
   rows.forEach(function(row,ri){
@@ -21555,7 +21580,7 @@ function _rptBuildXlsxInventory(wb){
   // Shared lookups
   var _invSubVpc={};(c.subnets||[]).forEach(function(s){if(s.SubnetId)_invSubVpc[s.SubnetId]=s.VpcId||''});
   var _invInstVpc={};(c.instances||[]).forEach(function(i){if(i.InstanceId)_invInstVpc[i.InstanceId]=i.VpcId||_invSubVpc[i.SubnetId]||''});
-  function _a(r){return r._accountId||''}
+  function _a(r){return _rptAccountLabel(r._accountId)||''}
   function _r(r){return r._region||''}
   _af(c.vpcs).forEach(function(v){
     rows.push([_a(v),_r(v),v.VpcId,'VPC',v.VpcId,_rptTagName(v),v.CidrBlock,v.State||'available','']);
@@ -21679,7 +21704,7 @@ function _rptBuildXlsxActionPlan(wb, preFiltered){
     rgs.forEach(function(rg){
       rg.findings.forEach(function(f){
         var effort=_EFFORT_MAP[f.control]||'med';
-        rows.push([f._accountId||'',f._region||'',tierName,f.severity,_EFFORT_LABELS[effort]||effort,
+        rows.push([_rptAccountLabel(f._accountId)||'',f._region||'',tierName,f.severity,_EFFORT_LABELS[effort]||effort,
           _FW_LABELS[f.framework]||f.framework||'',f.control,
           f.resourceName||f.resource,f.message,f.remediation,'','','Open']);
       });
@@ -21850,7 +21875,9 @@ function _exportFullHTML(){
   // Collect tabs with data
   var tabs=[];
   if(c) tabs.push({id:'summary',label:'Summary'});
+  if(!_classificationData.length&&c) runClassificationEngine(c);
   if(_classificationData&&_classificationData.length) tabs.push({id:'classification',label:'Classification'});
+  if(typeof _autoDiscoverApps==='function') _autoDiscoverApps();
   if(_appRegistry&&_appRegistry.length) tabs.push({id:'appsummary',label:'App Summary'});
   if(_iamReviewData&&_iamReviewData.length) tabs.push({id:'iam',label:'IAM Review'});
   if(_complianceFindings&&_complianceFindings.length) tabs.push({id:'compliance',label:'Compliance'});
@@ -22156,6 +22183,8 @@ function _exportFullCSV(){
 }
 
 function _rptBuildXlsxAppSummary(wb){
+  if(!_classificationData.length&&_rlCtx) runClassificationEngine(_rlCtx);
+  if(typeof _autoDiscoverApps==='function') _autoDiscoverApps();
   if(!_appRegistry.length) return;
   var tierPri={critical:1,high:2,medium:3,low:4};
   var sumHeaders=['Application','Type','Criticality','Resources','RPO','RTO'];
@@ -22254,7 +22283,7 @@ function _rptBuildXlsxFirewall(wb){
         (p.IpRanges||[]).forEach(function(r){if(r.CidrIp==='0.0.0.0/0')openNet=true});
         (p.Ipv6Ranges||[]).forEach(function(r){if(r.CidrIpv6==='::/0')openNet=true});
       });
-      return [sg._accountId||'',sg._region||'',sg.GroupId,sg.GroupName||_rptTagName(sg),
+      return [_rptAccountLabel(sg._accountId)||'',sg._region||'',sg.GroupId,sg.GroupName||_rptTagName(sg),
         sg.VpcId||'',inbound,outbound,openNet?'YES':'No'];
     });
     _xlsxAddSheet(wb,'Security Groups',sgHeaders,sgRows,{minWidths:[16,14,22,22,22,14,14,16]});
@@ -22277,7 +22306,7 @@ function _rptBuildXlsxFirewall(wb){
     var naclHeaders=['Account','Region','NACL ID','Name','VPC','Rules','Default','Subnets'];
     var naclRows=nacls.map(function(n){
       var subs=(n.Associations||[]).map(function(a){return a.SubnetId}).filter(Boolean).join(', ');
-      return [n._accountId||'',n._region||'',n.NetworkAclId,_rptTagName(n),
+      return [_rptAccountLabel(n._accountId)||'',n._region||'',n.NetworkAclId,_rptTagName(n),
         n.VpcId||'',(n.Entries||[]).length,n.IsDefault?'Yes':'No',subs||'—'];
     });
     _xlsxAddSheet(wb,'NACLs',naclHeaders,naclRows,{minWidths:[16,14,22,22,22,10,10,30]});
@@ -22288,7 +22317,7 @@ function _rptBuildXlsxFirewall(wb){
     var rtHeaders=['Account','Region','Route Table ID','Name','VPC','Routes','Subnets'];
     var rtRows=rts.map(function(rt){
       var subs=(rt.Associations||[]).filter(function(a){return a.SubnetId}).map(function(a){return a.SubnetId}).join(', ');
-      return [rt._accountId||'',rt._region||'',rt.RouteTableId,_rptTagName(rt),
+      return [_rptAccountLabel(rt._accountId)||'',rt._region||'',rt.RouteTableId,_rptTagName(rt),
         rt.VpcId||'',(rt.Routes||[]).length,subs||'(main)'];
     });
     _xlsxAddSheet(wb,'Route Tables',rtHeaders,rtRows,{minWidths:[16,14,22,22,22,10,30]});
@@ -23611,7 +23640,7 @@ function downloadBlob(blob,name){
     }
     return;
   }
-  const a=document.createElement('a');var objUrl=URL.createObjectURL(blob);a.href=objUrl;a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(objUrl)},1000);
+  const a=document.createElement('a');var objUrl=URL.createObjectURL(blob);a.href=objUrl;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(objUrl)},1000);
 }
 
 // PNG High-DPI Export

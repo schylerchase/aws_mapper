@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.7.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.7.1-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Browser-lightgrey" alt="Platform">
 </p>
@@ -200,6 +200,15 @@ The `-AllRegions` flag exports all active regions into subfolders. The PowerShel
 ---
 
 ## Changelog
+
+### v2.7.1
+- **Account enrichment** — all 25+ resource types now populate account/region on compliance and BUDR findings (was only 12), with fallback to primary account
+- **XLSX account labels** — all export sheets show human-readable account names instead of raw 12-digit IDs
+- **Export modal visibility** — compliance export dialog no longer hidden behind dashboard panel
+- **App Summary lazy init** — Reports XLSX includes App Summary without requiring a tab visit first
+- **Download fix** — blob downloads attach to DOM for stricter browser environments (GitHub Pages)
+- **Account pill dedup** — App Summary no longer shows duplicate account pills per application
+- **Default label fix** — single-account loads no longer show "default" as the account name
 
 ### v2.7.0
 - **Global account filter toggle** on all dashboard tabs — click an account button to filter Compliance, Classification, App Summary, IAM, Firewall, BUDR, and Inventory to a single account

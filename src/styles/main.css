@@ -1249,7 +1249,7 @@
   .merge-acct-chip.hidden-chip{opacity:.35;text-decoration:line-through}
   .merge-acct-chip .mac-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   /* === TERRAFORM / CLOUDFORMATION EXPORT === */
-  .iac-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:120;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center}
+  .iac-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:600;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center}
   .iac-modal.open{display:flex}
   .iac-box{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;width:min(900px,90vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 32px var(--shadow-heavy)}
   .iac-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)}
