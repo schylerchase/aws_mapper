@@ -300,7 +300,7 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
     return;
   }
 
-  const scriptPath = path.join(__dirname, 'export-aws-data.sh');
+  const scriptPath = path.join(__dirname, 'scripts', 'export-aws-data.sh');
 
   // Ensure script is executable
   try { await fsp.chmod(scriptPath, 0o755); } catch {}
@@ -391,10 +391,10 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
   const tmpXlsx = path.join(os.tmpdir(), `budr-${id}.xlsx`);
   await fsp.writeFile(tmpJson, jsonData, 'utf8');
 
-  const scriptPath = path.join(__dirname, 'budr_export_xlsx.py');
+  const scriptPath = path.join(__dirname, 'scripts', 'budr_export_xlsx.py');
   try { await fsp.access(scriptPath); } catch {
     await fsp.unlink(tmpJson).catch(() => {});
-    return { error: 'budr_export_xlsx.py not found' };
+    return { error: 'scripts/budr_export_xlsx.py not found' };
   }
 
   try {

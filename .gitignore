@@ -10,3 +10,4 @@ out/
 .DS_Store
 aws-export-*/
 docs/
+delete-me/

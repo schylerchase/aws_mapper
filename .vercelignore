@@ -1,0 +1,37 @@
+node_modules/
+
+# Electron build artifacts
+dist/*.dmg
+dist/*.dmg.blockmap
+dist/*.exe
+dist/*.exe.blockmap
+dist/*.zip
+dist/*.zip.blockmap
+dist/*.AppImage
+dist/*.deb
+dist/*.yml
+dist/mac-arm64/
+dist/win-arm64-unpacked/
+dist/app.bundle.js.map
+
+# Dev/test files
+*.bak*
+*.backup
+test-results/
+tests/
+__pycache__/
+.claude/
+*.spec.js
+playwright.config.js
+delete-me/
+
+# Electron-specific files
+main.js
+preload.js
+scripts/
+
+# Non-web assets
+build/
+AWSMapper.png
+logo-cropped.png
+OPTIMIZATION_PLAN.md
