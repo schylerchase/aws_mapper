@@ -974,7 +974,7 @@ async function _exportDiffXlsx(){
 }
 
 // Compare button click -> open file picker
-document.getElementById('compareBtn').addEventListener('click',function(){
+if(typeof document!=='undefined') document.getElementById('compareBtn').addEventListener('click',function(){
   if(_diffMode){
     // Toggle dashboard; hold Shift to exit diff mode entirely
     var dash=document.getElementById('diffDash');
@@ -986,7 +986,7 @@ document.getElementById('compareBtn').addEventListener('click',function(){
 });
 
 // File picker -> parse and enter diff mode (supports single .awsmap or multiple .json)
-document.getElementById('diffFileInput').addEventListener('change',async function(){
+if(typeof document!=='undefined') document.getElementById('diffFileInput').addEventListener('change',async function(){
   var files=[].slice.call(this.files);
   if(!files.length) return;
   this.value='';
@@ -1034,6 +1034,7 @@ document.getElementById('diffFileInput').addEventListener('change',async functio
 });
 
 // Banner button listeners
+if(typeof document!=='undefined'){
 document.getElementById('diffExitBtn').addEventListener('click',exitDiffMode);
 document.getElementById('diffToggleFilter').addEventListener('click',_toggleDiffFilter);
 document.getElementById('diffExportBtn').addEventListener('click',_exportDiffReport);
@@ -1075,6 +1076,7 @@ document.addEventListener('keydown',function(e){
     e.preventDefault();
   }
 },true);
+}
 
 // Snapshot integration: compare with a snapshot from timeline
 function _compareWithSnapshot(snap){
@@ -1264,12 +1266,14 @@ function _clearBlastRadius(){
   _blastActive=false;
   _mapG.selectAll('.blast-dimmed,.blast-glow-hard,.blast-glow-soft,.blast-glow-config').classed('blast-dimmed',false).classed('blast-glow-hard',false).classed('blast-glow-soft',false).classed('blast-glow-config',false);
 }
+if(typeof document!=='undefined'){
 document.getElementById('depCloseBtn').addEventListener('click',()=>document.getElementById('depOverlay').classList.remove('open'));
 document.getElementById('depBlastBtn').addEventListener('click',()=>{});// overridden in showDependencies
 
 // === HELP ===
 document.getElementById('helpBtn').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='flex'});
 document.getElementById('helpClose').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='none'});
+}
 
 // === UNIFIED DASHBOARD TAB REGISTRY ===
 var _udashTab = null;
@@ -1366,7 +1370,7 @@ function closeUnifiedDash(){
   _udashTab=null;
 }
 
-document.getElementById('udashClose').addEventListener('click',closeUnifiedDash);
+if(typeof document!=='undefined') document.getElementById('udashClose').addEventListener('click',closeUnifiedDash);
 
 // === COMPLIANCE DASHBOARD CONTROLS ===
 // (Toolbar event listeners are now attached dynamically inside _renderCompDash)
@@ -1544,7 +1548,7 @@ function _renderBUDRDash(){
   });
 }
 // BUDR button
-document.getElementById('budrBtn').addEventListener('click',openBUDRDash);
+if(typeof document!=='undefined') document.getElementById('budrBtn').addEventListener('click',openBUDRDash);
 
 // === GOVERNANCE DASHBOARD ===
 function _closeAllDashboardsExcept(keep){_closeAllDashboards(keep)}
@@ -2109,5 +2113,11 @@ function _openRulesEditor(){
 }
 
 // Governance event listeners
-document.getElementById('govBtn').addEventListener('click',function(){openUnifiedDash('classification')});
+if(typeof document!=='undefined') document.getElementById('govBtn').addEventListener('click',function(){openUnifiedDash('classification')});
+
+// Exports for unit testing (pure functions + constants)
+export {
+  _DIFF_KEYS, _DIFF_VOLATILE, _DIFF_STRUCTURAL,
+  normalizeResource, normalizeSG, classifyChange, _fieldDiff, computeDiff, _diffResName
+};
 

@@ -175,3 +175,8 @@ function runIAMChecks(iamData){
   return f;
 }
 
+// Exports for unit testing
+export {
+  _stmtArr, _safePolicyParse,
+  parseIAMData, getIAMAccessForVpc, runIAMChecks
+};

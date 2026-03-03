@@ -19,7 +19,9 @@
     "build:win": "npm run bundle:prod && electron-builder --win",
     "build:linux": "npm run bundle:prod && electron-builder --linux",
     "test": "npx playwright test",
-    "test:headed": "npx playwright test --headed"
+    "test:headed": "npx playwright test --headed",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:all": "npm run test:unit && npx playwright test"
   },
   "build": {
     "appId": "com.awsmapper.app",
@@ -71,7 +73,8 @@
     "@playwright/test": "^1.58.2",
     "electron": "^35.7.5",
     "electron-builder": "^26.7.0",
-    "esbuild": "^0.27.3"
+    "esbuild": "^0.27.3",
+    "serve": "^14.2.5"
   },
   "dependencies": {
     "electron-updater": "^6.7.3"

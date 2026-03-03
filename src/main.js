@@ -13,6 +13,13 @@ import { generateDemo } from './modules/demo-data.js';
 import { ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR } from './modules/cidr-engine.js';
 import { runComplianceChecks, invalidateComplianceCache } from './modules/compliance-engine.js';
 
+// Network rules (pure functions extracted from flow-analyzer)
+import { ipToNum, ipFromCidr, cidrContains as nrCidrContains, protoMatch, portInRange, protoName, evaluateRouteTable, evaluateNACL, evaluateSG } from './modules/network-rules.js';
+
+// NOTE: diff-engine.js and iam-engine.js are NOT imported here.
+// They have top-level DOM event listeners and are loaded via separate <script type="module"> tags
+// in index.html (after DOM is ready). Their exports are available for unit testing only.
+
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
   // Constants (clean + underscore-prefixed aliases for inline code)
@@ -38,7 +45,13 @@ window.AppModules = {
   runComplianceChecks, invalidateComplianceCache,
 
   // Engines
-  generateDemo
+  generateDemo,
+
+  // Network rules
+  ipToNum, ipFromCidr, nrCidrContains, protoMatch, portInRange, protoName,
+  evaluateRouteTable, evaluateNACL, evaluateSG,
+
+  // Note: diff-engine + iam-engine loaded via separate script tags (DOM-dependent)
 };
 
 // Make functions available globally (transitional - will remove once all code is modularized)
