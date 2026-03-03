@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://schylerchase.github.io/aws_mapper/">Live Demo</a> &middot;
+  <a href="https://aws-mapper.vercel.app/">Live Demo</a> &middot;
   <a href="https://github.com/schylerchase/aws_mapper/releases/latest">Download Desktop App</a> &middot;
   <a href="#quick-start">Quick Start</a>
 </p>
@@ -115,7 +115,7 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 
 ### Browser (no install)
 
-1. Open the [live demo](https://schylerchase.github.io/aws_mapper/) or `index.html` locally
+1. Open the [live demo](https://aws-mapper.vercel.app/) or `index.html` locally
 2. The landing dashboard shows all features -- click **Load Demo** or **Import Data** to get started
 3. Click **Render Map** after pasting AWS CLI JSON
 

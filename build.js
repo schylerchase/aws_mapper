@@ -27,21 +27,42 @@ const buildConfig = {
   logLevel: 'info'
 };
 
+// Process app-core.js (plain script, not an ES module — minify only)
+async function buildCore() {
+  const src = fs.readFileSync('src/app-core.js', 'utf8');
+  if (isProd) {
+    const result = await esbuild.transform(src, { minify: true, target: 'es2020' });
+    fs.writeFileSync('dist/app-core.js', result.code);
+  } else {
+    fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
+  }
+}
+
 if (watch) {
   esbuild.context(buildConfig).then(ctx => {
     ctx.watch();
     console.log('Watching for changes...');
   }).catch(() => process.exit(1));
+
+  // Also watch app-core.js and copy on change
+  buildCore();
+  fs.watch('src/app-core.js', () => {
+    fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
+    console.log('  Copied app-core.js');
+  });
 } else {
-  esbuild.build(buildConfig).then(() => {
+  esbuild.build(buildConfig).then(async () => {
+    await buildCore();
+
     if (!isProd) return;
-    // Auto-inject content hash into index.html for cache busting
-    const bundle = fs.readFileSync('dist/app.bundle.js');
-    const hash = crypto.createHash('md5').update(bundle).digest('hex').slice(0, 8);
+    // Auto-inject content hashes into index.html for cache busting
+    const bundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/app.bundle.js')).digest('hex').slice(0, 8);
+    const coreHash = crypto.createHash('md5').update(fs.readFileSync('dist/app-core.js')).digest('hex').slice(0, 8);
     const htmlPath = path.join(__dirname, 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${hash}`);
+    html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
+    html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
     fs.writeFileSync(htmlPath, html, 'utf8');
-    console.log(`Cache bust: app.bundle.js?v=${hash}`);
+    console.log(`Cache bust: app.bundle.js?v=${bundleHash}, app-core.js?v=${coreHash}`);
   }).catch(() => process.exit(1));
 }

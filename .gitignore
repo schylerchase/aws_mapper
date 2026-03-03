@@ -11,3 +11,4 @@ out/
 aws-export-*/
 docs/
 delete-me/
+.vercel

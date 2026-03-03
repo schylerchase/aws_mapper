@@ -34,6 +34,7 @@
       "scripts/**",
       "libs/**",
       "dist/app.bundle.js",
+      "dist/app-core.js",
       "src/styles/**",
       "src/data/**",
       "logo.png"
