@@ -47,11 +47,9 @@
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg-primary);color:var(--text-primary);height:100vh;overflow:hidden;display:flex}
-  .sidebar{position:fixed;top:0;left:0;width:360px;min-width:360px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;z-index:10;transition:transform .2s ease;will-change:transform}
+  .sidebar{position:fixed;top:0;left:0;width:360px;min-width:360px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;z-index:10;transition:transform .15s ease;will-change:transform}
   .sidebar.collapsed{transform:translateX(-360px);border-right:none}
-  .main{margin-left:360px}
-  .sidebar.collapsed~.main{margin-left:0}
-  .sidebar-toggle{position:fixed;top:8px;left:360px;z-index:11;width:24px;height:24px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:left .2s,background .15s;line-height:1}
+  .sidebar-toggle{position:fixed;top:8px;left:360px;z-index:11;width:24px;height:24px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:left .15s ease,background .15s;line-height:1}
   .sidebar-toggle:hover{background:var(--border);color:var(--text-primary)}
   .sidebar.collapsed~.sidebar-toggle{left:4px}
   .sidebar-header{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-tertiary)}
@@ -1288,8 +1286,6 @@
   @media (max-width:1024px){
     .sidebar{width:300px;min-width:300px}
     .sidebar.collapsed{transform:translateX(-300px)}
-    .main{margin-left:300px}
-    .sidebar.collapsed~.main{margin-left:0}
     .sidebar-toggle{left:300px}
     .sidebar.collapsed~.sidebar-toggle{left:4px}
     .detail-panel{width:360px}
@@ -1341,7 +1337,7 @@
     .sec-hdr span{font-size:calc(9px * var(--txt-scale))}
 
     /* Main fills viewport — use svh so bottom elements clear Safari toolbar */
-    .main{width:100vw;height:100vh;height:100svh;margin-left:0}
+    .main{width:100vw;height:100vh;height:100svh}
 
     /* Detail panel: full-width overlay from bottom — use svh to clear Safari toolbar */
     .detail-panel{width:100vw;height:70vh;height:70svh;top:auto;bottom:0;border-left:none;border-top:1px solid var(--border);border-radius:16px 16px 0 0}
