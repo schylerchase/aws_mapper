@@ -10,9 +10,9 @@ function _fwTakeSnapshot(){
   if(_fwSnapshot) return;
   if(!_rlCtx) return;
   _fwSnapshot={
-    nacls:JSON.parse(JSON.stringify(_rlCtx.nacls||[])),
-    sgs:JSON.parse(JSON.stringify(_rlCtx.sgs||[])),
-    rts:JSON.parse(JSON.stringify(_rlCtx.rts||[]))
+    nacls:structuredClone(_rlCtx.nacls||[]),
+    sgs:structuredClone(_rlCtx.sgs||[]),
+    rts:structuredClone(_rlCtx.rts||[])
   };
 }
 
@@ -20,13 +20,13 @@ function _fwResetAll(){
   if(!_fwSnapshot||!_rlCtx) return;
   // Restore nacls preserving array reference
   _rlCtx.nacls.length=0;
-  _fwSnapshot.nacls.forEach(n=>_rlCtx.nacls.push(JSON.parse(JSON.stringify(n))));
+  _fwSnapshot.nacls.forEach(n=>_rlCtx.nacls.push(structuredClone(n)));
   // Restore sgs preserving array reference
   _rlCtx.sgs.length=0;
-  _fwSnapshot.sgs.forEach(s=>_rlCtx.sgs.push(JSON.parse(JSON.stringify(s))));
+  _fwSnapshot.sgs.forEach(s=>_rlCtx.sgs.push(structuredClone(s)));
   // Restore rts preserving array reference
   _rlCtx.rts.length=0;
-  _fwSnapshot.rts.forEach(r=>_rlCtx.rts.push(JSON.parse(JSON.stringify(r))));
+  _fwSnapshot.rts.forEach(r=>_rlCtx.rts.push(structuredClone(r)));
   _fwRebuildLookups();
   _fwEdits=[];
   _fwSnapshot=null;

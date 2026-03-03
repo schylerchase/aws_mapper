@@ -3864,7 +3864,7 @@ function _generateWarnings(){
 function importDesignPlan(json){
   try{
     const plan=typeof json==='string'?JSON.parse(json):json;
-    if(!plan.changes||!Array.isArray(plan.changes)){alert('Invalid plan format');return}
+    if(!plan.changes||!Array.isArray(plan.changes)){_showToast('Invalid plan format');return}
     if(!_designMode)enterDesignMode();
     if(plan.region)_designRegion=plan.region;
     let imported=0,blocked=0;
@@ -3872,8 +3872,8 @@ function importDesignPlan(json){
       addDesignChange(ch);
       if(ch._invalid)blocked++;else imported++;
     });
-    if(blocked>0)alert('Imported '+imported+' changes, '+blocked+' blocked by validation errors. Check the change log for details.');
-  }catch(e){alert('Failed to import plan: '+e.message)}
+    if(blocked>0)_showToast('Imported '+imported+' changes, '+blocked+' blocked by validation errors');
+  }catch(e){_showToast('Failed to import plan: '+e.message)}
 }
 
 // === IAC POLICY EXPORT ===
@@ -3966,9 +3966,9 @@ function exportPolicies(findings,format){
   downloadBlob(new Blob([content],{type:mime}),filename);
 }
 function exportCheckovCfn(){
-  if(!_rlCtx){alert('Render a map first');return;}
+  if(!_rlCtx){_showToast('Render a map first');return;}
   var json=generateCheckovCfn(_rlCtx,_iamData);
-  if(!json){alert('No data available');return;}
+  if(!json){_showToast('No data available');return;}
   var count=Object.keys(JSON.parse(json).Resources||{}).length;
   downloadBlob(new Blob([json],{type:'application/json'}),'checkov-template.json');
   _showToast(count+' resources exported. Run: checkov -f checkov-template.json --framework cloudformation');
@@ -4933,7 +4933,7 @@ var _DEFAULT_CLASS_RULES=[
   {pattern:'staging|stage|uat|qa',scope:'tag:Environment',tier:'medium',weight:110},
   {pattern:'dev|develop|sandbox|test',scope:'tag:Environment',tier:'low',weight:110}
 ];
-var _classificationRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+var _classificationRules=structuredClone(_DEFAULT_CLASS_RULES);
 var _discoveredTags={};
 
 var _TIER_RPO_RTO={
@@ -5205,7 +5205,7 @@ function prepareIAMReviewData(iamData){
 function renderIAMPanel(vpcId){
   if(!_iamData){
     const raw=safeParse(gv('in_iam'));
-    if(!raw){alert('No IAM data loaded. Paste IAM auth details in the IAM section first.');return}
+    if(!raw){_showToast('No IAM data loaded. Paste IAM auth details in the IAM section first.');return}
     _iamData=parseIAMData(raw);
   }
   const roles=getIAMAccessForVpc(_iamData,vpcId);
@@ -5520,6 +5520,8 @@ function flashNode(selector){
     .transition().duration(400).attr('stroke',orig).attr('stroke-width',origW);
 }
 
+var _zoomDirty=false;
+function _updateZoomLabel(k){if(_zoomDirty)return;_zoomDirty=true;requestAnimationFrame(()=>{document.getElementById('zoomLevel').textContent=Math.round(k*100)+'%';_zoomDirty=false})}
 function bindZoomButtons(){
   if(!_mapSvg||!_mapZoom||!_mapG) return;
   const svg=_mapSvg,zB=_mapZoom,g=_mapG;
@@ -7089,7 +7091,7 @@ function renderLandingZoneMap(ctx){
   
   // SVG setup
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'});svg.call(zB);
+  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)});svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
   
@@ -8306,7 +8308,7 @@ function renderExecutiveOverview(ctx){
   const W=document.querySelector('.main').clientWidth,H=document.querySelector('.main').clientHeight;
   svg.attr('width',W).attr('height',H);
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'});svg.call(zB);
+  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)});svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
   
@@ -9151,7 +9153,7 @@ function _renderMapInner(){
 
   // SVG
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'});svg.call(zB);
+  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)});svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
 
@@ -10641,7 +10643,7 @@ function _renderMapInner(){
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
-  }catch(e){console.error('renderMap error:',e);alert('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
+  }catch(e){console.error('renderMap error:',e);_showToast('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
 }
 
 document.getElementById('renderBtn').addEventListener('click',function(){
@@ -10677,7 +10679,7 @@ function saveProject(){
   downloadBlob(blob,name+'.awsmap');_showToast('Project saved: '+name+'.awsmap');
 }
 function _loadProjectData(project){
-  if(!project.textareas&&!project._format){alert('Invalid project file');return}
+  if(!project.textareas&&!project._format){_showToast('Invalid project file');return}
   // MEMORY: Reset state from previous load
   _importedReportData=null;
   _iamData=null;_iamReviewData=[];_appRegistry=[];_parseCache={};_rlCtx=null;
@@ -10712,14 +10714,14 @@ function _loadProjectData(project){
 function loadProject(file){
   const reader=new FileReader();
   reader.onload=function(e){
-    try{_loadProjectData(JSON.parse(e.target.result))}catch(ex){alert('Failed to load: '+ex.message)}
+    try{_loadProjectData(JSON.parse(e.target.result))}catch(ex){_showToast('Failed to load: '+ex.message)}
   };reader.readAsText(file);
 }
 function _showToast(msg,type){showToast(msg,type)}
 document.getElementById('saveProjectBtn').addEventListener('click',saveProject);
 document.getElementById('loadProjectBtn').addEventListener('click',()=>{
   if(_isElectron){
-    window.electronAPI.openFile().then(c=>{if(c){try{_loadProjectData(JSON.parse(c))}catch(ex){alert('Failed to load: '+ex.message)}}}).catch(e=>console.error('Open failed:',e));
+    window.electronAPI.openFile().then(c=>{if(c){try{_loadProjectData(JSON.parse(c))}catch(ex){_showToast('Failed to load: '+ex.message)}}}).catch(e=>console.error('Open failed:',e));
   } else {document.getElementById('loadProjectInput').click()}
 });
 document.getElementById('loadProjectInput').addEventListener('change',function(){if(this.files[0])loadProject(this.files[0]);this.value=''});
@@ -10729,12 +10731,12 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){
 
 // === Report Import ===
 function importReport(file){
-  if(!file.name.match(/\.html?$/i)){alert('Please select an HTML report file (.html)');return}
+  if(!file.name.match(/\.html?$/i)){_showToast('Please select an HTML report file (.html)');return}
   _showToast('Loading report: '+file.name+'...');
   var reader=new FileReader();
   reader.onload=function(e){
     try{_parseImportedReport(e.target.result)}
-    catch(ex){alert('Failed to import report: '+ex.message);console.error('Report import failed:',ex)}
+    catch(ex){_showToast('Failed to import report: '+ex.message);console.error('Report import failed:',ex)}
   };
   reader.readAsText(file);
 }
@@ -10749,7 +10751,7 @@ function _parseImportedReport(htmlString){
   }
   var parsed=_parseReportHTML(doc);
   if(!parsed.findings.length&&!parsed.budrAssessments.length&&!parsed.inventoryData.length&&!parsed.iamReviewData.length&&!parsed.appRegistry.length){
-    alert('No report data found in this HTML file.\n\nThis file may not be an AWS Mapper report, or it may use an older format that cannot be parsed.');return;
+    _showToast('No report data found in this HTML file');return;
   }
   _applyImportedData(parsed,'html');
 }
@@ -11249,7 +11251,7 @@ if(_isElectron){
   _unsubs.push(window.electronAPI.onMenuScanAWS(()=>_openScanModal()));
   _unsubs.push(window.electronAPI.onMenuToggleTheme(()=>toggleTheme()));
   _unsubs.push(window.electronAPI.onFileOpened((content)=>{
-    try{_loadProjectData(JSON.parse(content))}catch(ex){alert('Failed to load file: '+ex.message)}
+    try{_loadProjectData(JSON.parse(content))}catch(ex){_showToast('Failed to load file: '+ex.message)}
   }));
 
   // Update available — show persistent banner with download/install controls
@@ -11936,7 +11938,7 @@ function takeSnapshot(label,auto){
     accountLabel:(document.getElementById('accountLabel')||{}).value||'',
     layout:(document.getElementById('layoutMode')||{}).value||'grid',
     textareas:textareas,
-    annotations:JSON.parse(JSON.stringify(_annotations||{}))
+    annotations:structuredClone(_annotations||{})
   };
   _snapshots.push(snap);
   while(_snapshots.length>_MAX_SNAPSHOTS)_snapshots.shift();
@@ -11984,7 +11986,7 @@ function _viewSnapshot(idx){
     document.querySelectorAll('.ji').forEach(el=>{_currentSnapshot[el.id]=el.value});
     _currentSnapshot._accountLabel=(document.getElementById('accountLabel')||{}).value||'';
     _currentSnapshot._layout=(document.getElementById('layoutMode')||{}).value||'grid';
-    _currentSnapshot._annotations=JSON.parse(JSON.stringify(_annotations||{}));
+    _currentSnapshot._annotations=structuredClone(_annotations||{});
   }
   _viewingHistory=true;
   // Load snapshot data
@@ -11994,7 +11996,7 @@ function _viewSnapshot(idx){
     if(el){el.value=val;try{JSON.parse(val);el.className='ji valid'}catch(e){el.className='ji invalid'}}
   });
   if(snap.accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=snap.accountLabel}
-  if(snap.annotations)_annotations=JSON.parse(JSON.stringify(snap.annotations));
+  if(snap.annotations)_annotations=structuredClone(snap.annotations);
   renderMap();
   // Show history banner
   const d=new Date(snap.timestamp);
@@ -12014,7 +12016,7 @@ function _returnToCurrent(){
     if(el.value.trim()){try{JSON.parse(el.value);el.className='ji valid'}catch(e){el.className='ji invalid'}}else{el.className='ji'}
   });
   if(_currentSnapshot._accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=_currentSnapshot._accountLabel}
-  if(_currentSnapshot._annotations)_annotations=JSON.parse(JSON.stringify(_currentSnapshot._annotations));
+  if(_currentSnapshot._annotations)_annotations=structuredClone(_currentSnapshot._annotations);
   document.getElementById('historyBanner').style.display='none';
   document.querySelectorAll('.timeline-dot').forEach(d=>d.classList.remove('active'));
   _currentSnapshot=null;
@@ -12042,12 +12044,13 @@ const _origRenderMap=typeof renderMap==='function'?null:null;// renderMap define
 const _NOTES_KEY=NOTES_KEY;
 let _annotations={};// {resourceId: [{text,category,author,created,updated,pinned}]}
 let _annotationAuthor='';
-try{const s=localStorage.getItem(_NOTES_KEY);if(s)_annotations=JSON.parse(s)}catch(e){}
-try{_annotationAuthor=localStorage.getItem('aws_mapper_note_author')||''}catch(e){}
+let _notesLoaded=false;
+function _ensureNotesLoaded(){if(_notesLoaded)return;_notesLoaded=true;try{const s=localStorage.getItem(_NOTES_KEY);if(s)_annotations=JSON.parse(s)}catch(e){}try{_annotationAuthor=localStorage.getItem('aws_mapper_note_author')||''}catch(e){}}
 const _NOTE_CATEGORIES=['owner','status','incident','todo','info','warning'];
 function _saveAnnotations(){try{localStorage.setItem(_NOTES_KEY,JSON.stringify(_annotations))}catch(e){}}
 function _noteKey(resourceId,accountId){return accountId&&accountId!=='default'?accountId+':'+resourceId:resourceId}
 function _getAllNotes(){
+  _ensureNotesLoaded();
   const all=[];
   Object.entries(_annotations).forEach(([rid,notes])=>{
     (Array.isArray(notes)?notes:[notes]).forEach((n,i)=>{if(n&&n.text)all.push({...n,resourceId:rid,noteIndex:i})});
@@ -12055,6 +12058,7 @@ function _getAllNotes(){
   return all.sort((a,b)=>new Date(b.updated||b.created||0)-new Date(a.updated||a.created||0));
 }
 function addAnnotation(resourceId,text,category,pinned){
+  _ensureNotesLoaded();
   if(!text||!text.trim())return;
   const note={text:text.trim(),category:category||'info',author:_annotationAuthor||'',created:new Date().toISOString(),updated:new Date().toISOString(),pinned:!!pinned};
   if(!_annotations[resourceId])_annotations[resourceId]=[];
@@ -12966,9 +12970,9 @@ function _fwTakeSnapshot(){
   if(_fwSnapshot) return;
   if(!_rlCtx) return;
   _fwSnapshot={
-    nacls:JSON.parse(JSON.stringify(_rlCtx.nacls||[])),
-    sgs:JSON.parse(JSON.stringify(_rlCtx.sgs||[])),
-    rts:JSON.parse(JSON.stringify(_rlCtx.rts||[]))
+    nacls:structuredClone(_rlCtx.nacls||[]),
+    sgs:structuredClone(_rlCtx.sgs||[]),
+    rts:structuredClone(_rlCtx.rts||[])
   };
 }
 
@@ -12976,13 +12980,13 @@ function _fwResetAll(){
   if(!_fwSnapshot||!_rlCtx) return;
   // Restore nacls preserving array reference
   _rlCtx.nacls.length=0;
-  _fwSnapshot.nacls.forEach(n=>_rlCtx.nacls.push(JSON.parse(JSON.stringify(n))));
+  _fwSnapshot.nacls.forEach(n=>_rlCtx.nacls.push(structuredClone(n)));
   // Restore sgs preserving array reference
   _rlCtx.sgs.length=0;
-  _fwSnapshot.sgs.forEach(s=>_rlCtx.sgs.push(JSON.parse(JSON.stringify(s))));
+  _fwSnapshot.sgs.forEach(s=>_rlCtx.sgs.push(structuredClone(s)));
   // Restore rts preserving array reference
   _rlCtx.rts.length=0;
-  _fwSnapshot.rts.forEach(r=>_rlCtx.rts.push(JSON.parse(JSON.stringify(r))));
+  _fwSnapshot.rts.forEach(r=>_rlCtx.rts.push(structuredClone(r)));
   _fwRebuildLookups();
   _fwEdits=[];
   _fwSnapshot=null;
@@ -14006,7 +14010,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     if(!dSg) return;
     var dArr=dDir==='ingress'?dSg.IpPermissions:dSg.IpPermissionsEgress;
     if(!dArr||dRIdx>=dArr.length) return;
-    var dRule=JSON.parse(JSON.stringify(dArr[dRIdx]));
+    var dRule=structuredClone(dArr[dRIdx]);
     _fwTakeSnapshot();
     dArr.splice(dRIdx,1);
     _fwEdits.push({type:'sg',resourceId:dSgId,direction:dDir,action:'delete',rule:dRule,originalRule:dRule});
@@ -14064,13 +14068,13 @@ function _fwHandleAction(e, sub, vpcId, lk){
       var eIdx=parseInt(sEditIdx,10);
       var sArr=sDir==='ingress'?sSg.IpPermissions:sSg.IpPermissionsEgress;
       if(sArr&&eIdx<sArr.length){
-        sgOrig=JSON.parse(JSON.stringify(sArr[eIdx]));
+        sgOrig=structuredClone(sArr[eIdx]);
         sArr.splice(eIdx,1);
         sgEditAct='modify';
       }
     }
     _fwApplyRule('sg', sSgId, sDir, sgRule);
-    var sgEdit={type:'sg',resourceId:sSgId,direction:sDir,action:sgEditAct,rule:JSON.parse(JSON.stringify(sgRule))};
+    var sgEdit={type:'sg',resourceId:sSgId,direction:sDir,action:sgEditAct,rule:structuredClone(sgRule)};
     if(sgOrig) sgEdit.originalRule=sgOrig;
     _fwEdits.push(sgEdit);
     _fwRebuildLookups();
@@ -14532,7 +14536,7 @@ function _fwRenderFooter(shown,total){
       '<button id="fwDashResetAll" style="background:rgba(239,68,68,.1);border:1px solid var(--accent-red);color:var(--accent-red);padding:4px 10px;border-radius:4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Reset All</button>'+
     '</div></div>';
   document.getElementById('fwDashExportAll').addEventListener('click',function(){
-    if(!_fwEdits||!_fwEdits.length){alert('No edits to export');return}
+    if(!_fwEdits||!_fwEdits.length){_showToast('No edits to export');return}
     var cmds=_fwGenerateCli(_fwEdits);
     if(cmds.length&&navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(cmds.join('\n')).then(function(){
@@ -14541,7 +14545,7 @@ function _fwRenderFooter(shown,total){
     }
   });
   document.getElementById('fwDashResetAll').addEventListener('click',function(){
-    if(!_fwEdits||!_fwEdits.length){alert('No edits to reset');return}
+    if(!_fwEdits||!_fwEdits.length){_showToast('No edits to reset');return}
     if(!confirm('Reset all '+_fwEdits.length+' firewall edits?'))return;
     _fwResetAll();_fwDashRender();
   });
@@ -15094,7 +15098,7 @@ function _flowBannerHTML(state,srcName,tgtName,info){
 }
 
 function enterFlowMode(presetSource){
-  if(!_rlCtx){alert('Load a map first');return}
+  if(!_rlCtx){_showToast('Load a map first');return}
   if(document.getElementById('layoutMode').value==='executive') return;
   if(_flowMode) return;
   _flowMode=true;
@@ -16974,7 +16978,7 @@ function _renderFlowAnalysisPanel(){
 
 // --- Flow Analysis Mode Control ---
 function enterFlowAnalysis(){
-  if(!_rlCtx){alert('Load a map first');return}
+  if(!_rlCtx){_showToast('Load a map first');return}
   if(_flowMode) exitFlowMode();
   _flowAnalysisMode='tiers';
   // Run discovery
@@ -17387,7 +17391,7 @@ const _DIFF_STRUCTURAL=new Set([
 ]);
 
 function normalizeResource(resource){
-  const clone=JSON.parse(JSON.stringify(resource));
+  const clone=structuredClone(resource);
   function walk(obj){
     if(!obj||typeof obj!=='object') return obj;
     if(Array.isArray(obj)){
@@ -17404,7 +17408,7 @@ function normalizeResource(resource){
 }
 
 function normalizeSG(sg){
-  const clone=JSON.parse(JSON.stringify(sg));
+  const clone=structuredClone(sg);
   function sortPerms(perms){
     if(!Array.isArray(perms)) return perms;
     return perms.map(p=>{
@@ -19662,7 +19666,7 @@ function _openRulesEditor(){
   var existing=document.getElementById('govRulesOverlay');
   if(existing) existing.remove();
   // Working copy of rules
-  var workRules=JSON.parse(JSON.stringify(_classificationRules));
+  var workRules=structuredClone(_classificationRules);
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
   var groupCollapsed={any:false,vpc:false,type:false,name:false};
   var scopeLabels={any:'Any (Name + Tags + VPC)',vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Resource Name Rules'};
@@ -19971,7 +19975,7 @@ function _openRulesEditor(){
     });
   });
   document.getElementById('govRuleReset').addEventListener('click',function(){
-    workRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+    workRules=structuredClone(_DEFAULT_CLASS_RULES);
     workRules.forEach(function(r){r.enabled=true});
     renderRules();renderPreview();
   });
@@ -23110,12 +23114,16 @@ let exportData={vL:[],gwP:new Map(),allS:[],tG:{},peerings:[],shGws:[]};
 
 // #endregion SESSION & EVENT WIRING
 // #region EXPORT UTILITIES
-// helper: resolve CSS vars to hex for SVG serialization
+// helper: resolve CSS vars to hex for SVG serialization (cached)
+const _resolveColorCache=new Map();
 function resolveColor(cssVar){
+  if(_resolveColorCache.has(cssVar))return _resolveColorCache.get(cssVar);
   const el=document.createElement('div');el.style.color=cssVar;document.body.appendChild(el);
   const c=getComputedStyle(el).color;document.body.removeChild(el);
   const m=c.match(/(\d+)/g);if(!m)return'#888';
-  return'#'+m.slice(0,3).map(x=>(+x).toString(16).padStart(2,'0')).join('');
+  const hex='#'+m.slice(0,3).map(x=>(+x).toString(16).padStart(2,'0')).join('');
+  _resolveColorCache.set(cssVar,hex);
+  return hex;
 }
 
 function downloadBlob(blob,name){
@@ -23177,13 +23185,13 @@ document.getElementById('expPng').addEventListener('click',()=>{
     ctx.drawImage(img,0,0,w,h);
     canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'aws-network-map.png')},'image/png');
   };
-  img.onerror=()=>{alert('PNG render failed - try SVG export instead')};
+  img.onerror=()=>{_showToast('PNG render failed - try SVG export instead')};
   img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgStr)));
 });
 
 // VSDX (Visio) Export - best Lucidchart import path
 document.getElementById('expVsdx').addEventListener('click',()=>{
-  if(typeof JSZip==='undefined'){alert('JSZip not loaded');return}
+  if(typeof JSZip==='undefined'){_showToast('JSZip not loaded');return}
   const vpcs=ext(safeParse(gv('in_vpcs')),['Vpcs']);
   const subnets=ext(safeParse(gv('in_subnets')),['Subnets']);
   const rts=ext(safeParse(gv('in_rts')),['RouteTables']);
@@ -23203,7 +23211,7 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
   const nacls=ext(safeParse(gv('in_nacls')),['NetworkAcls']);
   const albs=ext(safeParse(gv('in_albs')),['LoadBalancers']);
   const volumes=ext(safeParse(gv('in_vols')),['Volumes']);
-  if(!vpcs.length){alert('Render map first');return}
+  if(!vpcs.length){_showToast('Render map first');return}
 
   const subByVpc={};subnets.forEach(s=>(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s));
   const mainRT={};
@@ -23254,7 +23262,7 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
   const TOP_MARGIN=80;
 
   const activeVpcs=vpcs.filter(v=>(subByVpc[v.VpcId]||[]).length>0);
-  if(!activeVpcs.length){alert('No VPCs with subnets found');return}
+  if(!activeVpcs.length){_showToast('No VPCs with subnets found');return}
 
   // --- shape collectors ---
   let shapeId=1;
@@ -24574,7 +24582,7 @@ function buildLandingZoneLayout(ctx){
   return {doc,iconSet};
   }catch(e){
     console.error('Landing Zone layout error:', e);
-    alert('Landing Zone layout error: '+e.message);
+    _showToast('Landing Zone layout error: '+e.message);
     return null;
   }
 }
@@ -24611,7 +24619,7 @@ function buildLucidExport(){
   const ecsServices=ext(safeParse(gv('in_ecs')),['services','Services']);
   const lambdaFns=(ext(safeParse(gv('in_lambda')),['Functions'])).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
   const cfDistributions=ext(safeParse(gv('in_cf')),['DistributionList','Items']);
-  if(!vpcs.length){alert('Render map first');return null}
+  if(!vpcs.length){_showToast('Render map first');return null}
 
   // Build lookups
   const subByVpc={};subnets.forEach(s=>(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s));
@@ -25798,7 +25806,7 @@ async function buildLucidZip(){
   const result=buildLucidExport();
   if(!result)return null;
   const{doc,iconSet}=result;
-  if(typeof JSZip==='undefined'){alert('JSZip not loaded');return null}
+  if(typeof JSZip==='undefined'){_showToast('JSZip not loaded');return null}
   const zip=new JSZip();
   zip.file('document.json',JSON.stringify(doc));
   const imgFolder=zip.folder('images');
@@ -25822,8 +25830,8 @@ document.getElementById('expLucidDl').addEventListener('click',async()=>{
     const mode=document.getElementById('layoutMode').value;
     const fname=mode==='landingzone'?'AWS-Landing-Zone.lucid':'AWS-Network-Map.lucid';
     if(blob)downloadBlob(blob,fname);
-    else alert('Export returned empty. Load data first.');
-  }catch(e){alert('Lucid export error: '+e.message);console.error(e)}
+    else _showToast('Export returned empty. Load data first.');
+  }catch(e){_showToast('Lucid export error: '+e.message);console.error(e)}
 });
 
 
@@ -27228,7 +27236,7 @@ document.getElementById('iacModal').addEventListener('click',function(e){if(e.ta
 document.getElementById('iacGenerate').addEventListener('click',generateIacPreview);
 
 document.getElementById('iacCopy').addEventListener('click',()=>{
-  if(!_iacOutput){alert('Generate code first');return}
+  if(!_iacOutput){_showToast('Generate code first');return}
   navigator.clipboard.writeText(_iacOutput).then(()=>{
     const btn=document.getElementById('iacCopy');
     btn.textContent='Copied!';
@@ -27245,7 +27253,7 @@ document.getElementById('iacCopy').addEventListener('click',()=>{
 });
 
 document.getElementById('iacDownload').addEventListener('click',()=>{
-  if(!_iacOutput){alert('Generate code first');return}
+  if(!_iacOutput){_showToast('Generate code first');return}
   let ext,name;
   if(_iacType==='terraform'){
     ext=document.getElementById('iacFormat').value==='json'?'.tf.json':'.tf';

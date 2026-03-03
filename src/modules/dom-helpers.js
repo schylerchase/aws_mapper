@@ -6,30 +6,23 @@
  * @param {string} msg - Message to display
  * @param {number} duration - Duration in ms (default: 3000)
  */
+let _toastEl = null;
+let _toastTimer = null;
 export function showToast(msg, duration = 3000) {
-  const t = document.createElement('div');
-  t.style.cssText = `
-    position:fixed;
-    bottom:60px;
-    left:50%;
-    transform:translateX(-50%);
-    z-index:300;
-    background:var(--accent-green);
-    color:#000;
-    padding:8px 20px;
-    border-radius:6px;
-    font-family:Segoe UI,system-ui,sans-serif;
-    font-size:12px;
-    font-weight:600;
-    box-shadow:0 4px 12px rgba(0,0,0,.4);
-    transition:opacity .3s
-  `;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => {
-    t.style.opacity = '0';
-    setTimeout(() => t.remove(), 300);
-  }, duration);
+  if (!_toastEl) {
+    _toastEl = document.createElement('div');
+    _toastEl.style.cssText = `
+      position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:300;
+      background:var(--accent-green);color:#000;padding:8px 20px;border-radius:6px;
+      font-family:Segoe UI,system-ui,sans-serif;font-size:12px;font-weight:600;
+      box-shadow:0 4px 12px rgba(0,0,0,.4);transition:opacity .3s
+    `;
+    document.body.appendChild(_toastEl);
+  }
+  clearTimeout(_toastTimer);
+  _toastEl.textContent = msg;
+  _toastEl.style.opacity = '1';
+  _toastTimer = setTimeout(() => { _toastEl.style.opacity = '0'; }, duration);
 }
 
 /**

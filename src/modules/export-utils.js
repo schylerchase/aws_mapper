@@ -457,27 +457,21 @@ if (typeof window !== 'undefined') {
   window.resolveColor = resolveColor;
   window._sanitizeName = sanitizeName;
 
-  // VSDX helpers — used by the inline VSDX click handler
-  window._vsdx = {
-    resetShapeState,
-    getShapes,
-    getPolyEdges,
-    getIdMap,
-    setIdMapEntry,
-    xmlEsc,
-    uid,
-    addRect,
-    addPolyEdge,
-    buildSubText,
-    buildShape,
-    buildPolyConnector,
-    buildVsdxXml,
-    computeSubnetHeights,
-    computePageDimensions,
-    gwStyles,
-    // Layout constants
-    PX, SUB_W, SUB_H_MIN, SUB_GAP, VPC_PAD, VPC_HDR,
-    GW_INSIDE_W, GW_INSIDE_H, GW_INSIDE_GAP, GW_ROW_H,
-    COL_GAP, LINE_H, TOP_MARGIN, toIn
-  };
+  // VSDX helpers — lazy-init to avoid setup cost when VSDX export is unused
+  let _vsdxCache = null;
+  Object.defineProperty(window, '_vsdx', {
+    get() {
+      if (!_vsdxCache) _vsdxCache = {
+        resetShapeState, getShapes, getPolyEdges, getIdMap, setIdMapEntry,
+        xmlEsc, uid, addRect, addPolyEdge, buildSubText, buildShape,
+        buildPolyConnector, buildVsdxXml, computeSubnetHeights,
+        computePageDimensions, gwStyles,
+        PX, SUB_W, SUB_H_MIN, SUB_GAP, VPC_PAD, VPC_HDR,
+        GW_INSIDE_W, GW_INSIDE_H, GW_INSIDE_GAP, GW_ROW_H,
+        COL_GAP, LINE_H, TOP_MARGIN, toIn
+      };
+      return _vsdxCache;
+    },
+    configurable: true
+  });
 }

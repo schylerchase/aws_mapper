@@ -190,29 +190,24 @@ var AppBundle = (() => {
   }
 
   // src/modules/dom-helpers.js
+  var _toastEl = null;
+  var _toastTimer = null;
   function showToast(msg, duration = 3e3) {
-    const t = document.createElement("div");
-    t.style.cssText = `
-    position:fixed;
-    bottom:60px;
-    left:50%;
-    transform:translateX(-50%);
-    z-index:300;
-    background:var(--accent-green);
-    color:#000;
-    padding:8px 20px;
-    border-radius:6px;
-    font-family:Segoe UI,system-ui,sans-serif;
-    font-size:12px;
-    font-weight:600;
-    box-shadow:0 4px 12px rgba(0,0,0,.4);
-    transition:opacity .3s
-  `;
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => {
-      t.style.opacity = "0";
-      setTimeout(() => t.remove(), 300);
+    if (!_toastEl) {
+      _toastEl = document.createElement("div");
+      _toastEl.style.cssText = `
+      position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:300;
+      background:var(--accent-green);color:#000;padding:8px 20px;border-radius:6px;
+      font-family:Segoe UI,system-ui,sans-serif;font-size:12px;font-weight:600;
+      box-shadow:0 4px 12px rgba(0,0,0,.4);transition:opacity .3s
+    `;
+      document.body.appendChild(_toastEl);
+    }
+    clearTimeout(_toastTimer);
+    _toastEl.textContent = msg;
+    _toastEl.style.opacity = "1";
+    _toastTimer = setTimeout(() => {
+      _toastEl.style.opacity = "0";
     }, duration);
   }
   function closeAllDashboards(except) {
@@ -6312,7 +6307,7 @@ var AppBundle = (() => {
     { pattern: "staging|stage|uat|qa", scope: "tag:Environment", tier: "medium", weight: 110 },
     { pattern: "dev|develop|sandbox|test", scope: "tag:Environment", tier: "low", weight: 110 }
   ];
-  var _classificationRules = JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+  var _classificationRules = structuredClone(_DEFAULT_CLASS_RULES);
   var _discoveredTags = {};
   var _TIER_RPO_RTO = {
     critical: { rpo: "Hourly", rto: "2-4 hours", priority: 1, color: "#ef4444" },
@@ -7565,39 +7560,45 @@ var AppBundle = (() => {
     window.downloadBlob = downloadBlob;
     window.resolveColor = resolveColor;
     window._sanitizeName = sanitizeName;
-    window._vsdx = {
-      resetShapeState,
-      getShapes,
-      getPolyEdges,
-      getIdMap,
-      setIdMapEntry,
-      xmlEsc,
-      uid,
-      addRect,
-      addPolyEdge,
-      buildSubText,
-      buildShape,
-      buildPolyConnector,
-      buildVsdxXml,
-      computeSubnetHeights,
-      computePageDimensions,
-      gwStyles,
-      // Layout constants
-      PX,
-      SUB_W,
-      SUB_H_MIN,
-      SUB_GAP,
-      VPC_PAD,
-      VPC_HDR,
-      GW_INSIDE_W,
-      GW_INSIDE_H,
-      GW_INSIDE_GAP,
-      GW_ROW_H,
-      COL_GAP,
-      LINE_H,
-      TOP_MARGIN,
-      toIn
-    };
+    let _vsdxCache = null;
+    Object.defineProperty(window, "_vsdx", {
+      get() {
+        if (!_vsdxCache) _vsdxCache = {
+          resetShapeState,
+          getShapes,
+          getPolyEdges,
+          getIdMap,
+          setIdMapEntry,
+          xmlEsc,
+          uid,
+          addRect,
+          addPolyEdge,
+          buildSubText,
+          buildShape,
+          buildPolyConnector,
+          buildVsdxXml,
+          computeSubnetHeights,
+          computePageDimensions,
+          gwStyles,
+          PX,
+          SUB_W,
+          SUB_H_MIN,
+          SUB_GAP,
+          VPC_PAD,
+          VPC_HDR,
+          GW_INSIDE_W,
+          GW_INSIDE_H,
+          GW_INSIDE_GAP,
+          GW_ROW_H,
+          COL_GAP,
+          LINE_H,
+          TOP_MARGIN,
+          toIn
+        };
+        return _vsdxCache;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/iac-generator.js

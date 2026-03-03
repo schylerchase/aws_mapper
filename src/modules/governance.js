@@ -57,7 +57,7 @@ var _DEFAULT_CLASS_RULES = [
   { pattern: 'staging|stage|uat|qa', scope: 'tag:Environment', tier: 'medium', weight: 110 },
   { pattern: 'dev|develop|sandbox|test', scope: 'tag:Environment', tier: 'low', weight: 110 }
 ];
-let _classificationRules = JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+let _classificationRules = structuredClone(_DEFAULT_CLASS_RULES);
 let _discoveredTags = {};
 
 var _TIER_RPO_RTO = {
