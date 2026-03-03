@@ -25,9 +25,9 @@ __pycache__/
 playwright.config.js
 delete-me/
 
-# Electron-specific files
-main.js
-preload.js
+# Electron-specific files (root only, not src/)
+/main.js
+/preload.js
 scripts/
 
 # Non-web assets
