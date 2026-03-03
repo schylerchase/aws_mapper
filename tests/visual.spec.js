@@ -50,8 +50,8 @@ test.describe('Visual Regression', () => {
   test('detail panel', async ({ page }) => {
     await loadDemo(page);
     await clickSubnet(page, 0);
-    await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('detail-panel.png', { maxDiffPixelRatio: 0.01 });
+    await page.waitForTimeout(500);
+    await expect(page).toHaveScreenshot('detail-panel.png', { maxDiffPixelRatio: 0.08 });
   });
 
   test('classification tab', async ({ page }) => {

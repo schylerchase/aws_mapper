@@ -233,14 +233,46 @@ function _gatherResourceInfo(rid){
   return info;
 }
 
+// Wire back button handler for detail panel
+function _wireDpBackButton(){
+  const dp=document.getElementById('detailPanel');
+  const backEl=document.getElementById('dpBack');
+  if(backEl){backEl.addEventListener('click',()=>{
+    const prev=_navStack.pop();
+    if(prev&&prev.fn) prev.fn();
+    else dp.classList.remove('open');
+  })}
+}
+// Build back button HTML if nav stack has entries
+function _dpBackBtnHtml(){
+  return _navStack.length>0?'<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-family:Segoe UI,system-ui,sans-serif;margin-right:8px" title="Back">&lt; Back</span>':'';
+}
+// Type badge colors for detail panel headers
+var _dpTypeColors={EC2:'#f97316',RDS:'#a78bfa',Lambda:'#10b981',VPC:'#60a5fa',SG:'#f59e0b'};
+function _dpTypeBadge(type){
+  var tc=_dpTypeColors[type]||'#22d3ee';
+  return '<span style="display:inline-block;font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:8px;background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44;vertical-align:middle">'+esc(type)+'</span>';
+}
+
 // === SEARCH → DETAIL PANEL DISPATCH ===
+// NOTE: innerHTML usage here renders pre-escaped content via esc() and _escHtml() — no raw user input
+var _dpSkipPush=false;
 function _openDetailForSearch(type,id){
   if(!_rlCtx) return;
   const dp=document.getElementById('detailPanel');
   const dpTitle=document.getElementById('dpTitle');
   const dpSub=document.getElementById('dpSub');
   const dpBody=document.getElementById('dpBody');
-  _navStack=[];_lastRlType=null;
+
+  // If panel is already open, push current state for back navigation
+  if(!_dpSkipPush&&dp.classList.contains('open')&&dpBody.textContent){
+    const prevType=dp.dataset.dpType;const prevId=dp.dataset.dpId;
+    if(prevType&&prevId){
+      _navStack.push({fn:()=>{ _dpSkipPush=true;_openDetailForSearch(prevType,prevId);_dpSkipPush=false; }});
+    }
+  }
+  dp.dataset.dpType=type;dp.dataset.dpId=id;
+  _lastRlType=null;
 
   if(type==='Subnet'){
     const sub=(_rlCtx.subnets||[]).find(s=>s.SubnetId===id);
@@ -256,6 +288,7 @@ function _openDetailForSearch(type,id){
   }
 
   // Generic detail panel for VPC, EC2, RDS, Lambda, SG, Note
+  const backBtn=_dpBackBtnHtml();
   let h='';
   if(type==='VPC'){
     const vpc=(_rlCtx.vpcs||[]).find(v=>v.VpcId===id);
@@ -268,7 +301,7 @@ function _openDetailForSearch(type,id){
     (_rlCtx.nats||[]).forEach(g=>{if(g.VpcId===id)gws.push({type:'NAT',id:g.NatGatewayId,name:gn(g,g.NatGatewayId)})});
     const sgs=(_rlCtx.sgs||[]).filter(s=>s.VpcId===id);
     const insts=(_rlCtx.instances||[]).filter(i=>subs.some(s=>s.SubnetId===i.SubnetId));
-    dpTitle.innerHTML=_escHtml(nm);
+    dpTitle.innerHTML=backBtn+_dpTypeBadge('VPC')+_escHtml(nm);
     dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(vpc.CidrBlock||'');
     h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Overview</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
     h+='<table class="dp-kv"><tr><td>CIDR</td><td>'+esc(vpc.CidrBlock||'—')+'</td></tr>';
@@ -296,11 +329,14 @@ function _openDetailForSearch(type,id){
     const inst=(_rlCtx.instances||[]).find(i=>i.InstanceId===id);
     if(!inst) return;
     const nm=gn(inst,inst.InstanceId);
-    dpTitle.innerHTML=_escHtml(nm);
+    const stateName=(inst.State||{}).Name||'—';
+    const stateColor=stateName==='running'?'var(--accent-green)':stateName==='stopped'?'var(--accent-red)':'var(--text-muted)';
+    dpTitle.innerHTML=backBtn+_dpTypeBadge('EC2')+_escHtml(nm);
     dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(inst.InstanceType||'');
+    h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Details</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
     h+='<table class="dp-kv">';
     h+='<tr><td>Type</td><td>'+esc(inst.InstanceType||'—')+'</td></tr>';
-    h+='<tr><td>State</td><td>'+esc((inst.State||{}).Name||'—')+'</td></tr>';
+    h+='<tr><td>State</td><td><span style="color:'+stateColor+'">'+esc(stateName)+'</span></td></tr>';
     h+='<tr><td>AZ</td><td>'+esc(inst.Placement&&inst.Placement.AvailabilityZone||'—')+'</td></tr>';
     h+='<tr><td>Private IP</td><td>'+esc(inst.PrivateIpAddress||'—')+'</td></tr>';
     h+='<tr><td>Public IP</td><td>'+esc(inst.PublicIpAddress||'—')+'</td></tr>';
@@ -308,14 +344,21 @@ function _openDetailForSearch(type,id){
     h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(inst.VpcId)+'\')">'+esc(inst.VpcId||'—')+'</span></td></tr>';
     h+='<tr><td>AMI</td><td>'+esc(inst.ImageId||'—')+'</td></tr>';
     h+='<tr><td>Key</td><td>'+esc(inst.KeyName||'—')+'</td></tr>';
-    const sgIds=(inst.SecurityGroups||[]).map(s=>s.GroupId);
-    if(sgIds.length){h+='<tr><td>SGs</td><td>'+sgIds.map(s=>'<span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'SG\',\''+esc(s)+'\')">'+esc(s)+'</span>').join(', ')+'</td></tr>';}
-    h+='</table>';
+    h+='</table></div></div>';
+    const sgsArr=inst.SecurityGroups||[];
+    if(sgsArr.length){
+      h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Security Groups</span><span><span class="dp-sec-count">'+sgsArr.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body">';
+      sgsArr.forEach(s=>{
+        h+='<div style="padding:4px 0;cursor:pointer;color:var(--accent-cyan);font-size:calc(11px * var(--dp-txt-scale,1))" onclick="_openDetailForSearch(\'SG\',\''+esc(s.GroupId)+'\')">'+esc(s.GroupName||s.GroupId)+' <span style="color:var(--text-muted);font-size:9px">'+esc(s.GroupId)+'</span></div>';
+      });
+      h+='</div></div>';
+    }
   } else if(type==='RDS'){
     const db=(_rlCtx.rdsInstances||[]).find(d=>d.DBInstanceIdentifier===id);
     if(!db) return;
-    dpTitle.innerHTML=_escHtml(db.DBInstanceIdentifier);
+    dpTitle.innerHTML=backBtn+_dpTypeBadge('RDS')+_escHtml(db.DBInstanceIdentifier);
     dpSub.innerHTML=esc(db.Engine||'')+' &middot; '+esc(db.DBInstanceClass||'');
+    h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Details</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
     h+='<table class="dp-kv">';
     h+='<tr><td>Engine</td><td>'+esc(db.Engine||'—')+' '+esc(db.EngineVersion||'')+'</td></tr>';
     h+='<tr><td>Class</td><td>'+esc(db.DBInstanceClass||'—')+'</td></tr>';
@@ -326,12 +369,13 @@ function _openDetailForSearch(type,id){
     h+='<tr><td>Encrypted</td><td>'+(db.StorageEncrypted?'Yes':'No')+'</td></tr>';
     h+='<tr><td>Backup</td><td>'+esc(db.BackupRetentionPeriod||0)+' days</td></tr>';
     h+='<tr><td>Del Protection</td><td>'+(db.DeletionProtection?'Yes':'No')+'</td></tr>';
-    h+='</table>';
+    h+='</table></div></div>';
   } else if(type==='Lambda'){
     const fn=(_rlCtx.lambdaFns||[]).find(f=>f.FunctionName===id);
     if(!fn) return;
-    dpTitle.innerHTML=_escHtml(fn.FunctionName);
+    dpTitle.innerHTML=backBtn+_dpTypeBadge('Lambda')+_escHtml(fn.FunctionName);
     dpSub.innerHTML=esc(fn.Runtime||'')+ ' &middot; '+esc(fn.Handler||'');
+    h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Details</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
     h+='<table class="dp-kv">';
     h+='<tr><td>Runtime</td><td>'+esc(fn.Runtime||'—')+'</td></tr>';
     h+='<tr><td>Memory</td><td>'+esc(fn.MemorySize||'—')+' MB</td></tr>';
@@ -344,14 +388,15 @@ function _openDetailForSearch(type,id){
       h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(vpcCfg.VpcId)+'\')">'+esc(vpcCfg.VpcId)+'</span></td></tr>';
       h+='<tr><td>Subnets</td><td>'+(vpcCfg.SubnetIds||[]).map(s=>'<span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'Subnet\',\''+esc(s)+'\');_zoomToElement(\''+esc(s)+'\')">'+esc(s)+'</span>').join(', ')+'</td></tr>';
     }
-    h+='</table>';
+    h+='</table></div></div>';
   } else if(type==='SG'){
     const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===id);
     if(!sg) return;
-    dpTitle.innerHTML=_escHtml(sg.GroupName||sg.GroupId);
+    dpTitle.innerHTML=backBtn+_dpTypeBadge('SG')+_escHtml(sg.GroupName||sg.GroupId);
     dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(sg.VpcId||'');
+    h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Overview</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
     h+='<table class="dp-kv"><tr><td>Description</td><td>'+esc(sg.Description||'—')+'</td></tr>';
-    h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(sg.VpcId)+'\')">'+esc(sg.VpcId||'—')+'</span></td></tr></table>';
+    h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(sg.VpcId)+'\')">'+esc(sg.VpcId||'—')+'</span></td></tr></table></div></div>';
     const inRules=sg.IpPermissions||[];const outRules=sg.IpPermissionsEgress||[];
     if(inRules.length){
       h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Inbound Rules</span><span><span class="dp-sec-count">'+inRules.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body"><table class="dp-tbl"><tr><th>Proto</th><th>Port</th><th>Source</th></tr>';
@@ -381,6 +426,8 @@ function _openDetailForSearch(type,id){
   }
   dpBody.innerHTML=h;
   dp.classList.add('open');
+  _wireDpBackButton();
+  applyDpScale();
 }
 
 // === TIME-SERIES SNAPSHOTS ===

@@ -26,22 +26,23 @@ test.describe('Detail Panel (Subnet)', () => {
     expect(sections).toBeGreaterThan(0);
   });
 
-  test('detail panel auto-opens in fullscreen', async ({ page }) => {
+  test('detail panel opens as side panel (not fullscreen)', async ({ page }) => {
     await clickSubnet(page, 0);
-    await expect(page.locator('#detailPanel')).toHaveClass(/fullscreen/);
+    await expect(page.locator('#detailPanel')).toHaveClass(/open/);
+    await expect(page.locator('#detailPanel')).not.toHaveClass(/fullscreen/);
   });
 
   test('fullscreen toggle works', async ({ page }) => {
     await clickSubnet(page, 0);
-    await expect(page.locator('#detailPanel')).toHaveClass(/fullscreen/);
-
-    // Click fullscreen toggle to exit
-    await page.locator('#dpFullscreen').click();
     await expect(page.locator('#detailPanel')).not.toHaveClass(/fullscreen/);
 
-    // Click again to re-enter (button clipped in narrow non-fullscreen panel, use JS click)
+    // Click fullscreen toggle to enter fullscreen
     await page.locator('#dpFullscreen').dispatchEvent('click');
     await expect(page.locator('#detailPanel')).toHaveClass(/fullscreen/);
+
+    // Click again to exit
+    await page.locator('#dpFullscreen').dispatchEvent('click');
+    await expect(page.locator('#detailPanel')).not.toHaveClass(/fullscreen/);
   });
 
   test('closing detail panel removes open class', async ({ page }) => {

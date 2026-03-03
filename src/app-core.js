@@ -6540,11 +6540,6 @@ function openSubnetPanel(sub,vpcId,lk){
   document.getElementById('dpTraceFrom').style.display='';
   dpBody.innerHTML=h;
   dp.classList.add('open');
-  // Auto-open fullscreen for subnet panels (rich content benefits from wide layout)
-  if(!dp.classList.contains('fullscreen')){
-    dp.classList.add('fullscreen');
-    _setDpFullscreenIcon(true);
-  }
   if(window._fwDpBodyHandler) dpBody.removeEventListener('click', window._fwDpBodyHandler);
   window._fwDpBodyHandler = function(ev){ _fwHandleAction(ev, sub, vpcId, lk); };
   dpBody.addEventListener('click', window._fwDpBodyHandler);
