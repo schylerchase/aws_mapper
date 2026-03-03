@@ -27,6 +27,23 @@ const buildConfig = {
   logLevel: 'info'
 };
 
+// Build custom D3 bundle (5 modules vs full 30+ module d3.min.js)
+async function buildD3() {
+  await esbuild.build({
+    entryPoints: ['src/d3-custom.js'],
+    bundle: true,
+    outfile: 'libs/d3.custom.min.js',
+    format: 'iife',
+    globalName: 'd3',
+    minify: true,
+    target: 'es2020',
+    platform: 'browser',
+    logLevel: 'silent'
+  });
+  const size = (fs.statSync('libs/d3.custom.min.js').size / 1024).toFixed(1);
+  console.log(`  libs/d3.custom.min.js  ${size}kb`);
+}
+
 // Process app-core.js (plain script, not an ES module — minify only)
 async function buildCore() {
   const src = fs.readFileSync('src/app-core.js', 'utf8');
@@ -53,6 +70,7 @@ if (watch) {
 } else {
   esbuild.build(buildConfig).then(async () => {
     await buildCore();
+    await buildD3();
 
     if (!isProd) return;
     // Auto-inject content hashes into index.html for cache busting

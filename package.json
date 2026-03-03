@@ -71,6 +71,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "d3-ease": "^3.0.1",
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0",
+    "d3-transition": "^3.0.1",
+    "d3-zoom": "^3.0.0",
     "electron": "^35.7.5",
     "electron-builder": "^26.7.0",
     "esbuild": "^0.27.3",

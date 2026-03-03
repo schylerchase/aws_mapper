@@ -3721,13 +3721,69 @@ var AppBundle = (() => {
     if (_regionAZs[_designRegion]) return _regionAZs[_designRegion];
     return ["us-east-1a", "us-east-1b", "us-east-1c"];
   }
-  window._designMode = _designMode;
-  window._designChanges = _designChanges;
-  window._designBaseline = _designBaseline;
-  window._designDebounce = _designDebounce;
-  window._lastDesignValidation = _lastDesignValidation;
-  window._sidebarWasCollapsed = _sidebarWasCollapsed;
-  window._designRegion = _designRegion;
+  Object.defineProperty(window, "_designMode", {
+    get() {
+      return _designMode;
+    },
+    set(v) {
+      _designMode = v;
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, "_designChanges", {
+    get() {
+      return _designChanges;
+    },
+    set(v) {
+      _designChanges = v;
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, "_designBaseline", {
+    get() {
+      return _designBaseline;
+    },
+    set(v) {
+      _designBaseline = v;
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, "_designDebounce", {
+    get() {
+      return _designDebounce;
+    },
+    set(v) {
+      _designDebounce = v;
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, "_lastDesignValidation", {
+    get() {
+      return _lastDesignValidation;
+    },
+    set(v) {
+      _lastDesignValidation = v;
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, "_sidebarWasCollapsed", {
+    get() {
+      return _sidebarWasCollapsed;
+    },
+    set(v) {
+      _sidebarWasCollapsed = v;
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, "_designRegion", {
+    get() {
+      return _designRegion;
+    },
+    set(v) {
+      _designRegion = v;
+    },
+    configurable: true
+  });
   window._regionAZs = _regionAZs;
   window._awsConstraints = _awsConstraints;
   window._designApplyFns = _designApplyFns;
@@ -7623,7 +7679,6 @@ var AppBundle = (() => {
     _ckSgs: () => _ckSgs,
     _ckSubnets: () => _ckSubnets,
     _ckVpcs: () => _ckVpcs,
-    _sanitizeName: () => _sanitizeName,
     _serializeCfnYaml: () => _serializeCfnYaml,
     _tfName: () => _tfName,
     _tfRef: () => _tfRef,
@@ -7664,14 +7719,10 @@ var AppBundle = (() => {
   function setTfIdMap(v) {
     _tfIdMap = v;
   }
-  function _sanitizeName(s) {
-    if (!s) return "unnamed";
-    return s.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/^[0-9]/, "r$&").replace(/-/g, "_").toLowerCase();
-  }
   function _tfName(resource, prefix) {
     const n = resource.Tags && resource.Tags.find((t) => t.Key === "Name");
     const raw = n ? n.Value : resource.VpcId || resource.SubnetId || resource.GroupId || resource.InstanceId || prefix || "res";
-    return _sanitizeName(raw);
+    return sanitizeName(raw);
   }
   function _tfRef(id, attr) {
     if (_tfIdMap[id]) return _tfIdMap[id] + "." + attr;
@@ -8090,7 +8141,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     rdsInstances.forEach((rds) => {
-      const name = _sanitizeName(rds.DBInstanceIdentifier || "rds");
+      const name = sanitizeName(rds.DBInstanceIdentifier || "rds");
       const resName = "aws_db_instance." + name;
       _tfIdMap[rds.DBInstanceIdentifier] = resName;
       if (mode === "import") imports.push({ to: resName, id: rds.DBInstanceIdentifier });
@@ -8115,7 +8166,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     ecacheClusters.forEach((ec) => {
-      const name = _sanitizeName(ec.CacheClusterId || "cache");
+      const name = sanitizeName(ec.CacheClusterId || "cache");
       const resName = "aws_elasticache_cluster." + name;
       _tfIdMap[ec.CacheClusterId] = resName;
       if (mode === "import") imports.push({ to: resName, id: ec.CacheClusterId });
@@ -8132,7 +8183,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     redshiftClusters.forEach((rs) => {
-      const name = _sanitizeName(rs.ClusterIdentifier || "redshift");
+      const name = sanitizeName(rs.ClusterIdentifier || "redshift");
       const resName = "aws_redshift_cluster." + name;
       _tfIdMap[rs.ClusterIdentifier] = resName;
       if (mode === "import") imports.push({ to: resName, id: rs.ClusterIdentifier });
@@ -8152,7 +8203,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     lambdaFns.forEach((fn) => {
-      const name = _sanitizeName(fn.FunctionName || "lambda");
+      const name = sanitizeName(fn.FunctionName || "lambda");
       const resName = "aws_lambda_function." + name;
       _tfIdMap[fn.FunctionName] = resName;
       if (mode === "import") imports.push({ to: resName, id: fn.FunctionName });
@@ -8176,7 +8227,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     ecsServices.forEach((svc) => {
-      const name = _sanitizeName(svc.serviceName || "ecs");
+      const name = sanitizeName(svc.serviceName || "ecs");
       lines.push("# ECS Service: " + svc.serviceName);
       lines.push("# NOTE: ECS services require cluster and task definition resources");
       lines.push("# which are not captured in network-level data. Skeleton below.");
@@ -8199,7 +8250,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     s3bk.forEach((bk) => {
-      const name = _sanitizeName(bk.Name || "bucket");
+      const name = sanitizeName(bk.Name || "bucket");
       const resName = "aws_s3_bucket." + name;
       _tfIdMap[bk.Name] = resName;
       if (mode === "import") imports.push({ to: resName, id: bk.Name });
@@ -8209,7 +8260,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     peerings.forEach((peer) => {
-      const name = _sanitizeName(peer.VpcPeeringConnectionId || "peer");
+      const name = sanitizeName(peer.VpcPeeringConnectionId || "peer");
       const resName = "aws_vpc_peering_connection." + name;
       _tfIdMap[peer.VpcPeeringConnectionId] = resName;
       if (mode === "import") imports.push({ to: resName, id: peer.VpcPeeringConnectionId });
@@ -8224,7 +8275,7 @@ var AppBundle = (() => {
       lines.push("");
     });
     cfDistributions.forEach((cf) => {
-      const name = _sanitizeName(cf.Id || "cf");
+      const name = sanitizeName(cf.Id || "cf");
       lines.push("# CloudFront Distribution: " + (cf.DomainName || cf.Id));
       lines.push("# NOTE: CloudFront has many configuration options not captured here.");
       lines.push("# This is a skeleton. Review and customize before applying.");
@@ -8870,7 +8921,7 @@ var AppBundle = (() => {
     window.setIacOutput = setIacOutput;
     window.getTfIdMap = getTfIdMap;
     window.setTfIdMap = setTfIdMap;
-    window._sanitizeName = _sanitizeName;
+    window._sanitizeName = sanitizeName;
     window._tfName = _tfName;
     window._tfRef = _tfRef;
     window.detectCircularSGs = detectCircularSGs;

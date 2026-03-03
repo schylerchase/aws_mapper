@@ -536,7 +536,7 @@ function _enrichBudrWithClassification(ctx,findings){
     a.classVpcName=cls?cls.vpcName:'';
     // Find which profile key this assessment uses
     var profileKey=null;
-    for(var k in _BUDR_RTO_RPO){if(_BUDR_RTO_RPO[k]===a.profile){profileKey=k;break}}
+    for(let k in _BUDR_RTO_RPO){if(_BUDR_RTO_RPO[k]===a.profile){profileKey=k;break}}
     a.profileKey=profileKey;
     a.compliance=_budrTierCompliance(profileKey,a.classTier);
     // Generate findings for compliance gaps
@@ -646,7 +646,7 @@ const _RPT_MODULES=[
    desc:function(){return 'Terraform/CF snippets'},
    render:function(ctx,opts){return _rptIaCRecs(ctx,opts)}}
 ];
-var _rptState={order:null,title:'AWS Infrastructure Assessment',author:'',date:new Date().toISOString().slice(0,10),logo:null};
+const _rptState={order:null,title:'AWS Infrastructure Assessment',author:'',date:new Date().toISOString().slice(0,10),logo:null};
 var _importedReportData=null;
 
 // #endregion BUDR ENGINE
@@ -1400,11 +1400,11 @@ function _rptBuildSvgUri(svgEl,root){
 
 function _rptCollectStyles(){
   var css='';
-  for(var i=0;i<document.styleSheets.length;i++){
+  for(let i=0;i<document.styleSheets.length;i++){
     try{
       var rules=document.styleSheets[i].cssRules;
       if(!rules) continue;
-      for(var j=0;j<rules.length;j++) css+=rules[j].cssText+'\n';
+      for(let j=0;j<rules.length;j++) css+=rules[j].cssText+'\n';
     }catch(e){/* cross-origin */}
   }
   return css;
@@ -2365,7 +2365,7 @@ function _renderCompShellTable(view,filtered){
   }
   _renderCompTableRows(filtered);
 }
-var _compChunkSize=100;
+const _compChunkSize=100;
 function _buildCompRow(f,i){
   // NOTE: All values are pre-escaped via esc() — data comes from internal compliance engine, not user input
   var muted=_isMuted(f);var ref=_complianceRefs[f.control];
@@ -2394,7 +2394,7 @@ function _renderCompTableRows(filtered){
   if(!filtered.length){tbody.textContent='';var emptyRow=document.createElement('tr');var emptyTd=document.createElement('td');emptyTd.setAttribute('colspan','6');emptyTd.style.cssText='text-align:center;padding:40px;color:var(--text-muted)';emptyTd.textContent='No findings match current filters';emptyRow.appendChild(emptyTd);tbody.appendChild(emptyRow);return}
   // Render first chunk immediately, defer rest via requestIdleCallback for large datasets
   var first=Math.min(_compChunkSize,filtered.length);
-  var h='';for(var i=0;i<first;i++)h+=_buildCompRow(filtered[i],i);
+  var h='';for(let i=0;i<first;i++)h+=_buildCompRow(filtered[i],i);
   tbody.textContent='';var tmp=document.createElement('tbody');tmp.innerHTML=h; // safe: esc() applied to all values
   _attachCompRowListeners(tmp,filtered);
   while(tmp.firstChild)tbody.appendChild(tmp.firstChild);
@@ -2403,7 +2403,7 @@ function _renderCompTableRows(filtered){
   function renderNextChunk(){
     if(rendered>=filtered.length)return;
     var end=Math.min(rendered+_compChunkSize,filtered.length);
-    var chunk='';for(var j=rendered;j<end;j++)chunk+=_buildCompRow(filtered[j],j);
+    var chunk='';for(let j=rendered;j<end;j++)chunk+=_buildCompRow(filtered[j],j);
     var t2=document.createElement('tbody');t2.innerHTML=chunk; // safe: esc() applied
     _attachCompRowListeners(t2,filtered);
     while(t2.firstChild)tbody.appendChild(t2.firstChild);
@@ -4184,7 +4184,7 @@ let _invState={typeFilter:'all',regionFilter:'all',accountFilter:'all',vpcFilter
 let _appRegistry=[];
 let _appAutoDiscovered=false;
 let _appSummaryState={search:'',sort:'tier',sortDir:'asc',adding:false,editing:-1};
-var _APP_TYPE_SUGGESTIONS=['Web App','Database','Monitoring','CI/CD','Security','Analytics','Storage','Infrastructure'];
+const _APP_TYPE_SUGGESTIONS=['Web App','Database','Monitoring','CI/CD','Security','Analytics','Storage','Infrastructure'];
 function _buildInventoryData(){
   _inventoryData=[];
   var ctx=_rlCtx;if(!ctx)return;
@@ -4367,7 +4367,7 @@ function _buildInventoryData(){
 // === INVENTORY TAB RENDERER (Tasks 4-5) ===
 var _invToolbarRendered=false;
 
-var _INV_TYPE_COLORS={
+const _INV_TYPE_COLORS={
   'VPC':'#7C3AED','Subnet':'#6366f1','EC2':'#f97316','RDS':'#22d3ee',
   'Lambda':'#f59e0b','ECS':'#10b981','ALB':'#ec4899','ElastiCache':'#8b5cf6',
   'Redshift':'#06b6d4','SG':'#64748b','NACL':'#64748b','Route Table':'#64748b',
@@ -4378,7 +4378,7 @@ var _INV_TYPE_COLORS={
   'Target Group':'#f9a8d4'
 };
 
-var _INV_NO_MAP_TYPES={'S3 Bucket':1,'Route 53':1,'WAF':1,'CloudFront':1,'Snapshot':1,'TGW Attachment':1,'Target Group':1};
+const _INV_NO_MAP_TYPES={'S3 Bucket':1,'Route 53':1,'WAF':1,'CloudFront':1,'Snapshot':1,'TGW Attachment':1,'Target Group':1};
 
 function _filterInventory(){
   var st=_invState;
@@ -4635,7 +4635,7 @@ function _renderInventoryBody(){
     // Page number buttons with window
     var winSize=2,startP=Math.max(1,st.page-winSize),endP=Math.min(totalPages,st.page+winSize);
     if(startP>1){fh+='<button class="inv-page-num" data-p="1" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid #1e2d4a;background:transparent;color:#60a5fa;cursor:pointer">1</button>';if(startP>2)fh+='<span style="font-size:10px;color:var(--text-muted)">&hellip;</span>'}
-    for(var p=startP;p<=endP;p++){
+    for(let p=startP;p<=endP;p++){
       var active=p===st.page;
       fh+='<button class="inv-page-num" data-p="'+p+'" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid '+(active?'#f97316':'#1e2d4a')+';background:'+(active?'rgba(249,115,22,.2)':'transparent')+';color:'+(active?'#f97316':'#60a5fa')+';cursor:pointer;font-weight:'+(active?'700':'400')+'">'+p+'</button>';
     }
@@ -4806,7 +4806,7 @@ function _wireInventoryEvents(body,footer,items,cols){
   // JSON export — all filtered items minus _raw
   document.getElementById('invExportJSON').addEventListener('click',function(){
     var clean=items.map(function(r){
-      var o={};for(var k in r){if(k!=='_raw') o[k]=r[k]}return o;
+      var o={};for(let k in r){if(k!=='_raw') o[k]=r[k]}return o;
     });
     downloadBlob(new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),'inventory-export.json');
   });
@@ -4930,13 +4930,13 @@ function _renderInventoryTree(body,footer){
   });
   document.getElementById('invExportJSON').addEventListener('click',function(){
     var clean=items.map(function(r){
-      var o={};for(var k in r){if(k!=='_raw') o[k]=r[k]}return o;
+      var o={};for(let k in r){if(k!=='_raw') o[k]=r[k]}return o;
     });
     downloadBlob(new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),'inventory-export.json');
   });
 }
 
-var _DEFAULT_CLASS_RULES=[
+const _DEFAULT_CLASS_RULES=[
   {pattern:'prod|production',scope:'vpc',tier:'critical',weight:100},
   {pattern:'pci|complian',scope:'vpc',tier:'critical',weight:95},
   {pattern:'dr-|disaster|recovery',scope:'vpc',tier:'critical',weight:90},
@@ -4959,7 +4959,7 @@ var _DEFAULT_CLASS_RULES=[
 var _classificationRules=structuredClone(_DEFAULT_CLASS_RULES);
 var _discoveredTags={};
 
-var _TIER_RPO_RTO={
+const _TIER_RPO_RTO={
   critical:{rpo:'Hourly',rto:'2-4 hours',priority:1,color:'#ef4444'},
   high:{rpo:'6 hours',rto:'4-8 hours',priority:2,color:'#f59e0b'},
   medium:{rpo:'Daily',rto:'12 hours',priority:3,color:'#22d3ee'},
@@ -10789,7 +10789,7 @@ function _applyImportedData(data,source){
   if(data.iamReviewData&&data.iamReviewData.length){
     _iamReviewData=data.iamReviewData.map(function(r){
       // Restore Date objects from strings if needed
-      var copy={};for(var k in r)copy[k]=r[k];
+      var copy={};for(let k in r)copy[k]=r[k];
       if(typeof copy.created==='string'&&copy.created&&copy.created!=='—')copy.created=new Date(copy.created);
       else if(typeof copy.created==='string')copy.created=null;
       if(typeof copy.lastUsed==='string'&&copy.lastUsed&&copy.lastUsed!=='Never'&&copy.lastUsed!=='—')copy.lastUsed=new Date(copy.lastUsed);
@@ -10859,7 +10859,7 @@ function _applyImportedData(data,source){
     (parts.length?' \u2014 '+parts.join(', '):''));
 }
 function _reverseFwLabel(label){
-  var map={};for(var k in _FW_LABELS){if(_FW_LABELS.hasOwnProperty(k))map[_FW_LABELS[k]]=k}
+  var map={};for(let k in _FW_LABELS){if(_FW_LABELS.hasOwnProperty(k))map[_FW_LABELS[k]]=k}
   return map[label]||label;
 }
 function _parseSignalText(text){
@@ -10975,7 +10975,7 @@ function _parseReportHTML(doc){
       while(prev){if(prev.tagName==='H3'){type=prev.textContent.replace(/\s*\(\d+\)\s*$/,'').trim();break}prev=prev.previousElementSibling}}
     var hasAcct=!!tr.dataset.account||tds.length>=5;
     var id=tr.id.replace(/^res-/,'');
-    var vals=[];for(var i=0;i<tds.length;i++)vals.push(tds[i].textContent.trim());
+    var vals=[];for(let i=0;i<tds.length;i++)vals.push(tds[i].textContent.trim());
     result.inventoryData.push({
       id:id,type:type,name:hasAcct?vals[1]||'':vals[0]||'',
       account:hasAcct?vals[0]||'':'',
@@ -11065,7 +11065,7 @@ function _parseReportIAM(doc,result){
 function _parseFindingsCount(text){
   var n=parseInt(text);
   if(isNaN(n)||n<=0)return [];
-  var arr=[];for(var i=0;i<n;i++)arr.push({message:'Imported finding'});
+  var arr=[];for(let i=0;i<n;i++)arr.push({message:'Imported finding'});
   return arr;
 }
 function _parseReportAppSummary(doc,result){
@@ -11481,7 +11481,7 @@ document.getElementById('searchInput').addEventListener('input',function(){
   if(_searchIndexCtx!==_rlCtx){_searchIndex=_buildSearchIndex(_rlCtx);_searchIndexCtx=_rlCtx}
   // Filter cached index in a single pass (cap at 30)
   var matches=[];
-  for(var si=0;si<_searchIndex.length&&matches.length<30;si++){
+  for(let si=0;si<_searchIndex.length&&matches.length<30;si++){
     if(_searchIndex[si].searchStr.includes(q))matches.push(_searchIndex[si]);
   }
   // Notes are dynamic — search them live (typically small set)
@@ -14693,7 +14693,7 @@ function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts){
     .sort(function(a,b){return a.RuleNumber-b.RuleNumber});
   // Discovery mode: if no entries for this direction, assume allow (missing data)
   if(entries.length===0&&opts&&opts.assumeAllow) return {action:'allow',rule:'No '+direction+' rules defined (assumed allow)',ruleNum:'-'};
-  for(var i=0;i<entries.length;i++){
+  for(let i=0;i<entries.length;i++){
     var e=entries[i];
     if(e.RuleNumber===32767) continue;
     var protoOk=_protoMatch(e.Protocol, protocol);
@@ -14728,10 +14728,10 @@ function _protoName(p){
 
 function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts){
   if(!sgs||sgs.length===0) return {action:(opts&&opts.assumeAllow)?'allow':'deny',rule:'No security groups attached',matchedSg:null};
-  for(var si=0;si<sgs.length;si++){
+  for(let si=0;si<sgs.length;si++){
     var sg=sgs[si];
     var rules=direction==='inbound'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
-    for(var ri=0;ri<rules.length;ri++){
+    for(let ri=0;ri<rules.length;ri++){
       var r=rules[ri];
       var protoOk=_protoMatch(String(r.IpProtocol), protocol);
       if(!protoOk) continue;
@@ -15594,7 +15594,7 @@ function _findAlternatePaths(source, target, config, ctx){
   candidates.sort(function(a,b){return (b.isPub?1:0)-(a.isPub?1:0)});
   // Test each candidate (max 20)
   var tested=0;
-  for(var i=0;i<candidates.length&&tested<20&&results.length<5;i++){
+  for(let i=0;i<candidates.length&&tested<20&&results.length<5;i++){
     var cand=candidates[i];
     tested++;
     var leg1Config={protocol:'tcp',port:cand.defaultPort};
@@ -15655,7 +15655,7 @@ function _executeMultiTrace(){
   if(_flowWaypoints.length<2||!_rlCtx) return;
   _flowLegs=[];
   var allBlocked=false;
-  for(var i=0;i<_flowWaypoints.length-1;i++){
+  for(let i=0;i<_flowWaypoints.length-1;i++){
     var src=_flowWaypoints[i];
     var tgt=_flowWaypoints[i+1];
     var cfg=src.config||{protocol:'tcp',port:443};
@@ -16236,11 +16236,11 @@ function _renderIngressArrows(faG){
 // Data-driven pathing: every path drawn FROM→TO in traffic direction.
 // No animation-direction hacks — direction is baked into the SVG `d` attribute.
 
-var FP_GR=20;           // gateway circle radius (matches topology-renderer GR)
-var FP_TRUNK_OFFSET=20; // base distance from subnet edge to first trunk
-var FP_TRUNK_SPACE=12;  // spacing between parallel trunks
-var FP_BUFFER=8;        // minimum clearance from element edges
-var FP_JUNC=3;          // junction patch half-size (6x6 squares)
+const FP_GR=20;           // gateway circle radius (matches topology-renderer GR)
+const FP_TRUNK_OFFSET=20; // base distance from subnet edge to first trunk
+const FP_TRUNK_SPACE=12;  // spacing between parallel trunks
+const FP_BUFFER=8;        // minimum clearance from element edges
+const FP_JUNC=3;          // junction patch half-size (6x6 squares)
 
 // Layer 1: Build directed flow graph from egress discovery data.
 // Returns { gwGroups: {gwId: {subs:[], vpcId, isNat, upstreamIgw}}, internetGids: Set }
@@ -16266,7 +16266,7 @@ function _buildFlowGraph(cache,ctx){
       var sg=document.querySelector('.struct-group');
       if(sg){
         var cands=sg.querySelectorAll('[data-sid="'+pos.subnetId+'"][data-gid]');
-        for(var ci=0;ci<cands.length;ci++){
+        for(let ci=0;ci<cands.length;ci++){
           var cGid=cands[ci].getAttribute('data-gid');
           if(cGid&&(cGid.startsWith('igw')||cGid.startsWith('nat'))){gid=cGid;break}
         }
@@ -16570,7 +16570,7 @@ function _renderForwardingArrows(faG,fwdLinks){
     if(r){var b=r.getBBox();vpcBounds.push({left:b.x,right:b.x+b.width,top:b.y,bottom:b.y+b.height})}
   });
   function findVpcBB(pt){
-    for(var i=0;i<vpcBounds.length;i++){
+    for(let i=0;i<vpcBounds.length;i++){
       var v=vpcBounds[i];
       if(pt.x>=v.left&&pt.x<=v.right&&pt.y>=v.top&&pt.y<=v.bottom) return v;
     }
@@ -17253,10 +17253,10 @@ function _openFlowAnalysisDashboard(d){
   _renderFaDash(closeDash);
 }
 
-var _FA_TIER_KEYS=['internetFacing','bastionOnly','fullyPrivate','database'];
-var _FA_SECTION_COLORS={ingress:'#10b981',egress:'#f97316',bastion:'#22d3ee',internetFacing:'#10b981',bastionOnly:'#22d3ee',fullyPrivate:'#8b5cf6',database:'#f59e0b'};
-var _FA_SECTION_LABELS={ingress:'Ingress',egress:'Egress',bastion:'Bastion',internetFacing:'Internet-Facing',bastionOnly:'Bastion-Only',fullyPrivate:'Fully Private',database:'Database'};
-var _FA_SECTION_ORDER={ingress:1,egress:2,internetFacing:3,bastionOnly:4,fullyPrivate:5,database:6,bastion:7};
+const _FA_TIER_KEYS=['internetFacing','bastionOnly','fullyPrivate','database'];
+const _FA_SECTION_COLORS={ingress:'#10b981',egress:'#f97316',bastion:'#22d3ee',internetFacing:'#10b981',bastionOnly:'#22d3ee',fullyPrivate:'#8b5cf6',database:'#f59e0b'};
+const _FA_SECTION_LABELS={ingress:'Ingress',egress:'Egress',bastion:'Bastion',internetFacing:'Internet-Facing',bastionOnly:'Bastion-Only',fullyPrivate:'Fully Private',database:'Database'};
+const _FA_SECTION_ORDER={ingress:1,egress:2,internetFacing:3,bastionOnly:4,fullyPrivate:5,database:6,bastion:7};
 
 function _renderFaDash(closeFn){
   if(!_faDashRows) return;
@@ -17469,7 +17469,7 @@ function classifyChange(field){
   return 'structural'; // default to structural for unknown fields
 }
 
-var _diffStrCache=new WeakMap();
+const _diffStrCache=new WeakMap();
 function _diffStr(obj){if(obj===null||typeof obj!=='object')return JSON.stringify(obj);if(_diffStrCache.has(obj))return _diffStrCache.get(obj);var s=JSON.stringify(obj);_diffStrCache.set(obj,s);return s}
 function _fieldDiff(normA,normB,path){
   const changes=[];
@@ -18101,7 +18101,7 @@ function _populateDiffSnapPicker(){
   });
 }
 
-var _CAT_ORDER={added:0,removed:1,modified:2,unchanged:3};
+const _CAT_ORDER={added:0,removed:1,modified:2,unchanged:3};
 
 function _renderDiffDash(){
   if(!_diffFlatRows) return;
@@ -18347,13 +18347,13 @@ async function _exportDiffXlsx(){
     ws2['!cols']=[{wch:12},{wch:18},{wch:28},{wch:28},{wch:20},{wch:10},{wch:60}];
     // Style header row
     var headerCols='ABCDEFG';
-    for(var i=0;i<headerCols.length;i++){
+    for(let i=0;i<headerCols.length;i++){
       var addr=headerCols[i]+'1';
       if(ws2[addr]) ws2[addr].s=_xlsxHeaderStyle();
     }
     // Color status cells
     var statusColors={ADDED:{fg:'065F46',bg:'D1FAE5'},REMOVED:{fg:'991B1B',bg:'FEE2E2'},MODIFIED:{fg:'92400E',bg:'FEF3C7'},UNCHANGED:{fg:'6B7280',bg:'F3F4F6'}};
-    for(var ri=1;ri<detailRows.length;ri++){
+    for(let ri=1;ri<detailRows.length;ri++){
       var cellAddr='A'+(ri+1);
       var val=detailRows[ri][0];
       var sc=statusColors[val];
@@ -18413,7 +18413,7 @@ document.getElementById('diffFileInput').addEventListener('change',async functio
   // Multiple JSON files — match each to a textarea slot and build diff context
   var textareas={};
   var matched=0,skipped=[];
-  for(var i=0;i<files.length;i++){
+  for(let i=0;i<files.length;i++){
     try{
       var text=await files[i].text();
       JSON.parse(text); // validate
@@ -18685,7 +18685,7 @@ function _udashFilterByAccount(items){
     return a===id||a===lbl;
   });
 }
-var _UDASH_TABS = [
+const _UDASH_TABS = [
   {id:'classification', label:'Classification', color:'#a78bfa', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_classificationData.length) runClassificationEngine(_rlCtx);
@@ -20120,7 +20120,7 @@ function _renderReportsTab(){
   // Sync account dropdown with dashboard toggle
   var _syncAcct=document.getElementById('rptAccountFilter');
   if(_syncAcct&&_udashAcctFilter&&_udashAcctFilter!=='all'){
-    for(var i=0;i<_syncAcct.options.length;i++){
+    for(let i=0;i<_syncAcct.options.length;i++){
       if(_syncAcct.options[i].value===_udashAcctFilter){_syncAcct.value=_udashAcctFilter;break}
     }
   }
@@ -20568,7 +20568,7 @@ function _rptEmbedDataBlob(enabled){
   });
   // IAM review data — serialize with date strings instead of Date objects
   var iamData=_iamReviewData.map(function(r){
-    var c={};for(var k in r){if(k==='_raw')continue;c[k]=r[k]}
+    var c={};for(let k in r){if(k==='_raw')continue;c[k]=r[k]}
     if(c.created instanceof Date)c.created=c.created.toISOString().split('T')[0];
     if(c.lastUsed instanceof Date)c.lastUsed=c.lastUsed.toISOString().split('T')[0];
     return c;
@@ -20704,7 +20704,7 @@ function _loadSheetJS(){
   });
 }
 
-var _XLSX_COLORS={
+const _XLSX_COLORS={
   headerBg:'1B2A4A',headerFg:'FFFFFF',
   sectionBg:'E2E8F0',sectionFg:'1E293B',
   critFg:'991B1B',critBg:'FEE2E2',
@@ -20818,7 +20818,7 @@ function _xlsxAddSheet(wb,name,headers,rows,opts){
   // Style severity column — colored text + tinted fill (cache by value)
   if(typeof opts.sevCol==='number'){
     var _sevCache={};
-    for(var r=1;r<data.length;r++){
+    for(let r=1;r<data.length;r++){
       var addr=XLSX.utils.encode_cell({r:r,c:opts.sevCol});
       if(ws[addr]){
         var val=String(ws[addr].v||'');
@@ -20832,7 +20832,7 @@ function _xlsxAddSheet(wb,name,headers,rows,opts){
   // Style tier column (cache by value)
   if(typeof opts.tierCol==='number'){
     var _tierCache={};
-    for(var r=1;r<data.length;r++){
+    for(let r=1;r<data.length;r++){
       var addr=XLSX.utils.encode_cell({r:r,c:opts.tierCol});
       if(ws[addr]){
         var val=String(ws[addr].v||'');
@@ -20846,7 +20846,7 @@ function _xlsxAddSheet(wb,name,headers,rows,opts){
   // Style effort column (cache by value)
   if(typeof opts.effortCol==='number'){
     var _effortCache={};
-    for(var r=1;r<data.length;r++){
+    for(let r=1;r<data.length;r++){
       var addr=XLSX.utils.encode_cell({r:r,c:opts.effortCol});
       if(ws[addr]){
         var val=String(ws[addr].v||'');
@@ -20862,9 +20862,9 @@ function _xlsxAddSheet(wb,name,headers,rows,opts){
   var _cellPlain=_xlsxCellStyle(false);
   var _cellStripe=_xlsxCellStyle(true);
   var _border=_xlsxBorder();
-  for(var r=1;r<data.length;r++){
+  for(let r=1;r<data.length;r++){
     var sty=r%2===0?_cellStripe:_cellPlain;
-    for(var c=0;c<headers.length;c++){
+    for(let c=0;c<headers.length;c++){
       var addr=XLSX.utils.encode_cell({r:r,c:c});
       if(ws[addr]&&!ws[addr].s) ws[addr].s=sty;
       else if(ws[addr]&&ws[addr].s&&!ws[addr].s.border) ws[addr].s.border=_border;
@@ -20900,7 +20900,7 @@ function _xlsxSummarySection(ws,row,label,cols){
   ws[addr]={v:label,t:'s',s:{font:{bold:true,sz:12,color:{rgb:_XLSX_COLORS.headerFg},name:'Calibri'},
     fill:{fgColor:{rgb:_XLSX_COLORS.headerBg}},alignment:{vertical:'center'},
     border:_xlsxBorder()}};
-  for(var c=1;c<cols;c++){
+  for(let c=1;c<cols;c++){
     var a2=XLSX.utils.encode_cell({r:row,c:c});
     ws[a2]={v:'',t:'s',s:{fill:{fgColor:{rgb:_XLSX_COLORS.headerBg}},border:_xlsxBorder()}};
   }
@@ -20916,7 +20916,7 @@ function _xlsxSummaryRow(ws,row,label,value,cols){
   ws[vAddr]={v:value,t:vType,s:{font:{sz:10,color:{rgb:_XLSX_COLORS.valueFg},name:'Calibri'},
     alignment:{vertical:'center'},border:_xlsxBorder()}};
   if(cols>2){
-    for(var c=2;c<cols;c++){
+    for(let c=2;c<cols;c++){
       var a=XLSX.utils.encode_cell({r:row,c:c});
       ws[a]={v:'',t:'s',s:{border:_xlsxBorder()}};
     }
@@ -20936,7 +20936,7 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
   ws[titleAddr]={v:_rptState.title||'AWS Infrastructure Assessment',t:'s',
     s:{font:{bold:true,sz:18,color:{rgb:_XLSX_COLORS.titleFg},name:'Calibri'},
       alignment:{vertical:'center'},border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
-  for(var cc=tCol+1;cc<cols;cc++){
+  for(let cc=tCol+1;cc<cols;cc++){
     ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',
       s:{border:{bottom:{style:'medium',color:{rgb:_XLSX_COLORS.headerBg}}}}};
   }
@@ -20957,7 +20957,7 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
   ws[subAddr]={v:subParts.join('  |  '),t:'s',
     s:{font:{sz:10,color:{rgb:_XLSX_COLORS.subtitleFg},name:'Calibri',italic:true},
       alignment:{vertical:'center'}}};
-  for(var cc=tCol+1;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s'};
+  for(let cc=tCol+1;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s'};
   ws['!merges'].push({s:{r:r,c:tCol},e:{r:r,c:cols-1}});
   r+=2;
   // Infrastructure Overview section
@@ -20968,7 +20968,7 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
       ['Load Balancers',(c.albs||[]).length],['ECS Services',(c.ecsServices||[]).length],
       ['Lambda Functions',(c.lambdaFns||[]).length],['Security Groups',(c.sgs||[]).length]];
     // Two-column layout: resource pairs side by side
-    for(var i=0;i<counts.length;i+=2){
+    for(let i=0;i<counts.length;i+=2){
       var lAddr=XLSX.utils.encode_cell({r:r,c:0});
       ws[lAddr]={v:counts[i][0],t:'s',s:{font:{bold:true,sz:10,color:{rgb:_XLSX_COLORS.labelFg},name:'Calibri'},border:_xlsxBorder(),alignment:{vertical:'center'}}};
       var vAddr=XLSX.utils.encode_cell({r:r,c:1});
@@ -21006,7 +21006,7 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
       var vAddr=XLSX.utils.encode_cell({r:r,c:1});
       ws[vAddr]={v:sevs[s],t:'n',s:{font:{bold:true,sz:11,color:{rgb:'0F172A'},name:'Calibri'},
         alignment:{horizontal:'center',vertical:'center'},border:_xlsxBorder()}};
-      for(var cc=2;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',s:{border:_xlsxBorder()}};
+      for(let cc=2;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',s:{border:_xlsxBorder()}};
       r++;
     });
     // Framework breakdown
@@ -21042,7 +21042,7 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
     [['Protected',tc.protected||0,'protected'],['Partial',tc.partial||0,'partial'],['At Risk',tc.at_risk||0,'at_risk']].forEach(function(t){
       ws[XLSX.utils.encode_cell({r:r,c:0})]={v:t[0],t:'s',s:_xlsxTierStyle(t[2])};
       ws[XLSX.utils.encode_cell({r:r,c:1})]={v:t[1],t:'n',s:{font:{bold:true,sz:11,name:'Calibri'},alignment:{horizontal:'center'},border:_xlsxBorder()}};
-      for(var cc=2;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',s:{border:_xlsxBorder()}};
+      for(let cc=2;cc<cols;cc++) ws[XLSX.utils.encode_cell({r:r,c:cc})]={v:'',t:'s',s:{border:_xlsxBorder()}};
       r++;
     });
   }
@@ -21211,7 +21211,7 @@ function _rptBuildXlsxInventory(wb){
   });
   if(!rows.length) return;
   // Replace empty cells with "-" so XLSX has no blank gaps
-  rows.forEach(function(row){for(var i=0;i<row.length;i++){if(row[i]==='')row[i]='-'}});
+  rows.forEach(function(row){for(let i=0;i<row.length;i++){if(row[i]==='')row[i]='-'}});
   // Generate hyperlinks for ID column (4) and VPC column (2)
   rows.forEach(function(row,ri){
     var region=row[1],type=row[3],id=row[4],vpc=row[2];
@@ -21254,7 +21254,7 @@ async function _xlsxInjectLogo(zip){
     var base64=logo.dataUri.split(',')[1];
     var binary=atob(base64);
     var bytes=new Uint8Array(binary.length);
-    for(var i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
     var ext=logo.ext==='jpeg'?'png':logo.ext; // normalize
     zip.file('xl/media/image1.'+ext,bytes);
     // Register image content type
@@ -21313,7 +21313,7 @@ async function _xlsxPostProcess(wbBuf,sheetNames){
   // Logo on Summary sheet
   if(_rptState.logo) await _xlsxInjectLogo(zip);
   // Freeze panes on data sheets
-  for(var i=0;i<sheetNames.length;i++){
+  for(let i=0;i<sheetNames.length;i++){
     var path='xl/worksheets/sheet'+(i+1)+'.xml';
     var f=zip.file(path);
     if(!f) continue;
@@ -21769,7 +21769,7 @@ function _rptBuildXlsxIAMReview(wb){
   var wsName='IAM Review';
   var ws=wb.Sheets[wsName];
   if(!ws) return;
-  for(var r=1;r<=rows.length;r++){
+  for(let r=1;r<=rows.length;r++){
     var addr=XLSX.utils.encode_cell({r:r,c:2});
     if(ws[addr]&&String(ws[addr].v)==='YES'){
       ws[addr].s={font:{bold:true,color:{rgb:_XLSX_COLORS.critFg},name:'Calibri',sz:10},
@@ -21822,7 +21822,7 @@ function _rptBuildXlsxFirewall(wb){
     // Highlight open-to-internet cells in red
     var ws=wb.Sheets['Security Groups'];
     if(ws){
-      for(var r=1;r<=sgRows.length;r++){
+      for(let r=1;r<=sgRows.length;r++){
         var addr=XLSX.utils.encode_cell({r:r,c:7});
         if(ws[addr]&&String(ws[addr].v)==='YES'){
           ws[addr].s={font:{bold:true,color:{rgb:_XLSX_COLORS.critFg},name:'Calibri',sz:10},
