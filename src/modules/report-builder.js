@@ -565,7 +565,7 @@ function _loadSheetJS(){
       document.head.appendChild(s);
     });
   }
-  return _tryLoad('xlsx.bundle.min.js').catch(function(){
+  return _tryLoad('libs/xlsx.bundle.min.js').catch(function(){
     return _tryLoad('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js');
   });
 }

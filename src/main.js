@@ -16,9 +16,77 @@ import { runComplianceChecks, invalidateComplianceCache } from './modules/compli
 // Network rules (pure functions extracted from flow-analyzer)
 import { ipToNum, ipFromCidr, cidrContains as nrCidrContains, protoMatch, portInRange, protoName, evaluateRouteTable, evaluateNACL, evaluateSG } from './modules/network-rules.js';
 
-// NOTE: diff-engine.js and iam-engine.js are NOT imported here.
+// Shared state (cross-cutting globals used by 5+ regions)
+import * as State from './modules/state.js';
+
+// Safe DOM builders (used by extracted modules, available to inline code during transition)
+import { buildEl, buildOption, buildSelect, buildButton, setText, replaceChildren, safeHtml } from './modules/dom-builders.js';
+
+// BUDR engine (backup, uptime, disaster recovery assessment)
+import {
+  _BUDR_STRATEGY, _BUDR_STRATEGY_ORDER, _BUDR_STRATEGY_LEGEND,
+  _BUDR_RTO_RPO, _BUDR_EST_MINUTES, _TIER_TARGETS,
+  runBUDRChecks, _budrTierCompliance, _fmtMin,
+  _enrichBudrWithClassification, _reapplyBUDROverrides,
+  _getBUDRTierCounts, _getBudrComplianceCounts,
+  budrFindings, budrAssessments, budrOverrides,
+  setBudrFindings, setBudrAssessments, setBudrOverrides,
+  _budrFindings, _budrAssessments, _budrOverrides
+} from './modules/budr-engine.js';
+
+// Dependency graph (pure logic — DOM display functions remain inline)
+import {
+  buildDependencyGraph, getBlastRadius, getResType, getResName,
+  clearBlastRadius, resetDepGraph, isBlastActive,
+  depGraph, blastActive
+} from './modules/dep-graph.js';
+
+// IAM engine (policy analysis and compliance checks)
+import {
+  _stmtArr, _safePolicyParse,
+  parseIAMData, getIAMAccessForVpc, runIAMChecks,
+  _iamData, _showIAM, setIamData, setShowIAM, getIamData, getShowIAM
+} from './modules/iam-engine.js';
+
+// Timeline & Annotations (state + pure logic — DOM rendering remains inline)
+import * as Timeline from './modules/timeline.js';
+
+// Phase 3: Feature Engines
+// Design mode (validation, apply functions, CLI generation — DOM forms remain inline)
+import * as DesignMode from './modules/design-mode.js';
+
+// Flow tracing (trace engine, network position — DOM/SVG rendering remains inline)
+import * as FlowTracing from './modules/flow-tracing.js';
+
+// Flow analysis (traffic flow discovery — dashboard rendering remains inline)
+import * as FlowAnalysis from './modules/flow-analysis.js';
+
+// Firewall editor (rule CRUD, validation, CLI — DOM editor remains inline)
+import * as FirewallEditor from './modules/firewall-editor.js';
+
+// Multi-account (context building, merging — DOM panels remain inline)
+import * as MultiAccount from './modules/multi-account.js';
+
+// Phase 4: Dashboards & Reports
+// Compliance view (scoring, grouping, muting — DOM rendering remains inline)
+import * as ComplianceView from './modules/compliance-view.js';
+
+// Unified dashboard (state + filter — DOM orchestration remains inline)
+import * as UnifiedDashboard from './modules/unified-dashboard.js';
+
+// Governance & Inventory (classification, inventory, IAM permissions — DOM rendering remains inline)
+import * as Governance from './modules/governance.js';
+
+// Phase 5: Core
+// Export utilities (VSDX layout, XML builders, downloadBlob — DOM export handlers remain inline)
+import * as ExportUtils from './modules/export-utils.js';
+
+// IAC generator (Terraform, CloudFormation, Checkov — DOM modal remains inline)
+import * as IacGenerator from './modules/iac-generator.js';
+
+// NOTE: diff-engine.js and report-builder.js are NOT imported here.
 // They have top-level DOM event listeners and are loaded via separate <script type="module"> tags
-// in index.html (after DOM is ready). Their exports are available for unit testing only.
+// in index.html (after DOM is ready).
 
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
@@ -51,7 +119,50 @@ window.AppModules = {
   ipToNum, ipFromCidr, nrCidrContains, protoMatch, portInRange, protoName,
   evaluateRouteTable, evaluateNACL, evaluateSG,
 
-  // Note: diff-engine + iam-engine loaded via separate script tags (DOM-dependent)
+  // Shared state
+  State,
+
+  // DOM builders
+  buildEl, buildOption, buildSelect, buildButton, setText, replaceChildren, safeHtml,
+
+  // BUDR engine
+  _BUDR_STRATEGY, _BUDR_STRATEGY_ORDER, _BUDR_STRATEGY_LEGEND,
+  _BUDR_RTO_RPO, _BUDR_EST_MINUTES, _TIER_TARGETS,
+  runBUDRChecks, _budrTierCompliance, _fmtMin,
+  _enrichBudrWithClassification, _reapplyBUDROverrides,
+  _getBUDRTierCounts, _getBudrComplianceCounts,
+  _budrFindings, _budrAssessments, _budrOverrides,
+  setBudrFindings, setBudrAssessments, setBudrOverrides,
+
+  // Dependency graph
+  buildDependencyGraph, getBlastRadius, getResType, getResName,
+  clearBlastRadius, resetDepGraph, isBlastActive,
+
+  // IAM engine
+  _stmtArr, _safePolicyParse,
+  parseIAMData, getIAMAccessForVpc, runIAMChecks,
+  _iamData, _showIAM, setIamData, setShowIAM, getIamData, getShowIAM,
+
+  // Timeline & Annotations
+  Timeline,
+
+  // Phase 3: Feature Engines
+  DesignMode,
+  FlowTracing,
+  FlowAnalysis,
+  FirewallEditor,
+  MultiAccount,
+
+  // Phase 4: Dashboards & Reports
+  ComplianceView,
+  UnifiedDashboard,
+  Governance,
+
+  // Phase 5: Core
+  ExportUtils,
+  IacGenerator,
+
+  // Note: diff-engine and report-builder loaded via separate script tags (DOM-dependent)
 };
 
 // Make functions available globally (transitional - will remove once all code is modularized)

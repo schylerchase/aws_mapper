@@ -6,8 +6,14 @@
 // Helpers: ensure Statement is always an array; safe JSON parse for policy docs
 function _stmtArr(s){return Array.isArray(s)?s:s?[s]:[]}
 function _safePolicyParse(s){if(typeof s!=='string')return s||{};try{return JSON.parse(s)}catch(e){return {}}}
+
+// Module state
 let _iamData=null;
 let _showIAM=false;
+export function setIamData(v) { _iamData = v; }
+export function setShowIAM(v) { _showIAM = v; }
+export function getIamData() { return _iamData; }
+export function getShowIAM() { return _showIAM; }
 function parseIAMData(raw){
   if(!raw)return null;
   const data={roles:[],users:[],policies:[]};
@@ -70,11 +76,10 @@ function runIAMChecks(iamData){
   // OPTIMIZED: Pre-index policies to avoid O(roles × policies) nested find()
   const policyByArn=new Map();
   (iamData.policies||[]).forEach(p=>{if(p.Arn)policyByArn.set(p.Arn,p);if(p.PolicyName)policyByArn.set(p.PolicyName,p)});
-  // Derive own account ID from first role/user ARN to detect cross-account trusts
-  var _iamOwnAccountId='';
-  var _firstArn=(iamData.roles||[]).concat(iamData.users||[]).find(r=>r.Arn);
-  if(_firstArn){var _am=_firstArn.Arn.match(/arn:aws:iam::(\d+):/);if(_am)_iamOwnAccountId=_am[1]}
+  // Helper: derive account ID from a resource's ARN (supports merged multi-account data)
+  function _acctFromArn(r){if(!r||!r.Arn)return '';const m=r.Arn.match(/arn:aws:iam::(\d+):/);return m?m[1]:''}
   (iamData.roles||[]).forEach(role=>{
+    const _iamOwnAccountId=_acctFromArn(role);
     if(role._isAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
     if(role._hasWildcard&&!role._isAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
     // Check for cross-account trust without MFA condition
@@ -175,8 +180,9 @@ function runIAMChecks(iamData){
   return f;
 }
 
-// Exports for unit testing
+// Exports
 export {
   _stmtArr, _safePolicyParse,
-  parseIAMData, getIAMAccessForVpc, runIAMChecks
+  parseIAMData, getIAMAccessForVpc, runIAMChecks,
+  _iamData, _showIAM
 };
