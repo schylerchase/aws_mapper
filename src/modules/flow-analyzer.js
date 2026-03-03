@@ -38,6 +38,30 @@ function _suggestPort(targetType, targetResource){
 // _cidrContains, _ipToNum, _ipFromCidr, _protoMatch, _portInRange, _protoName
 // evaluateRouteTable, evaluateNACL, evaluateSG
 
+// Build reverse-lookup Maps on ctx for O(1) resource lookups.
+// Lazily constructed and cached as ctx._reverseMaps.
+function _ensureReverseMaps(ctx){
+  if(ctx._reverseMaps) return ctx._reverseMaps;
+  var instById=new Map();
+  Object.entries(ctx.instBySub||{}).forEach(function(e){var sid=e[0];(e[1]||[]).forEach(function(i){instById.set(i.InstanceId,{res:i,subnetId:sid})})});
+  var rdsById=new Map();
+  Object.entries(ctx.rdsBySub||{}).forEach(function(e){var sid=e[0];(e[1]||[]).forEach(function(d){rdsById.set(d.DBInstanceIdentifier,{res:d,subnetId:sid})})});
+  var albById=new Map();
+  Object.entries(ctx.albBySub||{}).forEach(function(e){var sid=e[0];(e[1]||[]).forEach(function(a){
+    var aid=a.LoadBalancerArn?a.LoadBalancerArn.split('/').pop():'';
+    var entry={res:a,subnetId:sid};
+    if(aid) albById.set(aid,entry);
+    if(a.LoadBalancerName) albById.set(a.LoadBalancerName,entry);
+  })});
+  var lambdaById=new Map();
+  Object.entries(ctx.lambdaBySub||{}).forEach(function(e){var sid=e[0];(e[1]||[]).forEach(function(f){lambdaById.set(f.FunctionName,{res:f,subnetId:sid})})});
+  var ecsById=new Map();
+  Object.entries(ctx.ecsBySub||{}).forEach(function(e){var sid=e[0];(e[1]||[]).forEach(function(s){ecsById.set(s.serviceName,{res:s,subnetId:sid})})});
+  var maps={instById:instById,rdsById:rdsById,albById:albById,lambdaById:lambdaById,ecsById:ecsById};
+  ctx._reverseMaps=maps;
+  return maps;
+}
+
 function _resolveNetworkPosition(type, id, ctx){
   if(!ctx) return null;
   if(type==='internet') return {subnetId:null,vpcId:null,cidr:'0.0.0.0/0',sgs:[],name:'Internet',ip:'0.0.0.0'};
@@ -47,64 +71,44 @@ function _resolveNetworkPosition(type, id, ctx){
     var sgs2=[];
     return {subnetId:sub.SubnetId,vpcId:sub.VpcId,cidr:sub.CidrBlock,sgs:sgs2,name:sub.Tags?((sub.Tags.find(function(t){return t.Key==='Name'})||{}).Value||sub.SubnetId):sub.SubnetId};
   }
+  var maps=_ensureReverseMaps(ctx);
   if(type==='instance'){
-    var inst=null;
-    Object.keys(ctx.instBySub||{}).forEach(function(sid){
-      (ctx.instBySub[sid]||[]).forEach(function(i){
-        if(i.InstanceId===id) inst=i;
-      });
-    });
-    if(!inst) return null;
+    var hit=maps.instById.get(id);
+    if(!hit) return null;
+    var inst=hit.res;
     var iSgs=(inst.SecurityGroups||[]).map(function(s){return s.GroupId});
     var fullSgs=iSgs.map(function(gid){return (ctx.sgs||[]).find(function(s){return s.GroupId===gid})}).filter(Boolean);
     return {subnetId:inst.SubnetId,vpcId:inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId,cidr:inst.PrivateIpAddress?inst.PrivateIpAddress+'/32':null,sgs:fullSgs,name:inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId,ip:inst.PrivateIpAddress};
   }
   if(type==='rds'){
-    var rds2=null;var rSid=null;
-    Object.keys(ctx.rdsBySub||{}).forEach(function(sid){
-      (ctx.rdsBySub[sid]||[]).forEach(function(d){
-        if(d.DBInstanceIdentifier===id){rds2=d;rSid=sid}
-      });
-    });
-    if(!rds2) return null;
+    var rHit=maps.rdsById.get(id);
+    if(!rHit) return null;
+    var rds2=rHit.res;var rSid=rHit.subnetId;
     var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
     var rSgs2=(rds2.VpcSecurityGroups||[]).map(function(s){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===s.VpcSecurityGroupId})}).filter(Boolean);
     var rSubCidr=rSid?((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).CidrBlock:null;
     return {subnetId:rSid,vpcId:rVpc,cidr:rSubCidr,sgs:rSgs2,name:rds2.DBInstanceIdentifier};
   }
   if(type==='alb'){
-    var alb2=null;var aSid=null;
-    Object.keys(ctx.albBySub||{}).forEach(function(sid){
-      (ctx.albBySub[sid]||[]).forEach(function(a){
-        var aid=a.LoadBalancerArn?a.LoadBalancerArn.split('/').pop():'';
-        if(aid===id||a.LoadBalancerName===id) {alb2=a;aSid=sid}
-      });
-    });
-    if(!alb2) return null;
+    var aHit=maps.albById.get(id);
+    if(!aHit) return null;
+    var alb2=aHit.res;var aSid=aHit.subnetId;
     var aVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===aSid})||{}).VpcId;
     var aSgs=(alb2.SecurityGroups||[]).map(function(gid){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===gid})}).filter(Boolean);
     return {subnetId:aSid,vpcId:aVpc,cidr:null,sgs:aSgs,name:alb2.LoadBalancerName||id};
   }
   if(type==='lambda'){
-    var fn2=null;var fSid=null;
-    Object.keys(ctx.lambdaBySub||{}).forEach(function(sid){
-      (ctx.lambdaBySub[sid]||[]).forEach(function(f){
-        if(f.FunctionName===id){fn2=f;fSid=sid}
-      });
-    });
-    if(!fn2) return null;
+    var fHit=maps.lambdaById.get(id);
+    if(!fHit) return null;
+    var fn2=fHit.res;var fSid=fHit.subnetId;
     var fVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===fSid})||{}).VpcId;
     var fSgs2=((fn2.VpcConfig||{}).SecurityGroupIds||[]).map(function(gid){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===gid})}).filter(Boolean);
     return {subnetId:fSid,vpcId:fVpc,cidr:null,sgs:fSgs2,name:fn2.FunctionName};
   }
   if(type==='ecs'){
-    var ecs2=null;var eSid=null;
-    Object.keys(ctx.ecsBySub||{}).forEach(function(sid){
-      (ctx.ecsBySub[sid]||[]).forEach(function(s){
-        if(s.serviceName===id){ecs2=s;eSid=sid}
-      });
-    });
-    if(!ecs2) return null;
+    var eHit=maps.ecsById.get(id);
+    if(!eHit) return null;
+    var ecs2=eHit.res;var eSid=eHit.subnetId;
     var eVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===eSid})||{}).VpcId;
     var eNc=(ecs2.networkConfiguration||{}).awsvpcConfiguration||{};
     var eSgs2=(eNc.securityGroups||[]).map(function(gid){return (ctx.sgs||[]).find(function(sg){return sg.GroupId===gid})}).filter(Boolean);
@@ -1288,9 +1292,10 @@ function _findBastionChains(bastions,ctx){
       }
     });
     // Check RDS
+    var bcMaps=_ensureReverseMaps(ctx);
     (ctx.rdsInstances||[]).forEach(function(db){
-      var rSid=null;
-      Object.keys(ctx.rdsBySub||{}).forEach(function(sid){(ctx.rdsBySub[sid]||[]).forEach(function(d){if(d.DBInstanceIdentifier===db.DBInstanceIdentifier)rSid=sid})});
+      var rHit=bcMaps.rdsById.get(db.DBInstanceIdentifier);
+      var rSid=rHit?rHit.subnetId:null;
       if(!rSid) return;
       var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
       if(rVpc!==bastion.vpcId) return;

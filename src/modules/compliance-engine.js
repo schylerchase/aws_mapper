@@ -152,6 +152,10 @@ function runWAFChecks(ctx){
 function runArchChecks(ctx){
   const f=[];const gn2=_gn2;
   const pubSubs=ctx.pubSubs||new Set();const subRT=ctx.subRT||{};
+  const sgById=new Map((ctx.sgs||[]).map(s=>[s.GroupId,s]));
+  const volById=new Map((ctx.volumes||[]).map(v=>[v.VolumeId,v]));
+  const subById=new Map((ctx.subnets||[]).map(s=>[s.SubnetId,s]));
+  const vpcById=new Map((ctx.vpcs||[]).map(v=>[v.VpcId,v]));
   // ARCH-N1: Public subnet with no IGW route
   (ctx.subnets||[]).forEach(sub=>{
     if(!sub.MapPublicIpOnLaunch)return;
@@ -172,7 +176,7 @@ function runArchChecks(ctx){
   const subByVpc={};(ctx.subnets||[]).forEach(s=>{(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s)});
   Object.entries(subByVpc).forEach(([vid,subs])=>{
     const azs=new Set(subs.map(s=>s.AvailabilityZone).filter(Boolean));
-    if(subs.length>1&&azs.size===1){const vpc=(ctx.vpcs||[]).find(v=>v.VpcId===vid);
+    if(subs.length>1&&azs.size===1){const vpc=vpcById.get(vid);
       f.push({severity:'HIGH',control:'ARCH-N3',framework:'ARCH',resource:vid,resourceName:gn2(vpc||{},vid),message:'All '+subs.length+' subnets in single AZ ('+[...azs][0]+') — no HA',remediation:'Create subnets across at least 2 AZs for fault tolerance'});}
   });
   // ARCH-N5: Overly broad SG egress
@@ -185,17 +189,17 @@ function runArchChecks(ctx){
   // ARCH-C1: EC2 in public subnet with wide-open SG
   (ctx.instances||[]).forEach(inst=>{if(!pubSubs.has(inst.SubnetId))return;
     const sgIds=(inst.SecurityGroups||[]).map(g=>g.GroupId);
-    const hasBroad=sgIds.some(gid=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);return sg&&(sg.IpPermissions||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
+    const hasBroad=sgIds.some(gid=>{const sg=sgById.get(gid);return sg&&(sg.IpPermissions||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
     if(hasBroad)f.push({severity:'CRITICAL',control:'ARCH-C1',framework:'ARCH',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'EC2 in public subnet with SG allowing all traffic from 0.0.0.0/0',remediation:'Restrict to specific ports; use ALB/NLB as entry point'});
   });
   // ARCH-C2: EC2 without EBS encryption
   (ctx.instances||[]).forEach(inst=>{const vols=(inst.BlockDeviceMappings||[]).map(b=>b.Ebs?.VolumeId).filter(Boolean);
-    const unenc=vols.filter(vid=>{const v=(ctx.volumes||[]).find(x=>x.VolumeId===vid);return v&&!v.Encrypted});
+    const unenc=vols.filter(vid=>{const v=volById.get(vid);return v&&!v.Encrypted});
     if(unenc.length>0)f.push({severity:'MEDIUM',control:'ARCH-C2',framework:'ARCH',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:unenc.length+' unencrypted EBS volume(s)',remediation:'Enable EBS encryption by default in account settings'});
   });
   // ARCH-C3: Lambda in VPC single AZ
   (ctx.lambdaFns||[]).forEach(fn=>{const vc=fn.VpcConfig;if(!vc||!vc.SubnetIds||!vc.SubnetIds.length)return;
-    const azs=new Set(vc.SubnetIds.map(sid=>{const s=(ctx.subnets||[]).find(x=>x.SubnetId===sid);return s?s.AvailabilityZone:null}).filter(Boolean));
+    const azs=new Set(vc.SubnetIds.map(sid=>{const s=subById.get(sid);return s?s.AvailabilityZone:null}).filter(Boolean));
     if(azs.size<2)f.push({severity:'MEDIUM',control:'ARCH-C3',framework:'ARCH',resource:fn.FunctionName,resourceName:fn.FunctionName,message:'Lambda in single AZ only',remediation:'Configure Lambda VPC subnets across at least 2 AZs'});
   });
   // ARCH-D1: RDS publicly accessible
@@ -223,8 +227,8 @@ function runArchChecks(ctx){
   // ARCH-G1: NAT Gateway in single AZ
   const natByVpc={};(ctx.nats||[]).forEach(n=>{(natByVpc[n.VpcId]=natByVpc[n.VpcId]||[]).push(n)});
   Object.entries(natByVpc).forEach(([vid,nats])=>{
-    const azs=new Set(nats.map(n=>{const s=(ctx.subnets||[]).find(x=>x.SubnetId===n.SubnetId);return s?s.AvailabilityZone:null}).filter(Boolean));
-    if(nats.length>=1&&azs.size===1&&(subByVpc[vid]||[]).length>2){const vpc=(ctx.vpcs||[]).find(v=>v.VpcId===vid);
+    const azs=new Set(nats.map(n=>{const s=subById.get(n.SubnetId);return s?s.AvailabilityZone:null}).filter(Boolean));
+    if(nats.length>=1&&azs.size===1&&(subByVpc[vid]||[]).length>2){const vpc=vpcById.get(vid);
       f.push({severity:'MEDIUM',control:'ARCH-G1',framework:'ARCH',resource:vid,resourceName:gn2(vpc||{},vid),message:'NAT Gateway(s) only in 1 AZ',remediation:'Deploy NAT Gateways in each AZ for resilience'});}
   });
   // ARCH-G2: Missing S3 VPC Endpoint
@@ -264,6 +268,7 @@ function runArchChecks(ctx){
 function runSOC2Checks(ctx){
   const f=[];const gn2=_gn2;
   const pubSubs=ctx.pubSubs||new Set();
+  const sgById=new Map((ctx.sgs||[]).map(s=>[s.GroupId,s]));
   // CC6.1 – Logical Access: SGs with 0.0.0.0/0 on sensitive ports (SSH/RDP/DB)
   const sensPorts=[22,3389,3306,5432,1433,1521,6379,27017];
   (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
@@ -287,7 +292,7 @@ function runSOC2Checks(ctx){
   // CC6.8 – Malicious software: EC2 in public subnet without SG restricting outbound
   (ctx.instances||[]).forEach(inst=>{if(!pubSubs.has(inst.SubnetId))return;
     const sgIds=(inst.SecurityGroups||[]).map(g=>g.GroupId);
-    const anyOpen=sgIds.some(gid=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);return sg&&(sg.IpPermissionsEgress||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
+    const anyOpen=sgIds.some(gid=>{const sg=sgById.get(gid);return sg&&(sg.IpPermissionsEgress||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
     if(anyOpen)f.push({severity:'MEDIUM',control:'SOC2-CC6.8',framework:'SOC2',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'Public EC2 with unrestricted egress — C2 callback risk',remediation:'Restrict outbound to required ports; use VPC endpoints for AWS services'});
   });
   // CC7.2 – Monitoring: VPC without flow logs indication
@@ -334,6 +339,7 @@ function runSOC2Checks(ctx){
 function runPCIDSSChecks(ctx){
   const f=[];const gn2=_gn2;
   const pubSubs=ctx.pubSubs||new Set();
+  const sgById=new Map((ctx.sgs||[]).map(s=>[s.GroupId,s]));
   // 1.3.1 – Restrict inbound to CDE: SGs with 0.0.0.0/0 on DB ports
   const dbPorts=[3306,5432,1433,1521,6379,27017,5439];
   (ctx.sgs||[]).forEach(sg=>{(sg.IpPermissions||[]).forEach(p=>{
@@ -343,7 +349,7 @@ function runPCIDSSChecks(ctx){
   // 1.3.2 – Restrict outbound from CDE: DB instances with unrestricted egress
   (ctx.rdsInstances||[]).forEach(db=>{
     const sgIds=(db.VpcSecurityGroups||[]).map(g=>g.VpcSecurityGroupId);
-    const allOpen=sgIds.some(gid=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);return sg&&(sg.IpPermissionsEgress||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
+    const allOpen=sgIds.some(gid=>{const sg=sgById.get(gid);return sg&&(sg.IpPermissionsEgress||[]).some(p=>p.IpProtocol==='-1'&&_hasOpenCidr(p))});
     if(allOpen)f.push({severity:'HIGH',control:'PCI-1.3.2',framework:'PCI',resource:db.DBInstanceIdentifier,resourceName:db.DBInstanceIdentifier,message:'RDS SG has unrestricted outbound — must restrict CDE egress',remediation:'Restrict egress to specific app-tier SGs and required AWS service endpoints'});
   });
   // 1.3.4 – Network segmentation: public subnet resources sharing SG with private
@@ -354,12 +360,12 @@ function runPCIDSSChecks(ctx){
     else sgs.forEach(g=>privSgIds.add(g));
   });
   pubSgIds.forEach(gid=>{if(privSgIds.has(gid)){
-    const sg=(ctx.sgs||[]).find(s=>s.GroupId===gid);
+    const sg=sgById.get(gid);
     f.push({severity:'HIGH',control:'PCI-1.3.4',framework:'PCI',resource:gid,resourceName:(sg?sg.GroupName:'')||gid,message:'SG shared between public and private subnets — network segmentation failure',remediation:'Create separate SGs for each network tier; never share across CDE boundary'})}
   });
   // 2.2.1 – Configuration standards: instances with default SG attached
   (ctx.instances||[]).forEach(inst=>{
-    const hasDefault=(inst.SecurityGroups||[]).some(g=>{const sg=(ctx.sgs||[]).find(s=>s.GroupId===g.GroupId);return sg&&sg.GroupName==='default'});
+    const hasDefault=(inst.SecurityGroups||[]).some(g=>{const sg=sgById.get(g.GroupId);return sg&&sg.GroupName==='default'});
     if(hasDefault)f.push({severity:'MEDIUM',control:'PCI-2.2.1',framework:'PCI',resource:inst.InstanceId,resourceName:gn2(inst,inst.InstanceId),message:'EC2 using default SG — non-compliant with configuration standards',remediation:'Replace default SG with purpose-built SG following least privilege'});
   });
   // 3.4.1 – Encryption at rest: unencrypted storage

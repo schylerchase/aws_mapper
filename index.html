@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script src="libs/d3.min.js"></script>
 <script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js?v=73e2f1c6"></script>
+<script src="dist/app.bundle.js?v=0c60dd64"></script>
 <link rel="stylesheet" href="src/styles/main.css?v=4">
 </head>
 <body>
@@ -2820,13 +2820,13 @@ function renderCompliancePanel(findings,opts){
     openUnifiedDash('compliance');
   }
 }
-function _renderCompDash(){
+function _renderCompDash(bodyOnly){
   var findings=_udashFilterByAccount(_complianceFindings||[]);
   var tb=document.getElementById('udashToolbar');
   var body=document.getElementById('udashBody');
   var footer=document.getElementById('udashFooter');
-  footer.innerHTML='';
-  body.scrollTop=0;
+  footer.textContent='';
+  if(!bodyOnly)body.scrollTop=0;
   // Toolbar — only rebuild on tab switch
   if(_compToolbarTab!=='compliance'){
     _compToolbarTab='compliance';
@@ -2849,28 +2849,44 @@ function _renderCompDash(){
     th+='<button id="compExportBtn" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Export</button>';
     tb.innerHTML=th;
     // Attach toolbar event listeners
-    document.getElementById('compSearch').addEventListener('input',function(){_compDashState.search=this.value;_renderCompDash()});
-    document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_renderCompDash()});
-    document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash()});
-    document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_renderCompDash()});
+    document.getElementById('compSearch').addEventListener('input',function(){_compDashState.search=this.value;_compDashState._cachedView=null;_renderCompDash()});
+    document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_compDashState._cachedView=null;_renderCompDash()});
+    document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash(true)});
+    document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_compDashState._cachedView=null;_renderCompDash()});
     document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(btn){btn.addEventListener('click',function(){_compDashState.view=this.dataset.view;_renderCompDash()})});
     document.getElementById('compToggleSummary').addEventListener('click',function(){
       _compDashState.execSummary=!_compDashState.execSummary;
       this.textContent=_compDashState.execSummary?'Hide Summary':'Executive Summary';
+      _compDashState._cachedView=null;
       _renderCompDash();
     });
     document.getElementById('compExportBtn').addEventListener('click',function(){
       _openCompExportModal();
     });
   }
-  // Build unified compliance view — single source of truth for all counts
-  var view=_buildComplianceView({
-    findings:findings,
-    frameworks:_compDashState.fwFilter,
-    severity:_compDashState.sevFilter,
-    search:_compDashState.search,
-    includeMuted:_compDashState.showMuted
-  });
+  // Build unified compliance view — cache to avoid redundant computation
+  var view=_compDashState._cachedView;
+  if(!view){
+    view=_buildComplianceView({
+      findings:findings,
+      frameworks:_compDashState.fwFilter,
+      severity:_compDashState.sevFilter,
+      search:_compDashState.search,
+      includeMuted:_compDashState.showMuted
+    });
+    view._lastSevFilter=_compDashState.sevFilter;
+    _compDashState._cachedView=view;
+  } else if(view._lastSevFilter!==_compDashState.sevFilter){
+    // Severity pill changed — re-filter from cached base without full rebuild
+    var sevF=_compDashState.sevFilter;
+    view.filtered=(sevF!=='ALL')?view.base.filter(function(f){return f.severity===sevF}):view.base;
+    var ftc={crit:0,high:0,med:0,low:0};var fsc={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+    view.filtered.forEach(function(f){ftc[f._tier]++;fsc[f.severity]++});
+    view.filteredTierCounts=ftc;view.filteredSevCounts=fsc;
+    view.tiers=_getTierGroups(view.filtered);
+    view.sevGroups=_getSeverityGroups(view.filtered);
+    view._lastSevFilter=_compDashState.sevFilter;
+  }
   var filtered=view.filtered.slice();
   // Severity pills — counts from view.sevCounts (base, before severity pill filter)
   var sc=view.sevCounts;
@@ -2878,7 +2894,7 @@ function _renderCompDash(){
   [{sev:'ALL',label:'All ('+view.base.length+')'},{sev:'CRITICAL',label:'Critical ('+sc.CRITICAL+')'},{sev:'HIGH',label:'High ('+sc.HIGH+')'},{sev:'MEDIUM',label:'Medium ('+sc.MEDIUM+')'},{sev:'LOW',label:'Low ('+sc.LOW+')'}].forEach(function(p){
     var btn=document.createElement('span');btn.className='comp-sev-pill'+(_compDashState.sevFilter===p.sev?' active':'');
     btn.dataset.sev=p.sev;btn.textContent=p.label;
-    btn.addEventListener('click',function(){_compDashState.sevFilter=p.sev;_renderCompDash()});pillBox.appendChild(btn);
+    btn.addEventListener('click',function(){_compDashState.sevFilter=p.sev;_renderCompDash(true)});pillBox.appendChild(btn);
   });}
   // Update view toggle active state
   document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(b){
@@ -2890,14 +2906,32 @@ function _renderCompDash(){
   var mcEl=document.getElementById('compMutedCount');if(mcEl)mcEl.textContent=view.mutedCount>0?view.mutedCount+' finding(s) muted':'';
   // Sort filtered findings for display
   filtered.sort(function(a,b){if(_compDashState.sort==='severity')return(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9);if(_compDashState.sort==='framework')return(a.framework||'').localeCompare(b.framework||'');if(_compDashState.sort==='control')return(a.control||'').localeCompare(b.control||'');if(_compDashState.sort==='resource')return(a.resourceName||a.resource||'').localeCompare(b.resourceName||b.resource||'');return 0});
-  // Executive summary
-  var summaryHtml='';
-  if(_compDashState.execSummary){summaryHtml='<div id="compExecSummary"></div>'}
-  // Action plan view — pass unified view object
-  if(_compDashState.view==='action'){body.innerHTML=summaryHtml;if(_compDashState.execSummary)_renderExecSummary(view);_renderActionPlan(view);return}
-  // Table view
-  var h=summaryHtml;
-  h+='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody>';
+  // Render body content — shell + rows split for performance
+  if(_compDashState.view==='action'){
+    _renderCompShellAction(view);
+  } else {
+    _renderCompShellTable(view,filtered);
+  }
+}
+// Table view: separate shell (thead, exec summary) from row data (tbody).
+// Shell is only rebuilt when switching views or toggling exec summary;
+// on severity/sort/mute changes only the tbody rows are swapped.
+function _renderCompShellTable(view,filtered){
+  var body=document.getElementById('udashBody');
+  var needShell=!body.querySelector('.comp-table')||body.querySelector('.comp-action-summary');
+  if(needShell){
+    var h='';
+    if(_compDashState.execSummary)h+='<div id="compExecSummary"></div>';
+    h+='<table class="comp-table"><thead><tr><th data-col="severity">Sev</th><th data-col="framework">Framework</th><th data-col="control">Control</th><th data-col="resource">Resource</th><th>Finding</th><th style="width:90px">Actions</th></tr></thead><tbody id="compTbody"></tbody></table>';
+    body.innerHTML=h;
+    if(_compDashState.execSummary)_renderExecSummary(view);
+    body.querySelectorAll('th[data-col]').forEach(function(th){th.addEventListener('click',function(){_compDashState.sort=th.dataset.col;_renderCompDash(true)})});
+  }
+  _renderCompTableRows(filtered);
+}
+function _renderCompTableRows(filtered){
+  var tbody=document.getElementById('compTbody');if(!tbody)return;
+  var h='';
   filtered.forEach(function(f,i){var muted=_isMuted(f);var ref=_complianceRefs[f.control];
     h+='<tr class="'+(muted?'muted':'')+'">';
     h+='<td><span class="sev-badge sev-'+f.severity+'">'+f.severity+'</span></td>';
@@ -2908,20 +2942,27 @@ function _renderCompDash(){
     h+='<td><button class="comp-jump-btn" data-rid="'+esc(f.resource)+'" title="Zoom to resource on map">Jump</button><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
   });
   if(!filtered.length)h+='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">No findings match current filters</td></tr>';
-  h+='</tbody></table>';body.innerHTML=h;
+  tbody.innerHTML=h;
+  tbody.querySelectorAll('.comp-mute-btn').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();_toggleMute(filtered[parseInt(this.dataset.fi)]);_compDashState._cachedView=null;_renderCompDash(true)})});
+  tbody.querySelectorAll('.comp-jump-btn').forEach(function(btn){btn.addEventListener('click',function(e){
+    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
+    closeUnifiedDash();
+    setTimeout(function(){_zoomAndShowDetail(rid)},250);
+  })});
+  tbody.querySelectorAll('.comp-res-link').forEach(function(a){a.addEventListener('click',function(e){
+    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
+    closeUnifiedDash();
+    setTimeout(function(){_zoomAndShowDetail(rid)},250);
+  })});
+}
+// Action plan view — full body rebuild (complex nested DOM with expand/collapse state)
+function _renderCompShellAction(view){
+  var body=document.getElementById('udashBody');
+  var summaryHtml='';
+  if(_compDashState.execSummary)summaryHtml='<div id="compExecSummary"></div>';
+  body.innerHTML=summaryHtml;
   if(_compDashState.execSummary)_renderExecSummary(view);
-  body.querySelectorAll('.comp-mute-btn').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();_toggleMute(filtered[parseInt(this.dataset.fi)]);_renderCompDash()})});
-  body.querySelectorAll('.comp-jump-btn').forEach(function(btn){btn.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-    closeUnifiedDash();
-    setTimeout(function(){_zoomAndShowDetail(rid)},250);
-  })});
-  body.querySelectorAll('th[data-col]').forEach(function(th){th.addEventListener('click',function(){_compDashState.sort=th.dataset.col;_renderCompDash()})});
-  body.querySelectorAll('.comp-res-link').forEach(function(a){a.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-    closeUnifiedDash();
-    setTimeout(function(){_zoomAndShowDetail(rid)},250);
-  })});
+  _renderActionPlan(view);
 }
 function _renderActionPlan(view){
   var body=document.getElementById('udashBody');
@@ -3035,8 +3076,8 @@ function _renderActionPlan(view){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
       var t=this.dataset.tier,ri=parseInt(this.dataset.ri),fi=parseInt(this.dataset.fi);
-      var rg=tiers[t]&&tiers[t][ri];
-      if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_renderCompDash()}
+      var rg=groups[t]&&groups[t][ri];
+      if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_compDashState._cachedView=null;_renderCompDash()}
     });
   });
 }
@@ -11948,6 +11989,25 @@ if(_isElectron){
   });
 }
 
+// === SEARCH INDEX ===
+// Pre-built flat index of all searchable resources. Rebuilt when _rlCtx changes.
+var _searchIndex=null;
+var _searchIndexCtx=null;
+function _buildSearchIndex(ctx){
+  var idx=[];
+  var getName=function(obj,fallback){var t=(obj.Tags||[]).find(function(x){return x.Key==='Name'});return t?t.Value:fallback};
+  (ctx.vpcs||[]).forEach(function(v){var n=getName(v,v.VpcId);idx.push({type:'VPC',name:n,id:v.VpcId,extra:v.CidrBlock||'',acct:v._accountLabel||v._accountId||'',searchStr:('vpc '+n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase()})});
+  (ctx.subnets||[]).forEach(function(s){var n=getName(s,s.SubnetId);idx.push({type:'Subnet',name:n,id:s.SubnetId,extra:s.CidrBlock||'',acct:s._accountLabel||s._accountId||'',searchStr:('subnet '+n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase()})});
+  (ctx.instances||[]).forEach(function(i){var n=getName(i,i.InstanceId);idx.push({type:'EC2',name:n,id:i.InstanceId,extra:i.InstanceType||'',acct:i._accountLabel||i._accountId||'',searchStr:('ec2 '+n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase()})});
+  (ctx.igws||[]).forEach(function(g){var n=getName(g,g.InternetGatewayId);idx.push({type:'IGW',name:n,id:g.InternetGatewayId,extra:'',acct:g._accountLabel||g._accountId||'',searchStr:('igw '+n+' '+g.InternetGatewayId).toLowerCase()})});
+  (ctx.nats||[]).forEach(function(g){var n=getName(g,g.NatGatewayId);idx.push({type:'NAT',name:n,id:g.NatGatewayId,extra:'',acct:g._accountLabel||g._accountId||'',searchStr:('nat '+n+' '+g.NatGatewayId).toLowerCase()})});
+  (ctx.rdsInstances||[]).forEach(function(d){idx.push({type:'RDS',name:d.DBInstanceIdentifier,id:d.DBInstanceIdentifier,extra:d.Engine||'',acct:d._accountLabel||d._accountId||'',searchStr:('rds '+d.DBInstanceIdentifier).toLowerCase()})});
+  (ctx.lambdaFns||[]).forEach(function(f){idx.push({type:'Lambda',name:f.FunctionName,id:f.FunctionName,extra:f.Runtime||'',acct:f._accountLabel||f._accountId||'',searchStr:('lambda '+f.FunctionName).toLowerCase()})});
+  (ctx.sgs||[]).forEach(function(s){var n=s.GroupName||s.GroupId;idx.push({type:'SG',name:n,id:s.GroupId,extra:s.VpcId||'',acct:s._accountLabel||s._accountId||'',searchStr:('sg security group '+n+' '+s.GroupId).toLowerCase()})});
+  return idx;
+}
+function _invalidateSearchIndex(){_searchIndex=null;_searchIndexCtx=null}
+
 // === SEARCH ===
 function openSearch(){const ov=document.getElementById('searchOverlay');ov.style.display='block';
   const inp=document.getElementById('searchInput');inp.value='';inp.focus();document.getElementById('searchResults').innerHTML=''}
@@ -11957,17 +12017,16 @@ document.getElementById('searchBackdrop').addEventListener('click',closeSearch);
 document.getElementById('searchInput').addEventListener('input',function(){
   const q=this.value.toLowerCase().trim();const res=document.getElementById('searchResults');
   if(!q||!_rlCtx){res.innerHTML='';return}
-  const matches=[];const isMA=_rlCtx._multiAccount;
-  const add=(type,name,id,extra,acct)=>{if(matches.length<30)matches.push({type,name,id,extra,acct:acct||''})};
-  (_rlCtx.vpcs||[]).forEach(v=>{const n=gn(v,v.VpcId);if((n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase().includes(q))add('VPC',n,v.VpcId,v.CidrBlock,v._accountLabel||v._accountId)});
-  (_rlCtx.subnets||[]).forEach(s=>{const n=gn(s,s.SubnetId);if((n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase().includes(q))add('Subnet',n,s.SubnetId,s.CidrBlock,s._accountLabel||s._accountId)});
-  (_rlCtx.instances||[]).forEach(i=>{const n=gn(i,i.InstanceId);if((n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase().includes(q))add('EC2',n,i.InstanceId,i.InstanceType,i._accountLabel||i._accountId)});
-  (_rlCtx.igws||[]).forEach(g=>{const n=gn(g,g.InternetGatewayId);if((n+' '+g.InternetGatewayId).toLowerCase().includes(q))add('IGW',n,g.InternetGatewayId,'',g._accountLabel||g._accountId)});
-  (_rlCtx.nats||[]).forEach(g=>{const n=gn(g,g.NatGatewayId);if((n+' '+g.NatGatewayId).toLowerCase().includes(q))add('NAT',n,g.NatGatewayId,'',g._accountLabel||g._accountId)});
-  (_rlCtx.rdsInstances||[]).forEach(d=>{if(d.DBInstanceIdentifier.toLowerCase().includes(q))add('RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine,d._accountLabel||d._accountId)});
-  (_rlCtx.lambdaFns||[]).forEach(f=>{if(f.FunctionName.toLowerCase().includes(q))add('Lambda',f.FunctionName,f.FunctionName,f.Runtime,f._accountLabel||f._accountId)});
-  (_rlCtx.sgs||[]).forEach(s=>{const n=s.GroupName||s.GroupId;if((n+' '+s.GroupId).toLowerCase().includes(q))add('SG',n,s.GroupId,s.VpcId,s._accountLabel||s._accountId)});
-  _getAllNotes().forEach(n=>{if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))add('Note',n.text.slice(0,50),n.resourceId,n.category)});
+  // Rebuild index if ctx changed
+  if(_searchIndexCtx!==_rlCtx){_searchIndex=_buildSearchIndex(_rlCtx);_searchIndexCtx=_rlCtx}
+  // Filter cached index in a single pass (cap at 30)
+  var matches=[];
+  for(var si=0;si<_searchIndex.length&&matches.length<30;si++){
+    if(_searchIndex[si].searchStr.includes(q))matches.push(_searchIndex[si]);
+  }
+  // Notes are dynamic — search them live (typically small set)
+  _getAllNotes().forEach(function(n){if(matches.length>=30)return;if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))matches.push({type:'Note',name:(n.text||'').slice(0,50),id:n.resourceId,extra:n.category||'',acct:''})});
+  const isMA=_rlCtx._multiAccount;
   let h='';matches.forEach(m=>{const acctBadge=isMA&&m.acct&&m.acct!=='default'?'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+( getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap">'+esc(m.acct)+'</span>':'';h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\');_openDetailForSearch(\''+esc(m.type)+'\',\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span>'+acctBadge+'<span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
   if(!matches.length)h='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">No results</div>';
   res.innerHTML=h;
@@ -19300,7 +19359,7 @@ function _refreshCurrentTab(){
   document.getElementById('udashBody').innerHTML='';
   document.getElementById('udashBody').className='udash-body';
   document.getElementById('udashFooter').innerHTML='';
-  _govToolbarTab=null;_compToolbarTab=null;_invToolbarRendered=false;
+  _govToolbarTab=null;_compToolbarTab=null;_invToolbarRendered=false;if(_compDashState)_compDashState._cachedView=null;
   tab.render();
 }
 
@@ -21167,8 +21226,8 @@ function _loadSheetJS(){
       document.head.appendChild(s);
     });
   }
-  return _tryLoad('xlsx.bundle.min.js').catch(function(){
-    return Promise.reject(new Error('SheetJS (xlsx.bundle.min.js) not found. XLSX export requires this library in the app directory.'));
+  return _tryLoad('libs/xlsx.bundle.min.js').catch(function(){
+    return Promise.reject(new Error('SheetJS (libs/xlsx.bundle.min.js) not found. XLSX export requires this library in the app directory.'));
   });
 }
 

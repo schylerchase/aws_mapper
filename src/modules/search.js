@@ -2,6 +2,68 @@
 // Handles global search across all AWS resources
 // Extracted from index.html for modularization
 
+// === SEARCH INDEX ===
+// Pre-built flat index of all searchable resources. Rebuilt when _rlCtx changes.
+var _searchIndex=null;
+var _searchIndexCtx=null;
+
+function _buildSearchIndex(ctx){
+  var idx=[];
+  var getName=function(obj,fallback){
+    var t=(obj.Tags||[]).find(function(x){return x.Key==='Name'});
+    return t?t.Value:fallback;
+  };
+  (ctx.vpcs||[]).forEach(function(v){
+    var n=getName(v,v.VpcId);
+    idx.push({type:'VPC',name:n,id:v.VpcId,extra:v.CidrBlock||'',
+      acct:v._accountLabel||v._accountId||'',
+      searchStr:('vpc '+n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase()});
+  });
+  (ctx.subnets||[]).forEach(function(s){
+    var n=getName(s,s.SubnetId);
+    idx.push({type:'Subnet',name:n,id:s.SubnetId,extra:s.CidrBlock||'',
+      acct:s._accountLabel||s._accountId||'',
+      searchStr:('subnet '+n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase()});
+  });
+  (ctx.instances||[]).forEach(function(i){
+    var n=getName(i,i.InstanceId);
+    idx.push({type:'EC2',name:n,id:i.InstanceId,extra:i.InstanceType||'',
+      acct:i._accountLabel||i._accountId||'',
+      searchStr:('ec2 '+n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase()});
+  });
+  (ctx.igws||[]).forEach(function(g){
+    var n=getName(g,g.InternetGatewayId);
+    idx.push({type:'IGW',name:n,id:g.InternetGatewayId,extra:'',
+      acct:g._accountLabel||g._accountId||'',
+      searchStr:('igw '+n+' '+g.InternetGatewayId).toLowerCase()});
+  });
+  (ctx.nats||[]).forEach(function(g){
+    var n=getName(g,g.NatGatewayId);
+    idx.push({type:'NAT',name:n,id:g.NatGatewayId,extra:'',
+      acct:g._accountLabel||g._accountId||'',
+      searchStr:('nat '+n+' '+g.NatGatewayId).toLowerCase()});
+  });
+  (ctx.rdsInstances||[]).forEach(function(d){
+    idx.push({type:'RDS',name:d.DBInstanceIdentifier,id:d.DBInstanceIdentifier,
+      extra:d.Engine||'',acct:d._accountLabel||d._accountId||'',
+      searchStr:('rds '+d.DBInstanceIdentifier).toLowerCase()});
+  });
+  (ctx.lambdaFns||[]).forEach(function(f){
+    idx.push({type:'Lambda',name:f.FunctionName,id:f.FunctionName,
+      extra:f.Runtime||'',acct:f._accountLabel||f._accountId||'',
+      searchStr:('lambda '+f.FunctionName).toLowerCase()});
+  });
+  (ctx.sgs||[]).forEach(function(s){
+    var n=s.GroupName||s.GroupId;
+    idx.push({type:'SG',name:n,id:s.GroupId,extra:s.VpcId||'',
+      acct:s._accountLabel||s._accountId||'',
+      searchStr:('sg security group '+n+' '+s.GroupId).toLowerCase()});
+  });
+  return idx;
+}
+
+function _invalidateSearchIndex(){_searchIndex=null;_searchIndexCtx=null}
+
 // === SEARCH ===
 function openSearch(){const ov=document.getElementById('searchOverlay');ov.style.display='block';
   const inp=document.getElementById('searchInput');inp.value='';inp.focus();document.getElementById('searchResults').innerHTML=''}
@@ -13,17 +75,16 @@ document.getElementById('searchInput').addEventListener('input',function(){
   clearTimeout(_searchTimer);const self=this;_searchTimer=setTimeout(function(){
   const q=self.value.toLowerCase().trim();const res=document.getElementById('searchResults');
   if(!q||!_rlCtx){res.innerHTML='';return}
-  const matches=[];const isMA=_rlCtx._multiAccount;
-  const add=(type,name,id,extra,acct)=>{if(matches.length<30)matches.push({type,name,id,extra,acct:acct||''})};
-  (_rlCtx.vpcs||[]).forEach(v=>{const n=gn(v,v.VpcId);if((n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase().includes(q))add('VPC',n,v.VpcId,v.CidrBlock,v._accountLabel||v._accountId)});
-  (_rlCtx.subnets||[]).forEach(s=>{const n=gn(s,s.SubnetId);if((n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase().includes(q))add('Subnet',n,s.SubnetId,s.CidrBlock,s._accountLabel||s._accountId)});
-  (_rlCtx.instances||[]).forEach(i=>{const n=gn(i,i.InstanceId);if((n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase().includes(q))add('EC2',n,i.InstanceId,i.InstanceType,i._accountLabel||i._accountId)});
-  (_rlCtx.igws||[]).forEach(g=>{const n=gn(g,g.InternetGatewayId);if((n+' '+g.InternetGatewayId).toLowerCase().includes(q))add('IGW',n,g.InternetGatewayId,'',g._accountLabel||g._accountId)});
-  (_rlCtx.nats||[]).forEach(g=>{const n=gn(g,g.NatGatewayId);if((n+' '+g.NatGatewayId).toLowerCase().includes(q))add('NAT',n,g.NatGatewayId,'',g._accountLabel||g._accountId)});
-  (_rlCtx.rdsInstances||[]).forEach(d=>{if(d.DBInstanceIdentifier.toLowerCase().includes(q))add('RDS',d.DBInstanceIdentifier,d.DBInstanceIdentifier,d.Engine,d._accountLabel||d._accountId)});
-  (_rlCtx.lambdaFns||[]).forEach(f=>{if(f.FunctionName.toLowerCase().includes(q))add('Lambda',f.FunctionName,f.FunctionName,f.Runtime,f._accountLabel||f._accountId)});
-  (_rlCtx.sgs||[]).forEach(s=>{const n=s.GroupName||s.GroupId;if((n+' '+s.GroupId).toLowerCase().includes(q))add('SG',n,s.GroupId,s.VpcId,s._accountLabel||s._accountId)});
-  _getAllNotes().forEach(n=>{if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))add('Note',n.text.slice(0,50),n.resourceId,n.category)});
+  // Rebuild index if ctx changed
+  if(_searchIndexCtx!==_rlCtx){_searchIndex=_buildSearchIndex(_rlCtx);_searchIndexCtx=_rlCtx}
+  // Filter cached index in a single pass (cap at 30)
+  var matches=[];
+  for(var si=0;si<_searchIndex.length&&matches.length<30;si++){
+    if(_searchIndex[si].searchStr.includes(q))matches.push(_searchIndex[si]);
+  }
+  // Notes are dynamic — search them live (typically small set)
+  _getAllNotes().forEach(function(n){if(matches.length>=30)return;if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))matches.push({type:'Note',name:(n.text||'').slice(0,50),id:n.resourceId,extra:n.category||'',acct:''})});
+  const isMA=_rlCtx._multiAccount;
   let h='';matches.forEach(m=>{const acctBadge=isMA&&m.acct&&m.acct!=='default'?'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+( getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap">'+esc(m.acct)+'</span>':'';h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\');_openDetailForSearch(\''+esc(m.type)+'\',\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span>'+acctBadge+'<span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
   if(!matches.length)h='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">No results</div>';
   res.innerHTML=h;

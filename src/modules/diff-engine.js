@@ -40,7 +40,7 @@ function normalizeResource(resource){
   function walk(obj){
     if(!obj||typeof obj!=='object') return obj;
     if(Array.isArray(obj)){
-      return obj.map(walk).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      return obj.map(walk).map(x=>({v:x,s:JSON.stringify(x)})).sort((a,b)=>a.s.localeCompare(b.s)).map(x=>x.v);
     }
     const out={};
     Object.keys(obj).sort().forEach(k=>{
@@ -97,7 +97,9 @@ function _fieldDiff(normA,normB,path){
     const sub=path?path+'.'+k:k;
     if(!(k in normA)){changes.push({field:sub,old:undefined,new:normB[k],kind:classifyChange(k)});return}
     if(!(k in normB)){changes.push({field:sub,old:normA[k],new:undefined,kind:classifyChange(k)});return}
-    if(JSON.stringify(normA[k])!==JSON.stringify(normB[k])){
+    const sA=JSON.stringify(normA[k]);
+    const sB=JSON.stringify(normB[k]);
+    if(sA!==sB){
       if(typeof normA[k]==='object'&&typeof normB[k]==='object'&&normA[k]&&normB[k]){
         changes.push(..._fieldDiff(normA[k],normB[k],sub));
       } else {
@@ -1855,7 +1857,7 @@ function _openRulesEditor(){
   var existing=document.getElementById('govRulesOverlay');
   if(existing) existing.remove();
   // Working copy of rules
-  var workRules=JSON.parse(JSON.stringify(_classificationRules));
+  var workRules=structuredClone(_classificationRules);
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
   var groupCollapsed={vpc:false,type:false,name:false};
   var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
@@ -2071,7 +2073,7 @@ function _openRulesEditor(){
   document.getElementById('govRulesClose').addEventListener('click',function(){overlay.remove()});
   overlay.addEventListener('click',function(e){if(e.target===overlay) overlay.remove()});
   document.getElementById('govRuleReset').addEventListener('click',function(){
-    workRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+    workRules=structuredClone(_DEFAULT_CLASS_RULES);
     workRules.forEach(function(r){r.enabled=true});
     renderRules();renderPreview();
   });
