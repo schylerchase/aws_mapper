@@ -610,13 +610,42 @@ export function detectAZs(subnets) {
 // ---------------------------------------------------------------------------
 // Window bridge: expose to inline code that still calls these functions
 // ---------------------------------------------------------------------------
-window._designMode = _designMode;
-window._designChanges = _designChanges;
-window._designBaseline = _designBaseline;
-window._designDebounce = _designDebounce;
-window._lastDesignValidation = _lastDesignValidation;
-window._sidebarWasCollapsed = _sidebarWasCollapsed;
-window._designRegion = _designRegion;
+// Controlled access to design state — prevents unaudited external mutations
+Object.defineProperty(window, '_designMode', {
+  get() { return _designMode; },
+  set(v) { _designMode = v; },
+  configurable: true
+});
+Object.defineProperty(window, '_designChanges', {
+  get() { return _designChanges; },
+  set(v) { _designChanges = v; },
+  configurable: true
+});
+Object.defineProperty(window, '_designBaseline', {
+  get() { return _designBaseline; },
+  set(v) { _designBaseline = v; },
+  configurable: true
+});
+Object.defineProperty(window, '_designDebounce', {
+  get() { return _designDebounce; },
+  set(v) { _designDebounce = v; },
+  configurable: true
+});
+Object.defineProperty(window, '_lastDesignValidation', {
+  get() { return _lastDesignValidation; },
+  set(v) { _lastDesignValidation = v; },
+  configurable: true
+});
+Object.defineProperty(window, '_sidebarWasCollapsed', {
+  get() { return _sidebarWasCollapsed; },
+  set(v) { _sidebarWasCollapsed = v; },
+  configurable: true
+});
+Object.defineProperty(window, '_designRegion', {
+  get() { return _designRegion; },
+  set(v) { _designRegion = v; },
+  configurable: true
+});
 window._regionAZs = _regionAZs;
 window._awsConstraints = _awsConstraints;
 window._designApplyFns = _designApplyFns;

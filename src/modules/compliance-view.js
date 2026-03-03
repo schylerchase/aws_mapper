@@ -258,6 +258,7 @@ export function aggregateTopResources(findings, limit) {
 
 // === Unified Compliance View Builder ===
 
+// TODO: import from owning module when available
 // Transitional: _rptFilterByAccount is defined in the report builder region
 function _rptFilterByAccount(items, acctId) {
   if (typeof window !== 'undefined' && window._rptFilterByAccount) {
@@ -323,8 +324,10 @@ export function buildComplianceView(opts) {
   };
 }
 
-// === Window Bridge (transitional) ===
+// Bridge: expose to window for legacy callers in app-core.js
+// TODO: replace with proper imports when app-core.js is modularized
 if (typeof window !== 'undefined') {
+  // === Window bridge — legacy callers require these globals ===
   window._EFFORT_MAP = EFFORT_MAP;
   window._complianceRefs = complianceRefs;
   window._compDashState = _compDashState;

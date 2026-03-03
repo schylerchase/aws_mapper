@@ -246,7 +246,7 @@ function _buildCtxFromTextareas(textareas){
   function pEC2(){
     const raw=textareas['in_ec2'];
     if(!raw) return [];
-    let parsed=typeof raw==='string'?JSON.parse(raw):raw;
+    const parsed=typeof raw==='string'?JSON.parse(raw):raw;
     if(Array.isArray(parsed)) return parsed;
     // Standard AWS format: {Reservations:[{Instances:[...]},...]}
     const reservations=parsed.Reservations;
@@ -326,10 +326,10 @@ function _diffFmtVal(v){
   if(typeof v==='string') return v.length>40?v.slice(0,37)+'...':v;
   if(Array.isArray(v)){
     if(!v.length) return '[]';
-    var s=JSON.stringify(v);
+    const s=JSON.stringify(v);
     return s.length>50?'['+v.length+' items]':s;
   }
-  var s=JSON.stringify(v);
+  const s=JSON.stringify(v);
   return s.length>50?'{...}':s;
 }
 
@@ -347,15 +347,15 @@ function _diffFmtValFull(v){
 // All values are escaped via esc() before insertion — safe for display
 function _diffPropsHtml(type,res){
   if(!res) return '';
-  var h='';
+  let h='';
   function kv(label,val){
     if(val===undefined||val===null||val==='') return;
     h+='<div class="dp-kv"><span class="k">'+esc(label)+'</span><span class="v">'+esc(String(val))+'</span></div>';
   }
   function tags(r){
-    var t=r.Tags||r.TagSet||[];
+    const t=r.Tags||r.TagSet||[];
     if(!t.length) return;
-    var th=t.map(function(tg){return '<span style="background:rgba(255,255,255,.05);padding:1px 5px;border-radius:2px;margin:1px">'+esc(tg.Key)+'='+esc(tg.Value)+'</span>'}).join(' ');
+    const th=t.map(function(tg){return '<span style="background:rgba(255,255,255,.05);padding:1px 5px;border-radius:2px;margin:1px">'+esc(tg.Key)+'='+esc(tg.Value)+'</span>'}).join(' ');
     h+='<div style="margin-top:4px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));color:var(--text-muted)">Tags: '+th+'</div>';
   }
   switch(type){
@@ -365,7 +365,7 @@ function _diffPropsHtml(type,res){
       kv('Tenancy',res.InstanceTenancy);
       kv('DHCP Options',res.DhcpOptionsId);
       if(res.CidrBlockAssociationSet){
-        var cidrs=res.CidrBlockAssociationSet.map(function(c){return c.CidrBlock}).join(', ');
+        const cidrs=res.CidrBlockAssociationSet.map(function(c){return c.CidrBlock}).join(', ');
         kv('All CIDRs',cidrs);
       }
       tags(res);break;
@@ -384,7 +384,7 @@ function _diffPropsHtml(type,res){
       kv('AMI',res.ImageId);kv('Key Name',res.KeyName);
       kv('Subnet',res.SubnetId);kv('VPC',res.VpcId);
       if(res.IamInstanceProfile) kv('IAM Role',res.IamInstanceProfile.Arn||res.IamInstanceProfile.Id);
-      var sgs=(res.SecurityGroups||[]).map(function(s){return s.GroupName||s.GroupId}).join(', ');
+      const sgs=(res.SecurityGroups||[]).map(function(s){return s.GroupName||s.GroupId}).join(', ');
       if(sgs) kv('Security Groups',sgs);
       tags(res);break;
     case 'sgs':
@@ -395,9 +395,9 @@ function _diffPropsHtml(type,res){
       if(res.IpPermissions&&res.IpPermissions.length){
         h+='<div style="margin-top:6px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:.5px">Inbound Rules</div>';
         res.IpPermissions.forEach(function(p){
-          var proto=p.IpProtocol==='-1'?'All':p.IpProtocol;
-          var port=p.FromPort===p.ToPort?(p.FromPort||'All'):((p.FromPort||0)+'-'+(p.ToPort||0));
-          var src=(p.IpRanges||[]).map(function(r){return r.CidrIp}).concat((p.UserIdGroupPairs||[]).map(function(g){return g.GroupId})).join(', ')||'N/A';
+          const proto=p.IpProtocol==='-1'?'All':p.IpProtocol;
+          const port=p.FromPort===p.ToPort?(p.FromPort||'All'):((p.FromPort||0)+'-'+(p.ToPort||0));
+          const src=(p.IpRanges||[]).map(function(r){return r.CidrIp}).concat((p.UserIdGroupPairs||[]).map(function(g){return g.GroupId})).join(', ')||'N/A';
           h+='<div class="dp-row" style="border-left:3px solid var(--accent-green);padding-left:8px;margin:2px 0;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1))"><span class="a">'+esc(proto)+':'+esc(String(port))+'</span> ← '+esc(src)+'</div>';
         });
       }
@@ -409,8 +409,8 @@ function _diffPropsHtml(type,res){
       if(res.Routes&&res.Routes.length){
         h+='<div style="margin-top:6px;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:.5px">Routes</div>';
         res.Routes.forEach(function(r){
-          var dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
-          var tgt=r.GatewayId||r.NatGatewayId||r.VpcPeeringConnectionId||r.NetworkInterfaceId||r.TransitGatewayId||'local';
+          const dest=r.DestinationCidrBlock||r.DestinationPrefixListId||'?';
+          const tgt=r.GatewayId||r.NatGatewayId||r.VpcPeeringConnectionId||r.NetworkInterfaceId||r.TransitGatewayId||'local';
           h+='<div class="dp-row" style="border-left:3px solid var(--accent-blue);padding-left:8px;margin:2px 0;font-size:calc(9px * var(--txt-scale,1) * var(--dp-txt-scale,1))">'+esc(dest)+' → '+esc(tgt)+' <span class="k">'+esc(r.State||'')+'</span></div>';
         });
       }
@@ -418,20 +418,20 @@ function _diffPropsHtml(type,res){
     case 'nacls':
       kv('NACL ID',res.NetworkAclId);kv('VPC',res.VpcId);
       kv('Is Default',res.IsDefault);
-      var inbound=(res.Entries||[]).filter(function(e){return !e.Egress});
-      var outbound=(res.Entries||[]).filter(function(e){return e.Egress});
+      const inbound=(res.Entries||[]).filter(function(e){return !e.Egress});
+      const outbound=(res.Entries||[]).filter(function(e){return e.Egress});
       kv('Inbound Entries',inbound.length);kv('Outbound Entries',outbound.length);
       tags(res);break;
     case 'igws':
       kv('IGW ID',res.InternetGatewayId);
-      var att=(res.Attachments||[])[0];
+      const att=(res.Attachments||[])[0];
       if(att){kv('VPC',att.VpcId);kv('State',att.State);}
       tags(res);break;
     case 'nats':
       kv('NAT Gateway ID',res.NatGatewayId);kv('VPC',res.VpcId);
       kv('Subnet',res.SubnetId);kv('State',res.State);
       kv('Connectivity',res.ConnectivityType);
-      var eips=(res.NatGatewayAddresses||[]).map(function(a){return a.PublicIp}).filter(Boolean).join(', ');
+      const eips=(res.NatGatewayAddresses||[]).map(function(a){return a.PublicIp}).filter(Boolean).join(', ');
       if(eips) kv('Elastic IPs',eips);
       tags(res);break;
     case 'vpces':
@@ -444,7 +444,7 @@ function _diffPropsHtml(type,res){
       kv('Scheme',res.Scheme);kv('DNS',res.DNSName);
       kv('State',res.State?res.State.Code:'');
       kv('VPC',res.VpcId);
-      var azs=(res.AvailabilityZones||[]).map(function(a){return a.ZoneName}).join(', ');
+      const azs=(res.AvailabilityZones||[]).map(function(a){return a.ZoneName}).join(', ');
       if(azs) kv('AZs',azs);
       tags(res);break;
     case 'rdsInstances':
@@ -490,7 +490,7 @@ function _diffPropsHtml(type,res){
 }
 
 function _diffTypeLabel(type){
-  var labels={vpcs:'VPC',subnets:'Subnet',instances:'EC2 Instance',sgs:'Security Group',
+  const labels={vpcs:'VPC',subnets:'Subnet',instances:'EC2 Instance',sgs:'Security Group',
     rts:'Route Table',nacls:'NACL',igws:'Internet Gateway',nats:'NAT Gateway',
     vpces:'VPC Endpoint',albs:'Load Balancer',rdsInstances:'RDS Instance',
     lambdaFns:'Lambda Function',ecsServices:'ECS Service',ecacheClusters:'ElastiCache Cluster',
@@ -501,28 +501,28 @@ function _diffTypeLabel(type){
 // Opens the detail panel with full diff information for a resource
 // All content is escaped before insertion for safe display
 function _openDiffDetail(item,category){
-  var dp=document.getElementById('detailPanel');
-  var dpTitle=document.getElementById('dpTitle');
-  var dpSub=document.getElementById('dpSub');
-  var dpBody=document.getElementById('dpBody');
-  var badgeCls=category;
-  var badgeText=category.toUpperCase();
-  var res=item.resource||item.baseline||null;
-  var typeLabel=_diffTypeLabel(item.type);
+  const dp=document.getElementById('detailPanel');
+  const dpTitle=document.getElementById('dpTitle');
+  const dpSub=document.getElementById('dpSub');
+  const dpBody=document.getElementById('dpBody');
+  const badgeCls=category;
+  const badgeText=category.toUpperCase();
+  const res=item.resource||item.baseline||null;
+  const typeLabel=_diffTypeLabel(item.type);
   dpTitle.textContent='';
   dpTitle.appendChild(document.createTextNode(item.name+' '));
-  var badge=document.createElement('span');badge.className='dp-diff-badge '+badgeCls;badge.textContent=badgeText;
+  const badge=document.createElement('span');badge.className='dp-diff-badge '+badgeCls;badge.textContent=badgeText;
   dpTitle.appendChild(badge);
   dpSub.textContent='';
-  var copySpan=document.createElement('span');copySpan.className='copyable';copySpan.dataset.copy=item.key;copySpan.textContent=item.key;
+  const copySpan=document.createElement('span');copySpan.className='copyable';copySpan.dataset.copy=item.key;copySpan.textContent=item.key;
   dpSub.appendChild(copySpan);dpSub.appendChild(document.createTextNode(' | '+typeLabel));
-  var h='';
+  let h='';
   function sec(title,count,bodyHtml,startOpen){
     return '<div class="dp-section"><div class="dp-sec-hdr'+(startOpen?'':' collapsed')+'" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">'+esc(title)+'</span><span><span class="dp-sec-count">'+esc(count)+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body'+(startOpen?'':' hidden')+'">'+bodyHtml+'</div></div>';
   }
   // CHANGES section (modified only)
   if(category==='modified'&&item.fields&&item.fields.length){
-    var cb='';
+    let cb='';
     item.fields.forEach(function(f){
       cb+='<div class="dp-diff-change">';
       cb+='<span class="dc-field">'+_escHtml(f.field)+'</span>';
@@ -539,27 +539,27 @@ function _openDiffDetail(item,category){
       }
       cb+='</div></div>';
     });
-    var structCount=item.fields.filter(function(f){return f.kind==='structural'}).length;
-    var metaCount=item.fields.length-structCount;
-    var countLabel=item.fields.length+' change'+(item.fields.length>1?'s':'')+' ('+structCount+' structural, '+metaCount+' metadata)';
+    const structCount=item.fields.filter(function(f){return f.kind==='structural'}).length;
+    const metaCount=item.fields.length-structCount;
+    const countLabel=item.fields.length+' change'+(item.fields.length>1?'s':'')+' ('+structCount+' structural, '+metaCount+' metadata)';
     h+=sec('Changes',countLabel,cb,true);
   }
   // PROPERTIES section
   if(res){
-    var propsHtml=_diffPropsHtml(item.type,res);
+    const propsHtml=_diffPropsHtml(item.type,res);
     if(propsHtml){
-      var propLabel=category==='removed'?'Properties (baseline)':'Properties (current)';
+      const propLabel=category==='removed'?'Properties (baseline)':'Properties (current)';
       h+=sec(propLabel,'',propsHtml,category!=='modified');
     }
   }
   // BASELINE PROPERTIES (modified only — show old state)
   if(category==='modified'&&item.baseline){
-    var baseProps=_diffPropsHtml(item.type,item.baseline);
+    const baseProps=_diffPropsHtml(item.type,item.baseline);
     if(baseProps) h+=sec('Baseline Properties','',baseProps,false);
   }
   // RAW JSON section
   if(res){
-    var jsonHtml='';
+    let jsonHtml='';
     if(category==='modified'&&item.baseline){
       jsonHtml='<div style="font-size:calc(8px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-weight:600;color:#ef4444;margin-bottom:2px">BASELINE</div>';
       jsonHtml+='<div class="dp-diff-json" style="max-height:200px;margin-bottom:8px">'+_escHtml(JSON.stringify(item.baseline,null,2))+'</div>';
@@ -578,7 +578,7 @@ function _openDiffDetail(item,category){
   dpBody.querySelectorAll('.copyable').forEach(function(el){
     el.addEventListener('click',function(e){
       e.stopPropagation();navigator.clipboard.writeText(this.dataset.copy);
-      var t=document.querySelector('.copy-toast');
+      const t=document.querySelector('.copy-toast');
       if(t){t.textContent='Copied!';t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1200)}
     });
   });
@@ -614,17 +614,17 @@ function _exportDiffReport(){
 // === COMPARE DASHBOARD ===
 
 function _diffResVpc(item){
-  var res=item.resource||item.baseline;
+  const res=item.resource||item.baseline;
   if(!res) return {id:'',name:''};
-  var vid=res.VpcId||'';
+  let vid=res.VpcId||'';
   if(!vid&&item.type==='vpcs') vid=res.VpcId||item.key||'';
   if(!vid) return {id:'',name:''};
-  var vn=vid;
+  let vn=vid;
   if(_rlCtx&&_rlCtx.vpcs){
-    var vpc=_rlCtx.vpcs.find(function(v){return v.VpcId===vid});
+    const vpc=_rlCtx.vpcs.find(function(v){return v.VpcId===vid});
     if(vpc){
-      var tags=vpc.Tags||[];
-      var nt=tags.find(function(t){return t.Key==='Name'});
+      const tags=vpc.Tags||[];
+      const nt=tags.find(function(t){return t.Key==='Name'});
       if(nt&&nt.Value) vn=nt.Value;
     }
   }
@@ -633,21 +633,21 @@ function _diffResVpc(item){
 
 function _buildDiffFlatRows(){
   if(!_diffResults) return [];
-  var rows=[];
+  const rows=[];
   _diffResults.added.forEach(function(item){
-    var vpc=_diffResVpc(item);
+    const vpc=_diffResVpc(item);
     rows.push({category:'added',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:[],hasStructural:false,resource:item.resource,baseline:null});
   });
   _diffResults.removed.forEach(function(item){
-    var vpc=_diffResVpc(item);
+    const vpc=_diffResVpc(item);
     rows.push({category:'removed',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:[],hasStructural:false,resource:null,baseline:item.resource});
   });
   _diffResults.modified.forEach(function(item){
-    var vpc=_diffResVpc(item);
+    const vpc=_diffResVpc(item);
     rows.push({category:'modified',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:item.fields||[],hasStructural:item.hasStructural,resource:item.resource,baseline:item.baseline});
   });
   _diffResults.unchanged.forEach(function(item){
-    var vpc=_diffResVpc(item);
+    const vpc=_diffResVpc(item);
     rows.push({category:'unchanged',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:[],hasStructural:false,resource:null,baseline:null});
   });
   return rows;
@@ -658,21 +658,21 @@ function _openDiffDash(){
   _diffFlatRows=_buildDiffFlatRows();
   _diffDashState={catFilter:'all',typeFilter:'all',vpcFilter:'all',kindFilter:'all',search:'',sort:'status',sortDir:'asc',page:1,perPage:50};
   // Populate type filter
-  var typeSet=new Set();
+  const typeSet=new Set();
   _diffFlatRows.forEach(function(r){typeSet.add(r.type)});
-  var typeSel=document.getElementById('diffTypeFilter');
+  const typeSel=document.getElementById('diffTypeFilter');
   typeSel.innerHTML='<option value="all">All Types</option>';
   Array.from(typeSet).sort().forEach(function(t){
-    var opt=document.createElement('option');opt.value=t;opt.textContent=_diffTypeLabel(t);
+    const opt=document.createElement('option');opt.value=t;opt.textContent=_diffTypeLabel(t);
     typeSel.appendChild(opt);
   });
   // Populate VPC filter
-  var vpcMap={};
+  const vpcMap={};
   _diffFlatRows.forEach(function(r){if(r.vpcId)vpcMap[r.vpcId]=r.vpcName});
-  var vpcSel=document.getElementById('diffVpcFilter');
+  const vpcSel=document.getElementById('diffVpcFilter');
   vpcSel.innerHTML='<option value="all">All VPCs</option>';
   Object.keys(vpcMap).sort().forEach(function(vid){
-    var opt=document.createElement('option');opt.value=vid;opt.textContent=vpcMap[vid];
+    const opt=document.createElement('option');opt.value=vid;opt.textContent=vpcMap[vid];
     vpcSel.appendChild(opt);
   });
   // Populate snapshot picker
@@ -682,7 +682,7 @@ function _openDiffDash(){
   document.getElementById('diffKindFilter').value='all';
   document.getElementById('diffPerPage').value='50';
   // Source label
-  var srcName=_diffBaseline?(_diffBaseline._srcName||_diffBaseline.accountLabel||'baseline'):'baseline';
+  const srcName=_diffBaseline?(_diffBaseline._srcName||_diffBaseline.accountLabel||'baseline'):'baseline';
   document.getElementById('diffDashLabel').textContent=srcName+' vs current';
   // Open
   _closeAllDashboards('diffDash');
@@ -695,30 +695,30 @@ function _closeDiffDash(){
 }
 
 function _populateDiffSnapPicker(){
-  var sel=document.getElementById('diffSnapPicker');
+  const sel=document.getElementById('diffSnapPicker');
   sel.innerHTML='<option value="">— pick snapshot —</option>';
   _snapshots.forEach(function(snap,i){
-    var opt=document.createElement('option');
+    const opt=document.createElement('option');
     opt.value=i;
-    var d=new Date(snap.timestamp);
+    const d=new Date(snap.timestamp);
     opt.textContent=(snap.label||snap.accountLabel||'Snap '+(i+1))+' — '+d.toLocaleDateString()+' '+d.toLocaleTimeString();
     sel.appendChild(opt);
   });
 }
 
-var _CAT_ORDER={added:0,removed:1,modified:2,unchanged:3};
+const _CAT_ORDER={added:0,removed:1,modified:2,unchanged:3};
 
 function _renderDiffDash(){
   if(!_diffFlatRows) return;
-  var db=document.getElementById('diffDashBody');if(db)db.scrollTop=0;
-  var st=_diffDashState;
+  const db=document.getElementById('diffDashBody');if(db)db.scrollTop=0;
+  const st=_diffDashState;
   // --- Pills ---
-  var counts={all:_diffFlatRows.length,added:0,removed:0,modified:0,unchanged:0};
+  const counts={all:_diffFlatRows.length,added:0,removed:0,modified:0,unchanged:0};
   _diffFlatRows.forEach(function(r){counts[r.category]++});
-  var pillBox=document.getElementById('diffDashPills');
+  const pillBox=document.getElementById('diffDashPills');
   pillBox.innerHTML='';
   [{cat:'all',label:'All'},{cat:'added',label:'Added'},{cat:'removed',label:'Removed'},{cat:'modified',label:'Modified'},{cat:'unchanged',label:'Unchanged'}].forEach(function(p){
-    var pill=document.createElement('span');
+    const pill=document.createElement('span');
     pill.className='diff-cat-pill'+(st.catFilter===p.cat?' active':'');
     pill.dataset.cat=p.cat;
     pill.textContent=p.label+' ('+counts[p.cat]+')';
@@ -726,15 +726,15 @@ function _renderDiffDash(){
     pillBox.appendChild(pill);
   });
   // --- Filter + Sort (shared with _getDiffFilteredRows) ---
-  var filtered=_getDiffFilteredRows();
+  const filtered=_getDiffFilteredRows();
   // --- Row count ---
   document.getElementById('diffDashRowCount').textContent=filtered.length+' of '+_diffFlatRows.length;
   // --- Paginate ---
-  var perPage=st.perPage<=0?filtered.length:st.perPage;
-  var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
+  const perPage=st.perPage<=0?filtered.length:st.perPage;
+  const totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
   st.page=Math.min(st.page,totalPages);
-  var start=(st.page-1)*perPage;
-  var pageRows=filtered.slice(start,start+perPage);
+  const start=(st.page-1)*perPage;
+  const pageRows=filtered.slice(start,start+perPage);
   // --- Pagination controls ---
   document.getElementById('diffPageInfo').textContent='Page '+st.page+' of '+totalPages+' ('+filtered.length+' rows)';
   document.getElementById('diffPagePrev').disabled=(st.page<=1);
@@ -742,11 +742,11 @@ function _renderDiffDash(){
   // --- Footer meta ---
   document.getElementById('diffDashMeta').textContent='+'+counts.added+' added  -'+counts.removed+' removed  ~'+counts.modified+' modified  ='+counts.unchanged+' unchanged';
   // --- Build table ---
-  var body=document.getElementById('diffDashBody');
-  var cols=[{key:'status',label:'Status'},{key:'type',label:'Type'},{key:'name',label:'Name'},{key:'key',label:'Key'},{key:'vpc',label:'VPC'},{key:'changes',label:'Changes'},{key:'actions',label:'Actions',nosort:true}];
-  var h='<table class="diff-dash-table"><thead><tr>';
+  const body=document.getElementById('diffDashBody');
+  const cols=[{key:'status',label:'Status'},{key:'type',label:'Type'},{key:'name',label:'Name'},{key:'key',label:'Key'},{key:'vpc',label:'VPC'},{key:'changes',label:'Changes'},{key:'actions',label:'Actions',nosort:true}];
+  let h='<table class="diff-dash-table"><thead><tr>';
   cols.forEach(function(c){
-    var cls='';
+    let cls='';
     if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' dd-sort-asc':' dd-sort-desc';
     h+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
   });
@@ -755,8 +755,8 @@ function _renderDiffDash(){
     h+='<tr><td colspan="7" class="dd-no-results">No resources match current filters</td></tr>';
   } else {
     pageRows.forEach(function(row,idx){
-      var globalIdx=start+idx;
-      var isModified=row.category==='modified'&&row.fields.length>0;
+      const globalIdx=start+idx;
+      const isModified=row.category==='modified'&&row.fields.length>0;
       h+='<tr data-dd-idx="'+globalIdx+'" data-dd-key="'+esc(row.key)+'" data-dd-cat="'+row.category+'">';
       // Status
       h+='<td>';
@@ -772,9 +772,9 @@ function _renderDiffDash(){
       h+='<td class="dd-key">'+esc(row.vpcName||'—')+'</td>';
       // Changes
       if(isModified){
-        var sc=row.fields.filter(function(f){return f.kind==='structural'}).length;
-        var mc=row.fields.length-sc;
-        var parts=[];
+        const sc=row.fields.filter(function(f){return f.kind==='structural'}).length;
+        const mc=row.fields.length-sc;
+        const parts=[];
         if(sc) parts.push('<span class="dd-changes-structural">'+sc+' structural</span>');
         if(mc) parts.push('<span class="dd-changes-meta">'+mc+' metadata</span>');
         h+='<td class="dd-changes">'+parts.join(', ')+'</td>';
@@ -790,8 +790,8 @@ function _renderDiffDash(){
       if(isModified){
         h+='<tr class="dd-expand-row" data-dd-expand="'+globalIdx+'"><td colspan="7" class="dd-expand-cell">';
         row.fields.forEach(function(f){
-          var oldVal=_diffFmtVal(f.old);
-          var newVal=_diffFmtVal(f.new);
+          const oldVal=_diffFmtVal(f.old);
+          const newVal=_diffFmtVal(f.new);
           h+='<div class="diff-field-row '+f.kind+'">';
           h+='<span class="diff-field-name">'+_escHtml(f.field)+'</span>';
           if(typeof f.old==='undefined'){
@@ -815,7 +815,7 @@ function _renderDiffDash(){
   // Sort headers
   body.querySelectorAll('th[data-sort-col]').forEach(function(th){
     th.addEventListener('click',function(){
-      var col=this.dataset.sortCol;
+      const col=this.dataset.sortCol;
       if(st.sort===col){
         st.sortDir=st.sortDir==='asc'?'desc':'asc';
       } else {
@@ -829,9 +829,9 @@ function _renderDiffDash(){
   body.querySelectorAll('.dd-expand-toggle').forEach(function(btn){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
-      var idx=this.dataset.ddToggle;
-      var expRow=body.querySelector('tr[data-dd-expand="'+idx+'"]');
-      var parentRow=this.closest('tr');
+      const idx=this.dataset.ddToggle;
+      const expRow=body.querySelector('tr[data-dd-expand="'+idx+'"]');
+      const parentRow=this.closest('tr');
       if(expRow){
         expRow.classList.toggle('open');
         this.classList.toggle('open');
@@ -843,7 +843,7 @@ function _renderDiffDash(){
   body.querySelectorAll('.dd-jump-btn').forEach(function(btn){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
-      var key=this.dataset.ddJump;
+      const key=this.dataset.ddJump;
       if(!key) return;
       document.getElementById('diffDash').classList.remove('open');
       setTimeout(function(){_zoomToElement(key)},250);
@@ -853,12 +853,12 @@ function _renderDiffDash(){
   body.querySelectorAll('.dd-detail-btn').forEach(function(btn){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
-      var idx=parseInt(this.dataset.ddDetail);
-      var allFiltered=_getDiffFilteredRows();
-      var row=allFiltered[idx];
+      const idx=parseInt(this.dataset.ddDetail);
+      const allFiltered=_getDiffFilteredRows();
+      const row=allFiltered[idx];
       if(!row) return;
       // Build item compatible with _openDiffDetail
-      var item={type:row.type,key:row.key,name:row.name,fields:row.fields,hasStructural:row.hasStructural,resource:row.resource,baseline:row.baseline};
+      const item={type:row.type,key:row.key,name:row.name,fields:row.fields,hasStructural:row.hasStructural,resource:row.resource,baseline:row.baseline};
       document.getElementById('diffDash').classList.remove('open');
       _openDiffDetail(item,row.category);
       setTimeout(function(){_zoomToElement(row.key)},250);
@@ -867,7 +867,7 @@ function _renderDiffDash(){
   // Row click → expand (for modified rows)
   body.querySelectorAll('tbody tr[data-dd-idx]').forEach(function(tr){
     tr.addEventListener('click',function(){
-      var toggle=this.querySelector('.dd-expand-toggle');
+      const toggle=this.querySelector('.dd-expand-toggle');
       if(toggle) toggle.click();
     });
   });
@@ -875,8 +875,8 @@ function _renderDiffDash(){
 
 function _getDiffFilteredRows(){
   if(!_diffFlatRows) return [];
-  var st=_diffDashState;
-  var filtered=_diffFlatRows.slice();
+  const st=_diffDashState;
+  let filtered=_diffFlatRows.slice();
   if(st.catFilter!=='all') filtered=filtered.filter(function(r){return r.category===st.catFilter});
   if(st.typeFilter!=='all') filtered=filtered.filter(function(r){return r.type===st.typeFilter});
   if(st.vpcFilter!=='all') filtered=filtered.filter(function(r){return r.vpcId===st.vpcFilter});
@@ -889,14 +889,14 @@ function _getDiffFilteredRows(){
     });
   }
   if(st.search){
-    var q=st.search.toLowerCase();
+    const q=st.search.toLowerCase();
     filtered=filtered.filter(function(r){
       return r.name.toLowerCase().indexOf(q)!==-1||r.key.toLowerCase().indexOf(q)!==-1||r.type.toLowerCase().indexOf(q)!==-1||_diffTypeLabel(r.type).toLowerCase().indexOf(q)!==-1||r.vpcName.toLowerCase().indexOf(q)!==-1||r.fields.some(function(f){return f.field.toLowerCase().indexOf(q)!==-1});
     });
   }
   if(st.sort!=='none'){
     filtered.sort(function(a,b){
-      var cmp=0;
+      let cmp=0;
       if(st.sort==='status') cmp=(_CAT_ORDER[a.category]||9)-(_CAT_ORDER[b.category]||9);
       else if(st.sort==='type') cmp=_diffTypeLabel(a.type).localeCompare(_diffTypeLabel(b.type));
       else if(st.sort==='name') cmp=(a.name||'').localeCompare(b.name||'');
@@ -912,10 +912,10 @@ function _getDiffFilteredRows(){
 async function _exportDiffXlsx(){
   if(!_diffResults) return;
   try{
-    var XLSX=await _loadSheetJS();
-    var wb=XLSX.utils.book_new();
+    const XLSX=await _loadSheetJS();
+    const wb=XLSX.utils.book_new();
     // Summary sheet
-    var summaryData=[
+    const summaryData=[
       ['Compare Report','','',''],
       ['Generated',new Date().toISOString(),'',''],
       ['','','',''],
@@ -926,7 +926,7 @@ async function _exportDiffXlsx(){
       ['Unchanged',_diffResults.total.unchanged,'',''],
       ['Total',_diffFlatRows?_diffFlatRows.length:0,'','']
     ];
-    var ws1=XLSX.utils.aoa_to_sheet(summaryData);
+    const ws1=XLSX.utils.aoa_to_sheet(summaryData);
     ws1['!cols']=[{wch:14},{wch:30},{wch:12},{wch:12}];
     // Style header
     if(ws1['A1']) ws1['A1'].s=_xlsxHeaderStyle();
@@ -934,13 +934,13 @@ async function _exportDiffXlsx(){
     if(ws1['B4']) ws1['B4'].s=_xlsxHeaderStyle();
     XLSX.utils.book_append_sheet(wb,ws1,'Summary');
     // Details sheet — all resources
-    var detailRows=[['Status','Type','Name','Key','VPC','Changes','Fields Changed']];
-    var rows=_diffFlatRows||_buildDiffFlatRows();
+    const detailRows=[['Status','Type','Name','Key','VPC','Changes','Fields Changed']];
+    const rows=_diffFlatRows||_buildDiffFlatRows();
     rows.forEach(function(r){
-      var fieldStr='';
+      let fieldStr='';
       if(r.fields.length){
         fieldStr=r.fields.map(function(f){
-          var parts=[f.field+' ('+f.kind+')'];
+          const parts=[f.field+' ('+f.kind+')'];
           if(typeof f.old!=='undefined') parts.push('old: '+_diffFmtVal(f.old));
           if(typeof f.new!=='undefined') parts.push('new: '+_diffFmtVal(f.new));
           return parts.join(' ');
@@ -948,20 +948,20 @@ async function _exportDiffXlsx(){
       }
       detailRows.push([r.category.toUpperCase(),_diffTypeLabel(r.type),r.name,r.key,r.vpcName||'',r.fields.length||'',fieldStr]);
     });
-    var ws2=XLSX.utils.aoa_to_sheet(detailRows);
+    const ws2=XLSX.utils.aoa_to_sheet(detailRows);
     ws2['!cols']=[{wch:12},{wch:18},{wch:28},{wch:28},{wch:20},{wch:10},{wch:60}];
     // Style header row
-    var headerCols='ABCDEFG';
-    for(var i=0;i<headerCols.length;i++){
-      var addr=headerCols[i]+'1';
+    const headerCols='ABCDEFG';
+    for(let i=0;i<headerCols.length;i++){
+      const addr=headerCols[i]+'1';
       if(ws2[addr]) ws2[addr].s=_xlsxHeaderStyle();
     }
     // Color status cells
-    var statusColors={ADDED:{fg:'065F46',bg:'D1FAE5'},REMOVED:{fg:'991B1B',bg:'FEE2E2'},MODIFIED:{fg:'92400E',bg:'FEF3C7'},UNCHANGED:{fg:'6B7280',bg:'F3F4F6'}};
-    for(var ri=1;ri<detailRows.length;ri++){
-      var cellAddr='A'+(ri+1);
-      var val=detailRows[ri][0];
-      var sc=statusColors[val];
+    const statusColors={ADDED:{fg:'065F46',bg:'D1FAE5'},REMOVED:{fg:'991B1B',bg:'FEE2E2'},MODIFIED:{fg:'92400E',bg:'FEF3C7'},UNCHANGED:{fg:'6B7280',bg:'F3F4F6'}};
+    for(let ri=1;ri<detailRows.length;ri++){
+      const cellAddr='A'+(ri+1);
+      const val=detailRows[ri][0];
+      const sc=statusColors[val];
       if(ws2[cellAddr]&&sc){
         ws2[cellAddr].s={font:{bold:true,color:{rgb:sc.fg},name:'Calibri',sz:10},fill:{fgColor:{rgb:sc.bg}},alignment:{horizontal:'center'},border:_xlsxBorder()};
       }
@@ -979,7 +979,7 @@ async function _exportDiffXlsx(){
 if(typeof document!=='undefined') document.getElementById('compareBtn').addEventListener('click',function(){
   if(_diffMode){
     // Toggle dashboard; hold Shift to exit diff mode entirely
-    var dash=document.getElementById('diffDash');
+    const dash=document.getElementById('diffDash');
     if(dash.classList.contains('open')) dash.classList.remove('open');
     else _openDiffDash();
     return;
@@ -989,14 +989,14 @@ if(typeof document!=='undefined') document.getElementById('compareBtn').addEvent
 
 // File picker -> parse and enter diff mode (supports single .awsmap or multiple .json)
 if(typeof document!=='undefined') document.getElementById('diffFileInput').addEventListener('change',async function(){
-  var files=[].slice.call(this.files);
+  const files=[].slice.call(this.files);
   if(!files.length) return;
   this.value='';
   // Single .awsmap file — use directly
   if(files.length===1&&/\.awsmap$/i.test(files[0].name)){
     try{
-      var text=await files[0].text();
-      var data=JSON.parse(text);
+      const text=await files[0].text();
+      const data=JSON.parse(text);
       data._srcName=files[0].name.replace(/\.[^.]+$/,'');
       enterDiffMode(data);
     }catch(ex){_showToast('Failed to parse file: '+ex.message)}
@@ -1005,8 +1005,8 @@ if(typeof document!=='undefined') document.getElementById('diffFileInput').addEv
   // Single JSON that looks like it has multiple keys (pre-bundled export)
   if(files.length===1&&/\.json$/i.test(files[0].name)){
     try{
-      var text=await files[0].text();
-      var data=JSON.parse(text);
+      const text=await files[0].text();
+      const data=JSON.parse(text);
       // Check if it's already a full context (has vpcs/subnets keys)
       if(data.vpcs||data.subnets||data.textareas||data._format==='awsmap'){
         data._srcName=files[0].name.replace(/\.[^.]+$/,'');
@@ -1016,13 +1016,13 @@ if(typeof document!=='undefined') document.getElementById('diffFileInput').addEv
     }catch(ex){/* fall through to multi-file handling */}
   }
   // Multiple JSON files — match each to a textarea slot and build diff context
-  var textareas={};
-  var matched=0,skipped=[];
-  for(var i=0;i<files.length;i++){
+  const textareas={};
+  let matched=0,skipped=[];
+  for(let i=0;i<files.length;i++){
     try{
-      var text=await files[i].text();
+      const text=await files[i].text();
       JSON.parse(text); // validate
-      var inputId=matchFile(files[i].name,text);
+      const inputId=matchFile(files[i].name,text);
       if(!inputId){skipped.push(files[i].name);continue}
       textareas[inputId]=text;
       matched++;
@@ -1030,7 +1030,7 @@ if(typeof document!=='undefined') document.getElementById('diffFileInput').addEv
   }
   if(!matched){_showToast('No recognized AWS JSON files found');return}
   if(skipped.length) _showToast(matched+' files matched, '+skipped.length+' skipped','info');
-  var label=matched+' JSON files';
+  let label=matched+' JSON files';
   if(files.length<=3) label=files.map(function(f){return f.name.replace(/\.json$/i,'')}).join(', ');
   enterDiffMode({_format:'awsmap',textareas:textareas,_srcName:label});
 });
@@ -1053,19 +1053,19 @@ document.getElementById('diffKindFilter').addEventListener('change',function(){_
 document.getElementById('diffPerPage').addEventListener('change',function(){_diffDashState.perPage=parseInt(this.value)||50;_diffDashState.page=1;_renderDiffDash()});
 document.getElementById('diffPagePrev').addEventListener('click',function(){if(_diffDashState.page>1){_diffDashState.page--;_renderDiffDash()}});
 document.getElementById('diffPageNext').addEventListener('click',function(){
-  var pp=_diffDashState.perPage<=0?(_diffFlatRows?_diffFlatRows.length:1):_diffDashState.perPage;
-  var total=Math.max(1,Math.ceil((_getDiffFilteredRows().length)/pp));
+  const pp=_diffDashState.perPage<=0?(_diffFlatRows?_diffFlatRows.length:1):_diffDashState.perPage;
+  const total=Math.max(1,Math.ceil((_getDiffFilteredRows().length)/pp));
   if(_diffDashState.page<total){_diffDashState.page++;_renderDiffDash()}
 });
 document.getElementById('diffDashExportJSON').addEventListener('click',_exportDiffReport);
 document.getElementById('diffDashExportXLSX').addEventListener('click',_exportDiffXlsx);
 document.getElementById('diffDashFileBtn').addEventListener('click',function(){document.getElementById('diffFileInput').click()});
 document.getElementById('diffSnapPicker').addEventListener('change',function(){
-  var idx=parseInt(this.value);
+  const idx=parseInt(this.value);
   if(isNaN(idx)||!_snapshots[idx]) return;
   this.value='';
-  var snap=_snapshots[idx];
-  var wasOpen=document.getElementById('diffDash').classList.contains('open');
+  const snap=_snapshots[idx];
+  const wasOpen=document.getElementById('diffDash').classList.contains('open');
   exitDiffMode();
   _compareWithSnapshot(snap);
   if(wasOpen) _openDiffDash();
@@ -1278,8 +1278,8 @@ document.getElementById('helpClose').addEventListener('click',()=>{document.getE
 }
 
 // === UNIFIED DASHBOARD TAB REGISTRY ===
-var _udashTab = null;
-var _UDASH_TABS = [
+let _udashTab = null;
+const _UDASH_TABS = [
   {id:'classification', label:'Classification', color:'#a78bfa', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_classificationData.length) runClassificationEngine(_rlCtx);
@@ -1288,8 +1288,8 @@ var _UDASH_TABS = [
   {id:'iam', label:'IAM Review', color:'#f472b6', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_iamReviewData.length){
-      try{var iamRaw=safeParse(gv('in_iam'));
-      if(iamRaw){var p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}}catch(e){console.warn('IAM parse error in prereq:',e)}
+      try{const iamRaw=safeParse(gv('in_iam'));
+      if(iamRaw){const p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}}catch(e){console.warn('IAM parse error in prereq:',e)}
     }
     return true;
   }, render:function(){ _renderIAMTab(); }},
@@ -1311,11 +1311,11 @@ var _UDASH_TABS = [
 ];
 
 function openUnifiedDash(tabId){
-  var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
+  const tab=_UDASH_TABS.find(function(t){return t.id===tabId});
   if(!tab) return;
   if(!tab.prereq()) return;
-  var el=document.getElementById('udash');
-  var wasOpen=el.classList.contains('open');
+  const el=document.getElementById('udash');
+  const wasOpen=el.classList.contains('open');
   if(wasOpen&&tabId===_udashTab) return;
   _udashTab=tabId;
   // Clean shared areas (prevents stale layout classes, hidden toolbars, wrong footers)
@@ -1334,7 +1334,7 @@ function openUnifiedDash(tabId){
 
 function _switchUdashTab(tabId){
   if(tabId===_udashTab) return;
-  var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
+  const tab=_UDASH_TABS.find(function(t){return t.id===tabId});
   if(!tab||!tab.prereq()) return;
   _udashTab=tabId;
   _renderUdashTabs();
@@ -1354,10 +1354,10 @@ function _switchUdashTab(tabId){
 }
 
 function _renderUdashTabs(){
-  var c=document.getElementById('udashTabs');
+  const c=document.getElementById('udashTabs');
   c.innerHTML='';
   _UDASH_TABS.forEach(function(t){
-    var btn=document.createElement('button');
+    const btn=document.createElement('button');
     btn.className='udash-tab'+(t.id===_udashTab?' active':'');
     btn.style.setProperty('--tab-color',t.color);
     btn.textContent=t.label;
@@ -1389,14 +1389,14 @@ function openBUDRDash(){
   openUnifiedDash('budr');
 }
 function _renderBUDRDash(){
-  var tb=document.getElementById('udashToolbar');
-  var body=document.getElementById('udashBody');
-  var footer=document.getElementById('udashFooter');
-  var st=_budrDashState;
-  var counts=_getBUDRTierCounts();
-  var total=_budrAssessments.length;
+  const tb=document.getElementById('udashToolbar');
+  const body=document.getElementById('udashBody');
+  const footer=document.getElementById('udashFooter');
+  const st=_budrDashState;
+  const counts=_getBUDRTierCounts();
+  const total=_budrAssessments.length;
   // Toolbar: search + sort + tier pills
-  var th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;width:200px">';
+  let th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;width:200px">';
   th+='<select id="budrSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">';
   th+='<option value="tier"'+(st.sort==='tier'?' selected':'')+'>Sort: Tier</option>';
   th+='<option value="name"'+(st.sort==='name'?' selected':'')+'>Sort: Name</option>';
@@ -1405,9 +1405,9 @@ function _renderBUDRDash(){
   th+='<div id="budrPills" style="display:flex;gap:4px;margin-left:8px"></div>';
   tb.innerHTML=th;
   // Build tier pills
-  var pillBox=document.getElementById('budrPills');
+  const pillBox=document.getElementById('budrPills');
   [{tier:'all',label:'All ('+total+')'},{tier:'protected',label:'Protected ('+counts.protected+')'},{tier:'partial',label:'Partial ('+counts.partial+')'},{tier:'at_risk',label:'At Risk ('+counts.at_risk+')'}].forEach(function(p){
-    var btn=document.createElement('span');btn.className='budr-pill'+(st.tierFilter===p.tier?' active':'');
+    const btn=document.createElement('span');btn.className='budr-pill'+(st.tierFilter===p.tier?' active':'');
     btn.dataset.tier=p.tier;btn.textContent=p.label;
     btn.addEventListener('click',function(){st.tierFilter=p.tier;_renderBUDRDash()});pillBox.appendChild(btn);
   });
@@ -1415,16 +1415,16 @@ function _renderBUDRDash(){
   document.getElementById('budrSearch').addEventListener('input',function(){st.search=this.value;_renderBUDRDash()});
   document.getElementById('budrSort').addEventListener('change',function(){st.sort=this.value;_renderBUDRDash()});
   // Filter assessments
-  var items=_budrAssessments.slice();
+  let items=_budrAssessments.slice();
   if(st.tierFilter!=='all')items=items.filter(function(a){return a.profile&&a.profile.tier===st.tierFilter});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(a){return(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q)})}
+  if(st.search){const q=st.search.toLowerCase();items=items.filter(function(a){return(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q)})}
   if(st.sort==='name')items.sort(function(a,b){return(a.name||a.id||'').localeCompare(b.name||b.id||'')});
   else if(st.sort==='type')items.sort(function(a,b){return(a.type||'').localeCompare(b.type||'')});
   // Summary cards
-  var h='<div class="budr-summary">';
+  let h='<div class="budr-summary">';
   ['protected','partial','at_risk'].forEach(function(tier){
-    var meta=_BUDR_TIER_META[tier];var c=counts[tier]||0;
-    var pct=total>0?Math.round(c/total*100):0;
+    const meta=_BUDR_TIER_META[tier];const c=counts[tier]||0;
+    const pct=total>0?Math.round(c/total*100):0;
     h+='<div class="budr-card '+tier+'" data-tier="'+tier+'">';
     h+='<div class="bc-count">'+c+'</div>';
     h+='<div class="bc-label">'+esc(meta.name)+'</div>';
@@ -1433,13 +1433,13 @@ function _renderBUDRDash(){
   });
   h+='</div>';
   // Group by tier
-  var groups={protected:[],partial:[],at_risk:[]};
+  const groups={protected:[],partial:[],at_risk:[]};
   items.forEach(function(a){if(a.profile)groups[a.profile.tier].push(a)});
   // Render sections
   ['at_risk','partial','protected'].forEach(function(tier){
-    var grp=groups[tier];if(!grp.length)return;
-    var meta=_BUDR_TIER_META[tier];
-    var collapsed=tier==='protected';
+    const grp=groups[tier];if(!grp.length)return;
+    const meta=_BUDR_TIER_META[tier];
+    const collapsed=tier==='protected';
     h+='<div class="budr-section" data-tier="'+tier+'">';
     h+='<div class="budr-section-hdr'+(collapsed?' collapsed':'')+'">';
     h+='<span class="bs-chevron">\u25BC</span>';
@@ -1448,8 +1448,8 @@ function _renderBUDRDash(){
     h+='</div>';
     h+='<div class="budr-section-body"'+(collapsed?' style="display:none"':'')+'>';
     grp.forEach(function(a,i){
-      var findings=_budrFindings.filter(function(f){return f.resource===a.id});
-      var expanded=tier==='at_risk';
+      const findings=_budrFindings.filter(function(f){return f.resource===a.id});
+      const expanded=tier==='at_risk';
       h+='<div class="budr-res'+(expanded?' expanded':'')+'" data-idx="'+tier+'-'+i+'">';
       h+='<div class="budr-res-hdr">';
       h+='<span class="br-dot '+tier+'"></span>';
@@ -1462,11 +1462,11 @@ function _renderBUDRDash(){
       if(a.signals){
         h+='<div class="budr-signals">';
         Object.entries(a.signals).forEach(function(entry){
-          var k=entry[0],v=entry[1];
-          var good=v===true||(typeof v==='number'&&v>1);
-          var bad=v===false||v===0;
-          var cls=good?'good':bad?'bad':'warn';
-          var icon=good?'✓':bad?'✗':'!';
+          const k=entry[0],v=entry[1];
+          const good=v===true||(typeof v==='number'&&v>1);
+          const bad=v===false||v===0;
+          const cls=good?'good':bad?'bad':'warn';
+          const icon=good?'✓':bad?'✗':'!';
           h+='<span class="budr-sig-badge '+cls+'">'+icon+' '+esc(k)+': '+esc(String(v))+'</span>';
         });
         h+='</div>';
@@ -1493,7 +1493,7 @@ function _renderBUDRDash(){
   // Event: section collapse
   body.querySelectorAll('.budr-section-hdr').forEach(function(hdr){
     hdr.addEventListener('click',function(){
-      var bd=hdr.nextElementSibling;
+      const bd=hdr.nextElementSibling;
       if(hdr.classList.contains('collapsed')){hdr.classList.remove('collapsed');bd.style.display=''}
       else{hdr.classList.add('collapsed');bd.style.display='none'}
     });
@@ -1505,13 +1505,13 @@ function _renderBUDRDash(){
   // Event: summary card click = filter
   body.querySelectorAll('.budr-card').forEach(function(card){
     card.addEventListener('click',function(){
-      var t=card.dataset.tier;
+      const t=card.dataset.tier;
       st.tierFilter=st.tierFilter===t?'all':t;
       _renderBUDRDash();
     });
   });
   // Footer: item count + export buttons
-  var fh='<button id="budrExportCSV">Export CSV</button>';
+  let fh='<button id="budrExportCSV">Export CSV</button>';
   fh+='<button id="budrExportJSON">Export JSON</button>';
   if(_isElectron) fh+='<button id="budrExportXLSX">Export XLSX</button>';
   fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+total+' resources</span>';
@@ -1519,30 +1519,30 @@ function _renderBUDRDash(){
   // Wire export listeners
   document.getElementById('budrExportCSV').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
+    let csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
     _budrAssessments.forEach(function(a){
-      var tier=a.profile?a.profile.tier:'unknown';
-      var rto=a.profile?a.profile.rto:'';
-      var rpo=a.profile?a.profile.rpo:'';
-      var sigs=a.signals?Object.entries(a.signals).map(function(e){return e[0]+'='+e[1]}).join('; '):'';
-      var ce=function(s){return String(s||'').replace(/"/g,'""')};
+      const tier=a.profile?a.profile.tier:'unknown';
+      const rto=a.profile?a.profile.rto:'';
+      const rpo=a.profile?a.profile.rpo:'';
+      const sigs=a.signals?Object.entries(a.signals).map(function(e){return e[0]+'='+e[1]}).join('; '):'';
+      const ce=function(s){return String(s||'').replace(/"/g,'""')};
       csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
     });
     downloadBlob(new Blob([csv],{type:'text/csv'}),'budr-assessment.csv');
   });
   document.getElementById('budrExportJSON').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    const data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
     downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'budr-assessment.json');
   });
-  var xlsxBtn=document.getElementById('budrExportXLSX');
+  const xlsxBtn=document.getElementById('budrExportXLSX');
   if(xlsxBtn) xlsxBtn.addEventListener('click',async function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
-    var jsonStr=JSON.stringify(data,null,2);
+    const data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    const jsonStr=JSON.stringify(data,null,2);
     _showToast('Generating XLSX report\u2026');
     try{
-      var result=await window.electronAPI.exportBUDRXlsx(jsonStr);
+      const result=await window.electronAPI.exportBUDRXlsx(jsonStr);
       if(!result){_showToast('Export cancelled');return}
       if(result.error){_showToast('Error: '+result.error,'error');return}
       _showToast('Saved: '+result.path);
@@ -1553,6 +1553,14 @@ function _renderBUDRDash(){
 if(typeof document!=='undefined') document.getElementById('budrBtn').addEventListener('click',openBUDRDash);
 
 // === GOVERNANCE DASHBOARD ===
+// TODO: Move rendering functions (_renderClassificationTab, _renderIAMTab,
+// _openRulesEditor, openGovernanceDashboard) to governance.js.
+// Blocked by: (1) dual state — app-core.js window globals vs governance.js
+// module-scoped copies are not synchronized, (2) unified dashboard framework
+// dependency (openUnifiedDash, _UDASH_TABS) lives here, (3) mixed globals
+// (_rlCtx, _escHtml, _showToast, downloadBlob, _isElectron).
+// Path forward: consolidate governance state → governance.js as single source,
+// extract unified dashboard framework to its own module, then move rendering.
 function _closeAllDashboardsExcept(keep){_closeAllDashboards(keep)}
 
 function openGovernanceDashboard(tab){
@@ -1560,18 +1568,18 @@ function openGovernanceDashboard(tab){
   else openUnifiedDash('classification');
 }
 
-var _govToolbarTab=null;
-var _compToolbarTab=null;
+let _govToolbarTab=null;
+const _compToolbarTab=null;
 
 function _renderClassificationTab(){
-  var tb=document.getElementById('udashToolbar');
-  var body=document.getElementById('udashBody');
-  var footer=document.getElementById('udashFooter');
-  var st=_govDashState;
+  const tb=document.getElementById('udashToolbar');
+  const body=document.getElementById('udashBody');
+  const footer=document.getElementById('udashFooter');
+  const st=_govDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='classification'){
     _govToolbarTab='classification';
-    var th='<label>Search</label>';
+    let th='<label>Search</label>';
     th+='<input id="govSearch" type="text" placeholder="Filter by name, type, VPC..." value="'+_escHtml(st.search)+'">';
     th+='<label>Tier</label>';
     th+='<select id="govFilter">';
@@ -1589,11 +1597,11 @@ function _renderClassificationTab(){
     document.getElementById('govRulesBtn').addEventListener('click',_openRulesEditor);
   }
   // Summary cards
-  var counts={critical:0,high:0,medium:0,low:0};
+  const counts={critical:0,high:0,medium:0,low:0};
   _classificationData.forEach(function(r){counts[r.tier]=(counts[r.tier]||0)+1});
-  var bh='<div class="gov-tier-cards">';
+  let bh='<div class="gov-tier-cards">';
   [{t:'critical',l:'Critical'},{t:'high',l:'High'},{t:'medium',l:'Medium'},{t:'low',l:'Low'}].forEach(function(d){
-    var meta=_TIER_RPO_RTO[d.t];
+    const meta=_TIER_RPO_RTO[d.t];
     bh+='<div class="gov-tier-card" data-gov-tier="'+d.t+'" style="border-color:'+meta.color+'">';
     bh+='<h3 style="color:'+meta.color+'">'+d.l+'</h3>';
     bh+='<div class="gov-tier-count" style="color:'+meta.color+'">'+(counts[d.t]||0)+'</div>';
@@ -1602,26 +1610,26 @@ function _renderClassificationTab(){
   });
   bh+='</div>';
   // Filter + sort
-  var items=_classificationData.slice();
+  let items=_classificationData.slice();
   if(st.filter!=='all') items=items.filter(function(r){return r.tier===st.filter});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
-  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  if(st.search){const q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
+  const sortKey=st.sort;const dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
     if(sortKey==='tier') return((_TIER_RPO_RTO[a.tier]||{priority:99}).priority-(_TIER_RPO_RTO[b.tier]||{priority:99}).priority)*dir;
-    var av=(a[sortKey]||'').toLowerCase();var bv=(b[sortKey]||'').toLowerCase();
+    const av=(a[sortKey]||'').toLowerCase();const bv=(b[sortKey]||'').toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
   // Paginate
-  var perPage=st.perPage<=0?items.length:st.perPage;
-  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  const perPage=st.perPage<=0?items.length:st.perPage;
+  const totalPages=Math.max(1,Math.ceil(items.length/perPage));
   st.page=Math.min(Math.max(1,st.page),totalPages);
-  var start=(st.page-1)*perPage;
-  var pageItems=items.slice(start,start+perPage);
+  const start=(st.page-1)*perPage;
+  const pageItems=items.slice(start,start+perPage);
   // Table
-  var cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
+  const cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
   bh+='<table class="gov-table"><thead><tr>';
   cols.forEach(function(c){
-    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    let cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
     bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
   });
   bh+='</tr></thead><tbody>';
@@ -1644,7 +1652,7 @@ function _renderClassificationTab(){
   body.innerHTML=bh;
   body.scrollTop=0;
   // Footer
-  var fh='<button id="govExportCSV">Export CSV</button>';
+  let fh='<button id="govExportCSV">Export CSV</button>';
   fh+='<button id="govExportJSON">Export JSON</button>';
   fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_classificationData.length+'</span>';
   if(totalPages>1){
@@ -1659,7 +1667,7 @@ function _renderClassificationTab(){
   // Sort headers
   body.querySelectorAll('th[data-sort-col]').forEach(function(th){
     th.addEventListener('click',function(){
-      var col=this.dataset.sortCol;
+      const col=this.dataset.sortCol;
       if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
       else{st.sort=col;st.sortDir='asc'}
       st.page=1;_renderClassificationTab();
@@ -1668,7 +1676,7 @@ function _renderClassificationTab(){
   // Tier card clicks
   body.querySelectorAll('.gov-tier-card[data-gov-tier]').forEach(function(card){
     card.addEventListener('click',function(){
-      var tier=this.dataset.govTier;
+      const tier=this.dataset.govTier;
       st.filter=st.filter===tier?'all':tier;
       document.getElementById('govFilter').value=st.filter;
       st.page=1;_renderClassificationTab();
@@ -1677,24 +1685,24 @@ function _renderClassificationTab(){
   // Override selects
   body.querySelectorAll('.gov-override-select').forEach(function(sel){
     sel.addEventListener('change',function(){
-      var resId=this.dataset.resId;var newTier=this.value;
+      const resId=this.dataset.resId;const newTier=this.value;
       _classificationOverrides[resId]=newTier;
-      var item=_classificationData.find(function(r){return r.id===resId});
+      const item=_classificationData.find(function(r){return r.id===resId});
       if(item){item.tier=newTier;item.rpo=_TIER_RPO_RTO[newTier].rpo;item.rto=_TIER_RPO_RTO[newTier].rto;item.auto=false}
       _renderClassificationTab();
     });
   });
   // Resource name clicks → jump to resource on map and open detail panel
   body.querySelectorAll('.gov-res-link').forEach(function(el){el.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid)return;
+    e.stopPropagation();const rid=this.dataset.rid;if(!rid)return;
     closeUnifiedDash();
     setTimeout(function(){_zoomAndShowDetail(rid)},250);
   })});
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
-    var rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
+    const rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
     items.forEach(function(r){rows.push([r.name,r.type,r.tier,r.rpo,r.rto,r.auto?'Auto':'Manual',r.vpcName||''])});
-    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    const csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
     downloadBlob(new Blob([csv],{type:'text/csv'}),'asset-classification.csv');
   });
   document.getElementById('govExportJSON').addEventListener('click',function(){
@@ -1703,14 +1711,14 @@ function _renderClassificationTab(){
 }
 
 function _renderIAMTab(){
-  var tb=document.getElementById('udashToolbar');
-  var body=document.getElementById('udashBody');
-  var footer=document.getElementById('udashFooter');
-  var st=_iamDashState;
+  const tb=document.getElementById('udashToolbar');
+  const body=document.getElementById('udashBody');
+  const footer=document.getElementById('udashFooter');
+  const st=_iamDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='iam'){
     _govToolbarTab='iam';
-    var th='<label>Search</label>';
+    let th='<label>Search</label>';
     th+='<input id="govSearch" type="text" placeholder="Filter by name, ARN, type..." value="'+_escHtml(st.search)+'">';
     th+='<label>Filter</label>';
     th+='<select id="govFilter">';
@@ -1733,45 +1741,45 @@ function _renderIAMTab(){
     return;
   }
   // Filter + sort
-  var items=_iamReviewData.slice();
+  let items=_iamReviewData.slice();
   if(st.filter==='roles') items=items.filter(function(r){return r.type==='Role'});
   else if(st.filter==='users') items=items.filter(function(r){return r.type==='User'});
   else if(st.filter==='admin') items=items.filter(function(r){return r.isAdmin});
   else if(st.filter==='findings') items=items.filter(function(r){return r.findings.length>0});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.arn||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1})}
-  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  if(st.search){const q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.arn||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1})}
+  const sortKey=st.sort;const dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
     if(sortKey==='lastUsed'||sortKey==='created'){return((a[sortKey]||0)-(b[sortKey]||0))*dir}
-    var av=(a[sortKey]||'').toString().toLowerCase();var bv=(b[sortKey]||'').toString().toLowerCase();
+    const av=(a[sortKey]||'').toString().toLowerCase();const bv=(b[sortKey]||'').toString().toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
   // Paginate
-  var perPage=st.perPage<=0?items.length:st.perPage;
-  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  const perPage=st.perPage<=0?items.length:st.perPage;
+  const totalPages=Math.max(1,Math.ceil(items.length/perPage));
   st.page=Math.min(Math.max(1,st.page),totalPages);
-  var start=(st.page-1)*perPage;
-  var pageItems=items.slice(start,start+perPage);
+  const start=(st.page-1)*perPage;
+  const pageItems=items.slice(start,start+perPage);
   // Summary
-  var roleCt=_iamReviewData.filter(function(r){return r.type==='Role'}).length;
-  var userCt=_iamReviewData.filter(function(r){return r.type==='User'}).length;
-  var adminCt=_iamReviewData.filter(function(r){return r.isAdmin}).length;
-  var findCt=_iamReviewData.filter(function(r){return r.findings.length>0}).length;
-  var bh='<div class="gov-tier-cards" style="margin-bottom:16px">';
+  const roleCt=_iamReviewData.filter(function(r){return r.type==='Role'}).length;
+  const userCt=_iamReviewData.filter(function(r){return r.type==='User'}).length;
+  const adminCt=_iamReviewData.filter(function(r){return r.isAdmin}).length;
+  const findCt=_iamReviewData.filter(function(r){return r.findings.length>0}).length;
+  let bh='<div class="gov-tier-cards" style="margin-bottom:16px">';
   [{l:'Roles',c:roleCt,color:'#8b5cf6'},{l:'Users',c:userCt,color:'#22d3ee'},{l:'Admin',c:adminCt,color:'#ef4444'},{l:'With Findings',c:findCt,color:'#f59e0b'}].forEach(function(d){
     bh+='<div class="gov-tier-card" style="border-color:'+d.color+'"><h3 style="color:'+d.color+'">'+d.l+'</h3><div class="gov-tier-count" style="color:'+d.color+'">'+d.c+'</div></div>';
   });
   bh+='</div>';
   // Table
-  var cols=[{key:'name',label:'Name'},{key:'type',label:'Type'},{key:'created',label:'Created'},{key:'lastUsed',label:'Last Used'},{key:'policies',label:'Policies',nosort:true},{key:'admin',label:'Admin',nosort:true},{key:'findings',label:'Findings',nosort:true},{key:'cross',label:'Cross-Acct',nosort:true}];
+  const cols=[{key:'name',label:'Name'},{key:'type',label:'Type'},{key:'created',label:'Created'},{key:'lastUsed',label:'Last Used'},{key:'policies',label:'Policies',nosort:true},{key:'admin',label:'Admin',nosort:true},{key:'findings',label:'Findings',nosort:true},{key:'cross',label:'Cross-Acct',nosort:true}];
   bh+='<table class="gov-table"><thead><tr>';
   cols.forEach(function(c){
-    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    let cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
     bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
   });
   bh+='</tr></thead><tbody>';
   if(!pageItems.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No IAM entities match filters</td></tr>';
   pageItems.forEach(function(r,idx){
-    var rowId='iam-r-'+idx;
+    const rowId='iam-r-'+idx;
     bh+='<tr data-iam-row="'+rowId+'" style="cursor:pointer">';
     bh+='<td style="color:var(--accent-cyan)">'+_escHtml(r.name)+'</td>';
     bh+='<td>'+_escHtml(r.type)+'</td>';
@@ -1796,7 +1804,7 @@ function _renderIAMTab(){
     if(r.findings.length){
       bh+='<div><b>Findings ('+r.findings.length+'):</b><ul style="margin:4px 0 0;padding-left:20px;list-style:none">';
       r.findings.forEach(function(f){
-        var sColor=f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6';
+        const sColor=f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6';
         bh+='<li style="font-size:10px;color:var(--text-secondary);margin:3px 0"><span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,.2);color:'+sColor+';margin-right:4px">'+f.severity+'</span>'+_escHtml(f.message)+'</li>';
       });
       bh+='</ul></div>';
@@ -1807,7 +1815,7 @@ function _renderIAMTab(){
   body.innerHTML=bh;
   body.scrollTop=0;
   // Footer
-  var fh='<button id="govExportCSV">Export CSV</button>';
+  let fh='<button id="govExportCSV">Export CSV</button>';
   fh+='<button id="govExportJSON">Export JSON</button>';
   fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_iamReviewData.length+'</span>';
   if(totalPages>1){
@@ -1822,7 +1830,7 @@ function _renderIAMTab(){
   // Sort headers
   body.querySelectorAll('th[data-sort-col]').forEach(function(th){
     th.addEventListener('click',function(){
-      var col=this.dataset.sortCol;
+      const col=this.dataset.sortCol;
       if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
       else{st.sort=col;st.sortDir='asc'}
       st.page=1;_renderIAMTab();
@@ -1831,10 +1839,10 @@ function _renderIAMTab(){
   // Row expand/collapse
   body.querySelectorAll('tr[data-iam-row]').forEach(function(tr){
     tr.addEventListener('click',function(){
-      var rowId=this.dataset.iamRow;
-      var exp=document.getElementById(rowId+'-exp');
+      const rowId=this.dataset.iamRow;
+      const exp=document.getElementById(rowId+'-exp');
       if(!exp)return;
-      var isOpen=exp.classList.contains('open');
+      const isOpen=exp.classList.contains('open');
       body.querySelectorAll('.gov-iam-expand').forEach(function(e){e.classList.remove('open')});
       body.querySelectorAll('tr[data-iam-row]').forEach(function(r){r.classList.remove('expanded')});
       if(!isOpen){exp.classList.add('open');this.classList.add('expanded')}
@@ -1842,9 +1850,9 @@ function _renderIAMTab(){
   });
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
-    var rows=[['Name','Type','ARN','Created','Last Used','Policies','Admin','Findings','Cross-Account']];
+    const rows=[['Name','Type','ARN','Created','Last Used','Policies','Admin','Findings','Cross-Account']];
     items.forEach(function(r){rows.push([r.name,r.type,r.arn,r.created?r.created.toISOString():'',r.lastUsed?r.lastUsed.toISOString():'',r.policies,r.isAdmin?'Yes':'No',r.findings.length,r.crossAccounts.join(';')])});
-    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    const csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
     downloadBlob(new Blob([csv],{type:'text/csv'}),'iam-review.csv');
   });
   document.getElementById('govExportJSON').addEventListener('click',function(){
@@ -1854,23 +1862,23 @@ function _renderIAMTab(){
 
 // Rules editor overlay
 function _openRulesEditor(){
-  var existing=document.getElementById('govRulesOverlay');
+  const existing=document.getElementById('govRulesOverlay');
   if(existing) existing.remove();
   // Working copy of rules
-  var workRules=structuredClone(_classificationRules);
+  const workRules=structuredClone(_classificationRules);
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
-  var groupCollapsed={vpc:false,type:false,name:false};
-  var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
-  var scopeOrder=['vpc','type','name'];
-  var overlay=document.createElement('div');
+  const groupCollapsed={vpc:false,type:false,name:false};
+  const scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
+  const scopeOrder=['vpc','type','name'];
+  const overlay=document.createElement('div');
   overlay.id='govRulesOverlay';
   overlay.className='gov-rules-overlay';
 
   function readRulesFromDom(){
-    var rules=[];
+    const rules=[];
     overlay.querySelectorAll('.gov-rule-row[data-rule-idx]').forEach(function(row){
-      var idx=parseInt(row.dataset.ruleIdx);
-      var r=workRules[idx];if(!r) return;
+      const idx=parseInt(row.dataset.ruleIdx);
+      const r=workRules[idx];if(!r) return;
       r.pattern=row.querySelector('[data-field="pattern"]').value;
       r.scope=row.querySelector('[data-field="scope"]').value;
       r.tier=row.querySelector('[data-field="tier"]').value;
@@ -1880,10 +1888,10 @@ function _openRulesEditor(){
   }
   function countMatches(rule){
     if(!rule.pattern||rule.enabled===false) return 0;
-    var re;try{re=new RegExp(rule.pattern,'i')}catch(e){return -1}
-    var ct=0;
+    let re;try{re=new RegExp(rule.pattern,'i')}catch(e){return -1}
+    let ct=0;
     (_classificationData||[]).forEach(function(res){
-      var text='';
+      let text='';
       if(rule.scope==='vpc') text=res.vpcName||'';
       else if(rule.scope==='type') text=res.type||'';
       else if(rule.scope==='name') text=res.name||'';
@@ -1893,17 +1901,17 @@ function _openRulesEditor(){
   }
   function buildPreview(rules){
     if(!_rlCtx) return {critical:0,high:0,medium:0,low:0,samples:[]};
-    var counts={critical:0,high:0,medium:0,low:0};
-    var samples=[];
-    var vpcNameMap={};
+    const counts={critical:0,high:0,medium:0,low:0};
+    const samples=[];
+    const vpcNameMap={};
     (_rlCtx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
     function classify(name,type,vpcName,id){
-      var tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules).tier);
+      const tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules).tier);
       counts[tier]=(counts[tier]||0)+1;
       if(samples.length<12) samples.push({name:name,type:type,tier:tier});
     }
     (_rlCtx.instances||[]).forEach(function(inst){
-      var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+      const name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
       classify(name,'instance',vpcNameMap[inst.VpcId]||'',inst.InstanceId);
     });
     (_rlCtx.rdsInstances||[]).forEach(function(db){classify(db.DBInstanceIdentifier,'rds',vpcNameMap[(db.DBSubnetGroup||{}).VpcId]||'',db.DBInstanceIdentifier)});
@@ -1915,24 +1923,24 @@ function _openRulesEditor(){
     return {critical:counts.critical,high:counts.high,medium:counts.medium,low:counts.low,total:counts.critical+counts.high+counts.medium+counts.low,samples:samples};
   }
   function renderPreview(){
-    var el=document.getElementById('govRulesPreview');if(!el) return;
-    var rules=readRulesFromDom();
-    var p=buildPreview(rules);
-    var total=p.total||1;
-    var cur={critical:0,high:0,medium:0,low:0};
+    const el=document.getElementById('govRulesPreview');if(!el) return;
+    const rules=readRulesFromDom();
+    const p=buildPreview(rules);
+    const total=p.total||1;
+    const cur={critical:0,high:0,medium:0,low:0};
     _classificationData.forEach(function(r){cur[r.tier]=(cur[r.tier]||0)+1});
-    var ph='<div class="gov-preview-card"><h5>Classification Distribution</h5><div class="gov-preview-bars">';
+    let ph='<div class="gov-preview-card"><h5>Classification Distribution</h5><div class="gov-preview-bars">';
     [{k:'critical',l:'Critical',c:'#ef4444'},{k:'high',l:'High',c:'#f59e0b'},{k:'medium',l:'Medium',c:'#22d3ee'},{k:'low',l:'Low',c:'#64748b'}].forEach(function(d){
-      var pct=Math.round((p[d.k]/total)*100);
+      const pct=Math.round((p[d.k]/total)*100);
       ph+='<div class="gov-preview-bar"><span class="gov-preview-bar-label" style="color:'+d.c+'">'+d.l+'</span>';
       ph+='<div class="gov-preview-bar-track"><div class="gov-preview-bar-fill" style="width:'+pct+'%;background:'+d.c+'"></div></div>';
       ph+='<span class="gov-preview-bar-ct">'+p[d.k]+'</span></div>';
     });
     ph+='</div></div>';
     // Delta from current
-    var deltas=[];
+    const deltas=[];
     [{k:'critical',l:'Critical',c:'#ef4444'},{k:'high',l:'High',c:'#f59e0b'},{k:'medium',l:'Medium',c:'#22d3ee'},{k:'low',l:'Low',c:'#64748b'}].forEach(function(d){
-      var diff=p[d.k]-(cur[d.k]||0);
+      const diff=p[d.k]-(cur[d.k]||0);
       if(diff!==0) deltas.push('<span style="color:'+d.c+'">'+d.l+': <span class="'+(diff>0?'up':'down')+'">'+(diff>0?'+':'')+diff+'</span></span>');
     });
     if(deltas.length) ph+='<div class="gov-preview-delta">'+deltas.join(' &nbsp; ')+'</div>';
@@ -1940,28 +1948,28 @@ function _openRulesEditor(){
     // Sample
     ph+='<div class="gov-preview-card" style="margin-top:10px"><h5>Sample Resources</h5><div class="gov-preview-sample">';
     p.samples.forEach(function(s){
-      var tc=_TIER_RPO_RTO[s.tier]||{color:'#64748b'};
+      const tc=_TIER_RPO_RTO[s.tier]||{color:'#64748b'};
       ph+='<div class="gov-preview-sample-row"><span class="name">'+_escHtml(s.name)+'</span><span class="type">'+_escHtml(s.type)+'</span><span class="gov-tier-badge '+s.tier+'" style="font-size:8px;padding:1px 5px">'+s.tier+'</span></div>';
     });
     ph+='</div></div>';
     el.innerHTML=ph;
   }
   function renderRules(){
-    var list=document.getElementById('govRulesList');if(!list) return;
-    var h='';
+    const list=document.getElementById('govRulesList');if(!list) return;
+    let h='';
     scopeOrder.forEach(function(scope){
-      var rules=[];workRules.forEach(function(r,i){if(r.scope===scope) rules.push({rule:r,idx:i})});
+      const rules=[];workRules.forEach(function(r,i){if(r.scope===scope) rules.push({rule:r,idx:i})});
       if(!rules.length&&scope!=='vpc') return;
-      var collapsed=groupCollapsed[scope];
+      const collapsed=groupCollapsed[scope];
       h+='<div class="gov-rule-group" data-scope="'+scope+'">';
       h+='<div class="gov-rule-group-hdr" data-toggle-scope="'+scope+'"><span class="gov-rule-group-arrow'+(collapsed?' collapsed':'')+'">▼</span>';
       h+='<span class="gov-rule-group-label">'+(scopeLabels[scope]||scope)+'</span>';
       h+='<span class="gov-rule-group-count">'+rules.length+' rule'+(rules.length!==1?'s':'')+'</span></div>';
       h+='<div class="gov-rule-group-body'+(collapsed?' collapsed':'')+'" style="'+(collapsed?'max-height:0':'max-height:9999px')+'">';
       rules.forEach(function(d){
-        var r=d.rule;var i=d.idx;
-        var isValid=true;try{if(r.pattern) new RegExp(r.pattern,'i')}catch(e){isValid=false}
-        var mc=countMatches(r);
+        const r=d.rule;const i=d.idx;
+        let isValid=true;try{if(r.pattern) new RegExp(r.pattern,'i')}catch(e){isValid=false}
+        const mc=countMatches(r);
         h+='<div class="gov-rule-row'+(r.enabled===false?' disabled':'')+((!isValid)?' invalid':'')+'" data-rule-idx="'+i+'">';
         h+='<span class="gov-rule-drag" title="Drag to reorder">⠿</span>';
         h+='<div class="gov-rule-toggle'+(r.enabled!==false?' on':'')+'" data-toggle-idx="'+i+'" title="'+(r.enabled!==false?'Enabled — click to disable':'Disabled — click to enable')+'"></div>';
@@ -1983,7 +1991,7 @@ function _openRulesEditor(){
     // Toggle enable/disable
     overlay.querySelectorAll('[data-toggle-idx]').forEach(function(el){
       el.addEventListener('click',function(){
-        var idx=parseInt(this.dataset.toggleIdx);
+        const idx=parseInt(this.dataset.toggleIdx);
         workRules[idx].enabled=workRules[idx].enabled===false?true:false;
         renderRules();renderPreview();
       });
@@ -1991,7 +1999,7 @@ function _openRulesEditor(){
     // Delete
     overlay.querySelectorAll('[data-del-idx]').forEach(function(btn){
       btn.addEventListener('click',function(){
-        var idx=parseInt(this.dataset.delIdx);
+        const idx=parseInt(this.dataset.delIdx);
         workRules.splice(idx,1);
         renderRules();renderPreview();
       });
@@ -1999,7 +2007,7 @@ function _openRulesEditor(){
     // Group toggle
     overlay.querySelectorAll('[data-toggle-scope]').forEach(function(hdr){
       hdr.addEventListener('click',function(){
-        var scope=this.dataset.toggleScope;
+        const scope=this.dataset.toggleScope;
         groupCollapsed[scope]=!groupCollapsed[scope];
         renderRules();
       });
@@ -2012,20 +2020,20 @@ function _openRulesEditor(){
       });
     });
     // Live preview on input change (debounced)
-    var previewTimer;
+    let previewTimer;
     overlay.querySelectorAll('.gov-rule-row input,.gov-rule-row select').forEach(function(el){
       el.addEventListener('input',function(){
-        var row=this.closest('.gov-rule-row');
-        var idx=parseInt(row.dataset.ruleIdx);
-        var field=this.dataset.field;
+        const row=this.closest('.gov-rule-row');
+        const idx=parseInt(row.dataset.ruleIdx);
+        const field=this.dataset.field;
         if(field==='pattern'){
           workRules[idx].pattern=this.value;
-          var valid=true;try{if(this.value) new RegExp(this.value,'i')}catch(e){valid=false}
+          let valid=true;try{if(this.value) new RegExp(this.value,'i')}catch(e){valid=false}
           this.classList.toggle('invalid-pattern',!valid);
           row.classList.toggle('invalid',!valid);
           // Update match count inline
-          var mc=countMatches(workRules[idx]);
-          var mcEl=row.querySelector('.gov-rule-match-ct');
+          const mc=countMatches(workRules[idx]);
+          const mcEl=row.querySelector('.gov-rule-match-ct');
           if(mcEl){mcEl.textContent=mc<0?'!':mc;mcEl.classList.toggle('has-matches',mc>0)}
         } else if(field==='tier'){
           workRules[idx].tier=this.value;
@@ -2036,9 +2044,9 @@ function _openRulesEditor(){
         previewTimer=setTimeout(renderPreview,300);
       });
       el.addEventListener('change',function(){
-        var row=this.closest('.gov-rule-row');
-        var idx=parseInt(row.dataset.ruleIdx);
-        var field=this.dataset.field;
+        const row=this.closest('.gov-rule-row');
+        const idx=parseInt(row.dataset.ruleIdx);
+        const field=this.dataset.field;
         if(field==='tier') workRules[idx].tier=this.value;
         else if(field==='weight') workRules[idx].weight=parseInt(this.value)||0;
         clearTimeout(previewTimer);
@@ -2048,7 +2056,7 @@ function _openRulesEditor(){
   }
 
   // Build shell
-  var h='<div class="gov-rules-panel">';
+  let h='<div class="gov-rules-panel">';
   h+='<div class="gov-rules-hdr"><h3>Classification Rules</h3>';
   h+='<div class="gov-rules-hdr-actions">';
   h+='<button id="govRulesImport" title="Import rules from JSON">Import</button>';
@@ -2079,18 +2087,18 @@ function _openRulesEditor(){
   });
   document.getElementById('govRulesExport').addEventListener('click',function(){
     readRulesFromDom();
-    var json=JSON.stringify(workRules,null,2);
+    const json=JSON.stringify(workRules,null,2);
     downloadBlob(new Blob([json],{type:'application/json'}),'classification-rules.json');
     _showToast('Rules exported');
   });
   document.getElementById('govRulesImport').addEventListener('click',function(){
-    var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    const inp=document.createElement('input');inp.type='file';inp.accept='.json';
     inp.addEventListener('change',function(){
       if(!this.files[0]) return;
-      var reader=new FileReader();
+      const reader=new FileReader();
       reader.onload=function(e){
         try{
-          var imported=JSON.parse(e.target.result);
+          const imported=JSON.parse(e.target.result);
           if(!Array.isArray(imported)){_showToast('Invalid rules file','warn');return}
           workRules=imported;
           workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});

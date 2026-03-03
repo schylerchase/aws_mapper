@@ -389,6 +389,7 @@ const _MAX_SNAPSHOTS=30;
 let _snapshots=[];
 let _viewingHistory=false;
 let _currentSnapshot=null;// saved current state when viewing history
+// TODO: deduplicate — canonical snapshot/timeline logic is in timeline.js
 try{const s=localStorage.getItem(_SNAP_KEY);if(s)_snapshots=JSON.parse(s)}catch(e){_snapshots=[]}
 function _saveSnapshots(){try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e){
   // If storage full, trim oldest half

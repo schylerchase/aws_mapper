@@ -1757,6 +1757,7 @@ document.getElementById('loadDemo').addEventListener('click',()=>{
 // store layout data globally for export
 let exportData={vL:[],gwP:new Map(),allS:[],tG:{},peerings:[],shGws:[]};
 
+// TODO: deduplicate — canonical version in export-utils.js
 // helper: resolve CSS vars to hex for SVG serialization
 function resolveColor(cssVar){
   const el=document.createElement('div');el.style.color=cssVar;document.body.appendChild(el);
@@ -4521,6 +4522,7 @@ updateDetailBtns();
 let _iacType='terraform'; // 'terraform' | 'cloudformation'
 let _iacOutput=''; // raw generated text
 
+// TODO: deduplicate — canonical version in export-utils.js
 function _sanitizeName(s){
   if(!s)return 'unnamed';
   return s.replace(/[^a-zA-Z0-9_-]/g,'_').replace(/^[0-9]/,'r$&').replace(/-/g,'_').toLowerCase();
@@ -6052,6 +6054,7 @@ window._demoAnnotations = (function(){
   };
 })();
 
+// TODO: move test harness to tests/ directory — should not ship in production code
 // --- Edge Case Test Framework ---
 window._edgeCaseTests = window._edgeCaseTests || {};
 
@@ -7268,6 +7271,7 @@ window._runAllEdgeCaseTests = function(){
   return {passed:totalP, failed:totalF, total:totalT, features:summary};
 };
 
+// TODO: move iOS gesture listeners to app init or dedicated mobile-compat.js module
 /* Prevent iOS Safari from intercepting pinch/zoom gestures on the map */
 (function(){
   var m=document.querySelector('.main');

@@ -2,6 +2,8 @@
 // D3/SVG visualization (_renderFlowAnalysisOverlay, _renderTierBadges, etc.)
 // remains inline until modernized in Phase 5.
 
+// Bridge: reads from window.* globals set by app-core.js
+// TODO: convert to proper ES module imports when app-core.js is modularized
 // Transitional: flow tracing functions not yet importable, access via window
 function _traceInbound(target, config, ctx, opts) {
   return typeof window !== 'undefined' && window._traceInternetToResource

@@ -3,6 +3,7 @@
 
 import { rlCtx } from './state.js';
 import { gn } from './utils.js';
+import { sanitizeName } from './export-utils.js';
 
 // === Module State ===
 let _iacType = 'terraform'; // 'terraform' | 'cloudformation'
@@ -20,24 +21,12 @@ export function setTfIdMap(v) { _tfIdMap = v; }
 // === Pure Logic ===
 
 /**
- * Normalize a string for use as an HCL identifier.
- * Replaces non-alphanumeric chars, lowercases, prefixes leading digits.
- */
-export function _sanitizeName(s) {
-  if (!s) return 'unnamed';
-  return s.replace(/[^a-zA-Z0-9_-]/g, '_')
-    .replace(/^[0-9]/, 'r$&')
-    .replace(/-/g, '_')
-    .toLowerCase();
-}
-
-/**
  * Extract a TF resource name from a resource's Name tag or ID fields.
  */
 export function _tfName(resource, prefix) {
   const n = resource.Tags && resource.Tags.find(t => t.Key === 'Name');
   const raw = n ? n.Value : (resource.VpcId || resource.SubnetId || resource.GroupId || resource.InstanceId || prefix || 'res');
-  return _sanitizeName(raw);
+  return sanitizeName(raw);
 }
 
 /**
@@ -510,7 +499,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- RDS Instances ---
   rdsInstances.forEach(rds => {
-    const name = _sanitizeName(rds.DBInstanceIdentifier || 'rds');
+    const name = sanitizeName(rds.DBInstanceIdentifier || 'rds');
     const resName = 'aws_db_instance.' + name;
     _tfIdMap[rds.DBInstanceIdentifier] = resName;
     if (mode === 'import') imports.push({ to: resName, id: rds.DBInstanceIdentifier });
@@ -537,7 +526,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- ElastiCache ---
   ecacheClusters.forEach(ec => {
-    const name = _sanitizeName(ec.CacheClusterId || 'cache');
+    const name = sanitizeName(ec.CacheClusterId || 'cache');
     const resName = 'aws_elasticache_cluster.' + name;
     _tfIdMap[ec.CacheClusterId] = resName;
     if (mode === 'import') imports.push({ to: resName, id: ec.CacheClusterId });
@@ -556,7 +545,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- Redshift ---
   redshiftClusters.forEach(rs => {
-    const name = _sanitizeName(rs.ClusterIdentifier || 'redshift');
+    const name = sanitizeName(rs.ClusterIdentifier || 'redshift');
     const resName = 'aws_redshift_cluster.' + name;
     _tfIdMap[rs.ClusterIdentifier] = resName;
     if (mode === 'import') imports.push({ to: resName, id: rs.ClusterIdentifier });
@@ -578,7 +567,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- Lambda Functions ---
   lambdaFns.forEach(fn => {
-    const name = _sanitizeName(fn.FunctionName || 'lambda');
+    const name = sanitizeName(fn.FunctionName || 'lambda');
     const resName = 'aws_lambda_function.' + name;
     _tfIdMap[fn.FunctionName] = resName;
     if (mode === 'import') imports.push({ to: resName, id: fn.FunctionName });
@@ -604,7 +593,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- ECS Services ---
   ecsServices.forEach(svc => {
-    const name = _sanitizeName(svc.serviceName || 'ecs');
+    const name = sanitizeName(svc.serviceName || 'ecs');
     lines.push('# ECS Service: ' + svc.serviceName);
     lines.push('# NOTE: ECS services require cluster and task definition resources');
     lines.push('# which are not captured in network-level data. Skeleton below.');
@@ -629,7 +618,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- S3 Buckets ---
   s3bk.forEach(bk => {
-    const name = _sanitizeName(bk.Name || 'bucket');
+    const name = sanitizeName(bk.Name || 'bucket');
     const resName = 'aws_s3_bucket.' + name;
     _tfIdMap[bk.Name] = resName;
     if (mode === 'import') imports.push({ to: resName, id: bk.Name });
@@ -641,7 +630,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- VPC Peering ---
   peerings.forEach(peer => {
-    const name = _sanitizeName(peer.VpcPeeringConnectionId || 'peer');
+    const name = sanitizeName(peer.VpcPeeringConnectionId || 'peer');
     const resName = 'aws_vpc_peering_connection.' + name;
     _tfIdMap[peer.VpcPeeringConnectionId] = resName;
     if (mode === 'import') imports.push({ to: resName, id: peer.VpcPeeringConnectionId });
@@ -658,7 +647,7 @@ export function generateTerraform(ctx, opts) {
 
   // --- CloudFront ---
   cfDistributions.forEach(cf => {
-    const name = _sanitizeName(cf.Id || 'cf');
+    const name = sanitizeName(cf.Id || 'cf');
     lines.push('# CloudFront Distribution: ' + (cf.DomainName || cf.Id));
     lines.push('# NOTE: CloudFront has many configuration options not captured here.');
     lines.push('# This is a skeleton. Review and customize before applying.');
@@ -1372,7 +1361,7 @@ if (typeof window !== 'undefined') {
   window.setTfIdMap = setTfIdMap;
 
   // Pure logic
-  window._sanitizeName = _sanitizeName;
+  window._sanitizeName = sanitizeName;
   window._tfName = _tfName;
   window._tfRef = _tfRef;
   window.detectCircularSGs = detectCircularSGs;

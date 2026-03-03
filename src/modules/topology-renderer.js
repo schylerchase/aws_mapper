@@ -1,6 +1,7 @@
 // Network topology visualization and D3 graph rendering
 // Handles VPC diagram layout, subnet positioning, and resource visualization
-// Extracted from index.html for modularization
+// TODO: convert to ES module — export renderMap, _renderMapInner and import
+// dependencies (d3, _rlCtx, _designMode, etc.) instead of reading globals
 
 function renderMap(cb){
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
