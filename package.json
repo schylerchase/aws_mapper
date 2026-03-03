@@ -83,5 +83,8 @@
   },
   "dependencies": {
     "electron-updater": "^6.7.3"
+  },
+  "overrides": {
+    "minimatch@<3.1.5": "3.1.5"
   }
 }
