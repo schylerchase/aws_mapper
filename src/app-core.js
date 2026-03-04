@@ -19,18 +19,41 @@ document.getElementById('gTxtDown').addEventListener('click',()=>{gTxtScale=Math
 const _isMobile=()=>window.innerWidth<=768;
 const _sb=document.querySelector('.sidebar');
 const _sbBtn=document.getElementById('sidebarToggle');
-// After transform transition ends, mark sidebar offscreen so browser skips rendering its children
+// Cache heavy flag — updated after each render via renderMap()
+let _svgHeavy=false;
+function _markHeavy(){_svgHeavy=document.querySelectorAll('svg *').length>2000;if(_svgHeavy)_sb.classList.remove('offscreen')}
+// After transform transition ends, mark sidebar offscreen (only for light SVGs that use animation)
 _sb.addEventListener('transitionend',(e)=>{
   if(e.propertyName!=='transform')return;
   _sb.classList.remove('animating');
-  if(_sb.classList.contains('collapsed'))_sb.classList.add('offscreen');
+  if(_sb.classList.contains('collapsed')&&!_svgHeavy)_sb.classList.add('offscreen');
 });
 function _collapseSidebar(){
+  if(_svgHeavy){
+    // Instant toggle: skip animation, skip offscreen (avoids 150ms content-visibility unhide on expand)
+    _sb.style.transition='none';_sbBtn.style.transition='none';
+    _sb.classList.add('collapsed');
+    _sb.classList.remove('animating');
+    _sbBtn.classList.add('at-origin');
+    _sbBtn.textContent='\u25B6';
+    _sb.offsetHeight;
+    _sb.style.transition='';_sbBtn.style.transition='';
+    return;
+  }
   _sb.classList.add('animating','collapsed');
   _sbBtn.classList.add('at-origin');
   _sbBtn.textContent='\u25B6';
 }
 function _expandSidebar(){
+  if(_svgHeavy){
+    _sb.style.transition='none';_sbBtn.style.transition='none';
+    _sb.classList.remove('offscreen','collapsed','animating');
+    _sbBtn.classList.remove('at-origin');
+    _sbBtn.textContent='\u25C0';
+    _sb.offsetHeight;
+    _sb.style.transition='';_sbBtn.style.transition='';
+    return;
+  }
   // Remove offscreen first so children paint, then animate on next frame
   _sb.classList.remove('offscreen');
   _sb.classList.add('animating');
@@ -60,7 +83,7 @@ _sbBtn.addEventListener('click',()=>{
 })();
 // Restore sidebar state (collapse on mobile by default)
 if(_prefs.sidebarCollapsed||_isMobile()){
-  _sb.classList.add('collapsed','offscreen');
+  _sb.classList.add('collapsed');
   _sbBtn.classList.add('at-origin');
   _sbBtn.textContent='\u25B6';
 }
@@ -10633,6 +10656,7 @@ function _renderMapInner(){
   // stats bar
   console.log('[PERF] SVG draw: '+(performance.now()-_t3).toFixed(1)+'ms');
   console.log('[PERF] TOTAL render: '+(performance.now()-_t0).toFixed(1)+'ms');
+  _markHeavy();
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources};
   const sb2=document.getElementById('statsBar');sb2.textContent='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
