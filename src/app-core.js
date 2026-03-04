@@ -19,17 +19,22 @@ document.getElementById('gTxtDown').addEventListener('click',()=>{gTxtScale=Math
 const _isMobile=()=>window.innerWidth<=768;
 const _sb=document.querySelector('.sidebar');
 const _sbBtn=document.getElementById('sidebarToggle');
-// After collapse transition ends, mark sidebar offscreen so browser skips rendering its 229 children
-_sb.addEventListener('transitionend',()=>{
+// After transform transition ends, mark sidebar offscreen so browser skips rendering its children
+_sb.addEventListener('transitionend',(e)=>{
+  if(e.propertyName!=='transform')return;
+  _sb.classList.remove('animating');
   if(_sb.classList.contains('collapsed'))_sb.classList.add('offscreen');
 });
 function _collapseSidebar(){
-  _sb.classList.add('collapsed');
+  _sb.classList.add('animating','collapsed');
   _sbBtn.classList.add('at-origin');
   _sbBtn.textContent='\u25B6';
 }
 function _expandSidebar(){
-  _sb.classList.remove('collapsed','offscreen');
+  // Remove offscreen first so children paint, then animate on next frame
+  _sb.classList.remove('offscreen');
+  _sb.classList.add('animating');
+  requestAnimationFrame(()=>{_sb.classList.remove('collapsed')});
   _sbBtn.classList.remove('at-origin');
   _sbBtn.textContent='\u25C0';
 }
@@ -55,8 +60,9 @@ _sbBtn.addEventListener('click',()=>{
 })();
 // Restore sidebar state (collapse on mobile by default)
 if(_prefs.sidebarCollapsed||_isMobile()){
-  _collapseSidebar();
-  _sb.classList.add('offscreen'); // skip initial render of offscreen sidebar
+  _sb.classList.add('collapsed','offscreen');
+  _sbBtn.classList.add('at-origin');
+  _sbBtn.textContent='\u25B6';
 }
 // Apply saved text scale on load
 if(_prefs.gTxtScale) applyGlobalTxtScale();
