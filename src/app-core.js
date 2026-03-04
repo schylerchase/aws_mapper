@@ -17,33 +17,46 @@ document.getElementById('gTxtDown').addEventListener('click',()=>{gTxtScale=Math
 
 // Sidebar collapse toggle
 const _isMobile=()=>window.innerWidth<=768;
-document.getElementById('sidebarToggle').addEventListener('click',()=>{
-  const sb=document.querySelector('.sidebar');
-  const btn=document.getElementById('sidebarToggle');
-  sb.classList.toggle('collapsed');
-  btn.innerHTML=sb.classList.contains('collapsed')?'&#x25B6;':'&#x25C0;';
+const _sb=document.querySelector('.sidebar');
+const _sbBtn=document.getElementById('sidebarToggle');
+// After collapse transition ends, mark sidebar offscreen so browser skips rendering its 229 children
+_sb.addEventListener('transitionend',()=>{
+  if(_sb.classList.contains('collapsed'))_sb.classList.add('offscreen');
+});
+function _collapseSidebar(){
+  _sb.classList.add('collapsed');
+  _sbBtn.classList.add('at-origin');
+  _sbBtn.textContent='\u25B6';
+}
+function _expandSidebar(){
+  _sb.classList.remove('collapsed','offscreen');
+  _sbBtn.classList.remove('at-origin');
+  _sbBtn.textContent='\u25C0';
+}
+_sbBtn.addEventListener('click',()=>{
+  const isCollapsing=!_sb.classList.contains('collapsed');
+  if(isCollapsing) _collapseSidebar();
+  else _expandSidebar();
   // Show/hide mobile backdrop
   const bd=document.getElementById('mobileBackdrop');
-  if(bd){bd.style.display=(!sb.classList.contains('collapsed')&&_isMobile())?'block':'none'}
-  if(!_isMobile()) savePrefs({sidebarCollapsed:sb.classList.contains('collapsed')});
+  if(bd){bd.style.display=(!_sb.classList.contains('collapsed')&&_isMobile())?'block':'none'}
+  if(!_isMobile()) savePrefs({sidebarCollapsed:_sb.classList.contains('collapsed')});
 });
 // Mobile backdrop: tap to close sidebar
 (function(){
   const bd=document.createElement('div');
   bd.id='mobileBackdrop';
-  bd.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;backdrop-filter:blur(2px)';
+  bd.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99';
   document.body.appendChild(bd);
   bd.addEventListener('click',()=>{
-    const sb=document.querySelector('.sidebar');
-    sb.classList.add('collapsed');
-    document.getElementById('sidebarToggle').innerHTML='&#x25B6;';
+    _collapseSidebar();
     bd.style.display='none';
   });
 })();
 // Restore sidebar state (collapse on mobile by default)
 if(_prefs.sidebarCollapsed||_isMobile()){
-  document.querySelector('.sidebar').classList.add('collapsed');
-  document.getElementById('sidebarToggle').innerHTML='&#x25B6;';
+  _collapseSidebar();
+  _sb.classList.add('offscreen'); // skip initial render of offscreen sidebar
 }
 // Apply saved text scale on load
 if(_prefs.gTxtScale) applyGlobalTxtScale();
@@ -3051,9 +3064,8 @@ function enterDesignMode(){
   const dp=document.getElementById('detailPanel');dp.style.top='32px';dp.style.height='calc(100% - 32px)';
   renderChangeLog();
   if(document.getElementById('designPalette'))document.getElementById('designPalette').classList.add('open');
-  const sb=document.querySelector('.sidebar');
-  _sidebarWasCollapsed=sb.classList.contains('collapsed');
-  if(!_sidebarWasCollapsed){sb.classList.add('collapsed');document.getElementById('sidebarToggle').innerHTML='&#x25B6;'}
+  _sidebarWasCollapsed=_sb.classList.contains('collapsed');
+  if(!_sidebarWasCollapsed) _collapseSidebar();
 }
 function exitDesignMode(){
   _designMode=false;
@@ -3066,7 +3078,7 @@ function exitDesignMode(){
   const dp=document.getElementById('detailPanel');dp.style.top='';dp.style.height='';
   document.getElementById('changeLog').style.display='none';
   if(document.getElementById('designPalette'))document.getElementById('designPalette').classList.remove('open');
-  if(!_sidebarWasCollapsed){document.querySelector('.sidebar').classList.remove('collapsed');document.getElementById('sidebarToggle').innerHTML='&#x25C0;'}
+  if(!_sidebarWasCollapsed) _expandSidebar();
   if(_designDebounce)clearTimeout(_designDebounce);
   renderMap();
 }
