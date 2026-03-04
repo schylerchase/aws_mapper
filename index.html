@@ -30,11 +30,12 @@ function _initThemeBtn(){
 }
 document.addEventListener('DOMContentLoaded',_initThemeBtn);
 </script>
-<!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
-<script src="libs/d3.custom.min.js"></script>
-<script src="libs/jszip.min.js"></script>
-<script src="dist/app.bundle.js?v=523fe3f6"></script>
+<!-- CSS first so browser discovers it before scripts -->
 <link rel="stylesheet" href="src/styles/main.css?v=4">
+<!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
+<script defer src="libs/d3.custom.min.js"></script>
+<script defer src="libs/jszip.min.js"></script>
+<script defer src="dist/app.bundle.js?v=523fe3f6"></script>
 </head>
 <body>
 <!-- #endregion HTML HEAD & SCRIPTS -->
@@ -563,7 +564,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   </div>
 </div>
 <!-- #endregion HTML MAIN CONTENT -->
-<script src="dist/app-core.js?v=743f2ab3"></script>
+<script defer src="dist/app-core.js?v=743f2ab3"></script>
 <script defer src="/_vercel/insights/script.js"></script>
 <script defer src="/_vercel/speed-insights/script.js"></script>
 </body>

@@ -8693,7 +8693,7 @@ function renderMap(cb){
   overlay.style.display='flex';
   _renderMapTimer=setTimeout(()=>{
     _renderMapTimer=null;
-    requestAnimationFrame(()=>{requestAnimationFrame(()=>{_renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()})});
+    requestAnimationFrame(()=>{setTimeout(()=>{_renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()},0)});
   },50);
 }
 function _renderMapInner(){
