@@ -1335,11 +1335,11 @@ function _renderMapInner(){
     const vG=ndL.append('g').attr('class','vpc-group').attr('data-vpc-id',vl.vpc.VpcId);
     vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',vl.h).attr('fill','rgba(59,130,246,.03)').attr('stroke','var(--vpc-stroke)').attr('stroke-width',1.5);
     const _vpcName=gn(vl.vpc,vl.vpc.VpcId);
-    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+26)
-      .attr('textLength',Math.min(_vpcName.length*8,vl.w*0.55)).attr('lengthAdjust','spacing').text(_vpcName);
+    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+16)
+      .attr('textLength',Math.min(_vpcName.length*8,vl.w*0.7)).attr('lengthAdjust','spacing').text(_vpcName);
     const regionTag=vpcRegionMap[vl.vpc.VpcId]||'';
     const acctTag=_multiAccount&&vl.vpc._accountId&&vl.vpc._accountId!=='default'?(' ['+vl.vpc._accountId+']'):'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:'')+(acctTag?acctTag:''));
+    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+14).attr('y',vl.y+34).text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:'')+(acctTag?acctTag:''));
     // Account color stripe for multi-account
     if(_multiAccount&&vl.vpc._accountId!=='default'){
       const acCol=vl.vpc._ctxColor||getAccountColor(vl.vpc._accountId);
@@ -1372,8 +1372,8 @@ function _renderMapInner(){
     const cid='c-'+sl.sub.SubnetId.replace(/[^a-zA-Z0-9]/g,'');
     sG.append('clipPath').attr('id',cid).append('rect').attr('x',sl.x+6).attr('y',sl.y).attr('width',sl.w-12).attr('height',sl.h);
     const tG2=sG.append('g').attr('clip-path',`url(#${cid})`);
-    tG2.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+18).text(gn(sl.sub,sl.sub.SubnetId));
-    tG2.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+30).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?'  '+sl.sub.AvailabilityZone.slice(-2):''));
+    tG2.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+16).text(gn(sl.sub,sl.sub.SubnetId));
+    tG2.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+32).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?'  '+sl.sub.AvailabilityZone.slice(-2):''));
     sG.append('text').attr('x',sl.x+sl.w-8).attr('y',sl.y+14).attr('text-anchor','end').attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUBLIC':'PRIVATE');
 
     // resource icons inside subnet (tree-based with nesting)
@@ -1584,8 +1584,9 @@ function _renderMapInner(){
     const vpcVpces=vpceByVpc[vl.vpc.VpcId]||[];
     if(!vpcVpces.length)return;
     const nw=70,nh=16;
-    // Position at bottom-left inside VPC
-    const gx=vl.x+nw/2+8;
+    // Position at bottom-left inside VPC; shift right past account stripe if present
+    const stripeOff=(_multiAccount&&vl.vpc._accountId!=='default')?14:0;
+    const gx=vl.x+nw/2+8+stripeOff;
     const ny=vl.y+vl.h-nh-8;
     const eG=ndL.append('g').attr('class','vpce-summary').style('cursor','pointer');
     eG.append('rect').attr('x',gx-nw/2).attr('y',ny).attr('width',nw).attr('height',nh).attr('rx',3)

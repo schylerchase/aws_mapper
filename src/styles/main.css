@@ -126,7 +126,7 @@
   @keyframes cardUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
   .landing-footer{margin-top:32px;text-align:center;font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;color:var(--text-muted);opacity:.5}
   .landing-footer a{color:var(--accent-cyan);text-decoration:none}
-  .stats-bar{position:relative;display:none;gap:5px;flex-wrap:wrap;flex-shrink:0;z-index:5;justify-content:center;padding:6px 280px 6px 16px;background:var(--bg-primary);border-bottom:1px solid var(--border)}
+  .stats-bar{position:relative;display:none;gap:4px 5px;flex-wrap:wrap;flex-shrink:0;z-index:5;justify-content:flex-start;padding:6px 400px 6px 16px;background:var(--bg-primary);border-bottom:1px solid var(--border)}
   .main.merge-active .stats-bar,.main.flow-active .stats-bar,.main.diff-active .stats-bar,.main.history-active .stats-bar{padding-top:42px}
   .main:has(.design-banner.visible) .stats-bar{padding-top:40px}
   .main:has(.detail-panel.open) .export-bar{right:432px}

@@ -387,7 +387,7 @@ function renderLandingZoneMap(ctx){
     const az=ss.find(s=>s.AvailabilityZone)?.AvailabilityZone||'';
     const region=az.replace(/[a-z]$/,'')||'';
     const lzAcctTag=_multiAccount&&vl.vpc._accountId&&vl.vpc._accountId!=='default'?(' ['+vl.vpc._accountId+']'):'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
+    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+34)
       .text(vl.vpc.CidrBlock+(region?' '+region:'')+lzAcctTag);
     if(_multiAccount&&vl.vpc._accountId!=='default'){
       const lzAcCol=vl.vpc._ctxColor||getAccountColor(vl.vpc._accountId);
@@ -589,7 +589,7 @@ function renderLandingZoneMap(ctx){
     sG.append('rect').attr('x',sl.x).attr('y',sl.y).attr('width',sl.w).attr('height',sl.h)
       .attr('fill',sl.pub?'rgba(6,182,212,.15)':'rgba(139,92,246,.15)').attr('stroke',col).attr('stroke-width',1.2);
     sG.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+16).text(gn(sl.sub,sl.sub.SubnetId));
-    sG.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+28).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?' '+sl.sub.AvailabilityZone.slice(-2):''));
+    sG.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+32).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?' '+sl.sub.AvailabilityZone.slice(-2):''));
     sG.append('text').attr('x',sl.x+sl.w-6).attr('y',sl.y+12).attr('text-anchor','end')
       .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(6px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUB':'PRV');
     

@@ -1803,7 +1803,7 @@ document.getElementById('expPng').addEventListener('click',()=>{
   // remove zoom/pan transform so content fills viewBox
   const cloneRoot=clone.querySelector('.map-root');
   if(cloneRoot)cloneRoot.removeAttribute('transform');
-  const styles=document.querySelector('style').textContent;
+  const styles=_rptCollectStyles();
   const styleEl=document.createElementNS('http://www.w3.org/2000/svg','style');
   styleEl.textContent=styles;
   clone.insertBefore(styleEl,clone.firstChild);

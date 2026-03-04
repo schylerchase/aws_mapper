@@ -7353,13 +7353,13 @@ function renderLandingZoneMap(ctx){
     const _lzVpcName=gn(vl.vpc,vl.vpc.VpcId);
     vG.append('text').attr('class','vpc-label').attr('x',vl.x+12).attr('y',vl.y+16)
       .attr('textLength',Math.min(_lzVpcName.length*8,vl.w*0.55)).attr('lengthAdjust','spacing').text(_lzVpcName);
-    
+
     // CIDR and region on second line
     const ss=subByVpc[vl.vpc.VpcId]||[];
     const az=ss.find(s=>s.AvailabilityZone)?.AvailabilityZone||'';
     const region=az.replace(/[a-z]$/,'')||'';
     const lzAcctTag=_multiAccount&&vl.vpc._accountId&&vl.vpc._accountId!=='default'?(' ['+vl.vpc._accountId+']'):'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+28)
+    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+12).attr('y',vl.y+34)
       .text(vl.vpc.CidrBlock+(region?' '+region:'')+lzAcctTag);
     if(_multiAccount&&vl.vpc._accountId!=='default'){
       const lzAcCol=vl.vpc._ctxColor||getAccountColor(vl.vpc._accountId);
@@ -7561,7 +7561,7 @@ function renderLandingZoneMap(ctx){
     sG.append('rect').attr('x',sl.x).attr('y',sl.y).attr('width',sl.w).attr('height',sl.h)
       .attr('fill',sl.pub?'rgba(6,182,212,.15)':'rgba(139,92,246,.15)').attr('stroke',col).attr('stroke-width',1.2);
     sG.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+16).text(gn(sl.sub,sl.sub.SubnetId));
-    sG.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+28).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?' '+sl.sub.AvailabilityZone.slice(-2):''));
+    sG.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+32).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?' '+sl.sub.AvailabilityZone.slice(-2):''));
     sG.append('text').attr('x',sl.x+sl.w-6).attr('y',sl.y+12).attr('text-anchor','end')
       .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(6px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUB':'PRV');
     
@@ -10052,11 +10052,11 @@ function _renderMapInner(){
     const vG=ndL.append('g').attr('class','vpc-group').attr('data-vpc-id',vl.vpc.VpcId);
     vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',vl.h).attr('fill','rgba(59,130,246,.03)').attr('stroke','var(--vpc-stroke)').attr('stroke-width',1.5);
     const _vpcName=gn(vl.vpc,vl.vpc.VpcId);
-    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+26)
-      .attr('textLength',Math.min(_vpcName.length*8,vl.w*0.55)).attr('lengthAdjust','spacing').text(_vpcName);
+    vG.append('text').attr('class','vpc-label').attr('x',vl.x+14).attr('y',vl.y+16)
+      .attr('textLength',Math.min(_vpcName.length*8,vl.w*0.7)).attr('lengthAdjust','spacing').text(_vpcName);
     const regionTag=vpcRegionMap[vl.vpc.VpcId]||'';
     const acctTag=_multiAccount&&vl.vpc._accountId&&vl.vpc._accountId!=='default'?(' ['+vl.vpc._accountId+']'):'';
-    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+vl.w-14).attr('y',vl.y+26).attr('text-anchor','end').text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:'')+(acctTag?acctTag:''));
+    vG.append('text').attr('class','vpc-cidr').attr('x',vl.x+14).attr('y',vl.y+34).text(vl.vpc.CidrBlock+(regionTag?' | '+regionTag:'')+(acctTag?acctTag:''));
     // Account color stripe for multi-account
     if(_multiAccount&&vl.vpc._accountId!=='default'){
       const acCol=vl.vpc._ctxColor||getAccountColor(vl.vpc._accountId);
@@ -10089,8 +10089,8 @@ function _renderMapInner(){
     const cid='c-'+sl.sub.SubnetId.replace(/[^a-zA-Z0-9]/g,'');
     sG.append('clipPath').attr('id',cid).append('rect').attr('x',sl.x+6).attr('y',sl.y).attr('width',sl.w-12).attr('height',sl.h);
     const tG2=sG.append('g').attr('clip-path',`url(#${cid})`);
-    tG2.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+18).text(gn(sl.sub,sl.sub.SubnetId));
-    tG2.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+30).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?'  '+sl.sub.AvailabilityZone.slice(-2):''));
+    tG2.append('text').attr('class','subnet-label').attr('x',sl.x+8).attr('y',sl.y+16).text(gn(sl.sub,sl.sub.SubnetId));
+    tG2.append('text').attr('class','subnet-cidr').attr('x',sl.x+8).attr('y',sl.y+32).text(sl.sub.CidrBlock+(sl.sub.AvailabilityZone?'  '+sl.sub.AvailabilityZone.slice(-2):''));
     sG.append('text').attr('x',sl.x+sl.w-8).attr('y',sl.y+14).attr('text-anchor','end').attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(7px * var(--txt-scale,1))').attr('font-weight','600').attr('fill',col).text(sl.pub?'PUBLIC':'PRIVATE');
 
     // resource icons inside subnet (tree-based with nesting)
@@ -23251,7 +23251,7 @@ document.getElementById('expPng').addEventListener('click',()=>{
   // remove zoom/pan transform so content fills viewBox
   const cloneRoot=clone.querySelector('.map-root');
   if(cloneRoot)cloneRoot.removeAttribute('transform');
-  const styles=document.querySelector('style').textContent;
+  const styles=_rptCollectStyles();
   const styleEl=document.createElementNS('http://www.w3.org/2000/svg','style');
   styleEl.textContent=styles;
   clone.insertBefore(styleEl,clone.firstChild);
@@ -23311,6 +23311,8 @@ document.getElementById('expVsdx').addEventListener('click',()=>{
   const sgByVpc={};sgs.forEach(sg=>(sgByVpc[sg.VpcId]=sgByVpc[sg.VpcId]||[]).push(sg));
   // IAM role -> resource cross-references (grid path)
   const iamRoleResources={};
+  const lambdaFns=ext(safeParse(gv('in_lambda')),['Functions']).filter(f=>f.VpcConfig&&f.VpcConfig.VpcId);
+  const ecsServices=ext(safeParse(gv('in_ecs')),['services','Services'])||[];
   if(_iamData){
     (instances||[]).forEach(i=>{const pa=i.IamInstanceProfile?.Arn;if(pa){const rn=pa.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ec2.push(i)}});
     (lambdaFns||[]).forEach(fn=>{if(fn.Role){const rn=fn.Role.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].lambda.push(fn)}});
