@@ -21,7 +21,11 @@ const _sb=document.querySelector('.sidebar');
 const _sbBtn=document.getElementById('sidebarToggle');
 // Cache heavy flag — updated after each render via renderMap()
 let _svgHeavy=false;
-function _markHeavy(){_svgHeavy=document.querySelectorAll('svg *').length>2000;if(_svgHeavy)_sb.classList.remove('offscreen')}
+function _markHeavy(){
+  _svgHeavy=document.querySelectorAll('svg *').length>2000;
+  if(_svgHeavy){_sb.classList.remove('offscreen');_sb.classList.add('no-anim')}
+  else{_sb.classList.remove('no-anim')}
+}
 // After transform transition ends, mark sidebar offscreen (only for light SVGs that use animation)
 _sb.addEventListener('transitionend',(e)=>{
   if(e.propertyName!=='transform')return;
@@ -30,14 +34,10 @@ _sb.addEventListener('transitionend',(e)=>{
 });
 function _collapseSidebar(){
   if(_svgHeavy){
-    // Instant toggle: skip animation, skip offscreen (avoids 150ms content-visibility unhide on expand)
-    _sb.style.transition='none';_sbBtn.style.transition='none';
+    // Heavy path: no-anim class already disables transitions via CSS
     _sb.classList.add('collapsed');
-    _sb.classList.remove('animating');
     _sbBtn.classList.add('at-origin');
     _sbBtn.textContent='\u25B6';
-    _sb.offsetHeight;
-    _sb.style.transition='';_sbBtn.style.transition='';
     return;
   }
   _sb.classList.add('animating','collapsed');
@@ -46,12 +46,9 @@ function _collapseSidebar(){
 }
 function _expandSidebar(){
   if(_svgHeavy){
-    _sb.style.transition='none';_sbBtn.style.transition='none';
-    _sb.classList.remove('offscreen','collapsed','animating');
+    _sb.classList.remove('offscreen','collapsed');
     _sbBtn.classList.remove('at-origin');
     _sbBtn.textContent='\u25C0';
-    _sb.offsetHeight;
-    _sb.style.transition='';_sbBtn.style.transition='';
     return;
   }
   // Remove offscreen first so children paint, then animate on next frame
@@ -70,7 +67,7 @@ _sbBtn.addEventListener('click',()=>{
   const bd=document.getElementById('mobileBackdrop');
   if(bd){bd.style.display=(!_sb.classList.contains('collapsed')&&_isMobile())?'block':'none'}
   if(!_isMobile()) savePrefs({sidebarCollapsed:_sb.classList.contains('collapsed')});
-  console.log('[PERF] sidebar '+(isCollapsing?'collapse':'expand')+': '+(performance.now()-_pt).toFixed(1)+'ms (heavy='+_svgHeavy+', svgEls='+document.querySelectorAll('svg *').length+')');
+  console.log('[PERF] sidebar '+(isCollapsing?'collapse':'expand')+': '+(performance.now()-_pt).toFixed(1)+'ms (heavy='+_svgHeavy+')');
 });
 // Mobile backdrop: tap to close sidebar
 (function(){
