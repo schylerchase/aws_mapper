@@ -62,6 +62,7 @@ function _expandSidebar(){
   _sbBtn.textContent='\u25C0';
 }
 _sbBtn.addEventListener('click',()=>{
+  const _pt=performance.now();
   const isCollapsing=!_sb.classList.contains('collapsed');
   if(isCollapsing) _collapseSidebar();
   else _expandSidebar();
@@ -69,6 +70,7 @@ _sbBtn.addEventListener('click',()=>{
   const bd=document.getElementById('mobileBackdrop');
   if(bd){bd.style.display=(!_sb.classList.contains('collapsed')&&_isMobile())?'block':'none'}
   if(!_isMobile()) savePrefs({sidebarCollapsed:_sb.classList.contains('collapsed')});
+  console.log('[PERF] sidebar '+(isCollapsing?'collapse':'expand')+': '+(performance.now()-_pt).toFixed(1)+'ms (heavy='+_svgHeavy+', svgEls='+document.querySelectorAll('svg *').length+')');
 });
 // Mobile backdrop: tap to close sidebar
 (function(){
