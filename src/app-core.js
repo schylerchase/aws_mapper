@@ -20599,9 +20599,25 @@ function _rptEmbedDataBlob(enabled){
   var inv=_rptFilterByAccount(_inventoryData||[],acctFilter).map(function(r){
     var c={};Object.keys(r).forEach(function(k){if(k!=='_raw'&&k!=='_related')c[k]=r[k]});return c;
   });
-  var contexts=_loadedContexts.map(function(c){
-    return {accountId:c.accountId,accountLabel:c.accountLabel,region:c.region};
-  });
+  var contexts;
+  if(_loadedContexts.length){
+    contexts=_loadedContexts.map(function(c){
+      return {accountId:c.accountId,accountLabel:c.accountLabel,region:c.region};
+    });
+  }else{
+    // Single-account: synthesize contexts from render data
+    var acctSet={};
+    if(_rlCtx&&_rlCtx._accounts)_rlCtx._accounts.forEach(function(id){acctSet[id]=1});
+    inv.forEach(function(r){if(r.account&&r.account!=='default'&&r.account!=='—')acctSet[r.account]=1});
+    findings.forEach(function(f){if(f._accountId&&f._accountId!=='default'&&f._accountId!=='—')acctSet[f._accountId]=1});
+    budrA.forEach(function(a){if(a.account&&a.account!=='default'&&a.account!=='—')acctSet[a.account]=1});
+    var acctKeys=Object.keys(acctSet);
+    if(acctKeys.length){
+      var _region=(_rlCtx&&typeof _detectRegionFromCtx==='function')?_detectRegionFromCtx(_rlCtx):'';
+      var _label=(document.getElementById('accountLabel')||{}).value||'';
+      contexts=acctKeys.map(function(id){return{accountId:id,accountLabel:_label||id,region:_region}});
+    }else{contexts=[]}
+  }
   // IAM review data — serialize with date strings instead of Date objects
   var iamData=_iamReviewData.map(function(r){
     var c={};for(let k in r){if(k==='_raw')continue;c[k]=r[k]}
@@ -21675,6 +21691,7 @@ function _exportFullHTML(){
   h+='});';
   h+='<\/script>';
   h+='<p style="text-align:center;color:#94a3b8;font-size:11px;margin:32px 0;padding-top:16px;border-top:1px solid #e2e8f0">AWS Mapper &bull; Full Assessment Report &bull; '+esc(now)+'</p>';
+  h+=_rptEmbedDataBlob(tabs.map(function(t){return t.id}));
   h+='</body></html>';
   downloadBlob(new Blob([h],{type:'text/html'}),'full-assessment-report.html');
   _showToast('HTML report exported');
