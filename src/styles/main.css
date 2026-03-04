@@ -737,9 +737,11 @@
   .gov-rule-row input{flex:1;min-width:0}
   .gov-rule-row input.pattern{flex:2}
   .gov-rule-row input.weight{width:44px;flex:none;text-align:center}
-  .gov-scope-sel{flex:none;width:72px;font-size:9px!important;color:var(--text-muted)!important;background:rgba(139,92,246,.06)!important;border-color:rgba(139,92,246,.2)!important}
+  .gov-rule-row select{flex:none;width:72px}
+  .gov-scope-sel{font-size:9px!important;color:var(--text-muted)!important;background:rgba(139,92,246,.06)!important;border-color:rgba(139,92,246,.2)!important}
+  .gov-rule-row select[data-field="tier"]{width:68px}
   .gov-rule-row input.invalid-pattern{border-color:#ef4444;background:rgba(239,68,68,.05)}
-  .gov-rule-match-ct{font-size:8px;color:var(--text-muted);background:var(--bg-input);padding:1px 5px;border-radius:8px;flex-shrink:0;min-width:20px;text-align:center}
+  .gov-rule-match-ct{font-size:8px;color:var(--text-muted);background:var(--bg-input);padding:1px 0;border-radius:8px;flex:none;width:32px;text-align:center}
   .gov-rule-match-ct.has-matches{color:#10b981;background:rgba(16,185,129,.1)}
   .gov-rule-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;flex-shrink:0;padding:2px 4px;border-radius:3px;transition:all .1s}
   .gov-rule-del:hover{color:#ef4444;background:rgba(239,68,68,.1)}
