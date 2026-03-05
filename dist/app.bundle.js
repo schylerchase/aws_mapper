@@ -9225,7 +9225,7 @@ var AppBundle = (() => {
     // Phase 5: Core
     ExportUtils: export_utils_exports,
     IacGenerator: iac_generator_exports
-    // Note: diff-engine and report-builder loaded via separate script tags (DOM-dependent)
+    // Note: diff/report code lives in app-core.js; pure diff logic in src/core/diff-logic.js
   };
   Object.assign(window, window.AppModules);
   if (!window._complianceFindings) window._complianceFindings = [];

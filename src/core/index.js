@@ -22,6 +22,12 @@ import {
   loadSheetJS, xlsxHeaderStyle, xlsxBorder
 } from './exports-xlsx.js';
 
+import {
+  _DIFF_KEYS, _DIFF_VOLATILE, _DIFF_STRUCTURAL,
+  normalizeResource, normalizeSG, classifyChange,
+  _fieldDiff, computeDiff, _diffResName
+} from './diff-logic.js';
+
 // Expose shared state and extracted modules globally
 window._core = {
   S,
@@ -48,5 +54,15 @@ window._core = {
   // XLSX utilities (needed by _exportDiffXlsx in app-core.js)
   loadSheetJS,
   xlsxHeaderStyle,
-  xlsxBorder
+  xlsxBorder,
+  // Diff logic (pure functions — DOM diff code stays in app-core.js)
+  _DIFF_KEYS,
+  _DIFF_VOLATILE,
+  _DIFF_STRUCTURAL,
+  normalizeResource,
+  normalizeSG,
+  classifyChange,
+  _fieldDiff,
+  computeDiff,
+  _diffResName
 };

@@ -84,9 +84,8 @@ import * as ExportUtils from './modules/export-utils.js';
 // IAC generator (Terraform, CloudFormation, Checkov — DOM modal remains inline)
 import * as IacGenerator from './modules/iac-generator.js';
 
-// NOTE: diff-engine.js and report-builder.js are NOT imported here.
-// They have top-level DOM event listeners and are loaded via separate <script type="module"> tags
-// in index.html (after DOM is ready).
+// NOTE: Diff and report code lives in app-core.js (DOM-coupled).
+// Pure diff logic extracted to src/core/diff-logic.js (bundled into core.bundle.js).
 
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
@@ -162,7 +161,7 @@ window.AppModules = {
   ExportUtils,
   IacGenerator,
 
-  // Note: diff-engine and report-builder loaded via separate script tags (DOM-dependent)
+  // Note: diff/report code lives in app-core.js; pure diff logic in src/core/diff-logic.js
 };
 
 // Make functions available globally (transitional - will remove once all code is modularized)

@@ -1,7 +1,6 @@
 // Governance & Inventory — state and pure logic
 // DOM rendering functions (_renderClassificationTab, _renderIAMTab, _openRulesEditor)
-// currently live in diff-engine.js due to dual-state and unified dashboard coupling.
-// See TODO in diff-engine.js for migration plan.
+// live in app-core.js due to dual-state and unified dashboard coupling.
 
 import { rlCtx, complianceFindings } from './state.js';
 import { esc, gn, safeParse } from './utils.js';
