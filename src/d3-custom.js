@@ -1,5 +1,5 @@
 // Custom D3 build — only the 5 modules actually used by the app
-// Full d3.min.js is 280KB; this custom build is ~50-60KB
+// Only ~52KB vs 280KB for the full d3 bundle
 export { select, selectAll } from 'd3-selection';
 export { zoom, zoomIdentity } from 'd3-zoom';
 export { line, curveBasis } from 'd3-shape';
