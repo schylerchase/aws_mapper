@@ -44,6 +44,20 @@ async function buildD3() {
   console.log(`  libs/d3.custom.min.js  ${size}kb`);
 }
 
+// Bundle src/core/ ES modules → dist/core.bundle.js (extracted modules from app-core.js)
+async function buildCoreModules() {
+  await esbuild.build({
+    entryPoints: ['src/core/index.js'],
+    bundle: true,
+    outfile: 'dist/core.bundle.js',
+    format: 'iife',
+    minify: isProd,
+    target: 'es2020',
+    platform: 'browser',
+    logLevel: 'silent'
+  });
+}
+
 // Process app-core.js (plain script, not an ES module — minify only)
 async function buildCore() {
   const src = fs.readFileSync('src/app-core.js', 'utf8');
@@ -61,7 +75,8 @@ if (watch) {
     console.log('Watching for changes...');
   }).catch(() => process.exit(1));
 
-  // Also watch app-core.js and copy on change
+  // Also watch app-core.js and core modules
+  buildCoreModules();
   buildCore();
   fs.watch('src/app-core.js', () => {
     fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
@@ -69,18 +84,21 @@ if (watch) {
   });
 } else {
   esbuild.build(buildConfig).then(async () => {
+    await buildCoreModules();
     await buildCore();
     await buildD3();
 
     if (!isProd) return;
     // Auto-inject content hashes into index.html for cache busting
     const bundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/app.bundle.js')).digest('hex').slice(0, 8);
+    const coreBundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/core.bundle.js')).digest('hex').slice(0, 8);
     const coreHash = crypto.createHash('md5').update(fs.readFileSync('dist/app-core.js')).digest('hex').slice(0, 8);
     const htmlPath = path.join(__dirname, 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf8');
     html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
+    html = html.replace(/core\.bundle\.js\?v=[^"]+/, `core.bundle.js?v=${coreBundleHash}`);
     html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
     fs.writeFileSync(htmlPath, html, 'utf8');
-    console.log(`Cache bust: app.bundle.js?v=${bundleHash}, app-core.js?v=${coreHash}`);
+    console.log(`Cache bust: app.bundle.js?v=${bundleHash}, core.bundle.js?v=${coreBundleHash}, app-core.js?v=${coreHash}`);
   }).catch(() => process.exit(1));
 }
