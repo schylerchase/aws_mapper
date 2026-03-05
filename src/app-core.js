@@ -710,7 +710,7 @@ const _RPT_MODULES=[
    available:function(){if(!_appRegistry.length&&typeof _autoDiscoverApps==='function'){if(!_classificationData.length&&_rlCtx)runClassificationEngine(_rlCtx);_autoDiscoverApps()}return _appRegistry.length>0},
    desc:function(){return _appRegistry.length+' apps defined'},
    render:function(ctx,opts){return _rptAppSummary(ctx,opts)}},
-  {id:'iac-recs',name:'IaC Recommendations',icon:'',category:'remediation',enabled:false,
+  {id:'iac-recs',name:'IaC Recommendations',icon:'',category:'remediation',enabled:true,
    available:function(){return _complianceFindings.length>0},
    desc:function(){return 'Terraform/CF snippets'},
    render:function(ctx,opts){return _rptIaCRecs(ctx,opts)}}
@@ -7455,15 +7455,6 @@ function renderLandingZoneMap(ctx){
       }
     }
 
-    // VPCE badge - positioned at bottom left of VPC
-    const vpcVpces=vpceByVpc[vl.vpc.VpcId]||[];
-    if(vpcVpces.length){
-      const bw=65,bh=16;
-      vG.append('rect').attr('x',vl.x+8).attr('y',vl.y+vl.h-bh-6).attr('width',bw).attr('height',bh).attr('rx',3)
-        .attr('fill','rgba(167,139,250,.2)').attr('stroke','var(--vpce-color)').attr('stroke-width',.5);
-      vG.append('text').attr('x',vl.x+8+bw/2).attr('y',vl.y+vl.h-bh/2-2).attr('text-anchor','middle')
-        .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--vpce-color)').text(vpcVpces.length+' VPCE');
-    }
     
     // VPC tooltip (on header area only)
     const headerRect=vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',VH)
@@ -7926,14 +7917,6 @@ function renderLandingZoneMap(ctx){
     
     let sgY=spoke.y+30;
     const sgX=spoke.x+spoke.w+80; // Center in gap (was 25)
-    
-    // Draw subtle flow indicator from VPC to gateway area
-    const flowY=spoke.y+Math.max(60,spokeGws.length*50+20);
-    lzRouteG.append('path')
-      .attr('class','route-trunk animated')
-      .attr('d',`M${spoke.x+spoke.w},${flowY} L${spoke.x+spoke.w+20},${flowY} L${spoke.x+spoke.w+20},${spoke.y+30} L${sgX-16},${spoke.y+30}`)
-      .attr('stroke','rgba(100,120,150,0.3)')
-      .attr('stroke-dasharray','4 4');
     
     spokeGws.forEach((gw,i)=>{
       const gG=ndL.append('g').attr('class','lz-gw-node').attr('data-vpc',spoke.vpc.VpcId).attr('data-gwtype',gw.type).style('cursor','pointer');
