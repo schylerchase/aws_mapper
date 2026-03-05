@@ -64,8 +64,14 @@ async function buildCore() {
   if (isProd) {
     const result = await esbuild.transform(src, { minify: true, target: 'es2020' });
     fs.writeFileSync('dist/app-core.js', result.code);
+    // Production: remove dev-only edge tests (script tag fails silently via onerror)
+    try { fs.unlinkSync('dist/edge-tests.js'); } catch(e) {}
   } else {
     fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
+    // Dev: copy edge case tests for console debugging
+    if (fs.existsSync('src/dev/edge-tests.js')) {
+      fs.copyFileSync('src/dev/edge-tests.js', 'dist/edge-tests.js');
+    }
   }
 }
 
@@ -75,13 +81,19 @@ if (watch) {
     console.log('Watching for changes...');
   }).catch(() => process.exit(1));
 
-  // Also watch app-core.js and core modules
+  // Also watch app-core.js, core modules, and dev files
   buildCoreModules();
   buildCore();
   fs.watch('src/app-core.js', () => {
     fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
     console.log('  Copied app-core.js');
   });
+  if (fs.existsSync('src/dev/edge-tests.js')) {
+    fs.watch('src/dev/edge-tests.js', () => {
+      fs.copyFileSync('src/dev/edge-tests.js', 'dist/edge-tests.js');
+      console.log('  Copied edge-tests.js');
+    });
+  }
 } else {
   esbuild.build(buildConfig).then(async () => {
     await buildCoreModules();
