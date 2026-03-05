@@ -753,7 +753,23 @@ function _awsConsoleUrl(type,id,region){
     'VPN':       'vpc/home?region='+r+'#VpnConnections:vpnConnectionId='+id,
     'TGW Attachment':'vpc/home?region='+r+'#TransitGatewayAttachments:transitGatewayAttachmentId='+id,
     'Target Group':'ec2/home?region='+r+'#TargetGroups:search='+encodeURIComponent(id),
-    'VPC Peering':'vpc/home?region='+r+'#PeeringConnections:vpcPeeringConnectionId='+id
+    'VPC Peering':'vpc/home?region='+r+'#PeeringConnections:vpcPeeringConnectionId='+id,
+    'CloudTrail': 'cloudtrailv2/home?region='+r+'#/trails',
+    'GuardDuty':  'guardduty/home?region='+r+'#/findings',
+    'Flow Logs':  'vpc/home?region='+r+'#FlowLogs:',
+    'CloudWatch Alarms':'cloudwatch/home?region='+r+'#alarmsV2:',
+    'Config':     'config/home?region='+r+'#/dashboard',
+    'Security Hub':'securityhub/home?region='+r+'#/summary',
+    'Access Analyzer':'access-analyzer/home?region='+r+'#/analyzers',
+    'Config Rules':'config/home?region='+r+'#/rules',
+    'KMS':        'kms/home?region='+r+'#/kms/keys',
+    'Secrets Manager':'secretsmanager/home?region='+r+'#!/listSecrets/',
+    'SSM Parameters':'systems-manager/parameters?region='+r,
+    'ECR':        'ecr/repositories?region='+r,
+    'CloudWatch Logs':'cloudwatch/home?region='+r+'#logsV2:log-groups',
+    'API Gateway':'apigateway/main/apis?region='+r,
+    'SNS':        'sns/v3/home?region='+r+'#/topics',
+    'SQS':        'sqs/v3/home?region='+r+'#/queues'
   };
   var path=map[type];
   if(!path) return '';
@@ -6491,28 +6507,28 @@ function openSubnetPanel(sub,vpcId,lk){
       gwTargets.forEach((g,gi)=>{
         relBody+='<div class="dp-flow-row">';
         relBody+=_hop(1,gwSource(g),esc(g.dest),'Traffic origin');
-        relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+        relBody+='<span class="dp-dep-arrow">&#10132;</span>';
         relBody+='<span class="dp-flow-hop" data-rel-gw="'+esc(g.id)+'" data-rel-gwtype="'+esc(g.type)+'" style="border-color:'+gcv(g.type)+'"><span class="dp-flow-hopnum">2</span><div class="dp-flow-hopbody"><span class="dp-flow-hoplbl">'+g.type+'</span><span class="dp-flow-hopdet">'+esc(g.name)+'</span><span class="dp-flow-hoprole">'+gwRole(g.type)+'</span></div></span>';
-        relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+        relBody+='<span class="dp-dep-arrow">&#10132;</span>';
         relBody+=_hop(3,'Route Table',(rt?esc(gn(rt,rt.RouteTableId)):'none')+' &middot; '+rtRouteCount+' routes','Path selection','data-rel-scroll="Route Table"');
-        relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+        relBody+='<span class="dp-dep-arrow">&#10132;</span>';
         relBody+=_hop(4,'NACL',naclAllowIn+' allow &middot; '+naclDenyIn+' deny','Stateless filter','data-rel-scroll="NACLs"');
-        relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+        relBody+='<span class="dp-dep-arrow">&#10132;</span>';
         relBody+=_hop(5,'SGs',sgCount+' groups &middot; ports: '+portStr,'Stateful filter','data-rel-scroll="Security Groups"');
-        relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+        relBody+='<span class="dp-dep-arrow">&#10132;</span>';
         relBody+=_hop(6,'Resources',resLabel,'Destination','data-rel-scroll="EC2 Instances"');
         relBody+='</div>';
       });
     } else {
       relBody+='<div class="dp-flow-row">';
       relBody+=_hop(1,'VPC Local',esc(sub.CidrBlock||''),'Traffic origin');
-      relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+      relBody+='<span class="dp-dep-arrow">&#10132;</span>';
       relBody+=_hop(2,'Route Table',(rt?esc(gn(rt,rt.RouteTableId)):'none')+' &middot; '+rtRouteCount+' routes','Path selection','data-rel-scroll="Route Table"');
-      relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+      relBody+='<span class="dp-dep-arrow">&#10132;</span>';
       relBody+=_hop(3,'NACL',naclAllowIn+' allow &middot; '+naclDenyIn+' deny','Stateless filter','data-rel-scroll="NACLs"');
-      relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+      relBody+='<span class="dp-dep-arrow">&#10132;</span>';
       relBody+=_hop(4,'SGs',sgCount+' groups &middot; ports: '+portStr,'Stateful filter','data-rel-scroll="Security Groups"');
-      relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+      relBody+='<span class="dp-dep-arrow">&#10132;</span>';
       relBody+=_hop(5,'Resources',resLabel,'Destination','data-rel-scroll="EC2 Instances"');
       relBody+='</div>';
     }
@@ -6521,13 +6537,13 @@ function openSubnetPanel(sub,vpcId,lk){
     relBody+='<div class="dp-flow-label" style="margin-top:8px">EGRESS</div>';
     relBody+='<div class="dp-flow-row">';
     relBody+=_hop(1,'Resources',resLabel,'Traffic origin','data-rel-scroll="EC2 Instances"');
-    relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+    relBody+='<span class="dp-dep-arrow">&#10132;</span>';
     relBody+=_hop(2,'SGs',sgOutRules+' outbound rules','Stateful filter','data-rel-scroll="Security Groups"');
-    relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+    relBody+='<span class="dp-dep-arrow">&#10132;</span>';
     relBody+=_hop(3,'NACL',naclAllowOut+' allow &middot; '+naclDenyOut+' deny','Stateless filter','data-rel-scroll="NACLs"');
-    relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+    relBody+='<span class="dp-dep-arrow">&#10132;</span>';
     relBody+=_hop(4,'Route Table',(rt?esc(gn(rt,rt.RouteTableId)):'none')+' &middot; '+rtRouteCount+' routes','Path selection','data-rel-scroll="Route Table"');
-    relBody+='<span class="dp-dep-arrow">&rarr;</span>';
+    relBody+='<span class="dp-dep-arrow">&#10132;</span>';
     if(gwTargets.length){
       const gwLabels=gwTargets.map(g=>g.type).filter((v,i,a)=>a.indexOf(v)===i).join(' / ');
       relBody+=_hop(5,gwLabels,gwTargets.map(g=>esc(g.dest)).join(', '),'Egress target');
@@ -7061,7 +7077,8 @@ function renderLandingZoneMap(ctx){
     subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,eniByInst,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
     snapByVol,tgByAlb,wafAcls,wafByAlb,
     rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions,
-    rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources}=ctx;
+    rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources,
+    cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce}=ctx;
 
   // Parse record sets for DNS expanded view
   const lzAllRecSets=ext(safeParse(gv('in_r53records')),['ResourceRecordSets','RecordSets']);
@@ -8778,9 +8795,9 @@ function _renderMapInner(){
   let vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns;
   let volumes,snapshots,s3bk,zones,wafAcls,rdsInstances,ecsServices,lambdaFns;
   let ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions;
-  let cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance;
-  let securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams;
-  let ecrRepos,asgs,apiGateways,snsTopics,sqsQueues;
+  let cloudtrailTrails=[],cwAlarms=[],logGroups=[],flowLogs=[],configRecorders=[],configRules=[],configConformance=[];
+  let securityHubStds=[],accessAnalyzers=[],kmsKeys=[],guarddutyDetectors=[],secrets=[],ssmParams=[];
+  let ecrRepos=[],asgs=[],apiGateways=[],snsTopics=[],sqsQueues=[];
   let recsByZoneMap={};
   const userAccount=(document.getElementById('accountLabel')||{}).value||'';
   let _pbMaps=null; // prebuilt index maps (skip rebuild when available)
@@ -8853,7 +8870,8 @@ function _renderMapInner(){
   // Parse IAM data
   const iamRaw=_cachedParse('in_iam');
   if(iamRaw&&!_iamData)_iamData=parseIAMData(iamRaw);
-  // Governance
+  // Governance (defensive — parse failures must not abort the entire render)
+  try{
   cloudtrailTrails=ext(_cachedParse('in_cloudtrail'),['trailList']);
   cwAlarms=ext(_cachedParse('in_cwalarms'),['MetricAlarms']);
   logGroups=ext(_cachedParse('in_loggroups'),['logGroups']);
@@ -8878,6 +8896,13 @@ function _renderMapInner(){
   snsTopics=snsRaw?(snsRaw.Topics||[]):[];
   const sqsRaw=_cachedParse('in_sqs');
   sqsQueues=sqsRaw?(sqsRaw.QueueUrls||[]):[];
+  }catch(gErr){console.warn('Governance parse error:',gErr);
+    cloudtrailTrails=cloudtrailTrails||[];cwAlarms=cwAlarms||[];logGroups=logGroups||[];flowLogs=flowLogs||[];
+    configRecorders=configRecorders||[];configRules=configRules||[];configConformance=configConformance||[];
+    securityHubStds=securityHubStds||[];accessAnalyzers=accessAnalyzers||[];kmsKeys=kmsKeys||[];
+    guarddutyDetectors=guarddutyDetectors||[];secrets=secrets||[];ssmParams=ssmParams||[];
+    ecrRepos=ecrRepos||[];asgs=asgs||[];apiGateways=apiGateways||[];snsTopics=snsTopics||[];sqsQueues=sqsQueues||[];
+  }
   function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
   [vpcs,subnets,igws,nats,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(arr=>arr.forEach(tagResource));
   } // end else (textarea parse path)
@@ -9021,7 +9046,8 @@ function _renderMapInner(){
       subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,eniByInst,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
       snapByVol,tgByAlb,wafAcls,wafByAlb,
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions,
-      rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources
+      rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,_multiAccount,_accounts,iamRoleResources,
+      cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce
     });
     return;
   }
@@ -9032,7 +9058,8 @@ function _renderMapInner(){
       subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,albBySub,volByInst,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
       snapByVol,tgByAlb,wafAcls,wafByAlb,
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions,
-      rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb
+      rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,
+      cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce
     });
     return;
   }
@@ -18941,6 +18968,8 @@ const _UDASH_TABS = [
 function _renderPostureDash(){
   const body=document.getElementById('udashBody');if(!body)return;
   const ctx=_rlCtx;if(!ctx)return;
+  const _pRegion=_detectRegionFromCtx(ctx);
+  function svcLink(type,label){var url=_awsConsoleUrl(type,'_',_pRegion);if(!url)return esc(label);return '<a href="'+esc(url)+'" target="_blank" rel="noopener" class="posture-svc-link" title="Open in AWS Console">'+esc(label)+' <span class="posture-ext-icon">&#8599;</span></a>'}
   const trails=ctx.cloudtrailTrails||[];
   const gd=ctx.guarddutyDetectors||[];
   const fl=ctx.flowLogs||[];
@@ -19027,31 +19056,31 @@ function _renderPostureDash(){
   var h='<div class="posture-grid">';
   // Column 1
   h+='<div class="posture-col"><div class="posture-col-title">Detection &amp; Monitoring</div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(trailOk,trailPartial)+' CloudTrail</div><div class="posture-card-body">'+esc(trailDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(gdOk,gd.length>0&&!gdOk)+' GuardDuty</div><div class="posture-card-body">'+esc(gdDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(flOk,flCov>0&&!flOk)+' VPC Flow Logs</div><div class="posture-card-body">'+esc(flDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(cwa.length>0&&cwAlarm===0,cwa.length>0&&cwAlarm>0,cwa.length?'':'gray')+' CloudWatch Alarms</div><div class="posture-card-body">'+esc(cwDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(trailOk,trailPartial)+' '+svcLink('CloudTrail','CloudTrail')+'</div><div class="posture-card-body">'+esc(trailDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(gdOk,gd.length>0&&!gdOk)+' '+svcLink('GuardDuty','GuardDuty')+'</div><div class="posture-card-body">'+esc(gdDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(flOk,flCov>0&&!flOk)+' '+svcLink('Flow Logs','VPC Flow Logs')+'</div><div class="posture-card-body">'+esc(flDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(cwa.length>0&&cwAlarm===0,cwa.length>0&&cwAlarm>0,cwa.length?'':'gray')+' '+svcLink('CloudWatch Alarms','CloudWatch Alarms')+'</div><div class="posture-card-body">'+esc(cwDetail)+'</div></div>';
   h+='</div>';
   // Column 2
   h+='<div class="posture-col"><div class="posture-col-title">Configuration &amp; Compliance</div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(cfgOk,rec.length>0&&!cfgOk)+' AWS Config</div><div class="posture-card-body">'+esc(cfgDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(shOk,false)+' Security Hub</div><div class="posture-card-body">'+esc(shDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(aaOk,aa.length>0&&!aaOk)+' IAM Access Analyzer</div><div class="posture-card-body">'+esc(aaDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(rules.length>0,false,rules.length?'':'gray')+' Config Rules</div><div class="posture-card-body">'+esc(rulesDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(cfgOk,rec.length>0&&!cfgOk)+' '+svcLink('Config','AWS Config')+'</div><div class="posture-card-body">'+esc(cfgDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(shOk,false)+' '+svcLink('Security Hub','Security Hub')+'</div><div class="posture-card-body">'+esc(shDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(aaOk,aa.length>0&&!aaOk)+' '+svcLink('Access Analyzer','IAM Access Analyzer')+'</div><div class="posture-card-body">'+esc(aaDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(rules.length>0,false,rules.length?'':'gray')+' '+svcLink('Config Rules','Config Rules')+'</div><div class="posture-card-body">'+esc(rulesDetail)+'</div></div>';
   h+='</div>';
   // Column 3
   h+='<div class="posture-col"><div class="posture-col-title">Encryption &amp; Secrets</div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(kmsOk,custKeys.length>0&&!kmsOk,custKeys.length?'':'gray')+' KMS Keys</div><div class="posture-card-body">'+esc(kmsDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(secOk,secs.length>0&&!secOk,secs.length?'':'gray')+' Secrets Manager</div><div class="posture-card-body">'+esc(secDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(true,false,ssm.length?'':'gray')+' SSM Parameters</div><div class="posture-card-body">'+esc(ssmDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(ecrOk,ecrPartial,ecr.length?'':'gray')+' ECR Repositories</div><div class="posture-card-body">'+esc(ecrDetail)+'</div></div>';
-  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(logOk,logs.length>0&&!logOk,logs.length?'':'gray')+' Log Groups</div><div class="posture-card-body">'+esc(logDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(kmsOk,custKeys.length>0&&!kmsOk,custKeys.length?'':'gray')+' '+svcLink('KMS','KMS Keys')+'</div><div class="posture-card-body">'+esc(kmsDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(secOk,secs.length>0&&!secOk,secs.length?'':'gray')+' '+svcLink('Secrets Manager','Secrets Manager')+'</div><div class="posture-card-body">'+esc(secDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(true,false,ssm.length?'':'gray')+' '+svcLink('SSM Parameters','SSM Parameters')+'</div><div class="posture-card-body">'+esc(ssmDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(ecrOk,ecrPartial,ecr.length?'':'gray')+' '+svcLink('ECR','ECR Repositories')+'</div><div class="posture-card-body">'+esc(ecrDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(logOk,logs.length>0&&!logOk,logs.length?'':'gray')+' '+svcLink('CloudWatch Logs','Log Groups')+'</div><div class="posture-card-body">'+esc(logDetail)+'</div></div>';
   h+='</div></div>';
   // Footer: integration counts
   h+='<div class="posture-footer">';
-  if(apis.length)h+='<span class="posture-footer-chip">API Gateway: '+apis.length+'</span>';
-  if(sns.length)h+='<span class="posture-footer-chip">SNS Topics: '+sns.length+'</span>';
-  if(sqs.length)h+='<span class="posture-footer-chip">SQS Queues: '+sqs.length+'</span>';
+  if(apis.length)h+='<span class="posture-footer-chip">'+svcLink('API Gateway','API Gateway: '+apis.length)+'</span>';
+  if(sns.length)h+='<span class="posture-footer-chip">'+svcLink('SNS','SNS Topics: '+sns.length)+'</span>';
+  if(sqs.length)h+='<span class="posture-footer-chip">'+svcLink('SQS','SQS Queues: '+sqs.length)+'</span>';
   h+='</div>';
   body.innerHTML=h; // Safe: all values escaped via esc(), content from parsed AWS API responses only
 }
@@ -23415,7 +23444,7 @@ document.getElementById('fileInput').addEventListener('change',async function(){
 });
 document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});d3.select('#mapSvg').selectAll('*').remove();d3.select('#mapSvg').style('display','none');document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_prebuiltCtx=null;_parseCache={};_iamData=null;_iamReviewData=[];_inventoryData=[];demo=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];_complianceFindings=[];_appRegistry=[];_appAutoDiscovered=false;/* Reset analysis caches */_flowAnalysisCache=null;_faDashRows=null;_depGraph=null;_diffBaseline=null;_diffResults=null;_diffFlatRows=null;_snapshots=[];_iacOutput='';_tfIdMap={};if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=_getMain();if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
-document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('uploadBtn').click()});
+document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('fileInput').click()});
 document.getElementById('landingImportReport').addEventListener('click',function(){document.getElementById('importReportInput').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
   // OPTIMIZED: Generate demo data on first load (lazy initialization)
