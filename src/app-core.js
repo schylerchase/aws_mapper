@@ -12917,7 +12917,10 @@ function mergeContexts(contexts){
     rdsBySub:{},ecsBySub:{},lambdaBySub:{},
     subRT:{},subNacl:{},sgByVpc:{},
     volByInst:{},snapByVol:{},ecacheByVpc:{},redshiftByVpc:{},
-    tgwAttachments:[],recsByZone:{},_multiAccount:true,_accounts:new Set(),_regions:new Set(),_multiRegion:false};
+    tgwAttachments:[],recsByZone:{},_multiAccount:true,_accounts:new Set(),_regions:new Set(),_multiRegion:false,
+    cloudtrailTrails:[],cwAlarms:[],logGroups:[],flowLogs:[],configRecorders:[],configRules:[],configConformance:[],
+    securityHubStds:[],accessAnalyzers:[],kmsKeys:[],guarddutyDetectors:[],secrets:[],ssmParams:[],
+    ecrRepos:[],asgs:[],apiGateways:[],snsTopics:[],sqsQueues:[]};
 
   visible.forEach(ctx=>{
     const c=ctx.rlCtx;if(!c)return;
@@ -12926,7 +12929,10 @@ function mergeContexts(contexts){
     // Arrays — tag and concat
     const arrayKeys=['vpcs','subnets','rts','sgs','nacls','enis','igws','nats','vpces',
       'instances','albs','tgs','peerings','vpns','volumes','snapshots','s3bk','zones','wafAcls',
-      'rdsInstances','ecsServices','lambdaFns','ecacheClusters','redshiftClusters','cfDistributions','tgwAttachments'];
+      'rdsInstances','ecsServices','lambdaFns','ecacheClusters','redshiftClusters','cfDistributions','tgwAttachments',
+      'cloudtrailTrails','cwAlarms','logGroups','flowLogs','configRecorders','configRules','configConformance',
+      'securityHubStds','accessAnalyzers','kmsKeys','guarddutyDetectors','secrets','ssmParams',
+      'ecrRepos','asgs','apiGateways','snsTopics','sqsQueues'];
     arrayKeys.forEach(k=>{
       if(c[k]&&Array.isArray(c[k]))c[k].forEach(r=>{tag(r);merged[k].push(r)});
     });
