@@ -1532,7 +1532,11 @@ function _rptBuildSvgUri(svgEl,root){
   return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
 }
 
+var _cachedStyles=null;
+var _cachedStylesTheme=null;
 function _rptCollectStyles(){
+  var theme=document.documentElement.getAttribute('data-theme')||'';
+  if(_cachedStyles&&_cachedStylesTheme===theme) return _cachedStyles;
   var css='';
   for(let i=0;i<document.styleSheets.length;i++){
     try{
@@ -1541,6 +1545,8 @@ function _rptCollectStyles(){
       for(let j=0;j<rules.length;j++) css+=rules[j].cssText+'\n';
     }catch(e){/* cross-origin */}
   }
+  _cachedStyles=css;
+  _cachedStylesTheme=theme;
   return css;
 }
 
@@ -2355,16 +2361,28 @@ function _buildCompRow(f,i){
   h+='<td><button class="comp-jump-btn" data-rid="'+esc(f.resource)+'" title="Zoom to resource on map">Jump</button><button class="comp-mute-btn '+(muted?'muted':'')+'" data-fi="'+i+'">'+(muted?'Unmute':'Mute')+'</button></td></tr>';
   return h;
 }
+var _compDelegateAttached=false;
+var _compFilteredRef=null; // current filtered array for event delegation
 function _attachCompRowListeners(container,filtered){
-  container.querySelectorAll('.comp-mute-btn').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();_toggleMute(filtered[parseInt(this.dataset.fi)]);_compDashState._cachedView=null;_renderCompDash(true)})});
-  container.querySelectorAll('.comp-jump-btn').forEach(function(btn){btn.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-    closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250);
-  })});
-  container.querySelectorAll('.comp-res-link').forEach(function(a){a.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-    closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250);
-  })});
+  _compFilteredRef=filtered;
+  // Use event delegation on tbody — single listener instead of N per row
+  var tbody=document.getElementById('compTbody');
+  if(!tbody)return;
+  if(!_compDelegateAttached){
+    tbody.addEventListener('click',function(e){
+      var btn=e.target.closest('.comp-mute-btn,.comp-jump-btn,.comp-res-link');
+      if(!btn)return;
+      e.stopPropagation();
+      if(btn.classList.contains('comp-mute-btn')){
+        if(_compFilteredRef)_toggleMute(_compFilteredRef[parseInt(btn.dataset.fi)]);
+        _compDashState._cachedView=null;_renderCompDash(true);
+      } else {
+        var rid=btn.dataset.rid;if(!rid||rid==='Multiple')return;
+        closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250);
+      }
+    });
+    _compDelegateAttached=true;
+  }
 }
 function _renderCompTableRows(filtered){
   var tbody=document.getElementById('compTbody');if(!tbody)return;
@@ -12089,11 +12107,16 @@ function _renderComplianceBadges(){
   if(!_complianceFindings||!_complianceFindings.length)return;
   const nodesLayer=_mapG.select('.nodes-layer');if(nodesLayer.empty())return;
   const lookup=_buildComplianceLookup();
+  // Pre-build DOM element index (single querySelectorAll instead of N querySelector calls)
+  const _elIndex={};
+  _mapG.node().querySelectorAll('[data-vpc-id],[data-subnet-id],[data-gwid],[data-id]').forEach(function(el){
+    var id=el.getAttribute('data-vpc-id')||el.getAttribute('data-subnet-id')||el.getAttribute('data-gwid')||el.getAttribute('data-id');
+    if(id&&!_elIndex[id])_elIndex[id]=el;
+  });
   // For SGs/NACLs that aren't rendered as map nodes, roll up to their VPC
   const vpcRollup={};
   Object.entries(lookup).forEach(([rid,data])=>{
-    const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
-    if(el)return; // Has its own node — badge goes directly on it
+    if(_elIndex[rid])return; // Has its own node — badge goes directly on it
     // Try to find VPC for this resource
     let vpcId=null;
     if(_rlCtx){
@@ -12111,7 +12134,7 @@ function _renderComplianceBadges(){
   const sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
   // Render badges on elements that exist on map
   Object.entries(lookup).forEach(([rid,data])=>{
-    const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
+    const el=_elIndex[rid];
     if(!el)return;
     const bb=el.getBBox();
     // Offset from note badges — place on opposite corner (top-left)
@@ -12135,7 +12158,7 @@ function _renderComplianceBadges(){
       // Remove the direct badge we already placed — we'll replace with merged
       _mapG.selectAll('.comp-badge').filter(function(){return d3.select(this).attr('transform')&&this._compRid===vpcId}).remove();
     }
-    const el=_mapG.node().querySelector('[data-vpc-id="'+vpcId+'"]');
+    const el=_elIndex[vpcId];
     if(!el)return;
     const bb=el.getBBox();
     const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform','translate('+(bb.x+8)+','+(bb.y+4)+')').style('cursor','pointer');
