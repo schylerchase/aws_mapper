@@ -138,6 +138,28 @@ const inputSections=[
   {t:'IAM',open:false,inputs:[
     {id:'in_iam',l:'IAM Auth Details',c:'iam get-account-authorization-details'},
   ]},
+  {t:'Governance',open:false,inputs:[
+    {id:'in_cloudtrail',l:'CloudTrail',c:'cloudtrail describe-trails'},
+    {id:'in_cwalarms',l:'CW Alarms',c:'cloudwatch describe-alarms'},
+    {id:'in_loggroups',l:'Log Groups',c:'logs describe-log-groups'},
+    {id:'in_flowlogs',l:'Flow Logs',c:'ec2 describe-flow-logs'},
+    {id:'in_configrecorders',l:'Config Recorders',c:'configservice describe-configuration-recorders'},
+    {id:'in_configrules',l:'Config Rules',c:'configservice describe-config-rules'},
+    {id:'in_configconformance',l:'Config Conformance',c:'configservice describe-conformance-packs'},
+    {id:'in_securityhub',l:'Security Hub',c:'securityhub get-enabled-standards'},
+    {id:'in_accessanalyzer',l:'Access Analyzer',c:'accessanalyzer list-analyzers'},
+    {id:'in_kmskeys',l:'KMS Keys',c:'(see export script -- multi-step)'},
+    {id:'in_guardduty',l:'GuardDuty',c:'(see export script -- multi-step)'},
+    {id:'in_secrets',l:'Secrets Manager',c:'secretsmanager list-secrets'},
+    {id:'in_ssmparams',l:'SSM Parameters',c:'ssm describe-parameters'},
+  ]},
+  {t:'Integration',open:false,inputs:[
+    {id:'in_ecr',l:'ECR Repos',c:'ecr describe-repositories'},
+    {id:'in_asg',l:'Auto Scaling',c:'autoscaling describe-auto-scaling-groups'},
+    {id:'in_apigw',l:'API Gateway',c:'apigateway get-rest-apis'},
+    {id:'in_sns',l:'SNS Topics',c:'sns list-topics'},
+    {id:'in_sqs',l:'SQS Queues',c:'sqs list-queues'},
+  ]},
 ];
 
 // Account detection from AWS resource data
@@ -654,6 +676,12 @@ const _RPT_MODULES=[
    available:function(){return !!_rlCtx||!!_importedReportData},
    desc:function(){if(_importedReportData&&!_rlCtx)return 'Imported report data';var c=_rlCtx;return c?(c.vpcs||[]).length+' VPCs, '+(c.instances||[]).length+' EC2':'No data'},
    render:function(ctx,opts){return _rptExecSummary(ctx,opts)}},
+  {id:'security-posture',name:'Security Posture',icon:'',category:'security',enabled:true,
+   available:function(){return !!_rlCtx},
+   desc:function(){if(!_rlCtx)return 'No data';
+     var g=_rlCtx.guarddutyDetectors||[];var ct=_rlCtx.cloudtrailTrails||[];
+     return (ct.length?'CloudTrail ':'')+(g.length?'GuardDuty ':'')+'posture data'},
+   render:function(ctx,opts){return _rptSecurityPosture(ctx,opts)}},
   {id:'architecture',name:'Architecture Diagram',icon:'',category:'overview',enabled:true,
    available:function(){return !!document.querySelector('#mapSvg .map-root')},
    desc:function(){return document.querySelector('#mapSvg .map-root')?'Map rendered':'No map'},
@@ -1285,6 +1313,55 @@ function _rptUniqueAccounts(){
   return [];
 }
 
+// Security note: innerHTML in report modules follows existing app-core.js pattern.
+// All content is from parsed AWS API responses, escaped via esc().
+function _rptSecurityPosture(ctx,opts){
+  var c=ctx||_rlCtx;
+  if(!c) return '<section class="rpt-section" id="s-security-posture"><h2>Security Posture</h2><p>No data loaded.</p></section>';
+  var acctFilter=typeof _rptGetAccountFilter==='function'?_rptGetAccountFilter():'all';
+  function filt(arr){return typeof _rptFilterByAccount==='function'?_rptFilterByAccount(arr||[],acctFilter):(arr||[])}
+  var trails=filt(c.cloudtrailTrails);var gd=filt(c.guarddutyDetectors);
+  var fl=c.flowLogs||[];var rec=filt(c.configRecorders);var rules=filt(c.configRules);
+  var sh=filt(c.securityHubStds);var aa=filt(c.accessAnalyzers);
+  var keys=filt(c.kmsKeys);var secs=filt(c.secrets);var ecr=filt(c.ecrRepos);
+  var logs=c.logGroups||[];var apis=filt(c.apiGateways);var vpcs=c.vpcs||[];
+  function st(ok){return ok?'<span style="color:#22c55e;font-weight:700">PASS</span>':'<span style="color:#ef4444;font-weight:700">FAIL</span>'}
+  function stp(ok,partial){return ok?'<span style="color:#22c55e;font-weight:700">PASS</span>':(partial?'<span style="color:#eab308;font-weight:700">PARTIAL</span>':'<span style="color:#ef4444;font-weight:700">FAIL</span>')}
+  var h='<section class="rpt-section" id="s-security-posture"><h2>Security Posture</h2>';
+  // Table 1: Detection & Monitoring
+  h+='<h3>Detection &amp; Monitoring</h3><table class="rpt-tbl"><thead><tr><th>Service</th><th>Status</th><th>Details</th></tr></thead><tbody>';
+  var trailOk=trails.some(function(t){return t.IsMultiRegionTrail&&t.LogFileValidationEnabled&&t.KmsKeyId&&t.CloudWatchLogsLogGroupArn});
+  h+='<tr><td>CloudTrail</td><td>'+stp(trailOk,trails.length>0&&!trailOk)+'</td><td>'+esc(trails.length?trails.length+' trail(s)':'No trails')+'</td></tr>';
+  var gdOk=gd.some(function(d){return d.Status==='ENABLED'});
+  h+='<tr><td>GuardDuty</td><td>'+stp(gdOk,gd.length>0&&!gdOk)+'</td><td>'+esc(gd.length?gd.length+' detector(s)':'No detectors')+'</td></tr>';
+  var flVpcs=new Set(fl.filter(function(f){return f.ResourceId&&f.ResourceId.startsWith('vpc-')}).map(function(f){return f.ResourceId}));
+  var flCov=vpcs.length?vpcs.filter(function(v){return flVpcs.has(v.VpcId)}).length:0;
+  h+='<tr><td>VPC Flow Logs</td><td>'+stp(vpcs.length>0&&flCov===vpcs.length,flCov>0)+'</td><td>'+esc(flCov+' of '+vpcs.length+' VPCs')+'</td></tr>';
+  h+='</tbody></table>';
+  // Table 2: Configuration & Compliance
+  h+='<h3>Configuration &amp; Compliance</h3><table class="rpt-tbl"><thead><tr><th>Service</th><th>Status</th><th>Details</th></tr></thead><tbody>';
+  h+='<tr><td>AWS Config</td><td>'+st(rec.some(function(r){return(r.recordingGroup||{}).allSupported}))+'</td><td>'+esc(rec.length?rec.length+' recorder(s)':'No recorder')+'</td></tr>';
+  h+='<tr><td>Security Hub</td><td>'+st(sh.length>0)+'</td><td>'+esc(sh.length?sh.length+' standard(s)':'Not enabled')+'</td></tr>';
+  h+='<tr><td>IAM Access Analyzer</td><td>'+st(aa.some(function(a){return a.status==='ACTIVE'}))+'</td><td>'+esc(aa.length?aa.length+' analyzer(s)':'Not configured')+'</td></tr>';
+  h+='<tr><td>Config Rules</td><td>'+st(rules.length>0)+'</td><td>'+esc(rules.length+' rule(s)')+'</td></tr>';
+  h+='</tbody></table>';
+  // Table 3: Encryption & Secrets
+  h+='<h3>Encryption &amp; Secrets</h3><table class="rpt-tbl"><thead><tr><th>Service</th><th>Status</th><th>Details</th></tr></thead><tbody>';
+  var custKeys=keys.filter(function(k){return k.KeyManager==='CUSTOMER'&&k.KeyState==='Enabled'});
+  var rotKeys=custKeys.filter(function(k){return k.RotationEnabled}).length;
+  h+='<tr><td>KMS Keys</td><td>'+stp(custKeys.length>0&&rotKeys===custKeys.length,rotKeys>0)+'</td><td>'+esc(rotKeys+' of '+custKeys.length+' with rotation')+'</td></tr>';
+  var secRot=secs.filter(function(s){return s.RotationEnabled}).length;
+  h+='<tr><td>Secrets Manager</td><td>'+stp(secs.length>0&&secRot===secs.length,secRot>0)+'</td><td>'+esc(secRot+' of '+secs.length+' with rotation')+'</td></tr>';
+  var ecrScan=ecr.filter(function(r){return(r.imageScanningConfiguration||{}).scanOnPush}).length;
+  var ecrImm=ecr.filter(function(r){return r.imageTagMutability==='IMMUTABLE'}).length;
+  h+='<tr><td>ECR Repositories</td><td>'+stp(ecr.length>0&&ecrScan===ecr.length&&ecrImm===ecr.length,ecrScan>0||ecrImm>0)+'</td><td>'+esc(ecr.length+' repo(s): '+ecrScan+' scan, '+ecrImm+' immutable')+'</td></tr>';
+  var logRet=logs.filter(function(l){return l.retentionInDays}).length;
+  h+='<tr><td>Log Groups</td><td>'+stp(logs.length>0&&logRet===logs.length,logRet>0)+'</td><td>'+esc(logRet+' of '+logs.length+' with retention')+'</td></tr>';
+  h+='</tbody></table>';
+  if(apis.length) h+='<p style="color:var(--text-muted);font-size:12px">Integration: '+esc(apis.length)+' API Gateway(s)</p>';
+  h+='</section>';
+  return h;
+}
 function _rptExecSummary(ctx, opts){
   var c=_rlCtx;
   if(!c&&!_importedReportData) return '<section class="rpt-section" id="s-exec-summary"><h2>Executive Summary</h2><p>No data loaded.</p></section>';
@@ -6726,6 +6803,11 @@ function openGatewayPanel(gwId,gwType,lk){
         const vn=lk.vpcs?lk.vpcs.find(v=>v.VpcId===vpce.VpcId):null;
         gi+='<div class="dp-kv"><span class="k">VPC</span><span class="v">'+(vn?gn(vn,vpce.VpcId):vpce.VpcId)+'</span></div>';
       }
+      // API Gateway enrichment (governance data)
+      const vpceApis=(_rlCtx&&_rlCtx.apiGwByVpce||{})[gwId]||[];
+      vpceApis.forEach(function(api){
+        gi+='<div class="dp-kv"><span class="k">API Gateway</span><span class="v">'+esc(api.name||api.id||'—')+' ['+esc((api.endpointConfiguration||{}).types?api.endpointConfiguration.types.join(','):'—')+']</span></div>';
+      });
     }
   } else if(gwType==='PCX'){
     const pcx=(lk.peerings||[]).find(p=>p.VpcPeeringConnectionId===gwId);
@@ -8329,7 +8411,8 @@ function renderLandingZoneMap(ctx){
   });
   
   // Stats bar
-  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,eniByInst,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb:cfByAlb||{},rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:lzRecsByZone,iamRoleResources,_multiAccount,_accounts};
+  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,eniByInst,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb:cfByAlb||{},rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:lzRecsByZone,iamRoleResources,_multiAccount,_accounts,
+    cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce};
   const sb2=document.getElementById('statsBar');sb2.textContent='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
@@ -8712,6 +8795,9 @@ function _renderMapInner(){
   let vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns;
   let volumes,snapshots,s3bk,zones,wafAcls,rdsInstances,ecsServices,lambdaFns;
   let ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions;
+  let cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance;
+  let securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams;
+  let ecrRepos,asgs,apiGateways,snsTopics,sqsQueues;
   let recsByZoneMap={};
   const userAccount=(document.getElementById('accountLabel')||{}).value||'';
   let _pbMaps=null; // prebuilt index maps (skip rebuild when available)
@@ -8726,6 +8812,13 @@ function _renderMapInner(){
     lambdaFns=pc.lambdaFns||[];ecacheClusters=pc.ecacheClusters||[];
     redshiftClusters=pc.redshiftClusters||[];tgwAttachments=pc.tgwAttachments||[];
     cfDistributions=pc.cfDistributions||[];recsByZoneMap=pc.recsByZone||{};
+    cloudtrailTrails=pc.cloudtrailTrails||[];cwAlarms=pc.cwAlarms||[];logGroups=pc.logGroups||[];
+    flowLogs=pc.flowLogs||[];configRecorders=pc.configRecorders||[];configRules=pc.configRules||[];
+    configConformance=pc.configConformance||[];securityHubStds=pc.securityHubStds||[];
+    accessAnalyzers=pc.accessAnalyzers||[];kmsKeys=pc.kmsKeys||[];
+    guarddutyDetectors=pc.guarddutyDetectors||[];secrets=pc.secrets||[];ssmParams=pc.ssmParams||[];
+    ecrRepos=pc.ecrRepos||[];asgs=pc.asgs||[];apiGateways=pc.apiGateways||[];
+    snsTopics=pc.snsTopics||[];sqsQueues=pc.sqsQueues||[];
     _pbMaps={instBySub:pc.instBySub||{},albBySub:pc.albBySub||{},eniBySub:pc.eniBySub||{},
       rdsBySub:pc.rdsBySub||{},ecsBySub:pc.ecsBySub||{},lambdaBySub:pc.lambdaBySub||{},
       sgByVpc:pc.sgByVpc||{},volByInst:pc.volByInst||{},snapByVol:pc.snapByVol||{},
@@ -8777,9 +8870,39 @@ function _renderMapInner(){
   // Parse IAM data
   const iamRaw=_cachedParse('in_iam');
   if(iamRaw&&!_iamData)_iamData=parseIAMData(iamRaw);
+  // Governance
+  cloudtrailTrails=ext(_cachedParse('in_cloudtrail'),['trailList']);
+  cwAlarms=ext(_cachedParse('in_cwalarms'),['MetricAlarms']);
+  logGroups=ext(_cachedParse('in_loggroups'),['logGroups']);
+  flowLogs=ext(_cachedParse('in_flowlogs'),['FlowLogs']);
+  configRecorders=ext(_cachedParse('in_configrecorders'),['ConfigurationRecorders']);
+  configRules=ext(_cachedParse('in_configrules'),['ConfigRules']);
+  configConformance=ext(_cachedParse('in_configconformance'),['ConformancePackDetails']);
+  securityHubStds=ext(_cachedParse('in_securityhub'),['StandardsSubscriptions']);
+  accessAnalyzers=ext(_cachedParse('in_accessanalyzer'),['analyzers']);
+  const kmsRaw=_cachedParse('in_kmskeys');
+  kmsKeys=kmsRaw?(kmsRaw.Keys||[]):[];
+  const gdRaw=_cachedParse('in_guardduty');
+  guarddutyDetectors=gdRaw?(gdRaw.Detectors||[]):[];
+  secrets=ext(_cachedParse('in_secrets'),['SecretList']);
+  ssmParams=ext(_cachedParse('in_ssmparams'),['Parameters']);
+  // Integration
+  ecrRepos=ext(_cachedParse('in_ecr'),['repositories']);
+  asgs=ext(_cachedParse('in_asg'),['AutoScalingGroups']);
+  const apigwRaw=_cachedParse('in_apigw');
+  apiGateways=apigwRaw?(apigwRaw.items||apigwRaw.Items||[]):[];
+  const snsRaw=_cachedParse('in_sns');
+  snsTopics=snsRaw?(snsRaw.Topics||[]):[];
+  const sqsRaw=_cachedParse('in_sqs');
+  sqsQueues=sqsRaw?(sqsRaw.QueueUrls||[]):[];
   function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
   [vpcs,subnets,igws,nats,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,peerings].forEach(arr=>arr.forEach(tagResource));
   } // end else (textarea parse path)
+  // Cross-reference maps for governance data
+  const flowLogsByVpc={};(flowLogs||[]).forEach(function(fl){
+    if(fl.ResourceId&&fl.ResourceId.startsWith('vpc-')){(flowLogsByVpc[fl.ResourceId]=flowLogsByVpc[fl.ResourceId]||[]).push(fl)}});
+  const apiGwByVpce={};(apiGateways||[]).forEach(function(api){
+    ((api.endpointConfiguration||{}).vpcEndpointIds||[]).forEach(function(vpceId){(apiGwByVpce[vpceId]=apiGwByVpce[vpceId]||[]).push(api)})});
   console.log('[PERF] parse phase: '+(performance.now()-_t0).toFixed(1)+'ms');
   const _t1=performance.now();
   const _regions=new Set();vpcs.forEach(v=>{if(v._region&&v._region!=='unknown')_regions.add(v._region)});
@@ -10656,7 +10779,8 @@ function _renderMapInner(){
   console.log('[PERF] SVG draw: '+(performance.now()-_t3).toFixed(1)+'ms');
   console.log('[PERF] TOTAL render: '+(performance.now()-_t0).toFixed(1)+'ms');
   _markHeavy();
-  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources};
+  _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources,
+    cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce};
   const sb2=document.getElementById('statsBar');sb2.textContent='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
     if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
@@ -11883,6 +12007,15 @@ function _openDetailForSearch(type,id){
       });
       h+='</div></div>';
     }
+    // Flow Logs section (governance enrichment)
+    const vpcFlowLogs=(_rlCtx.flowLogsByVpc||{})[id]||[];
+    if(vpcFlowLogs.length){
+      h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Flow Logs</span><span><span class="dp-sec-count">'+vpcFlowLogs.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body"><table class="dp-kv">';
+      vpcFlowLogs.forEach(function(fl){
+        h+='<tr><td>'+esc(fl.FlowLogId||'—')+'</td><td>'+esc(fl.TrafficType||'ALL')+' &rarr; '+esc(fl.LogDestinationType||'cloud-watch-logs')+'</td></tr>';
+      });
+      h+='</table></div></div>';
+    }
   } else if(type==='EC2'){
     const inst=(_rlCtx.instances||[]).find(i=>i.InstanceId===id);
     if(!inst) return;
@@ -12474,6 +12607,26 @@ function _buildRlCtxFromTextareas(){
     // Parse IAM data (grid path)
     const iamRaw2=safeParse(gv('in_iam'));
     if(iamRaw2&&!_iamData)_iamData=parseIAMData(iamRaw2);
+    // Governance
+    let cloudtrailTrails=ext(safeParse(gv('in_cloudtrail')),['trailList']);
+    let cwAlarms=ext(safeParse(gv('in_cwalarms')),['MetricAlarms']);
+    let logGroups=ext(safeParse(gv('in_loggroups')),['logGroups']);
+    let flowLogs=ext(safeParse(gv('in_flowlogs')),['FlowLogs']);
+    let configRecorders=ext(safeParse(gv('in_configrecorders')),['ConfigurationRecorders']);
+    let configRules=ext(safeParse(gv('in_configrules')),['ConfigRules']);
+    let configConformance=ext(safeParse(gv('in_configconformance')),['ConformancePackDetails']);
+    let securityHubStds=ext(safeParse(gv('in_securityhub')),['StandardsSubscriptions']);
+    let accessAnalyzers=ext(safeParse(gv('in_accessanalyzer')),['analyzers']);
+    let kmsRaw3=safeParse(gv('in_kmskeys'));let kmsKeys=kmsRaw3?(kmsRaw3.Keys||[]):[];
+    let gdRaw3=safeParse(gv('in_guardduty'));let guarddutyDetectors=gdRaw3?(gdRaw3.Detectors||[]):[];
+    let secrets=ext(safeParse(gv('in_secrets')),['SecretList']);
+    let ssmParams=ext(safeParse(gv('in_ssmparams')),['Parameters']);
+    // Integration
+    let ecrRepos=ext(safeParse(gv('in_ecr')),['repositories']);
+    let asgs=ext(safeParse(gv('in_asg')),['AutoScalingGroups']);
+    let apigwRaw3=safeParse(gv('in_apigw'));let apiGateways=apigwRaw3?(apigwRaw3.items||apigwRaw3.Items||[]):[];
+    let snsRaw3=safeParse(gv('in_sns'));let snsTopics=snsRaw3?(snsRaw3.Topics||[]):[];
+    let sqsRaw3=safeParse(gv('in_sqs'));let sqsQueues=sqsRaw3?(sqsRaw3.QueueUrls||[]):[];
 
     function tagAccount(resource){
       if(!resource)return resource;
@@ -12573,7 +12726,8 @@ function _buildRlCtxFromTextareas(){
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,
       instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
       subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
-      tgwAttachments:tgwAttachments2,recsByZone,_multiAccount,_accounts,_regions,_multiRegion};
+      tgwAttachments:tgwAttachments2,recsByZone,_multiAccount,_accounts,_regions,_multiRegion,
+      cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues};
   }catch(e){
     console.warn('_buildRlCtxFromTextareas error:',e);
     return null;
@@ -12616,6 +12770,26 @@ function _buildRlCtxFromData(textareas, accountLabel){
     let tgwAttRaw=ext(_val('in_tgwatt'),['TransitGatewayAttachments']);
     const iamRaw2=_val('in_iam');
     if(iamRaw2&&!_iamData)_iamData=parseIAMData(iamRaw2);
+    // Governance
+    let cloudtrailTrails=ext(_val('in_cloudtrail'),['trailList']);
+    let cwAlarms=ext(_val('in_cwalarms'),['MetricAlarms']);
+    let logGroups=ext(_val('in_loggroups'),['logGroups']);
+    let flowLogs=ext(_val('in_flowlogs'),['FlowLogs']);
+    let configRecorders=ext(_val('in_configrecorders'),['ConfigurationRecorders']);
+    let configRules=ext(_val('in_configrules'),['ConfigRules']);
+    let configConformance=ext(_val('in_configconformance'),['ConformancePackDetails']);
+    let securityHubStds=ext(_val('in_securityhub'),['StandardsSubscriptions']);
+    let accessAnalyzers=ext(_val('in_accessanalyzer'),['analyzers']);
+    let kmsRaw2=_val('in_kmskeys');let kmsKeys=kmsRaw2?(kmsRaw2.Keys||[]):[];
+    let gdRaw2=_val('in_guardduty');let guarddutyDetectors=gdRaw2?(gdRaw2.Detectors||[]):[];
+    let secrets=ext(_val('in_secrets'),['SecretList']);
+    let ssmParams=ext(_val('in_ssmparams'),['Parameters']);
+    // Integration
+    let ecrRepos=ext(_val('in_ecr'),['repositories']);
+    let asgs=ext(_val('in_asg'),['AutoScalingGroups']);
+    let apigwRaw2=_val('in_apigw');let apiGateways=apigwRaw2?(apigwRaw2.items||apigwRaw2.Items||[]):[];
+    let snsRaw2=_val('in_sns');let snsTopics=snsRaw2?(snsRaw2.Topics||[]):[];
+    let sqsRaw2=_val('in_sqs');let sqsQueues=sqsRaw2?(sqsRaw2.QueueUrls||[]):[];
 
     function tagResource(r){if(!r)return r;r._accountId=detectAccountId(r)||userAccount||'default';r._region=detectRegion(r)||'unknown';return r}
     [vpcs,subnets,igwRaw,natRaw,sgs,instances,albs,rdsInstances,ecsServices,lambdaFns,
@@ -12709,7 +12883,8 @@ function _buildRlCtxFromData(textareas, accountLabel){
       rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,
       instBySub:m2o(instBySub),albBySub:m2o(albBySub),eniBySub:m2o(eniBySub),rdsBySub:m2o(rdsBySub),ecsBySub:m2o(ecsBySub),lambdaBySub:m2o(lambdaBySub),
       subRT:m2o(subRT),subNacl:m2o(subNacl),sgByVpc:m2o(sgByVpc),volByInst:m2o(volByInst),snapByVol:m2o(snapByVol),ecacheByVpc:m2o(ecacheByVpc),redshiftByVpc:m2o(redshiftByVpc),
-      tgwAttachments,recsByZone,_multiAccount,_accounts,_regions,_multiRegion};
+      tgwAttachments,recsByZone,_multiAccount,_accounts,_regions,_multiRegion,
+      cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues};
   }catch(e){
     console.warn('_buildRlCtxFromData error:',e);
     return null;
@@ -18764,9 +18939,133 @@ const _UDASH_TABS = [
     if(!_inventoryData.length) _buildInventoryData();
     return _inventoryData.length>0;
   }, render:function(){ _renderInventoryTab(); }},
+  {id:'posture', label:'Security Posture', color:'#14b8a6', icon:'', prereq:function(){
+    if(!_rlCtx){_showToast('Render map data first','warn');return false}
+    return true;
+  }, render:function(){ _renderPostureDash(); }},
   {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }}
 ];
 
+// Security note: innerHTML usage below follows existing app-core.js dashboard pattern.
+// All content is derived from parsed AWS API responses (not user-provided HTML).
+// Values are escaped via esc() before insertion.
+function _renderPostureDash(){
+  const body=document.getElementById('udashBody');if(!body)return;
+  const ctx=_rlCtx;if(!ctx)return;
+  const trails=ctx.cloudtrailTrails||[];
+  const gd=ctx.guarddutyDetectors||[];
+  const fl=ctx.flowLogs||[];
+  const cwa=ctx.cwAlarms||[];
+  const rec=ctx.configRecorders||[];
+  const rules=ctx.configRules||[];
+  const sh=ctx.securityHubStds||[];
+  const aa=ctx.accessAnalyzers||[];
+  const keys=ctx.kmsKeys||[];
+  const secs=ctx.secrets||[];
+  const ssm=ctx.ssmParams||[];
+  const ecr=ctx.ecrRepos||[];
+  const logs=ctx.logGroups||[];
+  const apis=ctx.apiGateways||[];
+  const sns=ctx.snsTopics||[];
+  const sqs=ctx.sqsQueues||[];
+  const vpcs=ctx.vpcs||[];
+
+  function status(ok,partial,label){
+    if(ok)return '<span class="posture-badge posture-green">PASS</span>';
+    if(partial)return '<span class="posture-badge posture-yellow">PARTIAL</span>';
+    if(label==='gray')return '<span class="posture-badge posture-gray">N/A</span>';
+    return '<span class="posture-badge posture-red">FAIL</span>';
+  }
+
+  // Detection & Monitoring
+  var trailOk=trails.some(function(t){return t.IsMultiRegionTrail&&t.LogFileValidationEnabled&&t.KmsKeyId&&t.CloudWatchLogsLogGroupArn});
+  var trailPartial=trails.length>0&&!trailOk;
+  var trailDetail=trails.length?trails.length+' trail(s)':'No trails';
+  if(trailOk)trailDetail+=', multi-region + validated + encrypted';
+
+  var gdOk=gd.some(function(d){return d.Status==='ENABLED'});
+  var gdDisabled=gd.length>0?(gd[0].Features||[]).filter(function(f){return f.Status==='DISABLED'}).length:0;
+  var gdDetail=gd.length?gd.length+' detector(s)':'No detectors';
+  if(gdOk&&gdDisabled>0)gdDetail+=', '+gdDisabled+' feature(s) disabled';
+
+  var flVpcs=new Set(fl.filter(function(f){return f.ResourceId&&f.ResourceId.startsWith('vpc-')}).map(function(f){return f.ResourceId}));
+  var flCov=vpcs.length?vpcs.filter(function(v){return flVpcs.has(v.VpcId)}).length:0;
+  var flOk=vpcs.length>0&&flCov===vpcs.length;
+  var flDetail=vpcs.length?flCov+' of '+vpcs.length+' VPCs covered':'No VPCs';
+
+  var cwOk=cwa.filter(function(a){return a.StateValue==='OK'}).length;
+  var cwAlarm=cwa.filter(function(a){return a.StateValue==='ALARM'}).length;
+  var cwDetail=cwa.length?cwa.length+' alarm(s): '+cwOk+' OK, '+cwAlarm+' ALARM':'No alarms';
+
+  // Configuration & Compliance
+  var cfgOk=rec.some(function(r){return(r.recordingGroup||{}).allSupported});
+  var cfgDetail=rec.length?rec.length+' recorder(s)':'No recorder';
+  if(cfgOk)cfgDetail+=', all-supported';
+
+  var shOk=sh.length>0;
+  var shDetail=sh.length?sh.length+' standard(s) enabled':'Not enabled';
+
+  var aaOk=aa.some(function(a){return a.status==='ACTIVE'});
+  var aaDetail=aa.length?aa.length+' analyzer(s)':'Not configured';
+
+  var rulesAws=rules.filter(function(r){return(r.Source||{}).Owner==='AWS'}).length;
+  var rulesCust=rules.length-rulesAws;
+  var rulesDetail=rules.length?rules.length+' rule(s): '+rulesAws+' AWS, '+rulesCust+' custom':'No rules';
+
+  // Encryption & Secrets
+  var custKeys=keys.filter(function(k){return k.KeyManager==='CUSTOMER'&&k.KeyState==='Enabled'});
+  var rotKeys=custKeys.filter(function(k){return k.RotationEnabled}).length;
+  var kmsOk=custKeys.length>0&&rotKeys===custKeys.length;
+  var kmsDetail=custKeys.length?rotKeys+' of '+custKeys.length+' customer keys with rotation':'No customer keys';
+
+  var secRot=secs.filter(function(s){return s.RotationEnabled}).length;
+  var secOk=secs.length>0&&secRot===secs.length;
+  var secDetail=secs.length?secRot+' of '+secs.length+' secrets with rotation':'No secrets';
+
+  var ssmSecure=ssm.filter(function(p){return p.Type==='SecureString'}).length;
+  var ssmDetail=ssm.length?ssm.length+' param(s): '+ssmSecure+' SecureString':'No parameters';
+
+  var ecrScan=ecr.filter(function(r){return(r.imageScanningConfiguration||{}).scanOnPush}).length;
+  var ecrImm=ecr.filter(function(r){return r.imageTagMutability==='IMMUTABLE'}).length;
+  var ecrOk=ecr.length>0&&ecrScan===ecr.length&&ecrImm===ecr.length;
+  var ecrPartial=ecr.length>0&&!ecrOk&&(ecrScan>0||ecrImm>0);
+  var ecrDetail=ecr.length?ecr.length+' repo(s): '+ecrScan+' scan, '+ecrImm+' immutable':'No repos';
+
+  var logRet=logs.filter(function(l){return l.retentionInDays}).length;
+  var logOk=logs.length>0&&logRet===logs.length;
+  var logDetail=logs.length?logRet+' of '+logs.length+' with retention policy':'No log groups';
+
+  var h='<div class="posture-grid">';
+  // Column 1
+  h+='<div class="posture-col"><div class="posture-col-title">Detection &amp; Monitoring</div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(trailOk,trailPartial)+' CloudTrail</div><div class="posture-card-body">'+esc(trailDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(gdOk,gd.length>0&&!gdOk)+' GuardDuty</div><div class="posture-card-body">'+esc(gdDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(flOk,flCov>0&&!flOk)+' VPC Flow Logs</div><div class="posture-card-body">'+esc(flDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(cwa.length>0&&cwAlarm===0,cwa.length>0&&cwAlarm>0,cwa.length?'':'gray')+' CloudWatch Alarms</div><div class="posture-card-body">'+esc(cwDetail)+'</div></div>';
+  h+='</div>';
+  // Column 2
+  h+='<div class="posture-col"><div class="posture-col-title">Configuration &amp; Compliance</div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(cfgOk,rec.length>0&&!cfgOk)+' AWS Config</div><div class="posture-card-body">'+esc(cfgDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(shOk,false)+' Security Hub</div><div class="posture-card-body">'+esc(shDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(aaOk,aa.length>0&&!aaOk)+' IAM Access Analyzer</div><div class="posture-card-body">'+esc(aaDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(rules.length>0,false,rules.length?'':'gray')+' Config Rules</div><div class="posture-card-body">'+esc(rulesDetail)+'</div></div>';
+  h+='</div>';
+  // Column 3
+  h+='<div class="posture-col"><div class="posture-col-title">Encryption &amp; Secrets</div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(kmsOk,custKeys.length>0&&!kmsOk,custKeys.length?'':'gray')+' KMS Keys</div><div class="posture-card-body">'+esc(kmsDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(secOk,secs.length>0&&!secOk,secs.length?'':'gray')+' Secrets Manager</div><div class="posture-card-body">'+esc(secDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(true,false,ssm.length?'':'gray')+' SSM Parameters</div><div class="posture-card-body">'+esc(ssmDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(ecrOk,ecrPartial,ecr.length?'':'gray')+' ECR Repositories</div><div class="posture-card-body">'+esc(ecrDetail)+'</div></div>';
+  h+='<div class="posture-card"><div class="posture-card-hdr">'+status(logOk,logs.length>0&&!logOk,logs.length?'':'gray')+' Log Groups</div><div class="posture-card-body">'+esc(logDetail)+'</div></div>';
+  h+='</div></div>';
+  // Footer: integration counts
+  h+='<div class="posture-footer">';
+  if(apis.length)h+='<span class="posture-footer-chip">API Gateway: '+apis.length+'</span>';
+  if(sns.length)h+='<span class="posture-footer-chip">SNS Topics: '+sns.length+'</span>';
+  if(sqs.length)h+='<span class="posture-footer-chip">SQS Queues: '+sqs.length+'</span>';
+  h+='</div>';
+  body.innerHTML=h; // Safe: all values escaped via esc(), content from parsed AWS API responses only
+}
 function openUnifiedDash(tabId){
   var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
   if(!tab) return;
@@ -22686,6 +22985,26 @@ const fileMap=[
   {id:'in_tgwatt',patterns:['transit-gateway-attachment','tgw-attachment','tgw_attachment','tgwattachment']},
   {id:'in_cf',patterns:['cloudfront','cf-distribution','distribution']},
   {id:'in_iam',patterns:['iam','iam-auth','iam_auth','iamauth','account-authorization']},
+  // Governance
+  {id:'in_cloudtrail',patterns:['cloudtrail-trail','cloudtrail_trail','cloudtrail']},
+  {id:'in_cwalarms',patterns:['cloudwatch-alarm','cloudwatch_alarm','cwalarm','cw-alarm']},
+  {id:'in_loggroups',patterns:['log-group','log_group','loggroup']},
+  {id:'in_flowlogs',patterns:['flow-log','flow_log','flowlog']},
+  {id:'in_configrecorders',patterns:['config-recorder','config_recorder','configrecorder']},
+  {id:'in_configrules',patterns:['config-rule','config_rule','configrule']},
+  {id:'in_configconformance',patterns:['config-conformance','config_conformance','conformance-pack','conformance_pack']},
+  {id:'in_securityhub',patterns:['securityhub-standard','securityhub_standard','securityhub','security-hub']},
+  {id:'in_accessanalyzer',patterns:['access-analyzer','access_analyzer','accessanalyzer']},
+  {id:'in_kmskeys',patterns:['kms-key','kms_key','kmskey','kms']},
+  {id:'in_guardduty',patterns:['guardduty-detector','guardduty_detector','guardduty']},
+  {id:'in_secrets',patterns:['secret','secrets']},
+  {id:'in_ssmparams',patterns:['ssm-parameter','ssm_parameter','ssmparameter','ssm']},
+  // Integration
+  {id:'in_ecr',patterns:['ecr-repositor','ecr_repositor','ecrrepositor','ecr']},
+  {id:'in_asg',patterns:['auto-scaling-group','auto_scaling_group','autoscalinggroup','asg']},
+  {id:'in_apigw',patterns:['api-gateway','api_gateway','apigateway','apigw']},
+  {id:'in_sns',patterns:['sns-topic','sns_topic','snstopic','sns']},
+  {id:'in_sqs',patterns:['sqs-queue','sqs_queue','sqsqueue','sqs']},
 ];
 
 function matchFile(fname, content){
@@ -22748,6 +23067,21 @@ function matchFile(fname, content){
     if(_hasKey('CacheClusters'))return 'in_elasticache';
     if(_hasKey('Clusters')&&_hasKey('Redshift'))return 'in_redshift';
     if(_hasKey('UserDetailList')||_hasKey('RoleDetailList')||_hasKey('GroupDetailList'))return 'in_iam';
+    // Governance
+    if(_hasKey('trailList'))return 'in_cloudtrail';
+    if(_hasKey('MetricAlarms'))return 'in_cwalarms';
+    if(_hasKey('logGroups'))return 'in_loggroups';
+    if(_hasKey('FlowLogs'))return 'in_flowlogs';
+    if(_hasKey('ConfigurationRecorders'))return 'in_configrecorders';
+    if(_hasKey('ConfigRules'))return 'in_configrules';
+    if(_hasKey('ConformancePackDetails'))return 'in_configconformance';
+    if(_hasKey('StandardsSubscriptions'))return 'in_securityhub';
+    if(_hasKey('analyzers'))return 'in_accessanalyzer';
+    if(_hasKey('SecretList'))return 'in_secrets';
+    // Integration
+    if(_hasKey('repositories')&&_hasKey('repositoryArn'))return 'in_ecr';
+    if(_hasKey('AutoScalingGroups'))return 'in_asg';
+    if(_hasKey('QueueUrls'))return 'in_sqs';
   }
   return null;
 }

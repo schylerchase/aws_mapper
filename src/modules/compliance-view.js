@@ -39,7 +39,15 @@ export const EFFORT_MAP = {
   'BUDR-HA-1':'med','BUDR-HA-2':'med','BUDR-HA-3':'low','BUDR-HA-4':'med',
   'BUDR-HA-5':'med','BUDR-HA-6':'low',
   'BUDR-BAK-1':'low','BUDR-BAK-2':'med','BUDR-BAK-3':'med','BUDR-BAK-4':'low','BUDR-BAK-5':'low',
-  'BUDR-DR-1':'high','BUDR-DR-2':'med'
+  'BUDR-DR-1':'high','BUDR-DR-2':'med',
+  // Governance
+  'CIS-2.1':'high','CIS-2.2':'low','CIS-2.3':'med','CIS-2.4':'med','CIS-2.7':'med',
+  'GOV-GD1':'high','GOV-GD2':'low',
+  'GOV-CFG1':'high','GOV-CFG2':'med',
+  'GOV-SH1':'high','GOV-AA1':'med',
+  'GOV-KMS1':'low','GOV-LOG1':'low',
+  'GOV-ECR1':'low','GOV-ECR2':'low',
+  'GOV-SEC1':'med','GOV-APIGW1':'low',
 };
 
 // === Compliance References (control → documentation URL) ===
@@ -126,6 +134,24 @@ export const complianceRefs = {
   'BUDR-BAK-5':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html',ref:'EBS Snapshot Scheduling'},
   'BUDR-DR-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS DR Strategy'},
   'BUDR-DR-2':{url:'https://docs.aws.amazon.com/prescriptive-guidance/latest/backup-recovery/ec2-backup.html',ref:'EC2 DR Strategy'},
+  // Governance
+  'CIS-2.1':{url:'https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-a-trail.html',ref:'CIS AWS 2.1 CloudTrail Multi-Region'},
+  'CIS-2.2':{url:'https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-intro.html',ref:'CIS AWS 2.2 Log Validation'},
+  'CIS-2.3':{url:'https://docs.aws.amazon.com/awscloudtrail/latest/userguide/encrypting-cloudtrail-log-files-with-aws-kms.html',ref:'CIS AWS 2.3 KMS Encryption'},
+  'CIS-2.4':{url:'https://docs.aws.amazon.com/awscloudtrail/latest/userguide/send-cloudtrail-events-to-cloudwatch-logs.html',ref:'CIS AWS 2.4 CloudWatch Integration'},
+  'CIS-2.7':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',ref:'CIS AWS 2.7 VPC Flow Logs'},
+  'GOV-GD1':{url:'https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_settingup.html',ref:'GuardDuty Setup'},
+  'GOV-GD2':{url:'https://docs.aws.amazon.com/guardduty/latest/ug/guardduty-features-activation-model.html',ref:'GuardDuty Features'},
+  'GOV-CFG1':{url:'https://docs.aws.amazon.com/config/latest/developerguide/stop-start-recorder.html',ref:'AWS Config Recorder'},
+  'GOV-CFG2':{url:'https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config.html',ref:'AWS Config Rules'},
+  'GOV-SH1':{url:'https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards.html',ref:'Security Hub Standards'},
+  'GOV-AA1':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html',ref:'IAM Access Analyzer'},
+  'GOV-KMS1':{url:'https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html',ref:'KMS Key Rotation'},
+  'GOV-LOG1':{url:'https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html',ref:'CloudWatch Logs Retention'},
+  'GOV-ECR1':{url:'https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-tag-mutability.html',ref:'ECR Tag Immutability'},
+  'GOV-ECR2':{url:'https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html',ref:'ECR Image Scanning'},
+  'GOV-SEC1':{url:'https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html',ref:'Secrets Manager Rotation'},
+  'GOV-APIGW1':{url:'https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-custom-domain-tls-version.html',ref:'API Gateway TLS Policy'},
 };
 
 // === Module State ===

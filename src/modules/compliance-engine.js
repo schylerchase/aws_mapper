@@ -37,6 +37,14 @@ const _CKV_MAP={
   'IAM-3':'CKV_AWS_36',     // MFA for IAM users
   'IAM-11':'CKV_AWS_273',   // Console without MFA
   'IAM-13':'CKV_AWS_56',    // Password policy
+  // Governance
+  'CIS-2.1':'CKV_AWS_252',  // CloudTrail multi-region
+  'CIS-2.2':'CKV_AWS_36',   // CloudTrail log validation
+  'CIS-2.3':'CKV_AWS_35',   // CloudTrail KMS encryption
+  'CIS-2.7':'CKV_AWS_126',  // VPC flow logs
+  'GOV-KMS1':'CKV_AWS_7',   // KMS rotation
+  'GOV-ECR1':'CKV_AWS_51',  // ECR tag immutability
+  'GOV-ECR2':'CKV_AWS_163', // ECR scan on push
 };
 
 // Resource list panel - opened by clicking stats bar chips
@@ -423,6 +431,111 @@ function runPCIDSSChecks(ctx){
     f.push({severity:'CRITICAL',control:'PCI-11.3.1',framework:'PCI',resource:rs.ClusterIdentifier,resourceName:rs.ClusterIdentifier,message:'Redshift publicly accessible — data warehouse exposed',remediation:'Disable public access; use private subnet with VPN access only'})});
   return f;
 }
+// === GOVERNANCE CHECKS ===
+export function runGovernanceChecks(ctx){
+  const f=[];
+  const trails=ctx.cloudtrailTrails||[];
+  const flowLogs=ctx.flowLogs||[];
+  const detectors=ctx.guarddutyDetectors||[];
+  const recorders=ctx.configRecorders||[];
+  const rules=ctx.configRules||[];
+  const shStds=ctx.securityHubStds||[];
+  const analyzers=ctx.accessAnalyzers||[];
+  const keys=ctx.kmsKeys||[];
+  const logs=ctx.logGroups||[];
+  const repos=ctx.ecrRepos||[];
+  const secs=ctx.secrets||[];
+  const apis=ctx.apiGateways||[];
+
+  // CIS-2.1: CloudTrail multi-region
+  trails.forEach(t=>{
+    if(!t.IsMultiRegionTrail)
+      f.push({severity:'CRITICAL',control:'CIS-2.1',framework:'CIS',resource:t.TrailARN||t.Name||'',resourceName:t.Name||'',message:'CloudTrail "'+t.Name+'" is not multi-region',remediation:'Enable multi-region trail to capture all API activity across regions'});
+  });
+  // CIS-2.2: Log file validation
+  trails.forEach(t=>{
+    if(!t.LogFileValidationEnabled)
+      f.push({severity:'HIGH',control:'CIS-2.2',framework:'CIS',resource:t.TrailARN||t.Name||'',resourceName:t.Name||'',message:'CloudTrail "'+t.Name+'" log file validation disabled',remediation:'Enable log file validation to detect tampering'});
+  });
+  // CIS-2.3: KMS encryption
+  trails.forEach(t=>{
+    if(!t.KmsKeyId)
+      f.push({severity:'HIGH',control:'CIS-2.3',framework:'CIS',resource:t.TrailARN||t.Name||'',resourceName:t.Name||'',message:'CloudTrail "'+t.Name+'" not encrypted with KMS',remediation:'Configure KMS encryption for CloudTrail logs'});
+  });
+  // CIS-2.4: CloudWatch integration
+  trails.forEach(t=>{
+    if(!t.CloudWatchLogsLogGroupArn)
+      f.push({severity:'HIGH',control:'CIS-2.4',framework:'CIS',resource:t.TrailARN||t.Name||'',resourceName:t.Name||'',message:'CloudTrail "'+t.Name+'" not integrated with CloudWatch Logs',remediation:'Configure CloudWatch Logs delivery for real-time alerting'});
+  });
+  // CIS-2.7: VPC flow logs
+  const flVpcs=new Set(flowLogs.filter(fl=>fl.ResourceId&&fl.ResourceId.startsWith('vpc-')).map(fl=>fl.ResourceId));
+  (ctx.vpcs||[]).forEach(v=>{
+    if(!flVpcs.has(v.VpcId))
+      f.push({severity:'HIGH',control:'CIS-2.7',framework:'CIS',resource:v.VpcId,resourceName:gn(v)||v.VpcId,message:'VPC '+v.VpcId+' has no flow logs',remediation:'Enable VPC Flow Logs for traffic visibility and audit compliance'});
+  });
+  // GOV-GD1: GuardDuty enabled
+  detectors.forEach(d=>{
+    if(d.Status&&d.Status!=='ENABLED')
+      f.push({severity:'HIGH',control:'GOV-GD1',framework:'GOV',resource:d.DetectorId||'',resourceName:'GuardDuty',message:'GuardDuty detector is not enabled (status: '+d.Status+')',remediation:'Enable GuardDuty for threat detection'});
+  });
+  // GOV-GD2: GuardDuty features
+  detectors.forEach(d=>{
+    (d.Features||[]).forEach(feat=>{
+      if(feat.Status==='DISABLED')
+        f.push({severity:'MEDIUM',control:'GOV-GD2',framework:'GOV',resource:d.DetectorId||'',resourceName:'GuardDuty',message:'GuardDuty feature '+feat.Name+' is disabled',remediation:'Enable '+feat.Name+' for comprehensive threat detection'});
+    });
+  });
+  // GOV-CFG1: Config recorder
+  recorders.forEach(r=>{
+    const rg=r.recordingGroup||{};
+    if(!rg.allSupported)
+      f.push({severity:'HIGH',control:'GOV-CFG1',framework:'GOV',resource:r.name||'',resourceName:'AWS Config',message:'Config recorder "'+r.name+'" not recording all supported resources',remediation:'Enable all-supported resource recording in AWS Config'});
+  });
+  // GOV-CFG2: Config rules
+  if(recorders.length>0&&rules.length===0)
+    f.push({severity:'MEDIUM',control:'GOV-CFG2',framework:'GOV',resource:'',resourceName:'AWS Config',message:'AWS Config recorder active but no Config rules configured',remediation:'Add AWS Config rules to evaluate resource compliance'});
+  // GOV-SH1: Security Hub
+  // Only flag if we have evidence (non-empty data source indicating export ran)
+  // Handled via absence check when other governance data is present
+  if(shStds.length===0&&(trails.length>0||recorders.length>0||detectors.length>0))
+    f.push({severity:'HIGH',control:'GOV-SH1',framework:'GOV',resource:'',resourceName:'Security Hub',message:'Security Hub has no enabled standards',remediation:'Enable Security Hub with AWS Foundational Security Best Practices or CIS standards'});
+  // GOV-AA1: Access Analyzer
+  if(analyzers.length>0&&!analyzers.some(a=>a.status==='ACTIVE'))
+    f.push({severity:'MEDIUM',control:'GOV-AA1',framework:'GOV',resource:'',resourceName:'IAM Access Analyzer',message:'No active IAM Access Analyzer found',remediation:'Create an IAM Access Analyzer to identify unintended resource access'});
+  // GOV-KMS1: KMS rotation (customer-managed keys only)
+  keys.forEach(k=>{
+    if(k.KeyManager==='CUSTOMER'&&k.KeyState==='Enabled'&&!k.RotationEnabled)
+      f.push({severity:'HIGH',control:'GOV-KMS1',framework:'GOV',resource:k.KeyId||k.KeyArn||'',resourceName:k.KeyId||'',message:'KMS key '+k.KeyId+' does not have automatic rotation enabled',remediation:'Enable automatic key rotation for customer-managed KMS keys'});
+  });
+  // GOV-LOG1: Log group retention
+  logs.forEach(lg=>{
+    if(!lg.retentionInDays)
+      f.push({severity:'MEDIUM',control:'GOV-LOG1',framework:'GOV',resource:lg.arn||lg.logGroupName||'',resourceName:lg.logGroupName||'',message:'Log group "'+lg.logGroupName+'" has no retention policy (logs retained indefinitely)',remediation:'Set a retention policy to control storage costs and compliance'});
+  });
+  // GOV-ECR1: Tag immutability
+  repos.forEach(r=>{
+    if(r.imageTagMutability==='MUTABLE')
+      f.push({severity:'MEDIUM',control:'GOV-ECR1',framework:'GOV',resource:r.repositoryArn||r.repositoryName||'',resourceName:r.repositoryName||'',message:'ECR repo "'+r.repositoryName+'" has mutable image tags',remediation:'Enable tag immutability to prevent image overwrites'});
+  });
+  // GOV-ECR2: Scan on push
+  repos.forEach(r=>{
+    const sc=r.imageScanningConfiguration||{};
+    if(!sc.scanOnPush)
+      f.push({severity:'MEDIUM',control:'GOV-ECR2',framework:'GOV',resource:r.repositoryArn||r.repositoryName||'',resourceName:r.repositoryName||'',message:'ECR repo "'+r.repositoryName+'" does not have scan-on-push enabled',remediation:'Enable scan-on-push to detect vulnerabilities in container images'});
+  });
+  // GOV-SEC1: Secret rotation
+  secs.forEach(s=>{
+    if(!s.RotationEnabled)
+      f.push({severity:'HIGH',control:'GOV-SEC1',framework:'GOV',resource:s.ARN||s.Name||'',resourceName:s.Name||'',message:'Secret "'+s.Name+'" does not have rotation enabled',remediation:'Enable automatic rotation for secrets'});
+  });
+  // GOV-APIGW1: TLS policy
+  apis.forEach(a=>{
+    const policy=(a.endpointConfiguration||{}).securityPolicy||a.securityPolicy||'';
+    if(policy!=='TLS_1_2')
+      f.push({severity:'LOW',control:'GOV-APIGW1',framework:'GOV',resource:a.id||a.name||'',resourceName:a.name||'',message:'API Gateway "'+a.name+'" is not enforcing TLS 1.2'+(policy?' (using '+policy+')':''),remediation:'Set minimum TLS version to TLS 1.2 on API Gateway'});
+  });
+  return f;
+}
 let _complianceCacheCtx=null;
 export function invalidateComplianceCache(){
   _complianceCacheCtx=null;
@@ -433,7 +546,7 @@ export function runComplianceChecks(ctx){
   // Skip recomputation if context object hasn't changed (e.g. repeated tab clicks)
   if(_complianceCacheCtx===ctx&&_complianceFindings.length>0){return _complianceFindings}
   _complianceCacheCtx=ctx;
-  _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx)];
+  _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx),...runGovernanceChecks(ctx)];
   try{const iamRaw=safeParse(gv('in_iam'));
   if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}
   // Annotate all findings with Checkov CKV IDs where mapping exists
