@@ -130,7 +130,26 @@ $exports = @(
     @{ Label="WAF WebACLs";          File="waf-web-acls.json";        Cmd=@("wafv2","list-web-acls","--scope","REGIONAL") },
     @{ Label="CloudFront";           File="cloudfront.json";           Cmd=@("cloudfront","list-distributions") },
     # IAM
-    @{ Label="IAM Authorization";    File="iam.json";                  Cmd=@("iam","get-account-authorization-details") }
+    @{ Label="IAM Authorization";    File="iam.json";                  Cmd=@("iam","get-account-authorization-details") },
+    # Governance / Security Posture
+    @{ Label="CloudTrail Trails";     File="cloudtrail-trails.json";     Cmd=@("cloudtrail","describe-trails") },
+    @{ Label="CloudWatch Alarms";     File="cloudwatch-alarms.json";     Cmd=@("cloudwatch","describe-alarms") },
+    @{ Label="CloudWatch Log Groups"; File="log-groups.json";            Cmd=@("logs","describe-log-groups") },
+    @{ Label="VPC Flow Logs";         File="flow-logs.json";             Cmd=@("ec2","describe-flow-logs") },
+    @{ Label="Config Recorders";      File="config-recorders.json";      Cmd=@("configservice","describe-configuration-recorders") },
+    @{ Label="Config Rules";          File="config-rules.json";          Cmd=@("configservice","describe-config-rules") },
+    @{ Label="Config Conformance";    File="config-conformance-packs.json"; Cmd=@("configservice","describe-conformance-packs") },
+    @{ Label="Security Hub Standards";File="securityhub-standards.json"; Cmd=@("securityhub","get-enabled-standards") },
+    @{ Label="IAM Access Analyzer";   File="access-analyzers.json";      Cmd=@("accessanalyzer","list-analyzers") },
+    @{ Label="Secrets Manager";       File="secrets.json";               Cmd=@("secretsmanager","list-secrets") },
+    @{ Label="SSM Parameters";        File="ssm-parameters.json";        Cmd=@("ssm","describe-parameters") },
+    # Containers / Compute
+    @{ Label="ECR Repositories";      File="ecr-repositories.json";      Cmd=@("ecr","describe-repositories") },
+    @{ Label="Auto Scaling Groups";   File="auto-scaling-groups.json";   Cmd=@("autoscaling","describe-auto-scaling-groups") },
+    # Integration
+    @{ Label="API Gateway REST APIs"; File="api-gateways.json";          Cmd=@("apigateway","get-rest-apis") },
+    @{ Label="SNS Topics";            File="sns-topics.json";            Cmd=@("sns","list-topics") },
+    @{ Label="SQS Queues";            File="sqs-queues.json";            Cmd=@("sqs","list-queues") }
 )
 
 # ─── Single-export runner ──────────────────────────────────────
@@ -243,6 +262,80 @@ function Export-EcsServices {
     }
 }
 
+# ─── Multi-step: KMS keys (customer-managed + rotation) ───────
+function Export-KmsKeys {
+    param([string[]]$Flags, [string]$OutPath)
+    Write-Host "    KMS Keys..." -NoNewline
+    try {
+        $raw = & aws @Flags kms list-keys --query 'Keys[].KeyId' --output json 2>&1
+        if ($LASTEXITCODE -ne 0 -or -not $raw) {
+            Write-Host " SKIP" -ForegroundColor Yellow
+            return
+        }
+        $keyIds = $raw | ConvertFrom-Json
+        if (-not $keyIds -or $keyIds.Count -eq 0) {
+            Write-Host " SKIP (no keys)" -ForegroundColor Yellow
+            return
+        }
+        $allKeys = @()
+        foreach ($keyId in $keyIds) {
+            $descRaw = & aws @Flags kms describe-key --key-id $keyId 2>$null
+            if ($LASTEXITCODE -ne 0 -or -not $descRaw) { continue }
+            $desc = ($descRaw | ConvertFrom-Json).KeyMetadata
+            if ($desc.KeyManager -eq "AWS") { continue }
+            $rotRaw = & aws @Flags kms get-key-rotation-status --key-id $keyId 2>$null
+            $rotation = if ($LASTEXITCODE -eq 0 -and $rotRaw) {
+                ($rotRaw | ConvertFrom-Json).KeyRotationEnabled
+            } else { $null }
+            $desc | Add-Member -NotePropertyName "KeyRotationEnabled" -NotePropertyValue $rotation -Force
+            $allKeys += $desc
+        }
+        if ($allKeys.Count -gt 0) {
+            @{ Keys = $allKeys } | ConvertTo-Json -Depth 10 |
+                Out-File -FilePath (Join-Path $OutPath "kms-keys.json") -Encoding utf8
+        }
+        Write-Host " OK ($($allKeys.Count) customer keys)" -ForegroundColor Green
+    } catch {
+        $errMsg = if ($_.Exception.Message) { $_.Exception.Message.Substring(0, [Math]::Min(40, $_.Exception.Message.Length)) } else { "Unknown error" }
+        Write-Host " SKIP ($errMsg)" -ForegroundColor Yellow
+    }
+}
+
+# ─── Multi-step: GuardDuty detectors ─────────────────────────
+function Export-GuardDuty {
+    param([string[]]$Flags, [string]$OutPath)
+    Write-Host "    GuardDuty..." -NoNewline
+    try {
+        $raw = & aws @Flags guardduty list-detectors --query 'DetectorIds[]' --output json 2>&1
+        if ($LASTEXITCODE -ne 0 -or -not $raw) {
+            Write-Host " SKIP" -ForegroundColor Yellow
+            return
+        }
+        $detectorIds = $raw | ConvertFrom-Json
+        if (-not $detectorIds -or $detectorIds.Count -eq 0) {
+            Write-Host " SKIP (no detectors)" -ForegroundColor Yellow
+            return
+        }
+        $allDetectors = @()
+        foreach ($detId in $detectorIds) {
+            $descRaw = & aws @Flags guardduty get-detector --detector-id $detId 2>$null
+            if ($LASTEXITCODE -eq 0 -and $descRaw) {
+                $desc = $descRaw | ConvertFrom-Json
+                $desc | Add-Member -NotePropertyName "DetectorId" -NotePropertyValue $detId -Force
+                $allDetectors += $desc
+            }
+        }
+        if ($allDetectors.Count -gt 0) {
+            @{ Detectors = $allDetectors } | ConvertTo-Json -Depth 10 |
+                Out-File -FilePath (Join-Path $OutPath "guardduty-detectors.json") -Encoding utf8
+        }
+        Write-Host " OK ($($allDetectors.Count) detectors)" -ForegroundColor Green
+    } catch {
+        $errMsg = if ($_.Exception.Message) { $_.Exception.Message.Substring(0, [Math]::Min(40, $_.Exception.Message.Length)) } else { "Unknown error" }
+        Write-Host " SKIP ($errMsg)" -ForegroundColor Yellow
+    }
+}
+
 # ─── Region export orchestrator ────────────────────────────────
 function Export-Region {
     param(
@@ -305,6 +398,8 @@ function Export-Region {
     Write-Host "  Multi-step exports:" -ForegroundColor Cyan
     Export-Route53Records -Flags $flags -OutPath $OutPath
     Export-EcsServices -Flags $flags -OutPath $OutPath
+    Export-KmsKeys -Flags $flags -OutPath $OutPath
+    Export-GuardDuty -Flags $flags -OutPath $OutPath
 
     # Write export log
     $logEntries = @($results | ForEach-Object {
