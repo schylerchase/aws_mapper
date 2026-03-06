@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <body>
 <!-- #endregion HTML HEAD & SCRIPTS -->
 <!-- #region HTML SIDEBAR -->
-<div class="sidebar">
+<div class="sidebar" role="complementary" aria-label="Data input sidebar">
   <div class="sidebar-header">
     <div class="brand-row">
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
@@ -49,9 +49,9 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     </div>
     <div class="global-txt-ctrl">
       <span class="gtc-label">Text Size</span>
-      <button class="gtc-btn" id="gTxtDown">-</button>
+      <button class="gtc-btn" id="gTxtDown" aria-label="Decrease text size">-</button>
       <span class="gtc-val" id="gTxtVal">100%</span>
-      <button class="gtc-btn" id="gTxtUp">+</button>
+      <button class="gtc-btn" id="gTxtUp" aria-label="Increase text size">+</button>
       <span style="flex:1"></span>
       <button class="gtc-btn theme-toggle" id="themeToggle" title="Toggle light/dark mode" onclick="toggleTheme()">&#9734;</button>
     </div>
@@ -83,13 +83,13 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 </div>
 <!-- #endregion HTML SIDEBAR -->
 <!-- #region HTML MAIN CONTENT -->
-<button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#x25C0;</button>
-<div class="main">
+<button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar" aria-label="Toggle sidebar">&#x25C0;</button>
+<div class="main" role="main">
   <div class="grid-bg"></div>
   <div class="design-banner" id="designBanner">
     <span class="db-title">Design Mode</span>
     <span class="db-shortcuts"><kbd>D</kbd> toggle &nbsp;<kbd>Z</kbd> undo &nbsp;<kbd>E</kbd> export plan</span>
-    <button class="db-close" id="designBannerClose" title="Hide banner">&times;</button>
+    <button class="db-close" id="designBannerClose" title="Hide banner" aria-label="Close design mode banner">&times;</button>
   </div>
   <div class="loading-overlay" id="loadingOverlay"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-family:"Segoe UI",system-ui,sans-serif;font-size:11px;color:var(--text-muted)">Rendering map...</div></div>
   <div class="copy-toast" id="copyToast">Copied!</div>
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="stats-bar" id="statsBar"></div>
   <svg id="mapSvg"></svg>
   <div class="legend" id="legend">
-    <div class="legend-title" onclick="this.parentElement.classList.toggle('collapsed')">Legend <span class="lg-arr">&#9660;</span></div>
+    <div class="legend-title" role="button" tabindex="0" aria-label="Toggle legend" onclick="this.parentElement.classList.toggle('collapsed')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.parentElement.classList.toggle('collapsed')}">Legend <span class="lg-arr">&#9660;</span></div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--subnet-public)"></div>Public Subnet</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--subnet-private)"></div>Private Subnet</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--igw-color)"></div>Internet GW</div>
@@ -135,9 +135,9 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="legend-hint">Click subnets for full details | Hover to trace routes</div>
   </div>
   <div class="zoom-controls">
-    <button class="zoom-btn" id="zoomIn">+</button>
-    <button class="zoom-btn" id="zoomOut">-</button>
-    <button class="zoom-btn" id="zoomFit">~</button>
+    <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
+    <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">-</button>
+    <button class="zoom-btn" id="zoomFit" aria-label="Zoom to fit">~</button>
     <div id="zoomLevel" style="font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;color:var(--text-muted);text-align:center;padding:2px 0;min-width:32px">100%</div>
     <div id="detailBtns" style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px">
       <button class="zoom-btn wide" id="btnExpand" title="Show all resources with nested details">Expand</button>
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
         </select>
         <input type="text" id="hubVpcName" class="eb-select" placeholder="Hub VPC name (auto)" style="width:120px;display:none" title="Specify hub VPC name or leave blank for auto-detect">
       </div>
-      <button class="eb-toggle" id="ebToggle">Export &#9654;</button>
+      <button class="eb-toggle" id="ebToggle" aria-label="Toggle export panel">Export &#9654;</button>
     </div>
     <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
     <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="iac-box">
       <div class="iac-header">
         <h3 id="iacTitle">Export as Terraform HCL</h3>
-        <button class="iac-close" id="iacClose">&times;</button>
+        <button class="iac-close" id="iacClose" aria-label="Close IaC export modal">&times;</button>
       </div>
       <div class="iac-opts">
         <label>Mode <select id="iacMode"><option value="import">Import Existing</option><option value="create">Create New (Design Only)</option><option value="recreate">Full Recreate</option></select></label>
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="iac-box" style="width:min(600px,90vw)">
       <div class="iac-header">
         <h3>Export Report</h3>
-        <button class="iac-close" id="compExportClose">&times;</button>
+        <button class="iac-close" id="compExportClose" aria-label="Close export report modal">&times;</button>
       </div>
       <div class="iac-opts" style="flex-direction:column;align-items:stretch;gap:10px;padding:12px">
         <div style="display:flex;gap:12px;font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(11px * var(--txt-scale,1))">
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
       </div>
     </div>
   </div>
-  <div id="bottomToolbar" class="dock-toolbar">
+  <div id="bottomToolbar" class="dock-toolbar" role="toolbar" aria-label="Main toolbar">
     <div class="dock-group">
       <span class="dock-label">FILE</span>
       <button id="saveProjectBtn" class="dock-btn green" title="Save project to file (Ctrl+S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save</button>
