@@ -10560,6 +10560,7 @@ function _loadProjectData(project){
   document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});
   const ta=project.textareas||project.json_data||{};
   Object.entries(ta).forEach(([id,val])=>{const el=document.getElementById(id);if(el){el.value=typeof val==='string'?val:JSON.stringify(val,null,2);try{JSON.parse(el.value);el.className='ji valid'}catch(ex){el.className='ji invalid'}}});
+  _showSidebarEdit();
   if(project.accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=project.accountLabel}
   if(project.layout){const lm=document.getElementById('layoutMode');if(lm){lm.value=project.layout;lm.dispatchEvent(new Event('change'))}}
   if(project.hubVpcName){const hv=document.getElementById('hubVpcName');if(hv)hv.value=project.hubVpcName}
@@ -21426,6 +21427,7 @@ document.getElementById('loadDemo').addEventListener('click',()=>{
   const m={in_vpcs:'vpcs',in_subnets:'subnets',in_rts:'rts',in_sgs:'sgs',in_nacls:'nacls',in_igws:'igws',in_nats:'nats',in_ec2:'ec2',in_albs:'albs',in_peer:'peer',in_vpn:'vpn',in_vpces:'vpces',in_vols:'vols',in_s3:'s3',in_r53:'r53',in_r53records:'r53records',in_tgs:'tgs',in_snaps:'snaps',in_enis:'enis',in_waf:'waf',in_rds:'rds',in_ecs:'ecs',in_lambda:'lambda',in_elasticache:'elasticache',in_redshift:'redshift',in_tgwatt:'tgwatt',in_cf:'cf',in_iam:'iam'};
   Object.entries(m).forEach(([id,k])=>{if(demo[k])document.getElementById(id).value=JSON.stringify(demo[k],null,2)});
   document.querySelectorAll('.ji').forEach(el=>{if(el.value.trim())el.className='ji valid'});
+  _showSidebarEdit();
   document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{h.click()});
   // Load demo annotations
   _annotations={};
@@ -21925,7 +21927,7 @@ function _wrapImportForSummary(result){
       }catch(e){}
     });
     var hasData=counts.vpcs||counts.subnets||counts.ec2;
-    if(hasData)_showSidebarSummary(counts,regions);
+    if(hasData)_showSidebarEdit();
   },200);
 }
 
@@ -22149,7 +22151,7 @@ var _sidebarObserver=new MutationObserver(function(){
         if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
       }catch(e){}
     });
-    if(counts.vpcs||counts.subnets)_showSidebarSummary(counts,regions);
+    if(counts.vpcs||counts.subnets)_showSidebarEdit();
   }
 });
 // Observe textarea value changes via input events (MutationObserver won't catch value changes)
@@ -22180,7 +22182,7 @@ document.getElementById('fileInput').addEventListener('change',function(){
           if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
         }catch(e){}
       });
-      if(counts.vpcs||counts.subnets)_showSidebarSummary(counts,regions);
+      if(counts.vpcs||counts.subnets)_showSidebarEdit();
     }
   },500);
 });
