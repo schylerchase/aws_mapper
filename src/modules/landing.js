@@ -1670,7 +1670,7 @@ function renderExecutiveOverview(ctx){
   });
   const _compY=_gridY+_hdrGridH+4;
   let _compFindings=[];
-  try{_compFindings=runComplianceChecks(_rlCtx)||[]}catch(e){}
+  try{_compFindings=runComplianceChecks(_rlCtx)||[]}catch(e){console.warn('Landing compliance check failed:',e)}
   const _compN=_compFindings.length;
   const _compColor=_compN===0?'#22c55e':_compN<=20?'#eab308':_compN<=50?'#f97316':'#ef4444';
   const _compG=hdrG.append('g').style('cursor','pointer');

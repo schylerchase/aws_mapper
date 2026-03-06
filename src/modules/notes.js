@@ -6,10 +6,10 @@
 const _NOTES_KEY='aws_mapper_annotations';
 let _annotations={};// {resourceId: [{text,category,author,created,updated,pinned}]}
 let _annotationAuthor='';
-try{const s=localStorage.getItem(_NOTES_KEY);if(s)_annotations=JSON.parse(s)}catch(e){}
-try{_annotationAuthor=localStorage.getItem('aws_mapper_note_author')||''}catch(e){}
+try{const s=localStorage.getItem(_NOTES_KEY);if(s)_annotations=JSON.parse(s)}catch(e){console.warn('Failed to load annotations:',e)}
+try{_annotationAuthor=localStorage.getItem('aws_mapper_note_author')||''}catch(e){console.warn('Failed to load note author:',e)}
 const _NOTE_CATEGORIES=['owner','status','incident','todo','info','warning'];
-function _saveAnnotations(){try{localStorage.setItem(_NOTES_KEY,JSON.stringify(_annotations))}catch(e){}}
+function _saveAnnotations(){try{localStorage.setItem(_NOTES_KEY,JSON.stringify(_annotations))}catch(e){console.warn('Failed to save annotations:',e)}}
 function _noteKey(resourceId,accountId){return accountId&&accountId!=='default'?accountId+':'+resourceId:resourceId}
 function _getAllNotes(){
   const all=[];
@@ -123,7 +123,7 @@ function _renderNotesPanel(){
     const author=document.getElementById('noteNewAuthor').value.trim();
     const rid=document.getElementById('noteNewResource').value;
     if(!text.trim()||!rid){_showToast('Select a resource and enter note text');return}
-    if(author){_annotationAuthor=author;try{localStorage.setItem('aws_mapper_note_author',author)}catch(e){}}
+    if(author){_annotationAuthor=author;try{localStorage.setItem('aws_mapper_note_author',author)}catch(e){console.warn('Failed to save note author:',e)}}
     addAnnotation(rid,text,cat,pinned);
     document.getElementById('noteAddForm').style.display='none';
   })}
