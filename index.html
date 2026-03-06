@@ -47,16 +47,28 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
       <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
       <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.7.3</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
-    <div class="global-txt-ctrl">
-      <span class="gtc-label">Text Size</span>
-      <button class="gtc-btn" id="gTxtDown" aria-label="Decrease text size">-</button>
-      <span class="gtc-val" id="gTxtVal">100%</span>
-      <button class="gtc-btn" id="gTxtUp" aria-label="Increase text size">+</button>
-      <span style="flex:1"></span>
-      <button class="gtc-btn theme-toggle" id="themeToggle" title="Toggle light/dark mode" onclick="toggleTheme()">&#9734;</button>
+    <div class="sidebar-hdr-actions">
+      <button class="settings-gear" id="settingsGear" title="Settings" aria-label="Settings">&#9881;</button>
+      <div class="settings-popover" id="settingsPopover">
+        <div class="global-txt-ctrl">
+          <span class="gtc-label">Text Size</span>
+          <button class="gtc-btn" id="gTxtDown" aria-label="Decrease text size">-</button>
+          <span class="gtc-val" id="gTxtVal">100%</span>
+          <button class="gtc-btn" id="gTxtUp" aria-label="Increase text size">+</button>
+          <span style="flex:1"></span>
+          <button class="gtc-btn theme-toggle" id="themeToggle" title="Toggle light/dark mode" onclick="toggleTheme()">&#9734;</button>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="upload-row">
+  <div class="sidebar-cta" id="sidebarCta">
+    <button class="cta-btn cta-primary" id="ctaImportFolder">&#8594; Import Folder</button>
+    <button class="cta-btn cta-secondary" id="ctaPasteJson">&#123;&#125; Paste JSON</button>
+    <button class="cta-btn cta-tertiary" id="ctaLoadReport">&#8593; Load Report</button>
+    <a class="cta-demo" id="ctaDemo">Try the demo &rarr;</a>
+  </div>
+  <div class="sidebar-summary" id="sidebarSummary" style="display:none"></div>
+  <div class="upload-row" id="uploadRow" style="display:none">
     <button class="btn-action green" id="uploadBtn">&uarr; Upload JSON</button>
     <button class="btn-action amber" id="importFolderBtn" style="display:none">&#8594; Import Folder</button>
     <button class="btn-action amber" id="importFolderBrowser">&#8594; Import Folder</button>
@@ -74,9 +86,9 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <input type="file" id="fileInput" multiple accept=".json" style="display:none" />
   </div>
   <div class="upload-status" id="uploadStatus"></div>
-  <div class="sidebar-body" id="sidebarBody"></div>
+  <div class="sidebar-body" id="sidebarBody" style="display:none"></div>
   <div class="sidebar-actions">
-    <button class="btn btn-demo" id="loadDemo">Demo</button>
+    <button class="btn btn-demo" id="loadDemo" style="display:none">Demo</button>
     <button class="btn btn-secondary" id="clearBtn">Clear</button>
     <button class="btn btn-primary" id="renderBtn">Render Map</button>
   </div>
@@ -143,6 +155,12 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
       <button class="zoom-btn wide" id="btnExpand" title="Show all resources with nested details">Expand</button>
       <button class="zoom-btn wide" id="btnCollapse" title="Collapse to VPCs and subnet names only">Collapse</button>
     </div>
+    <div class="zoom-layout-sel" id="zoomLayoutSel">
+      <button class="zoom-layout-btn active" data-layout="grid" title="Grid layout">Grid</button>
+      <button class="zoom-layout-btn" data-layout="landingzone" title="Hub-spoke layout">Hub-Spoke</button>
+      <button class="zoom-layout-btn" data-layout="executive" title="Executive overview">Executive</button>
+      <input type="text" class="zoom-hub-input" id="zoomHubVpc" placeholder="Hub VPC name" title="Specify hub VPC name or leave blank for auto-detect">
+    </div>
     <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;position:relative;display:flex;flex-direction:column;align-items:center">
       <button class="design-btn" id="designToggle" title="Enter Design Mode to propose changes">Design</button>
       <div class="design-help" id="designHelp">
@@ -160,22 +178,20 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="change-log" id="changeLog"></div>
   <div class="export-bar collapsed" id="exportBar">
     <div class="eb-row">
-      <div class="eb-layout-controls">
-        <label class="eb-label">Layout</label>
-        <select id="layoutMode" class="eb-select">
-          <option value="grid">Grid (columns)</option>
-          <option value="landingzone">Landing Zone (hub-spoke)</option>
-          <option value="executive">Executive Overview</option>
-        </select>
-        <input type="text" id="hubVpcName" class="eb-select" placeholder="Hub VPC name (auto)" style="width:120px;display:none" title="Specify hub VPC name or leave blank for auto-detect">
-      </div>
       <button class="eb-toggle" id="ebToggle" aria-label="Toggle export panel">Export &#9654;</button>
     </div>
-    <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
-    <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>
-    <button class="export-btn" id="expLucidDl">Lucid File (.lucid)<span>Download for manual import</span></button>
-    <button class="export-btn" id="expTerraform" style="border-color:#c084fc">Terraform HCL<span>Infrastructure as Code</span></button>
-    <button class="export-btn" id="expCloudformation" style="border-color:#f59e0b">CloudFormation<span>YAML/JSON template</span></button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 8px">
+      <span style="font-family:var(--font-ui);font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;padding:2px 0">Visual</span>
+      <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
+      <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>
+      <button class="export-btn" id="expLucidDl">Lucid File (.lucid)<span>Download for manual import</span></button>
+      <span style="font-family:var(--font-ui);font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;padding:2px 0;border-top:1px solid var(--border);margin-top:2px">Code</span>
+      <button class="export-btn" id="expTerraform" style="border-color:#c084fc">Terraform HCL<span>Infrastructure as Code</span></button>
+      <button class="export-btn" id="expCloudformation" style="border-color:#f59e0b">CloudFormation<span>YAML/JSON template</span></button>
+    </div>
+    <!-- Hidden layout controls (synced from zoom panel) -->
+    <select id="layoutMode" style="display:none"><option value="grid">Grid</option><option value="landingzone">Landing Zone</option><option value="executive">Executive</option></select>
+    <input type="text" id="hubVpcName" style="display:none">
   </div>
   <!-- IaC Export Modal -->
   <div class="iac-modal" id="iacModal">
@@ -253,36 +269,45 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     </div>
   </div>
   <div id="bottomToolbar" class="dock-toolbar" role="toolbar" aria-label="Main toolbar">
-    <div class="dock-group">
+    <div class="dock-group" data-tb-group="file">
       <span class="dock-label">FILE</span>
       <button id="saveProjectBtn" class="dock-btn green" title="Save project to file (Ctrl+S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save</button>
       <button id="loadProjectBtn" class="dock-btn orange" title="Load project from file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Open</button>
       <button id="scanAwsBtn" class="dock-btn amber" style="display:none" title="Scan AWS account via CLI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>Scan AWS</button>
     </div>
-    <div class="dock-group">
+    <div class="dock-group" data-tb-group="primary">
       <span class="dock-label">ANALYZE</span>
-      <button id="searchBtn" class="dock-btn" title="Search resources (/)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search</button>
-      <button id="compareBtn" class="dock-btn mint" title="Compare with another snapshot (Shift+D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><path d="M14 3h7v7M3 14h7v7"/></svg>Compare</button>
-      <button id="timelineBtn" class="dock-btn cyan" title="Snapshot timeline (H)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+      <button id="searchBtn" class="dock-btn" title="Search resources (/)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search<span class="dock-kbd">/</span></button>
+      <button id="compDashBtn" class="dock-btn cyan" title="Compliance dashboard (Shift+C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Compliance<span class="dock-kbd">&#8679;C</span></button>
+      <button id="inventoryBtn" class="dock-btn orange" title="Resource inventory (Shift+I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inventory<span class="dock-kbd">&#8679;I</span></button>
+      <button id="reportsBtn" class="dock-btn amber" title="Report builder (Shift+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reports<span class="dock-kbd">&#8679;R</span></button>
+      <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace<span class="dock-kbd">&#8679;T</span></button>
     </div>
-    <div class="dock-group">
-      <span class="dock-label">DASHBOARDS</span>
-      <button id="compDashBtn" class="dock-btn cyan" title="Compliance dashboard (Shift+C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Compliance</button>
-      <button id="budrBtn" class="dock-btn green" title="Backup & DR assessment (Shift+B)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>BUDR</button>
-      <button id="inventoryBtn" class="dock-btn orange" title="Resource inventory (Shift+I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inventory</button>
-      <button id="govBtn" class="dock-btn purple" title="Governance dashboard (Shift+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Governance</button>
-      <button id="reportsBtn" class="dock-btn amber" title="Report builder (Shift+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reports</button>
+    <div class="dock-overflow" id="tbOverflow">
+      <button class="dock-overflow-btn" id="tbOverflowBtn">More &#9662;</button>
+      <div class="dock-overflow-menu" id="tbOverflowMenu">
+        <button class="dock-overflow-item" data-tb-click="compareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><path d="M14 3h7v7M3 14h7v7"/></svg>Compare</button>
+        <button class="dock-overflow-item" data-tb-click="timelineBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+        <button class="dock-overflow-item" data-tb-click="budrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>BUDR</button>
+        <button class="dock-overflow-item" data-tb-click="govBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Governance</button>
+        <button class="dock-overflow-item" data-tb-click="flowAnalysisBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Flows</button>
+        <button class="dock-overflow-item" data-tb-click="firewallBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
+        <button class="dock-overflow-item" data-tb-click="notesBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Notes</button>
+        <button class="dock-overflow-item" data-tb-click="accountsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Accounts</button>
+      </div>
     </div>
-    <div class="dock-group">
-      <span class="dock-label">NETWORK</span>
-      <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace</button>
-      <button id="flowAnalysisBtn" class="dock-btn green" title="Auto-discover traffic flows (Shift+F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Flows</button>
-      <button id="firewallBtn" class="dock-btn red" title="Open firewall editor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
+    <!-- Hidden buttons for overflow delegation and keyboard shortcuts -->
+    <div style="display:none">
+      <button id="compareBtn"></button>
+      <button id="timelineBtn"></button>
+      <button id="budrBtn"></button>
+      <button id="govBtn"></button>
+      <button id="flowAnalysisBtn"></button>
+      <button id="firewallBtn"></button>
+      <button id="notesBtn"></button>
+      <button id="accountsBtn"></button>
     </div>
-    <div class="dock-group">
-      <span class="dock-label">VIEW</span>
-      <button id="notesBtn" class="dock-btn orange" title="Annotations and notes (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Notes</button>
-      <button id="accountsBtn" class="dock-btn purple" title="Multi-account view (Shift+A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Accounts</button>
+    <div class="dock-group" data-tb-group="help">
       <button id="helpBtn" class="dock-btn help" title="Help and keyboard shortcuts (?)">?</button>
     </div>
   </div>
@@ -544,6 +569,9 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     </div>
     <div class="dp-body" id="dpBody"></div>
   </div>
+  <!-- Onboarding overlay (first-visit guide) -->
+  <div id="onboardOverlay" class="onboard-overlay" style="display:none"></div>
+  <div id="onboardTooltip" class="onboard-tooltip" style="display:none"></div>
 </div>
 <div class="fw-full-panel" id="fwFullPanel">
   <div class="fw-fp-header">

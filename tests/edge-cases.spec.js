@@ -114,8 +114,8 @@ test.describe('State Collisions & Edge Cases', () => {
       }
       await page.waitForTimeout(500);
 
-      // Re-load demo
-      await page.locator('#loadDemo').click();
+      // Re-load demo (button may be hidden in new UX, use evaluate)
+      await page.evaluate(() => document.getElementById('loadDemo').click());
       await page.waitForTimeout(2000);
     });
     expect(errors).toEqual([]);

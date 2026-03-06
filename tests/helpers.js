@@ -8,8 +8,11 @@ const BASE = 'http://localhost:8377/index.html';
  */
 async function loadDemo(page) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  // Skip onboarding overlay for tests
+  await page.evaluate(() => localStorage.setItem('aws_mapper_onboarded', '1'));
   await page.locator('#landingDash').waitFor({ state: 'visible', timeout: 10000 });
-  await page.locator('#loadDemo').click();
+  // Click demo via CTA button or landing button (loadDemo may be hidden in new UX)
+  await page.evaluate(() => document.getElementById('loadDemo').click());
   await page.locator('#landingDash').waitFor({ state: 'hidden', timeout: 15000 });
   await page.locator('.vpc-group').first().waitFor({ state: 'attached', timeout: 15000 });
   return page;

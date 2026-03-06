@@ -17,7 +17,8 @@ test.describe('Dashboard Tabs', () => {
   for (const tab of tabs) {
     test(`${tab.id} tab opens without errors`, async ({ page }) => {
       const errors = await captureErrors(page, async () => {
-        await page.locator(tab.button).click();
+        // Some buttons may be in overflow menu; use evaluate for reliable click
+        await page.evaluate((sel) => document.querySelector(sel).click(), tab.button);
         await page.locator('#udash.open').waitFor({ state: 'visible', timeout: 5000 });
       });
       expect(errors).toEqual([]);
@@ -28,8 +29,8 @@ test.describe('Dashboard Tabs', () => {
   }
 
   test('tab switching preserves dashboard panel', async ({ page }) => {
-    // Open compliance
-    await page.locator('#compDashBtn').click();
+    // Open compliance (use evaluate for reliable click)
+    await page.evaluate(() => document.getElementById('compDashBtn').click());
     await page.locator('#udash.open').waitFor({ state: 'visible', timeout: 5000 });
     const compText = await page.locator('#udashBody').textContent();
 

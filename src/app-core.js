@@ -8071,6 +8071,7 @@ function renderLandingZoneMap(ctx){
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
+  _autoExpandExportBar();
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
@@ -8390,6 +8391,7 @@ function renderExecutiveOverview(ctx){
   leg.classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
+  _autoExpandExportBar();
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
@@ -10477,6 +10479,7 @@ function _renderMapInner(){
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
+  _autoExpandExportBar();
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
   }catch(e){console.error('renderMap error:',e);_showToast('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
 }
@@ -20965,11 +20968,13 @@ document.getElementById('designBannerClose').addEventListener('click',()=>{
   help.addEventListener('mouseleave',()=>{help.classList.remove('visible')});
 })();
 
-// Export bar collapse toggle
+// Export bar collapse toggle (with localStorage persistence)
 document.getElementById('ebToggle').addEventListener('click',function(){
   const eb=document.getElementById('exportBar');
   eb.classList.toggle('collapsed');
-  this.innerHTML=eb.classList.contains('collapsed')?'Export &#9654;':'Export &#9660;';
+  var isCollapsed=eb.classList.contains('collapsed');
+  this.innerHTML=isCollapsed?'Export &#9654;':'Export &#9660;';
+  try{localStorage.setItem('aws_mapper_eb_collapsed',isCollapsed?'1':'0')}catch(e){}
 });
 
 // Highlight lock indicator click to unlock
@@ -21296,7 +21301,7 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   this.value='';
   if(matched>0){_iamData=null;_parseCache={};renderMap()}
 });
-document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});var _svg=d3.select('#mapSvg');_svg.interrupt();_svg.on('.zoom',null);_svg.selectAll('*').remove();_svg.style('display','none');_mapSvg=null;_mapZoom=null;_mapG=null;document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_prebuiltCtx=null;_parseCache={};_iamData=null;_iamReviewData=[];_inventoryData=[];demo=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];_complianceFindings=[];_appRegistry=[];_appAutoDiscovered=false;/* Reset analysis caches */_flowAnalysisCache=null;_faDashRows=null;_depGraph=null;_diffBaseline=null;_diffResults=null;_diffFlatRows=null;_snapshots=[];_iacOutput='';_tfIdMap={};if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=_getMain();if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel()});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});var _svg=d3.select('#mapSvg');_svg.interrupt();_svg.on('.zoom',null);_svg.selectAll('*').remove();_svg.style('display','none');_mapSvg=null;_mapZoom=null;_mapG=null;document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_prebuiltCtx=null;_parseCache={};_iamData=null;_iamReviewData=[];_inventoryData=[];demo=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];_complianceFindings=[];_appRegistry=[];_appAutoDiscovered=false;/* Reset analysis caches */_flowAnalysisCache=null;_faDashRows=null;_depGraph=null;_diffBaseline=null;_diffResults=null;_diffFlatRows=null;_snapshots=[];_iacOutput='';_tfIdMap={};if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=_getMain();if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel();/* Reset sidebar to CTA mode */_showSidebarCta()});
 document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('fileInput').click()});
 document.getElementById('landingImportReport').addEventListener('click',function(){document.getElementById('importReportInput').click()});
@@ -21769,6 +21774,380 @@ document.addEventListener('keydown',function(e){
   if(e.key==='h'&&!_designMode){const tb=document.getElementById('timelineBar');if(tb.classList.contains('open'))closeTimeline();else openTimeline();return}
 
   if(e.key==='A'&&e.shiftKey){_toggleAccountPanel();return}
+});
+
+// === UX OVERHAUL: Progressive Disclosure & Contextual Visibility ===
+
+// --- Sidebar CTA / Progressive Disclosure ---
+function _showSidebarCta(){
+  var cta=document.getElementById('sidebarCta');
+  var body=document.getElementById('sidebarBody');
+  var row=document.getElementById('uploadRow');
+  var summary=document.getElementById('sidebarSummary');
+  if(cta)cta.style.display='';
+  if(body)body.style.display='none';
+  if(row)row.style.display='none';
+  if(summary)summary.style.display='none';
+}
+function _showSidebarEdit(){
+  var cta=document.getElementById('sidebarCta');
+  var body=document.getElementById('sidebarBody');
+  var row=document.getElementById('uploadRow');
+  var summary=document.getElementById('sidebarSummary');
+  if(cta)cta.style.display='none';
+  if(body)body.style.display='';
+  if(row)row.style.display='';
+  if(summary)summary.style.display='none';
+}
+function _showSidebarSummary(counts,regions){
+  var cta=document.getElementById('sidebarCta');
+  var body=document.getElementById('sidebarBody');
+  var row=document.getElementById('uploadRow');
+  var summary=document.getElementById('sidebarSummary');
+  if(cta)cta.style.display='none';
+  if(body)body.style.display='none';
+  if(row)row.style.display='none';
+  if(summary){
+    summary.style.display='';
+    var parts=[];
+    if(counts.vpcs)parts.push('<b>'+counts.vpcs+'</b> VPCs');
+    if(counts.subnets)parts.push('<b>'+counts.subnets+'</b> subnets');
+    if(counts.ec2)parts.push('<b>'+counts.ec2+'</b> EC2');
+    if(counts.rds)parts.push('<b>'+counts.rds+'</b> RDS');
+    if(counts.lambda)parts.push('<b>'+counts.lambda+'</b> Lambda');
+    if(counts.albs)parts.push('<b>'+counts.albs+'</b> ALBs');
+    var h='<div class="summary-counts">'+parts.join(', ')+'</div>';
+    if(regions&&regions.length)h+='<div class="summary-region">'+esc(regions.join(', '))+'</div>';
+    h+='<button class="summary-edit" id="summaryEditBtn">Edit Raw Data</button>';
+    summary.innerHTML=h;
+    var editBtn=document.getElementById('summaryEditBtn');
+    if(editBtn)editBtn.addEventListener('click',_showSidebarEdit);
+  }
+}
+
+// Paste JSON — reveals textarea sections
+document.getElementById('ctaPasteJson').addEventListener('click',_showSidebarEdit);
+
+// Import Folder — delegates to the right button based on environment
+document.getElementById('ctaImportFolder').addEventListener('click',function(){
+  var elBtn=document.getElementById('importFolderBtn');
+  var brBtn=document.getElementById('importFolderBrowser');
+  if(elBtn&&elBtn.style.display!=='none')elBtn.click();
+  else if(brBtn)brBtn.click();
+});
+
+// Load Report — delegates to project load
+document.getElementById('ctaLoadReport').addEventListener('click',function(){
+  document.getElementById('loadProjectBtn').click();
+});
+
+// Demo link — delegates to existing demo handler
+document.getElementById('ctaDemo').addEventListener('click',function(){
+  document.getElementById('loadDemo').click();
+});
+
+// Settings gear toggle
+(function(){
+  var gear=document.getElementById('settingsGear');
+  var pop=document.getElementById('settingsPopover');
+  if(!gear||!pop)return;
+  gear.addEventListener('click',function(e){
+    e.stopPropagation();
+    pop.classList.toggle('open');
+  });
+  document.addEventListener('click',function(e){
+    if(!pop.contains(e.target)&&e.target!==gear)pop.classList.remove('open');
+  });
+})();
+
+// --- Data summary after folder import ---
+// Hook into importFolder to show summary
+var _origImportFolder=typeof importFolder==='function'?importFolder:null;
+function _wrapImportForSummary(result){
+  // After import completes, count resources and show summary
+  if(!result)return;
+  setTimeout(function(){
+    var counts={vpcs:0,subnets:0,ec2:0,rds:0,lambda:0,albs:0};
+    var regions=[];
+    document.querySelectorAll('.ji').forEach(function(el){
+      if(!el.value.trim())return;
+      try{
+        var d=JSON.parse(el.value);
+        if(el.id==='in_vpcs'&&d.Vpcs)counts.vpcs+=d.Vpcs.length;
+        if(el.id==='in_subnets'&&d.Subnets){
+          counts.subnets+=d.Subnets.length;
+          d.Subnets.forEach(function(s){
+            if(s.AvailabilityZone){var r=s.AvailabilityZone.replace(/[a-z]$/,'');if(regions.indexOf(r)<0)regions.push(r)}
+          });
+        }
+        if(el.id==='in_ec2'){
+          var insts=d.Reservations?d.Reservations.flatMap(function(r){return r.Instances||[]}):[];
+          counts.ec2+=insts.length;
+        }
+        if(el.id==='in_rds'&&d.DBInstances)counts.rds+=d.DBInstances.length;
+        if(el.id==='in_lambda'&&d.Functions)counts.lambda+=d.Functions.length;
+        if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
+      }catch(e){}
+    });
+    var hasData=counts.vpcs||counts.subnets||counts.ec2;
+    if(hasData)_showSidebarSummary(counts,regions);
+  },200);
+}
+
+// --- Toolbar Overflow Menu ---
+(function(){
+  var btn=document.getElementById('tbOverflowBtn');
+  var menu=document.getElementById('tbOverflowMenu');
+  if(!btn||!menu)return;
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+  document.addEventListener('click',function(e){
+    if(!menu.contains(e.target)&&e.target!==btn)menu.classList.remove('open');
+  });
+  // Delegate overflow item clicks to hidden buttons
+  menu.addEventListener('click',function(e){
+    var item=e.target.closest('[data-tb-click]');
+    if(!item)return;
+    var targetId=item.getAttribute('data-tb-click');
+    var target=document.getElementById(targetId);
+    if(target)target.click();
+    menu.classList.remove('open');
+  });
+})();
+
+// --- Layout Selector in Zoom Controls ---
+(function(){
+  var sel=document.getElementById('zoomLayoutSel');
+  var hidden=document.getElementById('layoutMode');
+  var hubZoom=document.getElementById('zoomHubVpc');
+  var hubHidden=document.getElementById('hubVpcName');
+  if(!sel||!hidden)return;
+  sel.addEventListener('click',function(e){
+    var btn=e.target.closest('[data-layout]');
+    if(!btn)return;
+    var val=btn.getAttribute('data-layout');
+    // Update visual state
+    sel.querySelectorAll('.zoom-layout-btn').forEach(function(b){b.classList.remove('active')});
+    btn.classList.add('active');
+    // Sync to hidden select
+    hidden.value=val;
+    hidden.dispatchEvent(new Event('change'));
+    // Show/hide hub VPC input
+    if(hubZoom)hubZoom.style.display=val==='landingzone'?'block':'none';
+  });
+  // Sync hub VPC input to hidden input
+  if(hubZoom&&hubHidden){
+    hubZoom.addEventListener('input',function(){hubHidden.value=this.value});
+  }
+})();
+
+// --- Export Bar Auto-Expand After First Render ---
+var _ebAutoExpanded=false;
+function _autoExpandExportBar(){
+  if(_ebAutoExpanded)return;
+  _ebAutoExpanded=true;
+  var eb=document.getElementById('exportBar');
+  var toggle=document.getElementById('ebToggle');
+  if(!eb)return;
+  // Check localStorage for saved state
+  var saved;try{saved=localStorage.getItem('aws_mapper_eb_collapsed')}catch(e){}
+  if(saved==='1')return; // User previously collapsed it, respect that
+  eb.classList.remove('collapsed');
+  eb.classList.add('auto-expand');
+  if(toggle)toggle.innerHTML='Export &#9660;';
+  setTimeout(function(){eb.classList.remove('auto-expand')},500);
+}
+
+// --- Search Results Grouped by Type ---
+var _origSearchHandler=null;
+(function(){
+  var inp=document.getElementById('searchInput');
+  if(!inp)return;
+  // Replace the search input handler with grouped version
+  var newHandler=function(){
+    var q=inp.value.toLowerCase().trim();
+    var res=document.getElementById('searchResults');
+    if(!q||!_rlCtx){res.textContent='';return}
+    if(_searchIndexCtx!==_rlCtx){_searchIndex=_buildSearchIndex(_rlCtx);_searchIndexCtx=_rlCtx}
+    // Collect all matches (up to 50 for grouping)
+    var matches=[];
+    for(var si=0;si<_searchIndex.length&&matches.length<50;si++){
+      if(_searchIndex[si].searchStr.includes(q))matches.push(_searchIndex[si]);
+    }
+    _getAllNotes().forEach(function(n){if(matches.length>=50)return;if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))matches.push({type:'Note',name:(n.text||'').slice(0,50),id:n.resourceId,extra:n.category||'',acct:''})});
+    // Group by type
+    var groups={};var groupOrder=[];
+    matches.forEach(function(m){
+      if(!groups[m.type]){groups[m.type]=[];groupOrder.push(m.type)}
+      groups[m.type].push(m);
+    });
+    var isMA=_rlCtx._multiAccount;
+    var frag=document.createDocumentFragment();
+    groupOrder.forEach(function(type){
+      var items=groups[type];
+      // Group header
+      var hdr=document.createElement('div');hdr.className='search-group-hdr';
+      hdr.innerHTML='<span>'+esc(type)+'</span><span class="search-group-count">'+items.length+'</span>';
+      frag.appendChild(hdr);
+      // Items
+      items.forEach(function(m){
+        var row=document.createElement('div');row.style.cssText='padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px';
+        row.addEventListener('click',function(){closeSearch();_zoomToElement(m.id);_openDetailForSearch(m.type,m.id)});
+        var sp2=document.createElement('span');sp2.style.cssText='flex:1;font-size:12px;color:var(--text-primary)';sp2.textContent=m.name;row.appendChild(sp2);
+        if(isMA&&m.acct&&m.acct!=='default'){var badge=document.createElement('span');badge.style.cssText='font-size:8px;padding:1px 5px;border-radius:3px;background:'+(getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap';badge.textContent=m.acct;row.appendChild(badge)}
+        var sp3=document.createElement('span');sp3.style.cssText='font-size:10px;color:var(--text-muted)';sp3.textContent=m.extra;row.appendChild(sp3);
+        frag.appendChild(row);
+      });
+    });
+    if(!matches.length){var nd=document.createElement('div');nd.style.cssText='padding:20px;text-align:center;color:var(--text-muted);font-size:12px';nd.textContent='No results';frag.appendChild(nd)}
+    res.textContent='';res.appendChild(frag);
+  };
+  // Remove old listener and add new one (clone trick)
+  var newInp=inp.cloneNode(true);
+  inp.parentNode.replaceChild(newInp,inp);
+  newInp.addEventListener('input',newHandler);
+})();
+
+// --- Dashboard Empty States ---
+var _dashEmptyStates={
+  compliance:{icon:'&#9632;',title:'Compliance Dashboard',desc:'Run automated security checks against CIS Benchmarks, Well-Architected Framework, and best practices. Import your AWS data first.',action:'Import Data'},
+  budr:{icon:'&#9730;',title:'Backup & DR Assessment',desc:'Audit backup coverage, retention gaps, and disaster recovery readiness across your infrastructure.',action:'Import Data'},
+  inventory:{icon:'&#9638;',title:'Resource Inventory',desc:'Browse all discovered resources across VPCs, subnets, and services with filtering and export.',action:'Import Data'},
+  governance:{icon:'&#9888;',title:'Governance Dashboard',desc:'Review IAM policies, asset classification, and tiered access controls. Requires governance data.',action:'Import Data'},
+  reports:{icon:'&#9776;',title:'Report Builder',desc:'Generate executive, compliance, and architecture reports. Render your map first to enable reporting.',action:'Load Demo'}
+};
+function _getDashEmptyHtml(key){
+  var cfg=_dashEmptyStates[key];
+  if(!cfg)return'';
+  return '<div class="dash-empty"><div class="dash-empty-icon">'+cfg.icon+'</div><h3>'+cfg.title+'</h3><p>'+cfg.desc+'</p><button class="dash-empty-btn" data-dash-empty-action="'+key+'">'+cfg.action+'</button></div>';
+}
+// Delegate empty state button clicks
+document.addEventListener('click',function(e){
+  var btn=e.target.closest('[data-dash-empty-action]');
+  if(!btn)return;
+  var action=btn.getAttribute('data-dash-empty-action');
+  if(action==='reports'){document.getElementById('loadDemo').click();return}
+  // For all others, focus the sidebar for data import
+  var sidebar=document.querySelector('.sidebar');
+  if(sidebar&&sidebar.classList.contains('collapsed')){
+    document.getElementById('sidebarToggle').click();
+  }
+  _showSidebarCta();
+});
+
+// --- Onboarding Overlay (4-step first-visit guide) ---
+var _onboardSteps=[
+  {target:'sidebarCta',text:'<b>Start here</b> — import your AWS data or try the demo to explore.',arrow:'left',offsetX:380,offsetY:80},
+  {target:'mapSvg',text:'Your <b>infrastructure map</b> renders here with interactive VPCs, subnets, and resources.',arrow:'top',offsetX:null,offsetY:null,center:true},
+  {target:'bottomToolbar',text:'<b>Analyze</b> your infrastructure with dashboards — compliance, inventory, reports, and more.',arrow:'bottom',offsetX:null,offsetY:null,center:true},
+  {target:'exportBar',text:'<b>Export</b> diagrams as PNG, Visio, or Lucid, and infrastructure as Terraform or CloudFormation.',arrow:'bottom',offsetX:null,offsetY:null,center:true}
+];
+function _showOnboardStep(step){
+  var ov=document.getElementById('onboardOverlay');
+  var tt=document.getElementById('onboardTooltip');
+  if(!ov||!tt||step>=_onboardSteps.length){
+    if(ov)ov.style.display='none';
+    if(tt)tt.style.display='none';
+    try{localStorage.setItem('aws_mapper_onboarded','1')}catch(e){}
+    return;
+  }
+  var s=_onboardSteps[step];
+  ov.style.display='block';
+  tt.style.display='block';
+  tt.className='onboard-tooltip'+(s.arrow?' arrow-'+s.arrow:'');
+  tt.innerHTML='<div class="onboard-text">'+s.text+'</div><div class="onboard-actions"><button class="onboard-next" id="onboardNext">'+(step<_onboardSteps.length-1?'Next':'Done')+'</button><button class="onboard-skip" id="onboardSkip">Skip</button><span class="onboard-step">'+(step+1)+' / '+_onboardSteps.length+'</span></div>';
+  // Position near target
+  var target=document.getElementById(s.target);
+  if(target&&!s.center){
+    var rect=target.getBoundingClientRect();
+    tt.style.top=rect.top+(s.offsetY||0)+'px';
+    tt.style.left=(s.offsetX||rect.right+16)+'px';
+  }else if(s.center){
+    tt.style.top='50%';tt.style.left='50%';tt.style.transform='translate(-50%,-50%)';
+  }
+  document.getElementById('onboardNext').addEventListener('click',function(){_showOnboardStep(step+1)});
+  document.getElementById('onboardSkip').addEventListener('click',function(){
+    ov.style.display='none';tt.style.display='none';
+    try{localStorage.setItem('aws_mapper_onboarded','1')}catch(e){}
+  });
+}
+// Trigger onboarding on first visit
+(function(){
+  var done;try{done=localStorage.getItem('aws_mapper_onboarded')}catch(e){}
+  if(!done)setTimeout(function(){_showOnboardStep(0)},800);
+})();
+
+// Replay onboarding from help button
+(function(){
+  var helpBtn=document.getElementById('helpBtn');
+  if(!helpBtn)return;
+  // Long-press or right-click to replay onboarding; normal click opens help overlay
+  helpBtn.addEventListener('contextmenu',function(e){
+    e.preventDefault();
+    _showOnboardStep(0);
+  });
+})();
+
+// --- Sidebar mode: switch from CTA to edit when textareas get data ---
+// When data is loaded via file upload or demo, auto-switch sidebar mode
+var _sidebarObserver=new MutationObserver(function(){
+  var hasData=false;
+  document.querySelectorAll('.ji').forEach(function(el){if(el.value.trim())hasData=true});
+  if(hasData&&document.getElementById('sidebarCta').style.display!=='none'){
+    // Count resources for summary
+    var counts={vpcs:0,subnets:0,ec2:0,rds:0,lambda:0,albs:0};
+    var regions=[];
+    document.querySelectorAll('.ji').forEach(function(el){
+      if(!el.value.trim())return;
+      try{
+        var d=JSON.parse(el.value);
+        if(el.id==='in_vpcs'&&d.Vpcs)counts.vpcs+=d.Vpcs.length;
+        if(el.id==='in_subnets'&&d.Subnets){
+          counts.subnets+=d.Subnets.length;
+          d.Subnets.forEach(function(s){if(s.AvailabilityZone){var r=s.AvailabilityZone.replace(/[a-z]$/,'');if(regions.indexOf(r)<0)regions.push(r)}});
+        }
+        if(el.id==='in_ec2'){var insts=d.Reservations?d.Reservations.flatMap(function(r){return r.Instances||[]}):[];counts.ec2+=insts.length}
+        if(el.id==='in_rds'&&d.DBInstances)counts.rds+=d.DBInstances.length;
+        if(el.id==='in_lambda'&&d.Functions)counts.lambda+=d.Functions.length;
+        if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
+      }catch(e){}
+    });
+    if(counts.vpcs||counts.subnets)_showSidebarSummary(counts,regions);
+  }
+});
+// Observe textarea value changes via input events (MutationObserver won't catch value changes)
+document.querySelectorAll('.ji').forEach(function(el){
+  el.addEventListener('change',function(){
+    // Debounced check — after file upload or programmatic value set
+    setTimeout(function(){_sidebarObserver.disconnect();_sidebarObserver.observe(document.getElementById('sidebarBody'),{childList:true,subtree:true})},300);
+  });
+});
+
+// Hook file input to detect data load and show summary
+document.getElementById('fileInput').addEventListener('change',function(){
+  setTimeout(function(){
+    var hasData=false;
+    document.querySelectorAll('.ji').forEach(function(el){if(el.value.trim())hasData=true});
+    if(hasData){
+      var counts={vpcs:0,subnets:0,ec2:0,rds:0,lambda:0,albs:0};
+      var regions=[];
+      document.querySelectorAll('.ji').forEach(function(el){
+        if(!el.value.trim())return;
+        try{
+          var d=JSON.parse(el.value);
+          if(el.id==='in_vpcs'&&d.Vpcs)counts.vpcs+=d.Vpcs.length;
+          if(el.id==='in_subnets'&&d.Subnets){counts.subnets+=d.Subnets.length;d.Subnets.forEach(function(s){if(s.AvailabilityZone){var r=s.AvailabilityZone.replace(/[a-z]$/,'');if(regions.indexOf(r)<0)regions.push(r)}})}
+          if(el.id==='in_ec2'){var insts=d.Reservations?d.Reservations.flatMap(function(r){return r.Instances||[]}):[];counts.ec2+=insts.length}
+          if(el.id==='in_rds'&&d.DBInstances)counts.rds+=d.DBInstances.length;
+          if(el.id==='in_lambda'&&d.Functions)counts.lambda+=d.Functions.length;
+          if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
+        }catch(e){}
+      });
+      if(counts.vpcs||counts.subnets)_showSidebarSummary(counts,regions);
+    }
+  },500);
 });
 
 // Edge case tests & demo generators extracted to src/dev/edge-tests.js (dev-only)
