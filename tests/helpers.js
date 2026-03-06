@@ -7,9 +7,9 @@ const BASE = 'http://localhost:8377/index.html';
  * Waits for the landing page to disappear and SVG VPC groups to render.
  */
 async function loadDemo(page) {
+  // Skip onboarding overlay — set before navigation to avoid race with setTimeout trigger
+  await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  // Skip onboarding overlay for tests
-  await page.evaluate(() => localStorage.setItem('aws_mapper_onboarded', '1'));
   await page.locator('#landingDash').waitFor({ state: 'visible', timeout: 10000 });
   // Click demo via CTA button or landing button (loadDemo may be hidden in new UX)
   await page.evaluate(() => document.getElementById('loadDemo').click());

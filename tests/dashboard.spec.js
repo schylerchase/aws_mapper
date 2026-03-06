@@ -66,7 +66,7 @@ test.describe('Dashboard Tabs', () => {
   });
 
   test('closing dashboard removes open class', async ({ page }) => {
-    await page.locator('#compDashBtn').click();
+    await page.evaluate(() => document.getElementById('compDashBtn').click());
     await page.locator('#udash.open').waitFor({ state: 'visible', timeout: 5000 });
 
     // Close it

@@ -7,8 +7,8 @@ const { BASE, loadDemo, openDashTab, clickSubnet } = require('./helpers');
 test.describe('Visual Regression', () => {
 
   test('landing page', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await page.locator('#landingDash').waitFor({ state: 'visible', timeout: 10000 });
     await expect(page).toHaveScreenshot('landing.png', { maxDiffPixelRatio: 0.01 });
   });

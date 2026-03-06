@@ -4,8 +4,8 @@ const { BASE, loadDemo, countElements, captureErrors } = require('./helpers');
 test.describe('App Load & Demo Data', () => {
 
   test('landing page renders with demo button', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await expect(page.locator('#landingDash')).toBeVisible();
     await expect(page.locator('#ctaDemo')).toBeVisible();
     await expect(page.locator('#landingDemo')).toBeVisible();

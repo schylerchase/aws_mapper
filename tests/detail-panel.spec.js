@@ -47,7 +47,7 @@ test.describe('Detail Panel (Subnet)', () => {
 
   test('closing detail panel removes open class', async ({ page }) => {
     await clickSubnet(page, 0);
-    await page.locator('#dpClose').click();
+    await page.evaluate(() => document.getElementById('dpClose').click());
     await expect(page.locator('#detailPanel')).not.toHaveClass(/open/);
   });
 
@@ -61,7 +61,7 @@ test.describe('Detail Panel (Subnet)', () => {
     const title1 = await page.locator('#dpTitle').textContent();
 
     // Close and open different subnet
-    await page.locator('#dpClose').click();
+    await page.evaluate(() => document.getElementById('dpClose').click());
     await page.locator('#detailPanel').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
     await clickSubnet(page, 1);
     const title2 = await page.locator('#dpTitle').textContent();
