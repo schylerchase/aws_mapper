@@ -10981,6 +10981,7 @@ function importFolder(result){
       if(inputId){const el=document.getElementById(inputId);if(el){el.value=typeof content==='string'?content:JSON.stringify(content,null,2);el.className='ji valid'}}
     });
     if(loaded>0){
+      _showSidebarEdit();
       if(!_multiViewMode)enterMultiView();
       else _remergeAndRender();
       _showToast(loaded+' region'+(loaded>1?'s':'')+' imported'+(Object.keys(globalFiles).length?' + global files':''));
@@ -11029,6 +11030,7 @@ function importFolder(result){
       if(inputId){const el=document.getElementById(inputId);if(el){el.value=typeof content==='string'?content:JSON.stringify(content,null,2);el.className='ji valid'}}
     });
     if(totalLoaded>0){
+      _showSidebarEdit();
       if(!_multiViewMode)enterMultiView();
       else _remergeAndRender();
       _showToast(totalLoaded+' context'+(totalLoaded>1?'s':'')+' imported from '+profileNames.length+' profile'+(profileNames.length>1?'s':''));
@@ -11048,6 +11050,7 @@ function importFolder(result){
       const el=document.getElementById(inputId);
       if(el){el.value=contentStr;el.className='ji valid';matched++}
     }
+    _showSidebarEdit();
     document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{
       const body=h.nextElementSibling;
       if(body&&body.querySelectorAll('.ji.valid').length)h.click();
@@ -21325,7 +21328,8 @@ document.getElementById('fileInput').addEventListener('change',async function(){
     const el=document.getElementById(inputId);
     if(el){el.value=text;el.className='ji valid';matched++}
   }
-  // expand sections with data
+  // Show sidebar textareas and expand sections with data
+  _showSidebarEdit();
   document.querySelectorAll('.sec-hdr.collapsed').forEach(h=>{
     const body=h.nextElementSibling;
     if(body){const ta=body.querySelectorAll('.ji.valid');if(ta.length)h.click()}
