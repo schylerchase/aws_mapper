@@ -7,7 +7,7 @@ Single-developer Electron + web app. Relaxed structure rules apply per global CL
 
 - **Orchestrator**: `src/app-core.js` (~21.8K lines) -- UI orchestration, renderers, dashboards, event wiring
 - **Modules**: `src/modules/` (31 files) -- extracted logic modules bundled via esbuild into `dist/app.bundle.js`
-- **Core Exports**: `src/core/` (9 files) -- extracted export + diff modules bundled into `dist/core.bundle.js`
+- **Exports**: `src/exports/` (9 files) -- extracted export + diff modules bundled into `dist/core.bundle.js`
 - **Dev Utilities**: `src/dev/edge-tests.js` -- console test runners, dev-only (not shipped in prod)
 - **Layout**: `index.html` (573 lines) -- static HTML structure (sidebar, SVG canvas, dashboards, modals, toolbar)
 - **Styles**: `src/styles/main.css` -- CSS custom properties for dark/light themes

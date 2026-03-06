@@ -1,8 +1,8 @@
 (() => {
-  // src/core/state.js
+  // src/exports/state.js
   var S = {};
 
-  // src/core/exports-iac.js
+  // src/exports/exports-iac.js
   function _sanitizeName(s) {
     if (!s) return "unnamed";
     return s.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/^[0-9]/, "r$&").replace(/-/g, "_").toLowerCase();
@@ -1185,7 +1185,7 @@
     }).join("\n");
   }
 
-  // src/core/exports-visio.js
+  // src/exports/exports-visio.js
   function exportVsdx(showToast) {
     if (typeof JSZip === "undefined") {
       showToast("JSZip not loaded");
@@ -1809,7 +1809,7 @@
     });
   }
 
-  // src/core/exports-lucid.js
+  // src/exports/exports-lucid.js
   var AWS_ICONS = {
     "alb": "data:image/png;base64,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",
     "ec2": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAMKADAAQAAAABAAAAMAAAAADbN2wMAAABO0lEQVRoBe1U2w3CMAwMiA3YCqZhEqahWzEDNB9nWdE16UcTx5WRUNw4re9hJ6X4OVLg+0q//C8h994v6+nnq37wGAcBa9fcO3CpKbgO52fNP2pnBuSW+zs9t+q0HLAGn3FXMdy2mOn9VYGqU/rskTG7ssvvtxwoz0/3LA7sYWuFnmFDV5zHATDSKjPmOj8qZthQ270DQQBWWq1xC1kpj7riAJv0uIUgU8c1bqGO4u76tMzALP3OUDNsmFn3LSQOgJFWgDHX+VExw4ba7h0IArDSapUZmKXfmRAMG+bCfQuJA2CkFWDMdX5UzLChtnsHggCstFplBmbpdyYEw4a5cN9C4gAYaQUYc50fFTNsqH0eB8CIrbM4wbC1HFjYS4P3jsOQnWBu9N6vCdZyoPbuFLkgYG2DewesBYz6fzqMaA3IXYFbAAAAAElFTkSuQmCC",
@@ -4086,7 +4086,7 @@
     return zip.generateAsync({ type: "blob" });
   }
 
-  // src/core/exports-scripts.js
+  // src/exports/exports-scripts.js
   function generateBashScript() {
     var script = [
       "#!/usr/bin/env bash",
@@ -4378,7 +4378,7 @@
     return script;
   }
 
-  // src/core/exports-docx.js
+  // src/exports/exports-docx.js
   async function generateDocx(tone) {
     var btn = document.getElementById("rptExportDOCX");
     if (btn) {
@@ -4855,7 +4855,7 @@
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="80"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="52"/><w:color w:val="1B2A4A"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="200"/></w:pPr><w:rPr><w:i/><w:sz w:val="24"/><w:color w:val="64748B"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="360" w:after="120"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:color w:val="1B2A4A"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="80"/></w:pPr><w:rPr><w:b/><w:sz w:val="26"/><w:color w:val="334155"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="TOCEntry"><w:name w:val="TOC Entry"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="40"/><w:ind w:left="360"/></w:pPr><w:rPr><w:sz w:val="22"/><w:color w:val="2563EB"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="Footer Text"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:pBdr><w:top w:val="single" w:sz="4" w:color="D1D5DB"/></w:pBdr><w:spacing w:before="240"/></w:pPr><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr></w:style><w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D1D5DB"/><w:left w:val="single" w:sz="4" w:color="D1D5DB"/><w:bottom w:val="single" w:sz="4" w:color="D1D5DB"/><w:right w:val="single" w:sz="4" w:color="D1D5DB"/><w:insideH w:val="single" w:sz="4" w:color="D1D5DB"/><w:insideV w:val="single" w:sz="4" w:color="D1D5DB"/></w:tblBorders></w:tblPr></w:style></w:styles>';
   }
 
-  // src/core/exports-xlsx.js
+  // src/exports/exports-xlsx.js
   var _sheetJSLoaded = false;
   function loadSheetJS() {
     if (_sheetJSLoaded && window.XLSX) return Promise.resolve(window.XLSX);
@@ -5927,7 +5927,7 @@
     }
   }
 
-  // src/core/diff-logic.js
+  // src/exports/diff-logic.js
   var DIFF_KEYS = {
     vpcs: "VpcId",
     subnets: "SubnetId",
@@ -6134,7 +6134,7 @@
     return results;
   }
 
-  // src/core/index.js
+  // src/exports/index.js
   window._core = {
     S,
     // IaC generators

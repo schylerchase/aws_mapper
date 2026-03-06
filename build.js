@@ -44,10 +44,10 @@ async function buildD3() {
   console.log(`  libs/d3.custom.min.js  ${size}kb`);
 }
 
-// Bundle src/core/ ES modules → dist/core.bundle.js (extracted modules from app-core.js)
+// Bundle src/exports/ ES modules → dist/core.bundle.js (extracted modules from app-core.js)
 async function buildCoreModules() {
   await esbuild.build({
-    entryPoints: ['src/core/index.js'],
+    entryPoints: ['src/exports/index.js'],
     bundle: true,
     outfile: 'dist/core.bundle.js',
     format: 'iife',

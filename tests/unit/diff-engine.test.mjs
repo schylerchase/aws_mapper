@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   _DIFF_KEYS, _DIFF_VOLATILE, _DIFF_STRUCTURAL,
   normalizeResource, normalizeSG, classifyChange, _fieldDiff, computeDiff
-} from '../../src/core/diff-logic.js';
+} from '../../src/exports/diff-logic.js';
 
 describe('constants', () => {
   it('_DIFF_KEYS has expected resource types', () => {

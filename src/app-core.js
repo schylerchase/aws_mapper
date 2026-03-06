@@ -5314,6 +5314,7 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
   if(mb)h+=sec('Metadata','',mb,false);
   h+='</div>';
   dpBody.innerHTML=h;dp.classList.add('open');
+  _updateBreadcrumbs([{label:'IAM: '+(principal.UserName||principal.RoleName||principal.GroupName||'Principal')}]);
   applyDpScale();
   const backEl=document.getElementById('dpBack');
   if(backEl){backEl.addEventListener('click',(e)=>{e.stopPropagation();const prev=_navStack.pop();if(prev&&prev.fn)prev.fn();else dp.classList.remove('open')})}
@@ -5734,6 +5735,7 @@ function openResourceList(type, pushNav){
   h+='<div id="rlItems">'+items.join('')+'</div>';
   dpBody.innerHTML=h;
   dp.classList.add('open');
+  _updateBreadcrumbs(null); // resource list has no hierarchy breadcrumbs
   // Inject design toolbar for VPC resource list
   if(_designMode&&(type==='VPCs')){
     const tb=document.createElement('div');tb.className='design-toolbar';
@@ -5836,6 +5838,29 @@ function openResourceList(type, pushNav){
 
 let _lastRlType=null;
 let _navStack=[]; // navigation stack for detail panel back button
+
+// Breadcrumb builder for detail panel hierarchy navigation
+// crumbs: [{label,click?}] — last item is current (no click)
+function _updateBreadcrumbs(crumbs){
+  const el=document.getElementById('dpBreadcrumbs');
+  if(!el)return;
+  if(!crumbs||!crumbs.length){el.style.display='none';el.innerHTML='';return}
+  let h='';
+  crumbs.forEach((c,i)=>{
+    if(i>0) h+='<span class="dp-crumb-sep">&#x25B8;</span>';
+    if(i<crumbs.length-1&&c.click){
+      h+='<span class="dp-crumb" data-bc-idx="'+i+'">'+esc(c.label)+'</span>';
+    } else {
+      h+='<span class="dp-crumb-current">'+esc(c.label)+'</span>';
+    }
+  });
+  el.innerHTML=h;
+  el.style.display='flex';
+  el.querySelectorAll('.dp-crumb[data-bc-idx]').forEach(span=>{
+    const idx=parseInt(span.dataset.bcIdx,10);
+    span.addEventListener('click',()=>{if(crumbs[idx]&&crumbs[idx].click)crumbs[idx].click()});
+  });
+}
 
 // Shared detail panel builder for both layouts
 function routeTgtHtml(tgtId){
@@ -6339,6 +6364,13 @@ function openSubnetPanel(sub,vpcId,lk){
   document.getElementById('dpTraceFrom').style.display='';
   dpBody.innerHTML=h;
   dp.classList.add('open');
+  // Breadcrumbs: VPC > Subnet
+  const _bcVpc=(lk.vpcs||[]).find(v=>v.VpcId===vpcId);
+  const _bcVpcLabel=_bcVpc?gn(_bcVpc,vpcId):vpcId;
+  _updateBreadcrumbs([
+    {label:_bcVpcLabel,click:()=>{const sel='[data-vpc-id="'+vpcId+'"]';zoomToNode(sel)}},
+    {label:gn(sub,sub.SubnetId)}
+  ]);
   if(window._fwDpBodyHandler) dpBody.removeEventListener('click', window._fwDpBodyHandler);
   window._fwDpBodyHandler = function(ev){ _fwHandleAction(ev, sub, vpcId, lk); };
   dpBody.addEventListener('click', window._fwDpBodyHandler);
@@ -6578,6 +6610,8 @@ function openGatewayPanel(gwId,gwType,lk){
   document.getElementById('dpTraceFrom').style.display='none';
   dpBody.innerHTML=h;
   dp.classList.add('open');
+  // Breadcrumbs: just gateway type + name
+  _updateBreadcrumbs([{label:gwType+': '+(lk.gwNames[gwId]||gwId)}]);
   injectDesignToolbar(dpBody,{type:'gateway',gwType:gwType,data:gwId});
   applyDpScale();
   dpBody.querySelectorAll('.dp-row[data-act]').forEach(el=>{
@@ -17267,7 +17301,7 @@ document.getElementById('faDashBtn').addEventListener('click',function(){
 // === DIFF / CHANGE DETECTION ===
 // Pure diff logic (normalizeResource, normalizeSG, classifyChange, _fieldDiff,
 // computeDiff, _diffResName, _DIFF_KEYS, _DIFF_VOLATILE, _DIFF_STRUCTURAL)
-// extracted to src/core/diff-logic.js — available at runtime via window._core
+// extracted to src/exports/diff-logic.js — available at runtime via window._core
 var _diffMode=false;
 var _diffBaseline=null;
 var _diffResults=null;
@@ -20538,10 +20572,10 @@ async function _generateReport(){
 }
 // (rptExportHTML listener now wired in _renderReportsTab)
 
-// XLSX utilities and sheet builders moved to src/core/exports-xlsx.js (exposed via window._core)
+// XLSX utilities and sheet builders moved to src/exports/exports-xlsx.js (exposed via window._core)
 
 // === COMPLIANCE-ONLY XLSX (SheetJS) ===
-// _exportComplianceXlsx, _exportFullXlsx moved to src/core/exports-xlsx.js
+// _exportComplianceXlsx, _exportFullXlsx moved to src/exports/exports-xlsx.js
 
 function _exportFullHTML(){
   var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')};
@@ -20858,11 +20892,11 @@ function _exportFullCSV(){
   }
 }
 
-// XLSX sheet builders (AppSummary, IAM, Classification, Firewall) moved to src/core/exports-xlsx.js
+// XLSX sheet builders (AppSummary, IAM, Classification, Firewall) moved to src/exports/exports-xlsx.js
 
-// DOCX export moved to src/core/exports-docx.js (exposed via window._core)
+// DOCX export moved to src/exports/exports-docx.js (exposed via window._core)
 
-// _generateXlsx moved to src/core/exports-xlsx.js (exposed via window._core)
+// _generateXlsx moved to src/exports/exports-xlsx.js (exposed via window._core)
 // (rptExportXLSX listener now wired in _renderReportsTab)
 
 // Report footer stats
@@ -21001,6 +21035,7 @@ document.getElementById('dpClose').addEventListener('click',()=>{
   document.getElementById('dpExpandAll').style.display='none';
   document.getElementById('dpCollapseAll').style.display='none';
   document.getElementById('dpTraceFrom').style.display='none';
+  _updateBreadcrumbs(null);
 });
 document.getElementById('dpExpandAll').addEventListener('click',()=>{
   document.getElementById('dpBody').querySelectorAll('.dp-sec-hdr.collapsed').forEach(el=>{el.classList.remove('collapsed');el.nextElementSibling.classList.remove('hidden')});
@@ -21492,7 +21527,7 @@ document.getElementById('expPng').addEventListener('click',()=>{
 document.getElementById('expVsdx').addEventListener('click',()=>{window._core.exportVsdx(_showToast)});
 
 
-// Lucid export moved to src/core/exports-lucid.js (exposed via window._core)
+// Lucid export moved to src/exports/exports-lucid.js (exposed via window._core)
 document.getElementById('expLucidDl').addEventListener('click',async()=>{
   try{
     const blob=await window._core.buildLucidZip();
@@ -21553,7 +21588,7 @@ updateDetailBtns();
 let _iacType='terraform'; // 'terraform' | 'cloudformation'
 let _iacOutput=''; // raw generated text
 
-// IaC generators moved to src/core/exports-iac.js (exposed via window._core)
+// IaC generators moved to src/exports/exports-iac.js (exposed via window._core)
 
 // --- IaC Modal UI ---
 function openIacModal(type){

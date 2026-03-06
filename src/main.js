@@ -85,7 +85,7 @@ import * as ExportUtils from './modules/export-utils.js';
 import * as IacGenerator from './modules/iac-generator.js';
 
 // NOTE: Diff and report code lives in app-core.js (DOM-coupled).
-// Pure diff logic extracted to src/core/diff-logic.js (bundled into core.bundle.js).
+// Pure diff logic extracted to src/exports/diff-logic.js (bundled into core.bundle.js).
 
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
@@ -161,7 +161,7 @@ window.AppModules = {
   ExportUtils,
   IacGenerator,
 
-  // Note: diff/report code lives in app-core.js; pure diff logic in src/core/diff-logic.js
+  // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
 };
 
 // Make functions available globally (transitional - will remove once all code is modularized)

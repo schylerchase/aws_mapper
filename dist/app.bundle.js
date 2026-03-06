@@ -2991,10 +2991,12 @@ var AppBundle = (() => {
     const s = localStorage.getItem(NOTES_KEY);
     if (s) annotations = JSON.parse(s);
   } catch (e) {
+    console.warn("Failed to load annotations:", e);
   }
   try {
     annotationAuthor = localStorage.getItem("aws_mapper_note_author") || "";
   } catch (e) {
+    console.warn("Failed to load note author:", e);
   }
   var maxSnapshots = typeof window !== "undefined" && window.electronAPI ? 5 : MAX_SNAPSHOTS;
   function getSnapshots() {
@@ -3035,6 +3037,7 @@ var AppBundle = (() => {
     try {
       localStorage.setItem("aws_mapper_note_author", v);
     } catch (e) {
+      console.warn("Failed to save note author:", e);
     }
   }
   function saveSnapshots() {
@@ -3046,6 +3049,7 @@ var AppBundle = (() => {
         try {
           localStorage.setItem(SNAP_KEY, JSON.stringify(snapshots));
         } catch (e2) {
+          console.warn("Failed to save trimmed snapshots:", e2);
         }
       }
     }
@@ -3064,6 +3068,7 @@ var AppBundle = (() => {
     try {
       localStorage.setItem(NOTES_KEY, JSON.stringify(annotations));
     } catch (e) {
+      console.warn("Failed to save annotations:", e);
     }
   }
   function noteKey(resourceId, accountId) {
@@ -6120,6 +6125,7 @@ var AppBundle = (() => {
     const raw = localStorage.getItem(MUTE_KEY);
     if (raw) _mutedFindings = new Set(JSON.parse(raw));
   } catch (e) {
+    console.warn("Failed to load muted findings:", e);
   }
   function getCompDashState() {
     return _compDashState;
@@ -6137,6 +6143,7 @@ var AppBundle = (() => {
     try {
       localStorage.setItem(MUTE_KEY, JSON.stringify([..._mutedFindings]));
     } catch (e) {
+      console.warn("Failed to save muted findings:", e);
     }
   }
   function muteKey(f) {
@@ -7132,6 +7139,7 @@ var AppBundle = (() => {
         try {
           trustParsed = JSON.parse(trustDoc);
         } catch (e) {
+          console.warn("Failed to parse trust policy:", e);
         }
       } else if (trustDoc) trustParsed = trustDoc;
       var crossAccts = [];
@@ -9225,7 +9233,7 @@ var AppBundle = (() => {
     // Phase 5: Core
     ExportUtils: export_utils_exports,
     IacGenerator: iac_generator_exports
-    // Note: diff/report code lives in app-core.js; pure diff logic in src/core/diff-logic.js
+    // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
   };
   Object.assign(window, window.AppModules);
   if (!window._complianceFindings) window._complianceFindings = [];
