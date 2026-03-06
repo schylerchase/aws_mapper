@@ -5340,7 +5340,7 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
   applyDpScale();
   const backEl=document.getElementById('dpBack');
   if(backEl){backEl.addEventListener('click',(e)=>{e.stopPropagation();const prev=_navStack.pop();if(prev&&prev.fn)prev.fn();else dp.classList.remove('open')})}
-  dpBody.querySelectorAll('.copyable').forEach(el=>{el.addEventListener('click',function(e){e.stopPropagation();navigator.clipboard.writeText(this.dataset.copy);const t=document.getElementById('copyToast');if(t){t.textContent='Copied!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1200)}})});
+  dpBody.addEventListener('click',function(e){var el=e.target.closest('.copyable');if(!el)return;e.stopPropagation();navigator.clipboard.writeText(el.dataset.copy);var t=document.getElementById('copyToast');if(t){t.textContent='Copied!';t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1200)}});
 }
 
 // #endregion GOVERNANCE & INVENTORY
@@ -18372,10 +18372,7 @@ function showDependencies(resourceId){
   h+='</div>';
   body.innerHTML=h;
   // Click to zoom
-  body.querySelectorAll('.dep-node[data-id]').forEach(el=>{el.addEventListener('click',()=>{
-    document.getElementById('depOverlay').classList.remove('open');
-    _zoomToElement(el.dataset.id);
-  })});
+  body.addEventListener('click',function(e){var el=e.target.closest('.dep-node[data-id]');if(!el)return;document.getElementById('depOverlay').classList.remove('open');_zoomToElement(el.dataset.id)});
   document.getElementById('depOverlay').classList.add('open');
   // Store for blast highlighting
   document.getElementById('depBlastBtn').onclick=()=>{
@@ -19158,11 +19155,7 @@ function _renderClassificationTab(){
     });
   });
   // Resource name clicks → jump to resource on map and open detail panel
-  body.querySelectorAll('.gov-res-link').forEach(function(el){el.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid)return;
-    closeUnifiedDash();
-    setTimeout(function(){_zoomAndShowDetail(rid)},250);
-  })});
+  body.addEventListener('click',function(e){var el=e.target.closest('.gov-res-link');if(!el)return;e.stopPropagation();var rid=el.dataset.rid;if(!rid)return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250)});
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
     var rows=[['Resource','Type','App','Tier','RPO','RTO','Classification','VPC']];
