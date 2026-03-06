@@ -103,15 +103,12 @@ test.describe('State Collisions & Edge Cases', () => {
 
     // Clear
     const errors = await captureErrors(page, async () => {
-      await page.locator('#loadDemo').evaluate((btn) => {
-        // Find and click the Clear button
-        document.querySelector('#clearBtn, [id*="clear" i], .btn-clear')?.click();
+      await page.evaluate(() => {
+        // Find and click the Clear button via DOM (overlay may block Playwright clicks)
+        const clearBtn = document.querySelector('#clearBtn, [id*="clear" i], .btn-clear')
+          || [...document.querySelectorAll('button')].find(b => /clear/i.test(b.textContent));
+        if (clearBtn) clearBtn.click();
       });
-      // Fallback: use the clear button directly
-      const clearBtn = page.locator('button:has-text("CLEAR")');
-      if (await clearBtn.isVisible()) {
-        await clearBtn.click();
-      }
       await page.waitForTimeout(500);
 
       // Re-load demo (button may be hidden in new UX, use evaluate)
@@ -146,7 +143,7 @@ test.describe('State Collisions & Edge Cases', () => {
         };
       });
 
-      await page.locator('#rptExportHTML').click();
+      await page.evaluate(() => document.getElementById('rptExportHTML').click());
       await page.waitForTimeout(500);
     });
     expect(errors).toEqual([]);
