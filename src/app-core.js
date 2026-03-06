@@ -21992,6 +21992,8 @@ function _autoExpandExportBar(){
   var eb=document.getElementById('exportBar');
   var toggle=document.getElementById('ebToggle');
   if(!eb)return;
+  // Don't auto-expand on small/tablet screens — buttons stack and cover the map
+  if(window.innerWidth<=1024)return;
   // Check localStorage for saved state
   var saved;try{saved=localStorage.getItem('aws_mapper_eb_collapsed')}catch(e){}
   if(saved==='1')return; // User previously collapsed it, respect that
