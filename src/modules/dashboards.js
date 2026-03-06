@@ -388,40 +388,25 @@ function _renderClassificationTab(){
   // Wire body/footer events (these get recreated each render)
   if(document.getElementById('govPrev')) document.getElementById('govPrev').addEventListener('click',function(){st.page--;_renderClassificationTab()});
   if(document.getElementById('govNext')) document.getElementById('govNext').addEventListener('click',function(){st.page++;_renderClassificationTab()});
-  // Sort headers
-  body.querySelectorAll('th[data-sort-col]').forEach(function(th){
-    th.addEventListener('click',function(){
-      var col=this.dataset.sortCol;
-      if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
-      else{st.sort=col;st.sortDir='asc'}
-      st.page=1;_renderClassificationTab();
+  // Delegated click/change handlers for classification tab
+  if(!body._govDelegated){body._govDelegated=true;
+    body.addEventListener('click',function(e){
+      var th=e.target.closest('th[data-sort-col]');
+      if(th){var col=th.dataset.sortCol;if(st.sort===col)st.sortDir=st.sortDir==='asc'?'desc':'asc';else{st.sort=col;st.sortDir='asc'}st.page=1;_renderClassificationTab();return}
+      var card=e.target.closest('.gov-tier-card[data-gov-tier]');
+      if(card){var tier=card.dataset.govTier;st.filter=st.filter===tier?'all':tier;document.getElementById('govFilter').value=st.filter;st.page=1;_renderClassificationTab();return}
+      var link=e.target.closest('.gov-res-link');
+      if(link){e.stopPropagation();var rid=link.dataset.rid;if(!rid)return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250)}
     });
-  });
-  // Tier card clicks
-  body.querySelectorAll('.gov-tier-card[data-gov-tier]').forEach(function(card){
-    card.addEventListener('click',function(){
-      var tier=this.dataset.govTier;
-      st.filter=st.filter===tier?'all':tier;
-      document.getElementById('govFilter').value=st.filter;
-      st.page=1;_renderClassificationTab();
-    });
-  });
-  // Override selects
-  body.querySelectorAll('.gov-override-select').forEach(function(sel){
-    sel.addEventListener('change',function(){
-      var resId=this.dataset.resId;var newTier=this.value;
+    body.addEventListener('change',function(e){
+      var sel=e.target.closest('.gov-override-select');
+      if(!sel)return;var resId=sel.dataset.resId;var newTier=sel.value;
       _classificationOverrides[resId]=newTier;
       var item=_classificationData.find(function(r){return r.id===resId});
       if(item){item.tier=newTier;item.rpo=_TIER_RPO_RTO[newTier].rpo;item.rto=_TIER_RPO_RTO[newTier].rto;item.auto=false}
       _renderClassificationTab();
     });
-  });
-  // Resource name clicks → jump to resource on map and open detail panel
-  body.querySelectorAll('.gov-res-link').forEach(function(el){el.addEventListener('click',function(e){
-    e.stopPropagation();var rid=this.dataset.rid;if(!rid)return;
-    closeUnifiedDash();
-    setTimeout(function(){_zoomAndShowDetail(rid)},250);
-  })});
+  }
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
     var rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];

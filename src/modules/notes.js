@@ -112,9 +112,12 @@ function _renderNotesPanel(){
     });
   }
   body.innerHTML=h;
-  body.querySelectorAll('.note-zoom-btn').forEach(btn=>{btn.addEventListener('click',function(e){e.stopPropagation();const rid=this.dataset.rid;closeNotesPanel();_zoomToElement(rid)})});
-  body.querySelectorAll('.note-edit-btn').forEach(btn=>{btn.addEventListener('click',function(e){e.stopPropagation();_showEditNote(this.dataset.rid,parseInt(this.dataset.ni))})});
-  body.querySelectorAll('.note-del-btn').forEach(btn=>{btn.addEventListener('click',function(e){e.stopPropagation();deleteAnnotation(this.dataset.rid,parseInt(this.dataset.ni))})});
+  if(!body._notesDelegated){body._notesDelegated=true;body.addEventListener('click',function(e){
+    var btn=e.target.closest('.note-zoom-btn,.note-edit-btn,.note-del-btn');if(!btn)return;e.stopPropagation();
+    if(btn.classList.contains('note-zoom-btn')){closeNotesPanel();_zoomToElement(btn.dataset.rid)}
+    else if(btn.classList.contains('note-edit-btn')){_showEditNote(btn.dataset.rid,parseInt(btn.dataset.ni))}
+    else if(btn.classList.contains('note-del-btn')){deleteAnnotation(btn.dataset.rid,parseInt(btn.dataset.ni))}
+  })}
   const addBtn=document.getElementById('noteAddSave');
   if(addBtn){addBtn.addEventListener('click',()=>{
     const text=document.getElementById('noteNewText').value;

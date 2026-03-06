@@ -2272,7 +2272,7 @@ function _renderCompDash(bodyOnly){
     document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_compDashState._cachedView=null;_renderCompDash()});
     document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash(true)});
     document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_compDashState._cachedView=null;_renderCompDash()});
-    document.querySelectorAll('#compViewToggle .comp-view-btn').forEach(function(btn){btn.addEventListener('click',function(){_compDashState.view=this.dataset.view;_renderCompDash()})});
+    document.getElementById('compViewToggle').addEventListener('click',function(e){var btn=e.target.closest('.comp-view-btn');if(!btn)return;_compDashState.view=btn.dataset.view;_renderCompDash()});
     document.getElementById('compToggleSummary').addEventListener('click',function(){
       _compDashState.execSummary=!_compDashState.execSummary;
       this.textContent=_compDashState.execSummary?'Hide Summary':'Executive Summary';
@@ -2498,40 +2498,17 @@ function _renderActionPlan(view){
   });
   if(!view.filtered.length)h+='<div class="comp-no-findings">No findings match current filters</div>';
   body.insertAdjacentHTML('beforeend',h);
-  // Tier header collapse/expand
-  body.querySelectorAll('.comp-tier-header').forEach(function(hdr){
-    hdr.addEventListener('click',function(){
-      var sec=this.closest('.comp-tier-section');
-      var bd=sec.querySelector('.comp-tier-body');
-      if(this.classList.contains('collapsed')){this.classList.remove('collapsed');bd.style.display=''}
-      else{this.classList.add('collapsed');bd.style.display='none'}
-    });
-  });
-  // Resource card expand/collapse
-  body.querySelectorAll('.comp-rc-header').forEach(function(hdr){
-    hdr.addEventListener('click',function(e){
-      if(e.target.classList.contains('rc-jump'))return;
-      this.closest('.comp-resource-card').classList.toggle('expanded');
-    });
-  });
-  // Jump buttons
-  body.querySelectorAll('.rc-jump').forEach(function(btn){
-    btn.addEventListener('click',function(e){
-      e.stopPropagation();
-      var rid=this.dataset.rid;if(!rid||rid==='Multiple')return;
-      closeUnifiedDash();
-      setTimeout(function(){_zoomAndShowDetail(rid)},250);
-    });
-  });
-  // Mute buttons
-  body.querySelectorAll('.comp-mute-btn').forEach(function(btn){
-    btn.addEventListener('click',function(e){
-      e.stopPropagation();
-      var t=this.dataset.tier,ri=parseInt(this.dataset.ri),fi=parseInt(this.dataset.fi);
-      var rg=groups[t]&&groups[t][ri];
-      if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_compDashState._cachedView=null;_renderCompDash()}
-    });
-  });
+  // Delegated click handler for all compliance dashboard interactions
+  if(!body._compDelegated){body._compDelegated=true;body.addEventListener('click',function(e){
+    var tier=e.target.closest('.comp-tier-header');
+    if(tier){var sec=tier.closest('.comp-tier-section');var bd=sec.querySelector('.comp-tier-body');if(tier.classList.contains('collapsed')){tier.classList.remove('collapsed');bd.style.display=''}else{tier.classList.add('collapsed');bd.style.display='none'}return}
+    var mute=e.target.closest('.comp-mute-btn');
+    if(mute){e.stopPropagation();var t=mute.dataset.tier,ri=parseInt(mute.dataset.ri),fi=parseInt(mute.dataset.fi);var rg=groups[t]&&groups[t][ri];if(rg&&rg.findings[fi]){_toggleMute(rg.findings[fi]);_compDashState._cachedView=null;_renderCompDash()}return}
+    var jump=e.target.closest('.rc-jump');
+    if(jump){e.stopPropagation();var rid=jump.dataset.rid;if(!rid||rid==='Multiple')return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250);return}
+    var rc=e.target.closest('.comp-rc-header');
+    if(rc){rc.closest('.comp-resource-card').classList.toggle('expanded')}
+  })}
 }
 function _calcComplianceScore(findings){
   const active=findings.filter(f=>!_isMuted(f));if(!active.length)return{score:100,grade:'A',color:'#22c55e'};
@@ -5725,26 +5702,23 @@ function openResourceList(type, pushNav){
           items.push('<div class="dp-row" data-iam-user="'+ui+'" style="border-left:3px solid #3b82f6;padding-left:8px;margin:3px 0;cursor:pointer">'+badges.join(' ')+' <span style="color:var(--accent-cyan);text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(103,232,249,.3)">'+esc(u.UserName)+'</span><br><span class="k">'+polCount+' policies</span></div>');
         });
       }
-      // Store iamData for click handlers
-      setTimeout(()=>{
-        document.querySelectorAll('[data-iam-role]').forEach(el=>{
-          el.addEventListener('click',(e)=>{e.stopPropagation();const ri=parseInt(el.dataset.iamRole);const role=(iamData.roles||[])[ri];if(role)openIAMPrincipalPanel(role,iamData,ctx)});
-        });
-        document.querySelectorAll('.iam-dashboard-link').forEach(function(el){el.addEventListener('click',function(){document.getElementById('detailPanel').classList.remove('open');openGovernanceDashboard('iam')})});
-        document.querySelectorAll('[data-iam-user]').forEach(el=>{
-          el.addEventListener('click',(e)=>{e.stopPropagation();
-            const ui=parseInt(el.dataset.iamUser);const user=(iamData.users||[])[ui];
-            if(user){
-              // Enrich user with _isAdmin/_hasWildcard for display
-              user._isAdmin=false;user._hasWildcard=false;
-              const ups3=[...(user.UserPolicyList||[]),...(user.AttachedManagedPolicies||[])];
-              ups3.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))user._isAdmin=true;if(r.some(x=>x==='*'))user._hasWildcard=true}})});
-              (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*'))user._isAdmin=true;if(r.some(x=>x==='*'))user._hasWildcard=true}})}}});
-              openIAMPrincipalPanel(user,iamData,ctx);
-            }
-          });
-        });
-      },50);
+      // Delegated click handler for IAM role/user/dashboard links
+      dpBody._iamData=iamData;dpBody._iamCtx=ctx;
+      if(!dpBody._iamDelegated){dpBody._iamDelegated=true;dpBody.addEventListener('click',function(e){
+        var iam=this._iamData,ic=this._iamCtx;if(!iam)return;
+        var role=e.target.closest('[data-iam-role]');
+        if(role){e.stopPropagation();var ri=parseInt(role.dataset.iamRole);var r=(iam.roles||[])[ri];if(r)openIAMPrincipalPanel(r,iam,ic);return}
+        var dash=e.target.closest('.iam-dashboard-link');
+        if(dash){document.getElementById('detailPanel').classList.remove('open');openGovernanceDashboard('iam');return}
+        var usr=e.target.closest('[data-iam-user]');
+        if(usr){e.stopPropagation();var ui=parseInt(usr.dataset.iamUser);var user=(iam.users||[])[ui];
+          if(user){user._isAdmin=false;user._hasWildcard=false;
+            var ups3=[].concat(user.UserPolicyList||[],user.AttachedManagedPolicies||[]);
+            ups3.forEach(function(p){var doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(function(s){if(s.Effect==='Allow'){var a=Array.isArray(s.Action)?s.Action:[s.Action||''];var rv=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(function(x){return x==='*'}))user._isAdmin=true;if(rv.some(function(x){return x==='*'}))user._hasWildcard=true}})});
+            (user.AttachedManagedPolicies||[]).forEach(function(mp){var pol=(iam.policies||[]).find(function(p){return p.Arn===mp.PolicyArn});if(pol){var ver=(pol.PolicyVersionList||[]).find(function(v){return v.IsDefaultVersion});if(ver){var dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(function(s){if(s.Effect==='Allow'){var a=Array.isArray(s.Action)?s.Action:[s.Action||''];var rv=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(function(x){return x==='*'}))user._isAdmin=true;if(rv.some(function(x){return x==='*'}))user._hasWildcard=true}})}}});
+            openIAMPrincipalPanel(user,iam,ic)}
+        }
+      })}
       break;
     }
     default: return;
@@ -19371,7 +19345,7 @@ function _renderAppSummaryTab(){
     body.querySelectorAll('.app-sel-cb').forEach(function(cb){cb.checked=checked});
     _updateDelBtn();
   });
-  body.querySelectorAll('.app-sel-cb').forEach(function(cb){cb.addEventListener('change',_updateDelBtn)});
+  body.addEventListener('change',function(e){if(e.target.classList.contains('app-sel-cb'))_updateDelBtn()});
   delSelBtn.addEventListener('click',function(){
     var toDelete={};
     body.querySelectorAll('.app-sel-cb:checked').forEach(function(cb){toDelete[cb.dataset.idx]=true});
@@ -21710,16 +21684,15 @@ document.getElementById('iacDownload').addEventListener('click',()=>{
 document.getElementById('compExportClose').addEventListener('click',()=>document.getElementById('compExportModal').classList.remove('open'));
 document.getElementById('compExportModal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')});
 document.getElementById('compExpCancel').addEventListener('click',()=>document.getElementById('compExportModal').classList.remove('open'));
-document.querySelectorAll('#compExportModal input[type="checkbox"]').forEach(cb=>cb.addEventListener('change',_updateCompExpPreview));
-// Scope toggle: show/hide compliance-specific filters for Full Assessment mode
-document.querySelectorAll('input[name="compExpScope"]').forEach(function(r){
-  r.addEventListener('change',function(){
+document.getElementById('compExportModal').addEventListener('change',function(e){
+  if(e.target.type==='checkbox'){_updateCompExpPreview();return}
+  if(e.target.name==='compExpScope'){
     var isFull=document.getElementById('compExpScopeFull').checked;
     document.getElementById('compExpFilters').style.display=isFull?'none':'flex';
     document.getElementById('compExpMutedWrap').style.display=isFull?'none':'';
     document.getElementById('compExpRemWrap').style.display=isFull?'none':'';
     _updateCompExpPreview();
-  });
+  }
 });
 document.getElementById('compExpDownload').addEventListener('click',()=>{
   var isFull=document.getElementById('compExpScopeFull').checked;
