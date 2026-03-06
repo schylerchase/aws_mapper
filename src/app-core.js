@@ -226,7 +226,7 @@ inputSections.forEach(sec=>{
   const dotColor=sec.t.includes('Network')?'var(--accent-blue)':sec.t.includes('Gateway')?'var(--accent-green)':sec.t.includes('Compute')?'var(--accent-cyan)':sec.t.includes('Load')?'var(--accent-cyan)':sec.t.includes('Connectivity')?'var(--accent-purple)':sec.t.includes('Edge')?'var(--accent-orange)':sec.t.includes('Security')?'var(--accent-red)':sec.t.includes('DNS')?'var(--accent-purple)':sec.t.includes('Storage')?'var(--accent-green)':sec.t.includes('Database')?'var(--accent-orange)':sec.t.includes('IAM')?'var(--accent-orange)':'var(--text-muted)';
   h.innerHTML=`<span class="sec-dot" style="background:${dotColor}"></span><span>${sec.t}</span><span class="arr">&#9660;</span>`;
   const b=document.createElement('div');b.className='sec-body'+(openByDefault?'':' hidden');
-  sec.inputs.forEach(inp=>{b.innerHTML+=`<div class="ig"><div class="ig-lbl"><span>${inp.l}</span><code>${inp.c}</code></div><textarea id="${inp.id}" class="ji" placeholder="Paste ${inp.c} JSON..."></textarea></div>`});
+  var ih='';sec.inputs.forEach(inp=>{ih+=`<div class="ig"><div class="ig-lbl"><span>${inp.l}</span><code>${inp.c}</code></div><textarea id="${inp.id}" class="ji" placeholder="Paste ${inp.c} JSON..."></textarea></div>`});b.innerHTML=ih;
   h.addEventListener('click',()=>{h.classList.toggle('collapsed');b.classList.toggle('hidden')});
   sb.appendChild(h);sb.appendChild(b);
 });
@@ -7045,7 +7045,7 @@ function renderLandingZoneMap(ctx){
         const d=e.p.attr('d'),stroke=e.p.attr('stroke');
         if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',stroke);
         Object.entries(olStyle).forEach(([k,v])=>p.style(k,v));}
-      }catch(ex){}});
+      }catch(ex){console.warn('Path overlay error:',ex)}});
       let h='<div class="tt-title">'+esc(tgwName)+'</div>';
       h+='<div class="tt-sub">Transit Gateway</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
@@ -7063,7 +7063,7 @@ function renderLandingZoneMap(ctx){
       lzOlL.selectAll('*').remove();lzRouteG.style('opacity','0.06');g.classed('hl-active',true);
       ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
       const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
-      lzAllPaths.forEach(e=>{try{const d=e.p.attr('d'),s=e.p.attr('stroke');if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',s);Object.entries(olS).forEach(([k,v])=>p.style(k,v))}}catch(ex){}});
+      lzAllPaths.forEach(e=>{try{const d=e.p.attr('d'),s=e.p.attr('stroke');if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',s);Object.entries(olS).forEach(([k,v])=>p.style(k,v))}}catch(ex){console.warn('Path overlay error:',ex)}});
       _lzLocked=true;_lzKey='tgw';lzShowLock(true);
       _lastRlType=null;_navStack=[];
       openGatewayPanel(tgwId,'TGW',{gwNames,igws,nats,vpns,vpces,peerings,rts,subnets,subRT,pubSubs,vpcs,tgwAttachments});
@@ -11769,7 +11769,7 @@ let _currentSnapshot=null;// saved current state when viewing history
 try{const s=localStorage.getItem(_SNAP_KEY);if(s)_snapshots=JSON.parse(s)}catch(e){_snapshots=[]}
 function _saveSnapshots(){try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e){
   // If storage full, trim oldest half
-  if(_snapshots.length>4){_snapshots=_snapshots.slice(Math.floor(_snapshots.length/2));try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e2){}}
+  if(_snapshots.length>4){_snapshots=_snapshots.slice(Math.floor(_snapshots.length/2));try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e2){console.warn('Failed to save trimmed snapshots:',e2)}}
 }}
 function _computeChecksum(textareas){
   let s='';Object.keys(textareas).sort().forEach(k=>s+=k+':'+String(textareas[k]).length+';');
@@ -20926,7 +20926,8 @@ function _restoreSession(){try{const raw=sessionStorage.getItem(_SAVE_KEY);if(!r
   if(data._rptLogo){_rptState.logo=data._rptLogo}
   return hasData}catch(e){console.warn('[session-restore] failed:',e);return false}}
 if(_isElectron){_autoSaveDisabled=true}
-setInterval(()=>{if(_rlCtx)_autoSaveSession()},_SAVE_INTERVAL);
+var _autoSaveTimer=setInterval(()=>{if(_rlCtx)_autoSaveSession()},_SAVE_INTERVAL);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInterval(_autoSaveTimer)}else{_autoSaveTimer=setInterval(()=>{if(_rlCtx)_autoSaveSession()},_SAVE_INTERVAL)}});
 (function(){try{const raw=sessionStorage.getItem(_SAVE_KEY);if(!raw)return;const data=JSON.parse(raw);if(!data._ts||Date.now()-data._ts>7*24*60*60*1000)return;
   let count=Object.keys(data).filter(k=>!k.startsWith('_')).length;if(count===0)return;
   const banner=document.createElement('div');banner.id='restoreBanner';

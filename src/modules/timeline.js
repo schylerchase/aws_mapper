@@ -16,8 +16,8 @@ let annotationAuthor = '';
 
 // Initialize from localStorage
 try { const s = localStorage.getItem(SNAP_KEY); if (s) snapshots = JSON.parse(s); } catch (e) { snapshots = []; }
-try { const s = localStorage.getItem(NOTES_KEY); if (s) annotations = JSON.parse(s); } catch (e) {}
-try { annotationAuthor = localStorage.getItem('aws_mapper_note_author') || ''; } catch (e) {}
+try { const s = localStorage.getItem(NOTES_KEY); if (s) annotations = JSON.parse(s); } catch (e) { console.warn('Failed to load annotations:', e); }
+try { annotationAuthor = localStorage.getItem('aws_mapper_note_author') || ''; } catch (e) { console.warn('Failed to load note author:', e); }
 
 // Max snapshots (Electron gets 5, web gets constant)
 const maxSnapshots = (typeof window !== 'undefined' && window.electronAPI) ? 5 : MAX_SNAPSHOTS;
@@ -36,7 +36,7 @@ export function setAnnotations(v) { annotations = v; }
 export function getAnnotationAuthor() { return annotationAuthor; }
 export function setAnnotationAuthor(v) {
   annotationAuthor = v;
-  try { localStorage.setItem('aws_mapper_note_author', v); } catch (e) {}
+  try { localStorage.setItem('aws_mapper_note_author', v); } catch (e) { console.warn('Failed to save note author:', e); }
 }
 
 // === Pure Logic ===
@@ -48,7 +48,7 @@ export function saveSnapshots() {
   } catch (e) {
     if (snapshots.length > 4) {
       snapshots = snapshots.slice(Math.floor(snapshots.length / 2));
-      try { localStorage.setItem(SNAP_KEY, JSON.stringify(snapshots)); } catch (e2) {}
+      try { localStorage.setItem(SNAP_KEY, JSON.stringify(snapshots)); } catch (e2) { console.warn('Failed to save trimmed snapshots:', e2); }
     }
   }
 }
@@ -64,7 +64,7 @@ export function computeChecksum(textareas) {
 
 /** Save annotations to localStorage. */
 export function saveAnnotations() {
-  try { localStorage.setItem(NOTES_KEY, JSON.stringify(annotations)); } catch (e) {}
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(annotations)); } catch (e) { console.warn('Failed to save annotations:', e); }
 }
 
 /** Build a note key from resource ID and optional account ID. */

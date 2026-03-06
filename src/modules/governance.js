@@ -580,7 +580,7 @@ function prepareIAMReviewData(iamData) {
     var lastUsed = role.RoleLastUsed && role.RoleLastUsed.LastUsedDate ? new Date(role.RoleLastUsed.LastUsedDate) : null;
     var trustDoc = role.AssumeRolePolicyDocument;
     var trustParsed = {};
-    if (typeof trustDoc === 'string') { try { trustParsed = JSON.parse(trustDoc); } catch (e) {} }
+    if (typeof trustDoc === 'string') { try { trustParsed = JSON.parse(trustDoc); } catch (e) { console.warn('Failed to parse trust policy:', e); } }
     else if (trustDoc) trustParsed = trustDoc;
     var crossAccts = [];
     _stmtArr(trustParsed.Statement).forEach(function(stmt) {

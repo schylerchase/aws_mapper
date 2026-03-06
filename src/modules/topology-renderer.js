@@ -1946,9 +1946,9 @@ function _renderMapInner(){
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
-  try{_renderNoteBadges()}catch(ne){}
+  try{_renderNoteBadges()}catch(ne){console.warn('Note badges error:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
-  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){}
+  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot error:',se)}
   // Design validation chip (when in design mode)
   if(_designMode&&_lastDesignValidation){
     const sv=_lastDesignValidation;
@@ -1978,7 +1978,7 @@ function _renderMapInner(){
     sb2.appendChild(rgC);
   }
   // Diff overlay (grid layout)
-  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){}
+  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay error:',de)}
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';

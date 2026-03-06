@@ -440,7 +440,7 @@ let _currentSnapshot=null;// saved current state when viewing history
 try{const s=localStorage.getItem(_SNAP_KEY);if(s)_snapshots=JSON.parse(s)}catch(e){_snapshots=[]}
 function _saveSnapshots(){try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e){
   // If storage full, trim oldest half
-  if(_snapshots.length>4){_snapshots=_snapshots.slice(Math.floor(_snapshots.length/2));try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e2){}}
+  if(_snapshots.length>4){_snapshots=_snapshots.slice(Math.floor(_snapshots.length/2));try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e2){console.warn('Failed to save trimmed snapshots:',e2)}}
 }}
 function _computeChecksum(textareas){
   let s='';Object.keys(textareas).sort().forEach(k=>s+=k+':'+String(textareas[k]).length+';');

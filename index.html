@@ -63,10 +63,10 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div style="position:relative;display:inline-block;margin-left:4px" id="exportScriptWrap">
       <button class="btn-action indigo" id="dlExportScript" title="Download export script">&darr; Export Script &#9662;</button>
       <div id="exportScriptMenu" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:4px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-top:4px">
-        <button id="dlBash" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:"Segoe UI",system-ui,sans-serif;font-size:10px;cursor:pointer;border-radius:4px">
+        <button id="dlBash" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:var(--font-ui);font-size:10px;cursor:pointer;border-radius:4px">
           <span style="font-weight:600">Bash</span> <span style="color:var(--text-muted);font-size:9px">— macOS / Linux</span>
         </button>
-        <button id="dlPowershell" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:"Segoe UI",system-ui,sans-serif;font-size:10px;cursor:pointer;border-radius:4px">
+        <button id="dlPowershell" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:var(--font-ui);font-size:10px;cursor:pointer;border-radius:4px">
           <span style="font-weight:600">PowerShell</span> <span style="color:var(--text-muted);font-size:9px">— Windows (parallel + multi-region)</span>
         </button>
       </div>
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <span class="db-shortcuts"><kbd>D</kbd> toggle &nbsp;<kbd>Z</kbd> undo &nbsp;<kbd>E</kbd> export plan</span>
     <button class="db-close" id="designBannerClose" title="Hide banner" aria-label="Close design mode banner">&times;</button>
   </div>
-  <div class="loading-overlay" id="loadingOverlay"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-family:"Segoe UI",system-ui,sans-serif;font-size:11px;color:var(--text-muted)">Rendering map...</div></div>
+  <div class="loading-overlay" id="loadingOverlay"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-family:var(--font-ui);font-size:11px;color:var(--text-muted)">Rendering map...</div></div>
   <div class="copy-toast" id="copyToast">Copied!</div>
   <div class="empty-state" id="emptyState" style="display:none"><div class="icon">&#9700;</div><h2 id="emptyTitle">No data loaded</h2><p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p><button class="design-btn" id="emptyDesignBtn" style="display:none;margin-top:12px;padding:8px 20px;font-size:11px">Create VPC from Scratch</button></div>
 <div class="landing" id="landingDash">
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
     <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">-</button>
     <button class="zoom-btn" id="zoomFit" aria-label="Zoom to fit">~</button>
-    <div id="zoomLevel" style="font-family:"Segoe UI",system-ui,sans-serif;font-size:9px;color:var(--text-muted);text-align:center;padding:2px 0;min-width:32px">100%</div>
+    <div id="zoomLevel" style="font-family:var(--font-ui);font-size:9px;color:var(--text-muted);text-align:center;padding:2px 0;min-width:32px">100%</div>
     <div id="detailBtns" style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px">
       <button class="zoom-btn wide" id="btnExpand" title="Show all resources with nested details">Expand</button>
       <button class="zoom-btn wide" id="btnCollapse" title="Collapse to VPCs and subnet names only">Collapse</button>
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
         <button class="iac-close" id="compExportClose" aria-label="Close export report modal">&times;</button>
       </div>
       <div class="iac-opts" style="flex-direction:column;align-items:stretch;gap:10px;padding:12px">
-        <div style="display:flex;gap:12px;font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(11px * var(--txt-scale,1))">
+        <div style="display:flex;gap:12px;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
           <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:1;background:var(--bg-input)">
             <input type="radio" name="compExpScope" value="compliance" checked id="compExpScopeComp"> Compliance Only</label>
           <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:1;background:var(--bg-input)">
@@ -214,8 +214,8 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
         </div>
         <div id="compExpFilters" style="display:flex;gap:16px;flex-wrap:wrap">
           <fieldset style="border:1px solid var(--border);border-radius:6px;padding:8px 12px;flex:1;min-width:200px">
-            <legend style="font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(9px * var(--txt-scale,1));color:var(--text-muted);text-transform:uppercase;padding:0 4px">Frameworks</legend>
-            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(11px * var(--txt-scale,1))">
+            <legend style="font-family:var(--font-ui);font-size:calc(9px * var(--txt-scale,1));color:var(--text-muted);text-transform:uppercase;padding:0 4px">Frameworks</legend>
+            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
               <label><input type="checkbox" checked data-comp-fw="CIS"> CIS</label>
               <label><input type="checkbox" checked data-comp-fw="WAF"> WAF</label>
               <label><input type="checkbox" checked data-comp-fw="IAM"> IAM</label>
@@ -226,8 +226,8 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
             </div>
           </fieldset>
           <fieldset style="border:1px solid var(--border);border-radius:6px;padding:8px 12px;min-width:160px">
-            <legend style="font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(9px * var(--txt-scale,1));color:var(--text-muted);text-transform:uppercase;padding:0 4px">Severities</legend>
-            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(11px * var(--txt-scale,1))">
+            <legend style="font-family:var(--font-ui);font-size:calc(9px * var(--txt-scale,1));color:var(--text-muted);text-transform:uppercase;padding:0 4px">Severities</legend>
+            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
               <label><input type="checkbox" checked data-comp-sev="CRITICAL"> Critical</label>
               <label><input type="checkbox" checked data-comp-sev="HIGH"> High</label>
               <label><input type="checkbox" checked data-comp-sev="MEDIUM"> Medium</label>
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
             </div>
           </fieldset>
         </div>
-        <div style="display:flex;gap:16px;align-items:center;font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(11px * var(--txt-scale,1))">
+        <div style="display:flex;gap:16px;align-items:center;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
           <label id="compExpMutedWrap"><input type="checkbox" id="compExpMuted"> Include muted</label>
           <label id="compExpRemWrap"><input type="checkbox" id="compExpRemediation" checked> Include remediation</label>
           <label style="margin-left:auto">Format <select id="compExpFormat" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-family:inherit;font-size:inherit">
@@ -244,11 +244,11 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
             <option value="html">HTML Report</option>
           </select></label>
         </div>
-        <div id="compExpPreview" style="font-family:'Segoe UI',system-ui,sans-serif;font-size:calc(11px * var(--txt-scale,1));color:var(--accent-cyan);padding:4px 0"></div>
+        <div id="compExpPreview" style="font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1));color:var(--accent-cyan);padding:4px 0"></div>
       </div>
       <div class="iac-actions" style="padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
-        <button id="compExpCancel" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:6px 14px;cursor:pointer;font-family:'Segoe UI',system-ui,sans-serif">Cancel</button>
-        <button id="compExpDownload" style="background:var(--accent-cyan);border:none;color:#0a0e17;border-radius:4px;padding:6px 14px;cursor:pointer;font-family:'Segoe UI',system-ui,sans-serif;font-weight:600">Download Report</button>
+        <button id="compExpCancel" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:6px 14px;cursor:pointer;font-family:var(--font-ui)">Cancel</button>
+        <button id="compExpDownload" style="background:var(--accent-cyan);border:none;color:#0a0e17;border-radius:4px;padding:6px 14px;cursor:pointer;font-family:var(--font-ui);font-weight:600">Download Report</button>
       </div>
     </div>
   </div>
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <input type="file" id="importReportInput" accept=".html,.htm" style="display:none">
   <!-- Scan AWS Modal (Electron only) -->
   <div id="scanModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
-    <div style="background:#111827;border:1px solid var(--border);border-radius:12px;padding:28px;width:420px;max-height:80vh;overflow:auto;font-family:"Segoe UI",system-ui,sans-serif">
+    <div style="background:#111827;border:1px solid var(--border);border-radius:12px;padding:28px;width:420px;max-height:80vh;overflow:auto;font-family:var(--font-ui)">
       <h3 style="margin:0 0 16px;color:#f59e0b;font-size:14px">Scan AWS Account</h3>
       <div id="scanForm">
         <label style="font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px">AWS Profile (blank = default)</label>
@@ -314,8 +314,8 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="timeline-bar" id="timelineBar">
     <span class="timeline-label" id="timelineLabel">Snapshots</span>
     <div class="timeline-dots" id="timelineDots"></div>
-    <button id="snapBtn" style="background:none;border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:"Segoe UI",system-ui,sans-serif" title="Take snapshot now">Snap</button>
-    <button id="timelineClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:"Segoe UI",system-ui,sans-serif">X</button>
+    <button id="snapBtn" style="background:none;border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)" title="Take snapshot now">Snap</button>
+    <button id="timelineClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)">X</button>
   </div>
   <!-- History viewing banner -->
   <div class="history-banner" id="historyBanner" style="display:none">
@@ -328,8 +328,8 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="notes-panel-hdr">
       <h3>Annotations</h3>
       <div style="display:flex;gap:6px;align-items:center">
-        <span id="noteCount" style="font-size:10px;color:var(--text-muted);font-family:"Segoe UI",system-ui,sans-serif"></span>
-        <button id="notesPanelClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:"Segoe UI",system-ui,sans-serif">Close [Esc]</button>
+        <span id="noteCount" style="font-size:10px;color:var(--text-muted);font-family:var(--font-ui)"></span>
+        <button id="notesPanelClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Close [Esc]</button>
       </div>
     </div>
     <div class="notes-filter">
@@ -344,8 +344,8 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="dep-hdr">
       <h3 id="depTitle">Dependency Analysis</h3>
       <div style="display:flex;gap:8px;align-items:center">
-        <button id="depBlastBtn" style="background:none;border:1px solid var(--accent-orange);color:var(--accent-orange);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;font-family:"Segoe UI",system-ui,sans-serif">Highlight on Map</button>
-        <button id="depCloseBtn" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:"Segoe UI",system-ui,sans-serif">Close [Esc]</button>
+        <button id="depBlastBtn" style="background:none;border:1px solid var(--accent-orange);color:var(--accent-orange);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Highlight on Map</button>
+        <button id="depCloseBtn" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Close [Esc]</button>
       </div>
     </div>
     <div class="dep-body" id="depBody"></div>
@@ -356,12 +356,12 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="account-panel-hdr">
       <h3>Accounts</h3>
       <div style="display:flex;gap:6px;align-items:center">
-        <button id="addAccountBtn" style="background:none;border:1px solid var(--accent-green);color:var(--accent-green);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:"Segoe UI",system-ui,sans-serif">+ Add</button>
-        <button id="accountPanelClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:"Segoe UI",system-ui,sans-serif">Close</button>
+        <button id="addAccountBtn" style="background:none;border:1px solid var(--accent-green);color:var(--accent-green);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)">+ Add</button>
+        <button id="accountPanelClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Close</button>
       </div>
     </div>
     <div class="account-panel-body" id="accountPanelBody">
-      <div style="text-align:center;padding:30px 10px;color:var(--text-muted);font-size:11px;font-family:"Segoe UI",system-ui,sans-serif">
+      <div style="text-align:center;padding:30px 10px;color:var(--text-muted);font-size:11px;font-family:var(--font-ui)">
         <div style="font-size:24px;margin-bottom:10px;opacity:.4">&#128203;</div>
         No accounts loaded.<br>Click <b>+ Add</b> to load an .awsmap file<br>or render current data first.
       </div>
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <button class="fa-mode-pill" data-fa-mode="ingress">Ingress</button>
     <button class="fa-mode-pill" data-fa-mode="egress">Egress</button>
     <button class="fa-mode-pill" data-fa-mode="bastion">Bastion</button>
-    <button id="faDashBtn" title="Open full analysis dashboard" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981;padding:2px 10px;border-radius:3px;font-size:9px;font-family:"Segoe UI",system-ui,sans-serif;cursor:pointer;font-weight:600">Dashboard</button>
+    <button id="faDashBtn" title="Open full analysis dashboard" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981;padding:2px 10px;border-radius:3px;font-size:9px;font-family:var(--font-ui);cursor:pointer;font-weight:600">Dashboard</button>
     <button id="faExitBtn" title="Exit flow analysis (Esc)">Exit</button>
   </div>
   <!-- Right-Click Context Menu -->
@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div id="helpOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center">
     <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;padding:24px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-family:"Segoe UI",system-ui,sans-serif;font-size:16px;color:var(--accent-cyan)">AWS Mapper Guide</h2>
+        <h2 style="font-family:var(--font-ui);font-size:16px;color:var(--accent-cyan)">AWS Mapper Guide</h2>
         <button id="helpClose" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button>
       </div>
       <div style="font-size:13px;line-height:1.7;color:var(--text-secondary)">
@@ -473,7 +473,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
         <p>2. Click <b>Render Map</b> to visualize your infrastructure</p>
         <p>3. The <b>Account</b> field at top labels data from different AWS accounts.</p>
         <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Keyboard Shortcuts</h3>
-        <table style="width:100%;font-family:"Segoe UI",system-ui,sans-serif;font-size:11px">
+        <table style="width:100%;font-family:var(--font-ui);font-size:11px">
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">D</td><td>Toggle Design Mode</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+D</td><td>Compare / Diff Mode</td></tr>
           <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Z</td><td>Undo last design change</td></tr>
@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div id="searchOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:90">
     <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5)" id="searchBackdrop"></div>
     <div style="position:absolute;top:60px;left:50%;transform:translateX(-50%);width:500px;max-width:90%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);padding:8px">
-      <input id="searchInput" type="text" placeholder="Search by name, ID, CIDR, or type..." style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:"Segoe UI",system-ui,sans-serif;font-size:13px;padding:10px 14px;outline:none" autocomplete="off">
+      <input id="searchInput" type="text" placeholder="Search by name, ID, CIDR, or type..." style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-ui);font-size:13px;padding:10px 14px;outline:none" autocomplete="off">
       <div id="searchResults" style="max-height:400px;overflow-y:auto;margin-top:6px"></div>
     </div>
   </div>
@@ -549,9 +549,9 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="fw-fp-header">
     <h3 id="fwFpTitle">Firewall Editor</h3>
     <div style="display:flex;gap:6px;align-items:center">
-      <button id="fwFpRetrace" style="display:none;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);border-radius:4px;color:var(--accent-cyan);padding:3px 10px;cursor:pointer;font-family:"Segoe UI",system-ui,sans-serif;font-size:10px">Re-trace</button>
-      <button id="fwFpCopy" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:4px;color:var(--accent-green);padding:3px 10px;cursor:pointer;font-family:"Segoe UI",system-ui,sans-serif;font-size:10px">Copy CLI</button>
-      <button id="fwFpClose" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;padding:3px 10px;font-family:"Segoe UI",system-ui,sans-serif;font-size:11px">Close</button>
+      <button id="fwFpRetrace" style="display:none;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);border-radius:4px;color:var(--accent-cyan);padding:3px 10px;cursor:pointer;font-family:var(--font-ui);font-size:10px">Re-trace</button>
+      <button id="fwFpCopy" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:4px;color:var(--accent-green);padding:3px 10px;cursor:pointer;font-family:var(--font-ui);font-size:10px">Copy CLI</button>
+      <button id="fwFpClose" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;padding:3px 10px;font-family:var(--font-ui);font-size:11px">Close</button>
     </div>
   </div>
   <div class="fw-fp-tabs" id="fwFpTabs">

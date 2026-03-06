@@ -333,7 +333,7 @@ function renderLandingZoneMap(ctx){
         const d=e.p.attr('d'),stroke=e.p.attr('stroke');
         if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',stroke);
         Object.entries(olStyle).forEach(([k,v])=>p.style(k,v));}
-      }catch(ex){}});
+      }catch(ex){console.warn('Path overlay error:',ex)}});
       let h='<div class="tt-title">'+esc(tgwName)+'</div>';
       h+='<div class="tt-sub">Transit Gateway</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
@@ -351,7 +351,7 @@ function renderLandingZoneMap(ctx){
       lzOlL.selectAll('*').remove();lzRouteG.style('opacity','0.06');g.classed('hl-active',true);
       ndL.selectAll('.lz-tgw-node,.lz-gw-node,.internet-node').classed('lz-hl',true);ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width','3px').style('filter','drop-shadow(0 0 8px rgba(99,180,255,.7))');});
       const olS={fill:'none','stroke-width':'4px',opacity:'1','stroke-dasharray':'8 5','pointer-events':'none'};
-      lzAllPaths.forEach(e=>{try{const d=e.p.attr('d'),s=e.p.attr('stroke');if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',s);Object.entries(olS).forEach(([k,v])=>p.style(k,v))}}catch(ex){}});
+      lzAllPaths.forEach(e=>{try{const d=e.p.attr('d'),s=e.p.attr('stroke');if(d){const p=lzOlL.append('path').attr('d',d).style('stroke',s);Object.entries(olS).forEach(([k,v])=>p.style(k,v))}}catch(ex){console.warn('Path overlay error:',ex)}});
       _lzLocked=true;_lzKey='tgw';lzShowLock(true);
       _lastRlType=null;_navStack=[];
       openGatewayPanel(tgwId,'TGW',{gwNames,igws,nats,vpns,vpces,peerings,rts,subnets,subRT,pubSubs,vpcs,tgwAttachments});
@@ -1366,11 +1366,11 @@ function renderLandingZoneMap(ctx){
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
   if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
   _depGraph=null;
-  try{_renderNoteBadges()}catch(ne){}
+  try{_renderNoteBadges()}catch(ne){console.warn('Note badges error:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
-  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){}
+  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot error:',se)}
   // Diff overlay (landing zone)
-  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){}
+  try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay error:',de)}
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';

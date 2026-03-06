@@ -159,7 +159,7 @@ let _compDashState = { sevFilter: 'ALL', fwFilter: 'all', search: '', sort: 'sev
 let _mutedFindings = new Set();
 
 // Initialize muted findings from localStorage
-try { const raw = localStorage.getItem(MUTE_KEY); if (raw) _mutedFindings = new Set(JSON.parse(raw)); } catch (e) {}
+try { const raw = localStorage.getItem(MUTE_KEY); if (raw) _mutedFindings = new Set(JSON.parse(raw)); } catch (e) { console.warn('Failed to load muted findings:', e); }
 
 // === State Accessors ===
 export function getCompDashState() { return _compDashState; }
@@ -171,7 +171,7 @@ export function setMutedFindings(v) { _mutedFindings = v; }
 
 /** Save muted findings to localStorage. */
 export function saveMuted() {
-  try { localStorage.setItem(MUTE_KEY, JSON.stringify([..._mutedFindings])); } catch (e) {}
+  try { localStorage.setItem(MUTE_KEY, JSON.stringify([..._mutedFindings])); } catch (e) { console.warn('Failed to save muted findings:', e); }
 }
 
 /** Build a mute key from a finding. */
