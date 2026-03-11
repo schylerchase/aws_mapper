@@ -1916,6 +1916,9 @@ var AppBundle = (() => {
   }
   function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts) {
     if (!sgs || sgs.length === 0) return { action: opts && opts.assumeAllow ? "allow" : "deny", rule: "No security groups attached", matchedSg: null };
+    var srcIp = ipFromCidr(sourceCidr);
+    var srcSgIds = opts && opts.sourceSgIds;
+    var srcSgSet = srcSgIds ? new Set(srcSgIds) : null;
     for (var si = 0; si < sgs.length; si++) {
       var sg = sgs[si];
       var rules = direction === "inbound" ? sg.IpPermissions || [] : sg.IpPermissionsEgress || [];
@@ -1928,22 +1931,24 @@ var AppBundle = (() => {
         }
         if (!portOk) continue;
         var cidrOk = false;
-        (r.IpRanges || []).forEach(function(ipr) {
-          if (cidrContains2(ipr.CidrIp, ipFromCidr(sourceCidr))) cidrOk = true;
-        });
-        (r.Ipv6Ranges || []).forEach(function(ipr) {
-          if (ipr.CidrIpv6 === "::/0") cidrOk = true;
-        });
+        var ipRanges = r.IpRanges || [];
+        for (var ci = 0; ci < ipRanges.length && !cidrOk; ci++) {
+          if (cidrContains2(ipRanges[ci].CidrIp, srcIp)) cidrOk = true;
+        }
+        if (!cidrOk) {
+          var ipv6Ranges = r.Ipv6Ranges || [];
+          for (var v6i = 0; v6i < ipv6Ranges.length && !cidrOk; v6i++) {
+            if (ipv6Ranges[v6i].CidrIpv6 === "::/0") cidrOk = true;
+          }
+        }
         if (!cidrOk && (r.UserIdGroupPairs || []).length > 0) {
-          var srcSgIds = opts && opts.sourceSgIds;
-          if (srcSgIds) {
-            (r.UserIdGroupPairs || []).forEach(function(gp) {
-              if (gp.GroupId && srcSgIds.indexOf(gp.GroupId) !== -1) cidrOk = true;
-            });
-          } else {
-            (r.UserIdGroupPairs || []).forEach(function(gp) {
-              if (gp.GroupId) cidrOk = true;
-            });
+          var pairs = r.UserIdGroupPairs || [];
+          for (var pi = 0; pi < pairs.length && !cidrOk; pi++) {
+            if (srcSgSet) {
+              if (pairs[pi].GroupId && srcSgSet.has(pairs[pi].GroupId)) cidrOk = true;
+            } else {
+              if (pairs[pi].GroupId) cidrOk = true;
+            }
           }
         }
         if (cidrOk) {
@@ -6386,6 +6391,7 @@ var AppBundle = (() => {
     _appRegistry: () => _appRegistry,
     _appSummaryState: () => _appSummaryState,
     _buildInventoryData: () => _buildInventoryData,
+    _buildInventoryDataSync: () => _buildInventoryDataSync,
     _classificationData: () => _classificationData,
     _classificationOverrides: () => _classificationOverrides,
     _classificationRules: () => _classificationRules,
@@ -6603,6 +6609,7 @@ var AppBundle = (() => {
   function setDiscoveredTags(v) {
     _discoveredTags = v;
   }
+  var _buildInventoryDataSync = _buildInventoryData;
   function _buildInventoryData() {
     _inventoryData = [];
     var ctx = rlCtx;
@@ -7464,6 +7471,7 @@ var AppBundle = (() => {
       setDiscoveredTags,
       // Pure logic functions
       _buildInventoryData,
+      _buildInventoryDataSync,
       _filterInventory,
       _getTagMap,
       _safeRegex,

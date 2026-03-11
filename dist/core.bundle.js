@@ -4704,7 +4704,7 @@
   function _docxInventory(isExec) {
     var h = _docxP("Resource Inventory", "Heading1");
     if (!_rlCtx) return h + _docxP("No data loaded.");
-    if (!_inventoryData.length) _buildInventoryData();
+    if (!_inventoryData.length) _buildInventoryDataSync();
     var filteredInv = _rptFilterByAccount(_inventoryData, _rptGetAccountFilter());
     if (isExec) {
       h += _docxP("The environment contains " + filteredInv.length + " tracked resources across the following categories:");

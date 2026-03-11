@@ -59,6 +59,12 @@ function _fwRebuildLookups(){
     (sgByVpc[sg.VpcId]=sgByVpc[sg.VpcId]||[]).push(sg);
   });
   _rlCtx.sgByVpc=sgByVpc;
+  // Rebuild sgById for O(1) lookups
+  const sgById={};
+  (_rlCtx.sgs||[]).forEach(sg=>{
+    if(sg.GroupId) sgById[sg.GroupId]=sg;
+  });
+  _rlCtx.sgById=sgById;
 }
 
 // --- Edit operations ---
@@ -84,7 +90,7 @@ function _fwRemoveRule(edit){
     );
     if(idx>=0) nacl.Entries.splice(idx,1);
   } else if(edit.type==='sg'){
-    const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===edit.resourceId);
+    const sg=(_rlCtx.sgById||{})[edit.resourceId];
     if(!sg) return;
     const arr=edit.direction==='ingress'?sg.IpPermissions:sg.IpPermissionsEgress;
     if(!arr) return;
@@ -117,7 +123,7 @@ function _fwApplyRule(type, resourceId, direction, ruleData){
     if(idx>=0) nacl.Entries[idx]=entry;
     else nacl.Entries.push(entry);
   } else if(type==='sg'){
-    const sg=(_rlCtx.sgs||[]).find(s=>s.GroupId===resourceId);
+    const sg=(_rlCtx.sgById||{})[resourceId];
     if(!sg) return;
     const key=direction==='ingress'?'IpPermissions':'IpPermissionsEgress';
     if(!sg[key]) sg[key]=[];
@@ -513,7 +519,7 @@ function _fwRenderSgDirection(sg, direction){
 }
 
 function _fwShowSgEditForm(sgId, ruleIdx, direction, container){
-  const sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===sgId});
+  const sg=(_rlCtx.sgById||{})[sgId];
   if(!sg) return;
   const rules=direction==='ingress'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
   const existing=(ruleIdx!==null&&ruleIdx!==undefined)?rules[parseInt(ruleIdx,10)]:null;
@@ -662,7 +668,7 @@ function _fwOpenFullEditor(type, resourceId, sub, vpcId, lk){
     const nacl=(_rlCtx.nacls||[]).find(function(n){return n.NetworkAclId===resourceId});
     if(nacl) name=gn(nacl,resourceId);
   } else if(type==='sg'){
-    const sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===resourceId});
+    const sg=(_rlCtx.sgById||{})[resourceId];
     if(sg) name=sg.GroupName||gn(sg,resourceId);
   } else if(type==='route'){
     const rt=(_rlCtx.rts||[]).find(function(r){return r.RouteTableId===resourceId});
@@ -720,7 +726,7 @@ function _fwRefreshFullPanel(){
       h+='</div>';
     }
   } else if(_fwFpType==='sg'){
-    const sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===_fwFpResId});
+    const sg=(_rlCtx.sgById||{})[_fwFpResId];
     if(!sg){ bodyEl.innerHTML='<div style="color:var(--text-muted);padding:12px">Security Group not found</div>'; return; }
     h+=_fwRenderSgDirection(sg, _fwFpDir);
   } else if(_fwFpType==='route'){
@@ -807,7 +813,7 @@ function _fwRefreshFullPanel(){
       vH+='<div class="fw-edit-row" style="padding:2px 0;opacity:.4"><div class="fw-arrow deny"><div class="fw-arrow-line"></div><div class="fw-arrow-head"></div></div><span style="font-size:9px;color:var(--text-muted)">#* DENY ALL</span></div>';
     }
   } else if(_fwFpType==='sg'){
-    const vSg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===_fwFpResId});
+    const vSg=(_rlCtx.sgById||{})[_fwFpResId];
     if(vSg){
       const vRules=_fwFpDir==='ingress'?(vSg.IpPermissions||[]):(vSg.IpPermissionsEgress||[]);
       const vLabel2=_fwFpDir==='ingress'?'INBOUND':'OUTBOUND';
@@ -1046,7 +1052,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     const dSgId=el.getAttribute('data-sg-id');
     const dRIdx=parseInt(el.getAttribute('data-rule-idx'),10);
     const dDir=el.getAttribute('data-direction');
-    const dSg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===dSgId});
+    const dSg=(_rlCtx.sgById||{})[dSgId];
     if(!dSg) return;
     const dArr=dDir==='ingress'?dSg.IpPermissions:dSg.IpPermissionsEgress;
     if(!dArr||dRIdx>=dArr.length) return;
@@ -1103,7 +1109,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     _fwTakeSnapshot();
     let sgEditAct='add';
     let sgOrig=null;
-    const sSg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===sSgId});
+    const sSg=(_rlCtx.sgById||{})[sSgId];
     if(sEditIdx!==null&&sEditIdx!==undefined&&sSg){
       const eIdx=parseInt(sEditIdx,10);
       const sArr=sDir==='ingress'?sSg.IpPermissions:sSg.IpPermissionsEgress;
