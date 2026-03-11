@@ -22225,12 +22225,20 @@ function _showOnboardStep(step){
   tt.style.display='block';
   tt.className='onboard-tooltip'+(s.arrow?' arrow-'+s.arrow:'');
   tt.innerHTML='<div class="onboard-text">'+s.text+'</div><div class="onboard-actions"><button class="onboard-next" id="onboardNext">'+(step<_onboardSteps.length-1?'Next':'Done')+'</button><button class="onboard-skip" id="onboardSkip">Skip</button><span class="onboard-step">'+(step+1)+' / '+_onboardSteps.length+'</span></div>';
-  // Position near target
+  // Position near target (mobile-aware)
+  var isMobile=window.innerWidth<=600;
   var target=document.getElementById(s.target);
-  if(target&&!s.center){
+  if(isMobile){
+    tt.style.left='16px';tt.style.right='16px';tt.style.top='50%';tt.style.transform='translateY(-50%)';
+  }else if(target&&!s.center){
     var rect=target.getBoundingClientRect();
-    tt.style.top=rect.top+(s.offsetY||0)+'px';
-    tt.style.left=(s.offsetX||rect.right+16)+'px';
+    var top=rect.top+(s.offsetY||0);
+    var left=s.offsetX||rect.right+16;
+    // Clamp to viewport
+    top=Math.max(8,Math.min(top,window.innerHeight-200));
+    left=Math.max(8,Math.min(left,window.innerWidth-340));
+    tt.style.top=top+'px';
+    tt.style.left=left+'px';tt.style.transform='';
   }else if(s.center){
     tt.style.top='50%';tt.style.left='50%';tt.style.transform='translate(-50%,-50%)';
   }
