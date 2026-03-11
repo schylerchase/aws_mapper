@@ -1926,6 +1926,7 @@
 .onboard-skip{background:none;border:none;color:var(--text-muted);font-family:var(--font-ui);font-size:10px;cursor:pointer}
 .onboard-skip:hover{color:var(--text-secondary)}
 .onboard-step{font-size:9px;color:var(--text-muted);margin-left:auto}
+@media(max-width:600px){.onboard-tooltip{max-width:calc(100vw - 32px);left:16px!important;right:16px!important;transform:none!important}.onboard-tooltip::after{display:none}}
 /* Detail panel breadcrumbs */
 .dp-breadcrumbs{display:flex;align-items:center;gap:4px;padding:6px 16px;font-family:var(--font-ui);font-size:10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .dp-crumb{color:var(--accent-cyan);cursor:pointer;transition:opacity .12s}
