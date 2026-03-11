@@ -8102,7 +8102,7 @@ function renderLandingZoneMap(ctx){
   // Diff overlay (landing zone)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay failed:',de)}
   document.getElementById('legend').style.display='flex';
-  if(_isMobile())document.getElementById('legend').classList.add('collapsed');
+  document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   _autoExpandExportBar();
@@ -9776,6 +9776,16 @@ function _renderMapInner(){
 
   // (Per-VPC verticals to gateway drawn inline above)
 
+  // Update routingBottomY to account for inverse peering arcs and bus bars
+  if(uniquePeerings.length>0){
+    const lowestInvY=globalMaxBottom+40+(uniquePeerings.length-1)*laneSpacing+18;
+    routingBottomY=Math.max(routingBottomY,lowestInvY);
+  }
+  if(_sharedBusIdx>0){
+    const lowestBusY=Math.max(...vL.map(v=>v.y+v.h))+30+(_sharedBusIdx-1)*20+10;
+    routingBottomY=Math.max(routingBottomY,lowestBusY);
+  }
+
   // Find edges for routing
   const allVpcBottomEdge=Math.max(...vL.map(v=>v.y+v.h));
 
@@ -10510,7 +10520,7 @@ function _renderMapInner(){
   // Diff overlay (grid layout)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay failed:',de)}
   document.getElementById('legend').style.display='flex';
-  if(_isMobile())document.getElementById('legend').classList.add('collapsed');
+  document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   _autoExpandExportBar();
@@ -12775,7 +12785,7 @@ function _renderMergeBannerChips(){
     chip.title=(ctx.visible?'Click to hide':'Click to show')+': '+ctx.accountLabel;
     const dot=document.createElement('span');dot.className='mac-dot';dot.style.background=ctx.color||'var(--text-muted)';
     const lbl=document.createElement('span');lbl.style.color=ctx.visible?'var(--text-primary)':'var(--text-muted)';
-    lbl.textContent=ctx.accountLabel.length>16?ctx.accountLabel.slice(0,14)+'…':ctx.accountLabel;
+    lbl.textContent=ctx.accountLabel;
     chip.appendChild(dot);chip.appendChild(lbl);
     chip.addEventListener('click',()=>{toggleAccountVisibility(i)});
     box.appendChild(chip);
