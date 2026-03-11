@@ -35,7 +35,7 @@ var _UDASH_TABS = [
   {id:'reports', label:'Reports', color:'#6366f1', icon:'', prereq:function(){ return true; }, render:function(){ _renderReportsTab(); }},
   {id:'inventory', label:'Inventory', color:'#f97316', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
-    if(!_inventoryData.length) _buildInventoryData();
+    if(!_inventoryData.length) _buildInventoryDataSync();
     return _inventoryData.length>0;
   }, render:function(){ _renderInventoryTab(); }}
 ];

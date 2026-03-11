@@ -105,6 +105,7 @@ export function setDiscoveredTags(v) { _discoveredTags = v; }
  * Build inventory data rows from the resource context.
  * Populates _inventoryData with enriched resource rows.
  */
+var _buildInventoryDataSync = _buildInventoryData; // alias for callers that need sync path
 function _buildInventoryData() {
   _inventoryData = [];
   var ctx = rlCtx; if (!ctx) return;
@@ -834,7 +835,7 @@ if (typeof window !== 'undefined') {
     getClassificationRules, setClassificationRules,
     getDiscoveredTags, setDiscoveredTags,
     // Pure logic functions
-    _buildInventoryData, _filterInventory, _getTagMap, _safeRegex,
+    _buildInventoryData, _buildInventoryDataSync, _filterInventory, _getTagMap, _safeRegex,
     _scoreClassification, _discoverTagKeys, runClassificationEngine,
     prepareIAMReviewData, matchAction, matchResource, evaluateCondition,
     _collectStatements, canDo, summarizePermissions
@@ -848,7 +849,7 @@ export {
   _appSummaryState, _APP_TYPE_SUGGESTIONS, _invToolbarRendered,
   _INV_TYPE_COLORS, _INV_NO_MAP_TYPES, _invFilterCache, _invFilterKey,
   _DEFAULT_CLASS_RULES, _classificationRules, _discoveredTags, _TIER_RPO_RTO,
-  _buildInventoryData, _filterInventory, _getTagMap, _safeRegex,
+  _buildInventoryData, _buildInventoryDataSync, _filterInventory, _getTagMap, _safeRegex,
   _scoreClassification, _discoverTagKeys, runClassificationEngine,
   prepareIAMReviewData, matchAction, matchResource, evaluateCondition,
   _collectStatements, canDo, summarizePermissions

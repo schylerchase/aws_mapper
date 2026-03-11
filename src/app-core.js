@@ -89,6 +89,9 @@ if(_prefs.sidebarCollapsed||_isMobile()){
 // Apply saved text scale on load
 if(_prefs.gTxtScale) applyGlobalTxtScale();
 
+// Generic debounce utility for filter/sort/search handlers
+function _debounce(fn,ms){var t;return function(){var a=arguments,s=this;clearTimeout(t);t=setTimeout(function(){fn.apply(s,a)},ms)}}
+
 const inputSections=[
   {t:'Network',open:true,inputs:[
     {id:'in_vpcs',l:'VPCs',c:'describe-vpcs'},
@@ -700,7 +703,7 @@ var _RPT_MODULES=[
    render:function(ctx,opts){return _rptIAMReview(ctx,opts)}},
   {id:'inventory',name:'Resource Inventory',icon:'',category:'data',enabled:true,
    available:function(){return !!_rlCtx||(_importedReportData&&_inventoryData.length>0)},
-   desc:function(){if(!_rlCtx&&!_importedReportData)return 'No data';if(!_inventoryData.length&&_rlCtx)_buildInventoryData();var a=typeof _rptGetAccountFilter==='function'?_rptGetAccountFilter():'all';var f=_rptFilterByAccount(_inventoryData,a);return f.length+' resources across all resource types'},
+   desc:function(){if(!_rlCtx&&!_importedReportData)return 'No data';if(!_inventoryData.length&&_rlCtx)_buildInventoryDataSync();var a=typeof _rptGetAccountFilter==='function'?_rptGetAccountFilter():'all';var f=_rptFilterByAccount(_inventoryData,a);return f.length+' resources across all resource types'},
    render:function(ctx,opts){return _rptInventory(ctx,opts)}},
   {id:'action-plan',name:'Action Plan',icon:'',category:'remediation',enabled:true,
    available:function(){return _complianceFindings.length>0},
@@ -1848,7 +1851,7 @@ function _rptIAMReview(ctx, opts){
 function _rptInventory(ctx, opts){
   var h='<section class="rpt-section" id="s-inventory"><h2 class="rpt-section-toggle">Resource Inventory</h2>';
   if(!_rlCtx&&!_importedReportData){return h+'<p>No data loaded.</p></section>'}
-  if(!_inventoryData.length&&_rlCtx) _buildInventoryData();
+  if(!_inventoryData.length&&_rlCtx) _buildInventoryDataSync();
   var filteredInv=_rptFilterByAccount(_inventoryData, _rptGetAccountFilter());
   if(!filteredInv.length){return h+'<p>No resources found.</p></section>'}
   h+='<div class="rpt-section-body">';
@@ -2268,10 +2271,10 @@ function _renderCompDash(bodyOnly){
     th+='<button id="compExportBtn" style="background:rgba(34,211,238,.1);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 10px;border-radius:4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Export</button>';
     tb.innerHTML=th;
     // Attach toolbar event listeners
-    document.getElementById('compSearch').addEventListener('input',function(){_compDashState.search=this.value;_compDashState._cachedView=null;_renderCompDash()});
-    document.getElementById('compFwFilter').addEventListener('change',function(){_compDashState.fwFilter=this.value;_compDashState._cachedView=null;_renderCompDash()});
-    document.getElementById('compSort').addEventListener('change',function(){_compDashState.sort=this.value;_renderCompDash(true)});
-    document.getElementById('compShowMuted').addEventListener('change',function(){_compDashState.showMuted=this.checked;_compDashState._cachedView=null;_renderCompDash()});
+    document.getElementById('compSearch').addEventListener('input',_debounce(function(){_compDashState.search=this.value;_compDashState._cachedView=null;_renderCompDash()},250));
+    document.getElementById('compFwFilter').addEventListener('change',_debounce(function(){_compDashState.fwFilter=this.value;_compDashState._cachedView=null;_renderCompDash()},100));
+    document.getElementById('compSort').addEventListener('change',_debounce(function(){_compDashState.sort=this.value;_renderCompDash(true)},100));
+    document.getElementById('compShowMuted').addEventListener('change',_debounce(function(){_compDashState.showMuted=this.checked;_compDashState._cachedView=null;_renderCompDash()},80));
     document.getElementById('compViewToggle').addEventListener('click',function(e){var btn=e.target.closest('.comp-view-btn');if(!btn)return;_compDashState.view=btn.dataset.view;_renderCompDash()});
     document.getElementById('compToggleSummary').addEventListener('click',function(){
       _compDashState.execSummary=!_compDashState.execSummary;
@@ -2349,6 +2352,7 @@ function _renderCompShellTable(view,filtered){
   _renderCompTableRows(filtered);
 }
 const _compChunkSize=100;
+const _compFirstChunk=50;
 function _buildCompRow(f,i){
   // NOTE: All values are pre-escaped via esc() — data comes from internal compliance engine, not user input
   var muted=_isMuted(f);var ref=_complianceRefs[f.control];
@@ -2387,13 +2391,13 @@ function _attachCompRowListeners(container,filtered){
 function _renderCompTableRows(filtered){
   var tbody=document.getElementById('compTbody');if(!tbody)return;
   if(!filtered.length){tbody.textContent='';var emptyRow=document.createElement('tr');var emptyTd=document.createElement('td');emptyTd.setAttribute('colspan','6');emptyTd.style.cssText='text-align:center;padding:40px;color:var(--text-muted)';emptyTd.textContent='No findings match current filters';emptyRow.appendChild(emptyTd);tbody.appendChild(emptyRow);return}
-  // Render first chunk immediately, defer rest via requestIdleCallback for large datasets
-  var first=Math.min(_compChunkSize,filtered.length);
+  // Render first chunk immediately (capped smaller for responsiveness), defer rest via requestIdleCallback
+  var first=Math.min(_compFirstChunk,filtered.length);
   var h='';for(let i=0;i<first;i++)h+=_buildCompRow(filtered[i],i);
   tbody.textContent='';var tmp=document.createElement('tbody');tmp.innerHTML=h; // safe: esc() applied to all values
   _attachCompRowListeners(tmp,filtered);
   while(tmp.firstChild)tbody.appendChild(tmp.firstChild);
-  if(filtered.length<=_compChunkSize)return;
+  if(filtered.length<=first)return;
   var rendered=first;
   function renderNextChunk(){
     if(rendered>=filtered.length)return;
@@ -4011,12 +4015,12 @@ var _appRegistry=[];
 let _appAutoDiscovered=false;
 let _appSummaryState={search:'',sort:'tier',sortDir:'asc',adding:false,editing:-1};
 const _APP_TYPE_SUGGESTIONS=['Web App','Database','Monitoring','CI/CD','Security','Analytics','Storage','Infrastructure'];
-function _buildInventoryData(){
-  _inventoryData=[];
-  var ctx=_rlCtx;if(!ctx)return;
-  var rows=[];
+// Shared inventory row-building helpers — used by both sync and async paths
+function _invHelpers(ctx){
   var vpcNameMap={};
   (ctx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
+  var subVpcMap={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)subVpcMap[s.SubnetId]=s.VpcId||''});
+  var instVpcMap={};(ctx.instances||[]).forEach(function(i){if(i.InstanceId)instVpcMap[i.InstanceId]=i.VpcId||subVpcMap[i.SubnetId]||''});
   function tag(obj){var t=(obj.Tags||obj.tags||[]).find(function(x){return x.Key==='Name'});return t?t.Value:''}
   function tags(obj){var m={};(obj.Tags||obj.tags||[]).forEach(function(t){m[t.Key]=t.Value});return m}
   function mkRow(id,type,name,obj,extra){
@@ -4030,9 +4034,11 @@ function _buildInventoryData(){
       compliancePass:0,complianceFail:0,
       _raw:obj,_related:extra.related||[]};
   }
-  // Shared lookups: subnet→VPC, instance→VPC
-  var subVpcMap={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)subVpcMap[s.SubnetId]=s.VpcId||''});
-  var instVpcMap={};(ctx.instances||[]).forEach(function(i){if(i.InstanceId)instVpcMap[i.InstanceId]=i.VpcId||subVpcMap[i.SubnetId]||''});
+  return{subVpcMap:subVpcMap,instVpcMap:instVpcMap,tag:tag,tags:tags,mkRow:mkRow};
+}
+// Build resource rows for types 1-9 (VPC through Redshift)
+function _invBuildGroup1(ctx,rows,h){
+  var subVpcMap=h.subVpcMap,tag=h.tag,mkRow=h.mkRow;
   // 1. VPCs
   (ctx.vpcs||[]).forEach(function(v){
     rows.push(mkRow(v.VpcId,'VPC',tag(v)||v.VpcId,v,{vpcId:v.VpcId,config:v.CidrBlock||'',state:v.State||''}));
@@ -4082,6 +4088,10 @@ function _buildInventoryData(){
   (ctx.redshiftClusters||[]).forEach(function(rs){
     rows.push(mkRow(rs.ClusterIdentifier,'Redshift',rs.ClusterIdentifier,rs,{vpcId:rs.VpcId||'',config:(rs.NodeType||'')+' x'+(rs.NumberOfNodes||1),state:rs.ClusterStatus||'',encrypted:!!rs.Encrypted}));
   });
+}
+// Build resource rows for types 10-16 (SGs through ENIs)
+function _invBuildGroup2(ctx,rows,h){
+  var subVpcMap=h.subVpcMap,tag=h.tag,mkRow=h.mkRow;
   // 10. Security Groups
   (ctx.sgs||[]).forEach(function(sg){
     var inCt=(sg.IpPermissions||[]).length;var outCt=(sg.IpPermissionsEgress||[]).length;
@@ -4114,6 +4124,10 @@ function _buildInventoryData(){
   (ctx.enis||[]).forEach(function(e){
     rows.push(mkRow(e.NetworkInterfaceId,'ENI',e.Description||e.NetworkInterfaceId,e,{vpcId:e.VpcId||'',subnetId:e.SubnetId||'',az:e.AvailabilityZone||'',config:e.PrivateIpAddress||'',state:e.Status||''}));
   });
+}
+// Build resource rows for types 17-26 (EBS through Target Groups)
+function _invBuildGroup3(ctx,rows,h){
+  var instVpcMap=h.instVpcMap,tag=h.tag,mkRow=h.mkRow;
   // 17. EBS Volumes
   (ctx.volumes||[]).forEach(function(vol){
     var attInsts=(vol.Attachments||[]).map(function(a){return a.InstanceId}).filter(Boolean);
@@ -4161,7 +4175,9 @@ function _buildInventoryData(){
   (ctx.tgs||[]).forEach(function(tg){
     rows.push(mkRow(tg.TargetGroupName,'Target Group',tg.TargetGroupName,tg,{vpcId:tg.VpcId||'',config:(tg.Protocol||'')+':'+(tg.Port||''),state:tg.TargetType||''}));
   });
-  // === Enrichment pass ===
+}
+// Enrichment pass — classification, BUDR, compliance
+function _invEnrich(rows){
   // 1. Classification tier lookup
   var classMap={};
   (_classificationData||[]).forEach(function(c){classMap[c.id]=c});
@@ -4187,7 +4203,40 @@ function _buildInventoryData(){
     var comp=compMap[r.id];
     if(comp){r.compliancePass=comp.pass;r.complianceFail=comp.fail}
   });
+}
+// Sync fallback — used by callers that cannot await (desc, prereq, report embed)
+function _buildInventoryDataSync(){
+  _inventoryData=[];
+  var ctx=_rlCtx;if(!ctx)return;
+  var rows=[];
+  var h=_invHelpers(ctx);
+  _invBuildGroup1(ctx,rows,h);
+  _invBuildGroup2(ctx,rows,h);
+  _invBuildGroup3(ctx,rows,h);
+  _invEnrich(rows);
   _inventoryData=rows;
+}
+// Async inventory build — yields to main thread between resource groups
+var _inventoryBuildPromise=null;
+async function _buildInventoryData(){
+  if(_inventoryBuildPromise)return _inventoryBuildPromise;
+  _inventoryBuildPromise=_buildInventoryDataAsync();
+  return _inventoryBuildPromise;
+}
+async function _buildInventoryDataAsync(){
+  _inventoryData=[];
+  var ctx=_rlCtx;if(!ctx){_inventoryBuildPromise=null;return}
+  var rows=[];
+  var h=_invHelpers(ctx);
+  _invBuildGroup1(ctx,rows,h);
+  await new Promise(function(r){setTimeout(r,0)});
+  _invBuildGroup2(ctx,rows,h);
+  await new Promise(function(r){setTimeout(r,0)});
+  _invBuildGroup3(ctx,rows,h);
+  await new Promise(function(r){setTimeout(r,0)});
+  _invEnrich(rows);
+  _inventoryData=rows;
+  _inventoryBuildPromise=null;
 }
 
 // === INVENTORY TAB RENDERER (Tasks 4-5) ===
@@ -4281,13 +4330,13 @@ function _renderInventoryTab(){
     th+='</div>';
     tb.innerHTML=th;
     // Wire toolbar events
-    document.getElementById('invSearch').addEventListener('input',function(){st.search=this.value;st.page=1;_renderInventoryBody()});
-    document.getElementById('invTypeFilter').addEventListener('change',function(){st.typeFilter=this.value;st.page=1;_renderInventoryBody()});
-    document.getElementById('invRegionFilter').addEventListener('change',function(){st.regionFilter=this.value;st.page=1;_renderInventoryBody()});
+    document.getElementById('invSearch').addEventListener('input',_debounce(function(){st.search=this.value;st.page=1;_renderInventoryBody()},250));
+    document.getElementById('invTypeFilter').addEventListener('change',_debounce(function(){st.typeFilter=this.value;st.page=1;_renderInventoryBody()},100));
+    document.getElementById('invRegionFilter').addEventListener('change',_debounce(function(){st.regionFilter=this.value;st.page=1;_renderInventoryBody()},100));
     if(document.getElementById('invAccountFilter')){
-      document.getElementById('invAccountFilter').addEventListener('change',function(){st.accountFilter=this.value;st.page=1;_renderInventoryBody()});
+      document.getElementById('invAccountFilter').addEventListener('change',_debounce(function(){st.accountFilter=this.value;st.page=1;_renderInventoryBody()},100));
     }
-    document.getElementById('invVpcFilter').addEventListener('change',function(){st.vpcFilter=this.value;st.page=1;_renderInventoryBody()});
+    document.getElementById('invVpcFilter').addEventListener('change',_debounce(function(){st.vpcFilter=this.value;st.page=1;_renderInventoryBody()},100));
     document.getElementById('invViewFlat').addEventListener('click',function(){
       if(st.viewMode==='flat') return;
       st.viewMode='flat';st.page=1;_invToolbarRendered=false;_renderInventoryTab();
@@ -5410,7 +5459,13 @@ function openResourceList(type, pushNav){
   }
 
   // Find first subnet containing a resource
-  function findSubForInst(iid){return (ctx.subnets||[]).find(s=>((ctx.instBySub||{})[s.SubnetId]||[]).some(i=>i.InstanceId===iid))?.SubnetId}
+  var _instSubMap={};
+  (ctx.subnets||[]).forEach(function(s){
+    ((ctx.instBySub||{})[s.SubnetId]||[]).forEach(function(i){
+      _instSubMap[i.InstanceId]=s.SubnetId;
+    });
+  });
+  function findSubForInst(iid){return _instSubMap[iid]}
   function findSubForAlb(arn){return (ctx.subnets||[]).find(s=>((ctx.albBySub||{})[s.SubnetId]||[]).some(a=>a.LoadBalancerArn===arn))?.SubnetId}
   function findSubForEni(eid){return (ctx.subnets||[]).find(s=>((ctx.eniBySub||{})[s.SubnetId]||[]).some(e=>e.NetworkInterfaceId===eid))?.SubnetId}
   function findSubForRds(dbid){for(const[sid,dbs]of Object.entries(ctx.rdsBySub||{})){if(dbs.some(d=>d.DBInstanceIdentifier===dbid))return sid}return null}
@@ -8453,10 +8508,11 @@ function renderMap(cb){
   overlay.style.display='flex';
   _renderMapTimer=setTimeout(()=>{
     _renderMapTimer=null;
-    requestAnimationFrame(()=>{setTimeout(()=>{_renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()},0)});
+    requestAnimationFrame(()=>{setTimeout(async()=>{await _renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()},0)});
   },50);
 }
-function _renderMapInner(){
+function _yieldMain(){return new Promise(function(r){setTimeout(r,0)})}
+async function _renderMapInner(){
   try{
   const _t0=performance.now();
   const svg=d3.select('#mapSvg');svg.selectAll('*').remove();svg.style('display','block');
@@ -8509,6 +8565,7 @@ function _renderMapInner(){
   sgs=ext(_cachedParse('in_sgs'),['SecurityGroups']);
   nacls=ext(_cachedParse('in_nacls'),['NetworkAcls']);
   enis=ext(_cachedParse('in_enis'),['NetworkInterfaces']);
+  await _yieldMain(); // yield after first batch of parses
   igws=ext(_cachedParse('in_igws'),['InternetGateways']);
   nats=ext(_cachedParse('in_nats'),['NatGateways']);
   vpces=ext(_cachedParse('in_vpces'),['VpcEndpoints']);
@@ -8530,6 +8587,7 @@ function _renderMapInner(){
   vpns=ext(_cachedParse('in_vpn'),['VpnConnections']);
   volumes=ext(_cachedParse('in_vols'),['Volumes']);
   snapshots=ext(_cachedParse('in_snaps'),['Snapshots']);
+  await _yieldMain(); // yield after second batch of parses
   let s3raw=_cachedParse('in_s3');s3bk=s3raw?ext(s3raw,['Buckets']):[];
   zones=ext(_cachedParse('in_r53'),['HostedZones']);
   const allRecSets=ext(_cachedParse('in_r53records'),['ResourceRecordSets','RecordSets']);
@@ -8556,6 +8614,7 @@ function _renderMapInner(){
   configRecorders=ext(_cachedParse('in_configrecorders'),['ConfigurationRecorders']);
   configRules=ext(_cachedParse('in_configrules'),['ConfigRules']);
   configConformance=ext(_cachedParse('in_configconformance'),['ConformancePackDetails']);
+  await _yieldMain(); // yield after governance batch of parses
   securityHubStds=ext(_cachedParse('in_securityhub'),['StandardsSubscriptions']);
   accessAnalyzers=ext(_cachedParse('in_accessanalyzer'),['analyzers']);
   const kmsRaw=_cachedParse('in_kmskeys');
@@ -10525,6 +10584,8 @@ function _renderMapInner(){
   document.getElementById('bottomToolbar').style.display='flex';
   _autoExpandExportBar();
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  // Pre-build inventory data asynchronously so it's ready when the tab is opened
+  _buildInventoryData();
   }catch(e){console.error('renderMap error:',e);_showToast('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
 }
 
@@ -12603,7 +12664,9 @@ function removeAccountContext(index){
   _renderAccountPanel();
 }
 
-function mergeContexts(contexts){
+function _yld(){return new Promise(function(r){setTimeout(r,0)})}
+
+async function mergeContexts(contexts){
   const visible=contexts.filter(c=>c.visible);
   if(!visible.length)return null;
   // MEMORY: Lazily rebuild rlCtx from textareas if previously released
@@ -12626,8 +12689,9 @@ function mergeContexts(contexts){
     securityHubStds:[],accessAnalyzers:[],kmsKeys:[],guarddutyDetectors:[],secrets:[],ssmParams:[],
     ecrRepos:[],asgs:[],apiGateways:[],snsTopics:[],sqsQueues:[]};
 
-  visible.forEach(ctx=>{
-    const c=ctx.rlCtx;if(!c)return;
+  for(var vi=0;vi<visible.length;vi++){
+    var ctx=visible[vi];
+    const c=ctx.rlCtx;if(!c)continue;
     const tag=(r)=>{if(r){r._accountId=r._accountId||ctx.accountId;r._accountLabel=ctx.accountLabel;r._ctxColor=ctx.color}return r};
 
     // Arrays — tag and concat
@@ -12666,7 +12730,10 @@ function mergeContexts(contexts){
         }
       });
     });
-  });
+
+    // Yield to main thread between accounts
+    await _yld();
+  }
 
   merged._multiRegion=merged._regions.size>1;
   return merged;
@@ -12696,8 +12763,8 @@ function exitMultiView(){
   _renderAccountPanel();
 }
 
-function _remergeAndRender(){
-  _mergedCtx=mergeContexts(_loadedContexts);
+async function _remergeAndRender(){
+  _mergedCtx=await mergeContexts(_loadedContexts);
   if(_mergedCtx){
     _rlCtx=_mergedCtx;
     // Clear dashboard caches so they re-run with merged context
@@ -14166,18 +14233,14 @@ function _renderFirewallTab(){
     });
     pills.appendChild(el);
   });
-  document.getElementById('fwDashSearch').addEventListener('input',function(){
-    _fwDashState.search=this.value.toLowerCase();_fwDashRender();
-  });
-  document.getElementById('fwDashVpcFilter').addEventListener('change',function(){
-    _fwDashState.vpcFilter=this.value;_fwDashRender();
-  });
-  document.getElementById('fwDashGroup').addEventListener('change',function(){
-    _fwDashState.groupBy=this.value;_fwDashRender();
-  });
-  document.getElementById('fwDashSort').addEventListener('change',function(){
-    _fwDashState.sort=this.value;_fwDashRender();
-  });
+  document.getElementById('fwDashSearch').addEventListener('input',_debounce(function(){
+    _fwDashState.search=this.value.toLowerCase();_fwDashRender()},250));
+  document.getElementById('fwDashVpcFilter').addEventListener('change',_debounce(function(){
+    _fwDashState.vpcFilter=this.value;_fwDashRender()},100));
+  document.getElementById('fwDashGroup').addEventListener('change',_debounce(function(){
+    _fwDashState.groupBy=this.value;_fwDashRender()},100));
+  document.getElementById('fwDashSort').addEventListener('change',_debounce(function(){
+    _fwDashState.sort=this.value;_fwDashRender()},100));
   _fwDashRender();
 }
 
@@ -14649,6 +14712,9 @@ function _protoName(p){
 
 function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts){
   if(!sgs||sgs.length===0) return {action:(opts&&opts.assumeAllow)?'allow':'deny',rule:'No security groups attached',matchedSg:null};
+  var srcIp=_ipFromCidr(sourceCidr);
+  var _srcSgIds=opts&&opts.sourceSgIds;
+  var _srcSgSet=_srcSgIds?new Set(_srcSgIds):null;
   for(let si=0;si<sgs.length;si++){
     var sg=sgs[si];
     var rules=direction==='inbound'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
@@ -14662,17 +14728,23 @@ function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts){
       }
       if(!portOk) continue;
       var cidrOk=false;
-      (r.IpRanges||[]).forEach(function(ipr){
-        if(_cidrContains(ipr.CidrIp, _ipFromCidr(sourceCidr))) cidrOk=true;
-      });
-      (r.Ipv6Ranges||[]).forEach(function(ipr){
-        if(ipr.CidrIpv6==='::/0') cidrOk=true;
-      });
+      var ipRanges=r.IpRanges||[];
+      for(var ci=0;ci<ipRanges.length&&!cidrOk;ci++){
+        if(_cidrContains(ipRanges[ci].CidrIp, srcIp)) cidrOk=true;
+      }
+      if(!cidrOk){
+        var ipv6Ranges=r.Ipv6Ranges||[];
+        for(var v6i=0;v6i<ipv6Ranges.length&&!cidrOk;v6i++){
+          if(ipv6Ranges[v6i].CidrIpv6==='::/0') cidrOk=true;
+        }
+      }
       // SG-to-SG references: validate source SG IDs if provided, else assume allow
       if(!cidrOk&&(r.UserIdGroupPairs||[]).length>0){
-        var srcSgIds=opts&&opts.sourceSgIds;
-        if(srcSgIds){(r.UserIdGroupPairs||[]).forEach(function(gp){if(gp.GroupId&&srcSgIds.indexOf(gp.GroupId)!==-1)cidrOk=true})}
-        else{(r.UserIdGroupPairs||[]).forEach(function(gp){if(gp.GroupId)cidrOk=true})}
+        var pairs=r.UserIdGroupPairs||[];
+        for(var pi=0;pi<pairs.length&&!cidrOk;pi++){
+          if(_srcSgSet){if(pairs[pi].GroupId&&_srcSgSet.has(pairs[pi].GroupId))cidrOk=true}
+          else{if(pairs[pi].GroupId)cidrOk=true}
+        }
       }
       if(cidrOk){
         var desc=sg.GroupName+': '+_protoName(String(r.IpProtocol))+' port '+(r.FromPort!==-1&&r.FromPort!==undefined?r.FromPort+'-'+r.ToPort:'all');
@@ -14694,11 +14766,13 @@ function _resolveNetworkPosition(type, id, ctx){
   }
   if(type==='instance'){
     var inst=null;
-    Object.keys(ctx.instBySub||{}).forEach(function(sid){
-      (ctx.instBySub[sid]||[]).forEach(function(i){
-        if(i.InstanceId===id) inst=i;
-      });
-    });
+    var _instKeys=Object.keys(ctx.instBySub||{});
+    for(var _ik=0;_ik<_instKeys.length&&!inst;_ik++){
+      var _iArr=ctx.instBySub[_instKeys[_ik]]||[];
+      for(var _ii=0;_ii<_iArr.length&&!inst;_ii++){
+        if(_iArr[_ii].InstanceId===id) inst=_iArr[_ii];
+      }
+    }
     if(!inst) return null;
     var iSgs=(inst.SecurityGroups||[]).map(function(s){return s.GroupId});
     var fullSgs=iSgs.map(function(gid){return _sgById.get(gid)}).filter(Boolean);
@@ -14706,11 +14780,13 @@ function _resolveNetworkPosition(type, id, ctx){
   }
   if(type==='rds'){
     var rds2=null;var rSid=null;
-    Object.keys(ctx.rdsBySub||{}).forEach(function(sid){
-      (ctx.rdsBySub[sid]||[]).forEach(function(d){
-        if(d.DBInstanceIdentifier===id){rds2=d;rSid=sid}
-      });
-    });
+    var _rKeys=Object.keys(ctx.rdsBySub||{});
+    for(var _rk=0;_rk<_rKeys.length&&!rds2;_rk++){
+      var _rArr=ctx.rdsBySub[_rKeys[_rk]]||[];
+      for(var _ri=0;_ri<_rArr.length&&!rds2;_ri++){
+        if(_rArr[_ri].DBInstanceIdentifier===id){rds2=_rArr[_ri];rSid=_rKeys[_rk]}
+      }
+    }
     if(!rds2) return null;
     var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
     var rSgs2=(rds2.VpcSecurityGroups||[]).map(function(s){return _sgById.get(s.VpcSecurityGroupId)}).filter(Boolean);
@@ -14719,12 +14795,14 @@ function _resolveNetworkPosition(type, id, ctx){
   }
   if(type==='alb'){
     var alb2=null;var aSid=null;
-    Object.keys(ctx.albBySub||{}).forEach(function(sid){
-      (ctx.albBySub[sid]||[]).forEach(function(a){
-        var aid=a.LoadBalancerArn?a.LoadBalancerArn.split('/').pop():'';
-        if(aid===id||a.LoadBalancerName===id) {alb2=a;aSid=sid}
-      });
-    });
+    var _aKeys=Object.keys(ctx.albBySub||{});
+    for(var _ak=0;_ak<_aKeys.length&&!alb2;_ak++){
+      var _aArr=ctx.albBySub[_aKeys[_ak]]||[];
+      for(var _ai=0;_ai<_aArr.length&&!alb2;_ai++){
+        var aid=_aArr[_ai].LoadBalancerArn?_aArr[_ai].LoadBalancerArn.split('/').pop():'';
+        if(aid===id||_aArr[_ai].LoadBalancerName===id){alb2=_aArr[_ai];aSid=_aKeys[_ak]}
+      }
+    }
     if(!alb2) return null;
     var aVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===aSid})||{}).VpcId;
     var aSgs=(alb2.SecurityGroups||[]).map(function(gid){return _sgById.get(gid)}).filter(Boolean);
@@ -14732,11 +14810,13 @@ function _resolveNetworkPosition(type, id, ctx){
   }
   if(type==='lambda'){
     var fn2=null;var fSid=null;
-    Object.keys(ctx.lambdaBySub||{}).forEach(function(sid){
-      (ctx.lambdaBySub[sid]||[]).forEach(function(f){
-        if(f.FunctionName===id){fn2=f;fSid=sid}
-      });
-    });
+    var _fKeys=Object.keys(ctx.lambdaBySub||{});
+    for(var _fk=0;_fk<_fKeys.length&&!fn2;_fk++){
+      var _fArr=ctx.lambdaBySub[_fKeys[_fk]]||[];
+      for(var _fi=0;_fi<_fArr.length&&!fn2;_fi++){
+        if(_fArr[_fi].FunctionName===id){fn2=_fArr[_fi];fSid=_fKeys[_fk]}
+      }
+    }
     if(!fn2) return null;
     var fVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===fSid})||{}).VpcId;
     var fSgs2=((fn2.VpcConfig||{}).SecurityGroupIds||[]).map(function(gid){return _sgById.get(gid)}).filter(Boolean);
@@ -14744,11 +14824,13 @@ function _resolveNetworkPosition(type, id, ctx){
   }
   if(type==='ecs'){
     var ecs2=null;var eSid=null;
-    Object.keys(ctx.ecsBySub||{}).forEach(function(sid){
-      (ctx.ecsBySub[sid]||[]).forEach(function(s){
-        if(s.serviceName===id){ecs2=s;eSid=sid}
-      });
-    });
+    var _ecKeys=Object.keys(ctx.ecsBySub||{});
+    for(var _eck=0;_eck<_ecKeys.length&&!ecs2;_eck++){
+      var _ecArr=ctx.ecsBySub[_ecKeys[_eck]]||[];
+      for(var _eci=0;_eci<_ecArr.length&&!ecs2;_eci++){
+        if(_ecArr[_eci].serviceName===id){ecs2=_ecArr[_eci];eSid=_ecKeys[_eck]}
+      }
+    }
     if(!ecs2) return null;
     var eVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===eSid})||{}).VpcId;
     var eNc=(ecs2.networkConfiguration||{}).awsvpcConfiguration||{};
@@ -18487,7 +18569,7 @@ const _UDASH_TABS = [
   {id:'inventory', label:'Inventory', color:'#f97316', icon:'', prereq:function(){
     if(_importedReportData&&_inventoryData.length) return true;
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
-    if(!_inventoryData.length) _buildInventoryData();
+    if(!_inventoryData.length) _buildInventoryDataSync();
     return _inventoryData.length>0;
   }, render:function(){ _renderInventoryTab(); }},
   {id:'posture', label:'Security Posture', color:'#14b8a6', icon:'', prereq:function(){
@@ -20416,15 +20498,17 @@ function _rptBuildTOC(enabled){
   return h;
 }
 
-function _rptBuildSections(enabled){
+async function _rptBuildSections(enabled){
   var h='';
-  enabled.forEach(function(id){
+  for(var si=0;si<enabled.length;si++){
+    var id=enabled[si];
     var m=_RPT_MODULES.find(function(x){return x.id===id});
     try{h+=m.render(_rlCtx,{});}catch(e){
       h+='<section class="rpt-section" id="s-'+esc(id)+'"><h2>'+esc(m.name)+'</h2>';
       h+='<p>Error rendering section: '+esc(e.message)+'</p></section>';
     }
-  });
+    await new Promise(function(r){setTimeout(r,0)});
+  }
   return h;
 }
 
@@ -20443,7 +20527,7 @@ function _rptEmbedDataBlob(enabled){
   var findings=_rptFilterByAccount(_complianceFindings||[],acctFilter);
   var budrA=_rptFilterByAccount(_budrAssessments||[],acctFilter);
   var budrF=_rptFilterByAccount(_budrFindings||[],acctFilter);
-  if(!_inventoryData.length&&_rlCtx)_buildInventoryData();
+  if(!_inventoryData.length&&_rlCtx)_buildInventoryDataSync();
   var inv=_rptFilterByAccount(_inventoryData||[],acctFilter).map(function(r){
     var c={};Object.keys(r).forEach(function(k){if(k!=='_raw'&&k!=='_related')c[k]=r[k]});return c;
   });
@@ -20482,7 +20566,7 @@ function _rptEmbedDataBlob(enabled){
   return '\n<script type="application/json" id="rpt-embedded-data">\n'+JSON.stringify(blob)+'\n<\/script>\n';
 }
 
-function _rptFullHTML(enabled,pngDataUrl){
+async function _rptFullHTML(enabled,pngDataUrl){
   var title=esc(_rptState.title||'AWS Infrastructure Assessment');
   var html='<!DOCTYPE html>\n<html lang="en">\n<head>\n';
   html+='<meta charset="UTF-8">\n';
@@ -20493,11 +20577,15 @@ function _rptFullHTML(enabled,pngDataUrl){
   html+='<style>\nbody{margin:0;padding:24px 40px;background:'+expBg+';color:'+expTx+';font-family:"Segoe UI",system-ui,sans-serif;line-height:1.6}\n'+_rptCSS()+'\n'+_rptInteractiveCSS()+'\n</style>\n';
   html+='</head>\n<body>\n';
   html+=_rptBuildHeader();
+  await new Promise(function(r){setTimeout(r,0)});
   html+=_rptBuildTOC(enabled);
-  html+=_rptBuildSections(enabled);
+  await new Promise(function(r){setTimeout(r,0)});
+  html+=await _rptBuildSections(enabled);
+  await new Promise(function(r){setTimeout(r,0)});
   html+=_rptBuildFooter();
   html+='<button id="rpt-back-top" title="Back to top" aria-label="Scroll to top">&#9650;</button>\n';
   html+=_rptInteractiveJS()+'\n';
+  await new Promise(function(r){setTimeout(r,0)});
   html+=_rptEmbedDataBlob(enabled);
   html+='\n</body>\n</html>';
   if(pngDataUrl) html=_rptSwapArchPng(html,pngDataUrl);
@@ -20530,7 +20618,14 @@ function _rptCapturePNG(){
         var c=document.createElement('canvas');
         c.width=Math.round(w*scale);c.height=Math.round(h*scale);
         var cx=c.getContext('2d');cx.drawImage(img,0,0,c.width,c.height);
-        URL.revokeObjectURL(url);resolve(c.toDataURL('image/png'));
+        URL.revokeObjectURL(url);
+        c.toBlob(function(b){
+          if(!b){resolve(null);return;}
+          var reader=new FileReader();
+          reader.onloadend=function(){resolve(reader.result)};
+          reader.onerror=function(){resolve(null)};
+          reader.readAsDataURL(b);
+        },'image/png');
       };
       img.onerror=function(){URL.revokeObjectURL(url);resolve(null);};
       img.src=url;
@@ -20572,7 +20667,7 @@ async function _generateReport(){
     if(!enabled.length){_showToast('No sections enabled');return;}
     var hasArch=enabled.indexOf('architecture')>=0;
     var pngDataUrl=hasArch?await _rptCapturePNG():null;
-    var html=_rptFullHTML(enabled,pngDataUrl);
+    var html=await _rptFullHTML(enabled,pngDataUrl);
     var slug=_rptSlugify(_rptState.title);
     var date=_rptState.date||new Date().toISOString().slice(0,10);
     var filename=slug+'-'+date+'.html';
@@ -20591,7 +20686,7 @@ async function _generateReport(){
 // === COMPLIANCE-ONLY XLSX (SheetJS) ===
 // _exportComplianceXlsx, _exportFullXlsx moved to src/exports/exports-xlsx.js
 
-function _exportFullHTML(){
+async function _exportFullHTML(){
   var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')};
   var now=new Date().toISOString().slice(0,19).replace('T',' ');
   var c=_rlCtx;
@@ -20608,14 +20703,16 @@ function _exportFullHTML(){
   if(_budrAssessments&&_budrAssessments.length) tabs.push({id:'budr',label:'BUDR'});
   if(_inventoryData&&_inventoryData.length) tabs.push({id:'inventory',label:'Inventory'});
   if(!tabs.length){_showToast('No data to export','error');return}
-  // Helper: build table HTML from headers + rows
-  function tbl(id,headers,rows,opts){
+  // Helper: build table HTML from headers + rows (async for chunked row processing)
+  async function tbl(id,headers,rows,opts){
     opts=opts||{};
     var s='<div class="tbl-wrap"><input type="text" class="tbl-search" data-table="'+id+'" placeholder="Search..."/>';
     s+='<table id="'+id+'"><thead><tr>';
     headers.forEach(function(h,i){s+='<th data-col="'+i+'">'+esc(h)+'</th>'});
     s+='</tr></thead><tbody>';
-    rows.forEach(function(row,ri){
+    var CHUNK=200;
+    for(var ri=0;ri<rows.length;ri++){
+      var row=rows[ri];
       s+='<tr class="'+(ri%2===0?'':'stripe')+'">';
       row.forEach(function(cell,ci){
         var cls='';var style='';
@@ -20624,7 +20721,10 @@ function _exportFullHTML(){
         s+='<td'+style+'>'+esc(cell)+'</td>';
       });
       s+='</tr>';
-    });
+      if(rows.length>CHUNK&&(ri+1)%CHUNK===0&&ri+1<rows.length){
+        await new Promise(function(r){setTimeout(r,0)});
+      }
+    }
     if(!rows.length) s+='<tr><td colspan="'+headers.length+'" class="empty">No data</td></tr>';
     s+='</tbody></table></div>';
     return s;
@@ -20680,6 +20780,7 @@ function _exportFullHTML(){
     }
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // Classification tab
   if(_classificationData&&_classificationData.length){
     var tierPri={critical:1,high:2,medium:3,low:4};
@@ -20689,9 +20790,10 @@ function _exportFullHTML(){
     });
     h+='<div class="tab-content" id="tab-classification"><h2 style="font-size:18px;margin-bottom:8px">Resource Classification</h2>';
     h+='<p style="color:#64748b;font-size:12px;margin-bottom:12px">'+_classificationData.length+' classified resources</p>';
-    h+=tbl('tblClass',['Resource ID','Name','Type','Tier','RPO','RTO','VPC','Source'],clRows,{tierCol:3});
+    h+=await tbl('tblClass',['Resource ID','Name','Type','Tier','RPO','RTO','VPC','Source'],clRows,{tierCol:3});
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // App Summary tab
   if(_appRegistry&&_appRegistry.length){
     var appRows=_appRegistry.map(function(app){
@@ -20704,9 +20806,10 @@ function _exportFullHTML(){
     });
     h+='<div class="tab-content" id="tab-appsummary"><h2 style="font-size:18px;margin-bottom:8px">Application Summary</h2>';
     h+='<p style="color:#64748b;font-size:12px;margin-bottom:12px">'+_appRegistry.length+' registered applications</p>';
-    h+=tbl('tblApp',['Application','Type','Tier','Resources'],appRows,{tierCol:2});
+    h+=await tbl('tblApp',['Application','Type','Tier','Resources'],appRows,{tierCol:2});
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // IAM Review tab
   if(_iamReviewData&&_iamReviewData.length){
     var iamRows=_iamReviewData.slice().sort(function(a,b){
@@ -20718,9 +20821,10 @@ function _exportFullHTML(){
     });
     h+='<div class="tab-content" id="tab-iam"><h2 style="font-size:18px;margin-bottom:8px">IAM Review</h2>';
     h+='<p style="color:#64748b;font-size:12px;margin-bottom:12px">'+_iamReviewData.length+' principals</p>';
-    h+=tbl('tblIam',['Name','Type','Admin','MFA','Policies','Findings','Last Used'],iamRows);
+    h+=await tbl('tblIam',['Name','Type','Admin','MFA','Policies','Findings','Last Used'],iamRows);
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // Compliance tab
   if(_complianceFindings&&_complianceFindings.length){
     var cv=_buildComplianceView({});
@@ -20734,9 +20838,10 @@ function _exportFullHTML(){
     });
     h+='<div class="tab-content" id="tab-compliance"><h2 style="font-size:18px;margin-bottom:8px">Compliance Findings</h2>';
     h+='<p style="color:#64748b;font-size:12px;margin-bottom:12px">'+cv.filtered.length+' findings</p>';
-    h+=tbl('tblComp',['Priority','Severity','Framework','Control','Resource','Finding'],compRows,{sevCol:1,tierCol:0});
+    h+=await tbl('tblComp',['Priority','Severity','Framework','Control','Resource','Finding'],compRows,{sevCol:1,tierCol:0});
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // Firewall tab
   if(c&&((c.sgs&&c.sgs.length)||(c.nacls&&c.nacls.length)||(c.rts&&c.rts.length))){
     h+='<div class="tab-content" id="tab-firewall"><h2 style="font-size:18px;margin-bottom:12px">Firewall &amp; Network</h2>';
@@ -20750,24 +20855,25 @@ function _exportFullHTML(){
         return [sg.GroupId,sg.GroupName||'',sg.VpcId||'',(sg.IpPermissions||[]).length,(sg.IpPermissionsEgress||[]).length,openNet?'YES':'No'];
       });
       h+='<h3 style="font-size:14px;margin:16px 0 8px">Security Groups ('+c.sgs.length+')</h3>';
-      h+=tbl('tblSg',['Group ID','Name','VPC','Inbound','Outbound','Open to Internet'],sgRows);
+      h+=await tbl('tblSg',['Group ID','Name','VPC','Inbound','Outbound','Open to Internet'],sgRows);
     }
     if(c.nacls&&c.nacls.length){
       var naclRows=c.nacls.map(function(n){
         return [n.NetworkAclId,n.VpcId||'',(n.Entries||[]).length,n.IsDefault?'Yes':'No'];
       });
       h+='<h3 style="font-size:14px;margin:16px 0 8px">NACLs ('+c.nacls.length+')</h3>';
-      h+=tbl('tblNacl',['NACL ID','VPC','Rules','Default'],naclRows);
+      h+=await tbl('tblNacl',['NACL ID','VPC','Rules','Default'],naclRows);
     }
     if(c.rts&&c.rts.length){
       var rtRows=c.rts.map(function(rt){
         return [rt.RouteTableId,rt.VpcId||'',(rt.Routes||[]).length];
       });
       h+='<h3 style="font-size:14px;margin:16px 0 8px">Route Tables ('+c.rts.length+')</h3>';
-      h+=tbl('tblRt',['Route Table ID','VPC','Routes'],rtRows);
+      h+=await tbl('tblRt',['Route Table ID','VPC','Routes'],rtRows);
     }
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // BUDR tab
   if(_budrAssessments&&_budrAssessments.length){
     var budrRows=_budrAssessments.map(function(a){
@@ -20779,9 +20885,10 @@ function _exportFullHTML(){
     });
     h+='<div class="tab-content" id="tab-budr"><h2 style="font-size:18px;margin-bottom:8px">Backup &amp; DR Assessment</h2>';
     h+='<p style="color:#64748b;font-size:12px;margin-bottom:12px">'+_budrAssessments.length+' resources assessed</p>';
-    h+=tbl('tblBudr',['Resource','Type','DR Tier','RTO','RPO','Signals'],budrRows,{tierCol:2});
+    h+=await tbl('tblBudr',['Resource','Type','DR Tier','RTO','RPO','Signals'],budrRows,{tierCol:2});
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // Inventory tab
   if(_inventoryData&&_inventoryData.length){
     var invRows=_inventoryData.map(function(r){
@@ -20789,9 +20896,10 @@ function _exportFullHTML(){
     });
     h+='<div class="tab-content" id="tab-inventory"><h2 style="font-size:18px;margin-bottom:8px">Resource Inventory</h2>';
     h+='<p style="color:#64748b;font-size:12px;margin-bottom:12px">'+_inventoryData.length+' resources</p>';
-    h+=tbl('tblInv',['Type','Name','Config','State','VPC','Region','Account'],invRows);
+    h+=await tbl('tblInv',['Type','Name','Config','State','VPC','Region','Account'],invRows);
     h+='</div>';
   }
+  await new Promise(function(r){setTimeout(r,0)});
   // Embedded JS: tab switching, sorting, search
   h+='<script>';
   h+='document.querySelectorAll(".tab-btn").forEach(function(btn){';
@@ -21499,44 +21607,50 @@ document.getElementById('expPng').addEventListener('click',()=>{
   const svgEl=document.getElementById('mapSvg');
   const root=svgEl.querySelector('.map-root');
   if(!root)return;
-  // get untransformed bounding box
-  const bb=root.getBBox();
-  const pad=60;
-  const cw=bb.width+pad,ch=bb.height+pad;
-  const maxDim=16000;
-  const scale=Math.min(3, maxDim/cw, maxDim/ch);
-  const w=Math.round(cw*scale),h=Math.round(ch*scale);
-  const clone=svgEl.cloneNode(true);
-  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  clone.setAttribute('width',w);clone.setAttribute('height',h);
-  clone.setAttribute('viewBox',`${bb.x-pad/2} ${bb.y-pad/2} ${cw} ${ch}`);
-  // remove zoom/pan transform so content fills viewBox
-  const cloneRoot=clone.querySelector('.map-root');
-  if(cloneRoot)cloneRoot.removeAttribute('transform');
-  const styles=_rptCollectStyles();
-  const styleEl=document.createElementNS('http://www.w3.org/2000/svg','style');
-  styleEl.textContent=styles;
-  clone.insertBefore(styleEl,clone.firstChild);
-  // background rect
-  const bgR=document.createElementNS('http://www.w3.org/2000/svg','rect');
-  bgR.setAttribute('x',bb.x-pad/2);bgR.setAttribute('y',bb.y-pad/2);
-  bgR.setAttribute('width',cw);bgR.setAttribute('height',ch);
-  var ltExp=document.documentElement.dataset.theme==='light';
-  bgR.setAttribute('fill',ltExp?'#f1f5f9':'#0a0e17');
-  if(ltExp) clone.setAttribute('data-theme','light');
-  if(cloneRoot)cloneRoot.insertBefore(bgR,cloneRoot.firstChild);
-  const svgStr=new XMLSerializer().serializeToString(clone);
-  const img=new Image();
-  img.onload=()=>{
-    const canvas=document.createElement('canvas');
-    canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d');
-    ctx.fillStyle=ltExp?'#f1f5f9':'#0a0e17';ctx.fillRect(0,0,w,h);
-    ctx.drawImage(img,0,0,w,h);
-    canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'aws-network-map.png')},'image/png');
-  };
-  img.onerror=()=>{_showToast('PNG render failed - try SVG export instead')};
-  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgStr)));
+  // yield to let the browser paint before heavy work
+  requestAnimationFrame(()=>{setTimeout(()=>{
+    const bb=root.getBBox();
+    const pad=60;
+    const cw=bb.width+pad,ch=bb.height+pad;
+    const maxDim=16000;
+    const scale=Math.min(3, maxDim/cw, maxDim/ch);
+    const w=Math.round(cw*scale),h=Math.round(ch*scale);
+    const clone=svgEl.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    clone.setAttribute('width',w);clone.setAttribute('height',h);
+    clone.setAttribute('viewBox',`${bb.x-pad/2} ${bb.y-pad/2} ${cw} ${ch}`);
+    // remove zoom/pan transform so content fills viewBox
+    const cloneRoot=clone.querySelector('.map-root');
+    if(cloneRoot)cloneRoot.removeAttribute('transform');
+    const styles=_rptCollectStyles();
+    const styleEl=document.createElementNS('http://www.w3.org/2000/svg','style');
+    styleEl.textContent=styles;
+    clone.insertBefore(styleEl,clone.firstChild);
+    // background rect
+    const bgR=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    bgR.setAttribute('x',bb.x-pad/2);bgR.setAttribute('y',bb.y-pad/2);
+    bgR.setAttribute('width',cw);bgR.setAttribute('height',ch);
+    var ltExp=document.documentElement.dataset.theme==='light';
+    bgR.setAttribute('fill',ltExp?'#f1f5f9':'#0a0e17');
+    if(ltExp) clone.setAttribute('data-theme','light');
+    if(cloneRoot)cloneRoot.insertBefore(bgR,cloneRoot.firstChild);
+    const svgStr=new XMLSerializer().serializeToString(clone);
+    // use Blob URL instead of synchronous btoa base64 encoding
+    const svgBlob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+    const svgUrl=URL.createObjectURL(svgBlob);
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle=ltExp?'#f1f5f9':'#0a0e17';ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(svgUrl);
+      canvas.toBlob(blob=>{if(blob)downloadBlob(blob,'aws-network-map.png')},'image/png');
+    };
+    img.onerror=()=>{URL.revokeObjectURL(svgUrl);_showToast('PNG render failed - try SVG export instead')};
+    img.src=svgUrl;
+  },0)});
 });
 
 // VSDX (Visio) Export - best Lucidchart import path
