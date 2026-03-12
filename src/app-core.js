@@ -12882,10 +12882,12 @@ function _renderAccountPanel(){
     h+='<span class="ac-region"'+(ctx._isRegion?' style="color:#60a5fa"':'')+'>'+esc(ctx.region)+'</span>';
     h+='</div>';
     h+='<div class="ac-meta">';
-    if(ctx.rlCtx){
-      const vc=(ctx.rlCtx.vpcs||[]).length;
-      const sc=(ctx.rlCtx.subnets||[]).length;
-      const ic=(ctx.rlCtx.instances||[]).length;
+    var _ctx=ctx.rlCtx;
+    if(!_ctx&&ctx.textareas){try{_ctx=_buildRlCtxFromData(Object.assign({},ctx.textareas),ctx.accountLabel)}catch(e){}}
+    if(_ctx){
+      const vc=(_ctx.vpcs||[]).length;
+      const sc=(_ctx.subnets||[]).length;
+      const ic=(_ctx.instances||[]).length;
       h+=vc+' VPC'+(vc!==1?'s':'')+' &middot; '+sc+' Subnet'+(sc!==1?'s':'')+' &middot; '+ic+' EC2';
     }else if(_importedReportData){
       var aid=ctx.accountId;
