@@ -12745,11 +12745,12 @@ function enterMultiView(){
   if(!_loadedContexts.length){_showToast('No accounts loaded');return}
   _multiViewMode=true;
   _singleCtxBackup=_rlCtx;
-  _remergeAndRender();
   document.getElementById('mergeBanner').style.display='flex';
+  _renderMergeBannerChips();
+  _renderAccountPanel();
   var mainEl=_getMain();if(mainEl)mainEl.classList.add('merge-active');
   document.getElementById('mergeViewBtn').textContent='Exit Merge';
-  _renderAccountPanel();
+  _remergeAndRender();
 }
 
 function exitMultiView(){
