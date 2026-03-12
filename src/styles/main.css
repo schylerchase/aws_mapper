@@ -1523,7 +1523,10 @@
     .history-banner,.diff-banner,.flow-banner,.account-merge-banner{font-size:10px;gap:8px;padding:0 8px;height:36px}
     .history-banner button,.diff-banner button,.flow-banner button,.account-merge-banner button{font-size:9px;padding:2px 8px}
     /* Multi-account banner: center properly on mobile, allow wrapping */
-    .account-merge-banner{left:50%!important;transform:translateX(-50%);max-width:calc(100vw - 20px);white-space:normal;text-align:center;height:auto;min-height:36px;padding:6px 10px}
+    .account-merge-banner{left:50%!important;transform:translateX(-50%);max-width:calc(100vw - 20px);white-space:normal;text-align:center;height:auto;min-height:36px;padding:6px 10px;flex-wrap:wrap;justify-content:center}
+    .account-merge-banner #mergeAcctChips{flex-wrap:wrap;justify-content:center}
+    .merge-acct-chip{max-width:140px;font-size:8px;padding:2px 6px}
+    .merge-acct-chip .mac-dot{width:6px;height:6px}
     .acct-pill{padding:2px 7px;font-size:7px;gap:3px}
     .acct-dot{width:5px;height:5px}
 
@@ -1627,8 +1630,11 @@
     .note-actions button{min-height:32px;padding:4px 10px}
     .account-toggle{min-height:36px;padding:6px 12px}
 
-    /* Remove hover-only states on touch */
+    /* Remove hover-only states on touch — prevents double-tap-to-click on iOS/Android */
     .stat-chip:hover,.export-btn:hover,.zoom-btn:hover{background:initial}
+    .landing-cta .btn-cta:hover{transform:none;box-shadow:none}
+    .landing-card:hover{transform:none;box-shadow:none;border-color:var(--border)}
+    .cta-btn:hover{transform:none;box-shadow:none}
 
     /* Smooth scrolling for touch */
     .sidebar-body,.dp-body,.comp-body,.dep-body,.notes-panel-body,.account-panel-body{
