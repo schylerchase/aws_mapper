@@ -1428,19 +1428,20 @@
     /* Tooltip: responsive width */
     .tooltip{max-width:85vw;min-width:160px}
 
-    /* Landing page: responsive */
-    .landing{padding:24px 16px 24px;justify-content:flex-start}
-    .landing-hero{margin-bottom:16px}
-    .landing-icon{width:48px;height:48px;border-radius:12px;margin-bottom:10px}
-    .landing h1{font-size:17px}
-    .landing .tagline{font-size:11px;margin-bottom:14px}
-    .landing-cta{flex-direction:column;gap:8px;margin-bottom:20px;width:100%}
-    .landing-cta .btn-cta{width:100%;padding:12px 16px}
-    .landing-cards{grid-template-columns:1fr;gap:8px;max-width:100%}
-    .landing-card{padding:12px 14px}
-    .landing-card h3{font-size:11px}
-    .landing-card p{font-size:9px}
-    .landing-footer{margin-top:16px}
+    /* Landing page: responsive — sized to fit iPhone SE (667pt) without scroll */
+    .landing{padding:16px 12px 12px;justify-content:center;gap:0}
+    .landing-hero{margin-bottom:10px}
+    .landing-icon{width:40px;height:40px;border-radius:10px;margin-bottom:6px}
+    .landing-icon img{width:28px!important;height:28px!important}
+    .landing h1{font-size:16px;margin-bottom:2px}
+    .landing .tagline{font-size:10px;margin-bottom:0}
+    .landing-cta{flex-direction:column;gap:6px;margin-bottom:12px;width:100%;max-width:280px}
+    .landing-cta .btn-cta{width:100%;padding:10px 14px;font-size:11px}
+    .landing-cards{grid-template-columns:repeat(2,1fr);gap:6px;max-width:100%}
+    .landing-card{padding:8px 10px}
+    .landing-card h3{font-size:10px;margin-bottom:0}
+    .landing-card p{display:none}
+    .landing-footer{margin-top:10px;font-size:8px}
 
     /* Empty state: responsive */
     .empty-state .icon{width:60px;height:60px;font-size:24px}
@@ -1494,6 +1495,17 @@
 
     /* Diff summary: full width */
     .diff-summary{width:100vw;right:0;border-radius:0}
+
+    /* Landing: tighter for SE (375×667) */
+    .landing{padding:12px 10px 10px}
+    .landing-hero{margin-bottom:8px}
+    .landing-icon{width:36px;height:36px;margin-bottom:4px}
+    .landing h1{font-size:15px}
+    .landing-cta{gap:5px;margin-bottom:10px;max-width:260px}
+    .landing-cta .btn-cta{padding:9px 12px;font-size:10px}
+    .landing-cards{gap:5px}
+    .landing-card{padding:7px 9px;border-left-width:2px}
+    .landing-card h3{font-size:9px}
 
     /* Sidebar header */
     .sidebar-header h1{font-size:13px}
