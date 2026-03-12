@@ -7,7 +7,7 @@ on:
     branches: [main, master]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -42,5 +42,27 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  # Electron builds only run on release.yml (tag push or manual dispatch).
-  # CI validates tests + bundle build only — no cross-platform Electron packaging.
+  # Auto-tag on merge to main when package.json version has no matching tag.
+  # This triggers the release.yml workflow (on: push: tags: 'v*').
+  auto-tag:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check and create version tag
+        run: |
+          VERSION=$(jq -r .version package.json)
+          TAG="v${VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — skipping"
+          else
+            echo "Creating tag $TAG"
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
