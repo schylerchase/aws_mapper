@@ -104,7 +104,8 @@
   .empty-state .icon{width:80px;height:80px;border:2px dashed var(--border);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--text-muted);font-size:32px}
   .empty-state h2{font-family:var(--font-ui);font-size:14px;font-weight:500;color:var(--text-muted);margin-bottom:8px}
   .empty-state p{font-size:12px;color:var(--text-muted);opacity:.6}
-  .landing{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:60px 40px 40px;overflow-y:auto;pointer-events:auto}
+  /* Landing page — desktop base styles */
+  .landing{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;overflow-y:auto;pointer-events:auto}
   .landing-hero{text-align:center;margin-bottom:32px}
   .landing-icon{width:64px;height:64px;background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(59,130,246,.15));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px}
   .landing-icon svg{width:36px;height:36px}
@@ -1428,20 +1429,49 @@
     /* Tooltip: responsive width */
     .tooltip{max-width:85vw;min-width:160px}
 
-    /* Landing page: responsive — sized to fit iPhone SE (667pt) without scroll */
-    .landing{padding:16px 12px 12px;justify-content:center;gap:0}
-    .landing-hero{margin-bottom:10px}
-    .landing-icon{width:40px;height:40px;border-radius:10px;margin-bottom:6px}
-    .landing-icon img{width:28px!important;height:28px!important}
-    .landing h1{font-size:16px;margin-bottom:2px}
-    .landing .tagline{font-size:10px;margin-bottom:0}
-    .landing-cta{flex-direction:column;gap:6px;margin-bottom:12px;width:100%;max-width:280px}
-    .landing-cta .btn-cta{width:100%;padding:10px 14px;font-size:11px}
-    .landing-cards{grid-template-columns:repeat(2,1fr);gap:6px;max-width:100%}
-    .landing-card{padding:8px 10px}
-    .landing-card h3{font-size:10px;margin-bottom:0}
+    /*
+     * Landing page — mobile responsive
+     * ──────────────────────────────────────────────────────────────
+     * Viewport matrix (CSS points, portrait):
+     *
+     * APPLE (source: developer.apple.com screenshot specs, device archive, dev forums)
+     *   320 × 568   iPhone SE 1st gen (@2x)
+     *   375 × 667   iPhone 6/6s/7/8, SE 2nd/3rd gen (@2x)
+     *   414 × 736   iPhone 6+/7+/8+ (@3x)
+     *   360 × 780   iPhone 12 mini, 13 mini (@3x)
+     *   375 × 812   iPhone X/XS/11 Pro (@3x)
+     *   414 × 896   iPhone XR/11, XS Max/11 Pro Max (@3x)
+     *   390 × 844   iPhone 12/12 Pro/13/13 Pro/14 (@3x)
+     *   393 × 852   iPhone 14 Pro/15/15 Pro/16/16e/17e (@3x)
+     *   402 × 874   iPhone 16 Pro/17/17 Pro (@3x)
+     *   428 × 926   iPhone 14 Plus (@3x)
+     *   430 × 932   iPhone 14 Pro Max/15 Plus/15 Pro Max/16 Plus (@3x)
+     *   440 × 956   iPhone 16 Pro Max/17 Pro Max/Air (@3x)
+     *
+     * ANDROID (source: blisk.io, webmobilefirst.com, phone-simulator.com)
+     *   360 × 780   Samsung Galaxy S24/S25 (3x)
+     *   412 × 915   Samsung Galaxy S24/S25 Ultra (~3.5x), Pixel 7a/8a/9 (2.625x)
+     *   320 × 568+  Budget/older Android (2x)
+     *
+     * Safari chrome ≈ 94pt (top + bottom bars), so usable svh:
+     *   568pt → ~474pt   667pt → ~573pt   780pt → ~686pt   844pt → ~750pt
+     *
+     * Strategy: svh-relative sizing via clamp() so all elements scale to the
+     * available viewport height. 2-col card grid, hidden descriptions.
+     */
+    .landing{padding:3svh 16px 2svh;justify-content:center}
+    .landing-hero{margin-bottom:clamp(6px,1.5svh,20px)}
+    .landing-icon{width:clamp(32px,6svh,56px);height:clamp(32px,6svh,56px);border-radius:12px;margin-bottom:clamp(4px,1svh,12px)}
+    .landing-icon img{width:clamp(22px,4svh,36px)!important;height:clamp(22px,4svh,36px)!important}
+    .landing h1{font-size:clamp(14px,2.5svh,20px);margin-bottom:2px}
+    .landing .tagline{font-size:clamp(9px,1.5svh,12px);margin-bottom:0}
+    .landing-cta{flex-direction:column;gap:clamp(4px,.8svh,8px);margin-bottom:clamp(8px,1.5svh,24px);width:100%;max-width:300px}
+    .landing-cta .btn-cta{width:100%;padding:clamp(7px,1.2svh,12px) 16px;font-size:clamp(10px,1.5svh,12px)}
+    .landing-cards{grid-template-columns:repeat(2,1fr);gap:clamp(4px,.7svh,10px);max-width:100%}
+    .landing-card{padding:clamp(6px,1svh,14px) 10px;border-radius:8px}
+    .landing-card h3{font-size:clamp(9px,1.4svh,11px);margin-bottom:0}
     .landing-card p{display:none}
-    .landing-footer{margin-top:10px;font-size:8px}
+    .landing-footer{margin-top:clamp(6px,1svh,16px);font-size:8px}
 
     /* Empty state: responsive */
     .empty-state .icon{width:60px;height:60px;font-size:24px}
@@ -1496,16 +1526,10 @@
     /* Diff summary: full width */
     .diff-summary{width:100vw;right:0;border-radius:0}
 
-    /* Landing: tighter for SE (375×667) */
-    .landing{padding:12px 10px 10px}
-    .landing-hero{margin-bottom:8px}
-    .landing-icon{width:36px;height:36px;margin-bottom:4px}
-    .landing h1{font-size:15px}
-    .landing-cta{gap:5px;margin-bottom:10px;max-width:260px}
-    .landing-cta .btn-cta{padding:9px 12px;font-size:10px}
-    .landing-cards{gap:5px}
-    .landing-card{padding:7px 9px;border-left-width:2px}
-    .landing-card h3{font-size:9px}
+    /* Landing: narrow devices — iPhone SE (375pt), Galaxy S24/S25 (360pt), budget Android (320pt) */
+    .landing{padding:2svh 10px 1.5svh}
+    .landing-cta{max-width:260px}
+    .landing-card{padding:clamp(5px,.9svh,10px) 8px;border-left-width:2px}
 
     /* Sidebar header */
     .sidebar-header h1{font-size:13px}
