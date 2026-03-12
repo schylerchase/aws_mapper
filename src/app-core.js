@@ -12911,6 +12911,7 @@ function _renderAccountPanel(){
 }
 
 function openAccountPanel(){
+  _renderAccountPanel();
   document.getElementById('accountPanel').classList.add('open');
 }
 
