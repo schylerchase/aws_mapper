@@ -1448,13 +1448,52 @@
      *   430 × 932   iPhone 14 Pro Max/15 Plus/15 Pro Max/16 Plus (@3x)
      *   440 × 956   iPhone 16 Pro Max/17 Pro Max/Air (@3x)
      *
-     * ANDROID (source: blisk.io, webmobilefirst.com, phone-simulator.com)
-     *   360 × 780   Samsung Galaxy S24/S25 (3x)
-     *   412 × 915   Samsung Galaxy S24/S25 Ultra (~3.5x), Pixel 7a/8a/9 (2.625x)
-     *   320 × 568+  Budget/older Android (2x)
+     * ANDROID — Samsung (source: blisk.io, yesviz.com, webmobilefirst.com, phone-simulator.com)
+     *   360 × 640   Galaxy S3/S4/S5/S6 (3x) — legacy
+     *   360 × 740   Galaxy S8/S9/S10, Note 8/9 (3x-4x)
+     *   360 × 780   Galaxy S21/S22/S23/S24/S25 (3x)
+     *   412 × 915   Galaxy S20 Ultra/S24 Ultra/S25 Ultra (2.625-3.5x)
+     *   412 × 915   Galaxy A32/A51/A54/A55 (2.625x)
+     *   412 × 892   Galaxy A13/A14/A15/A16 (2.625x, est.)
+     *   320 × 519   Galaxy Z Fold cover (2x) — narrowest Android
+     *   768 × 1076  Galaxy Z Fold unfolded (2x) — tablet-class
+     *   375 × 780   Galaxy Z Fold5 cover (est.)
+     *   412 × 1004  Galaxy Z Flip unfolded (2.625x)
      *
-     * Safari chrome ≈ 94pt (top + bottom bars), so usable svh:
-     *   568pt → ~474pt   667pt → ~573pt   780pt → ~686pt   844pt → ~750pt
+     * ANDROID — Google Pixel (source: blisk.io, viewport-tester.com)
+     *   412 × 915   Pixel 6/6a/7/7a/8/8a/9 (2.625x)
+     *   412 × 892   Pixel 7 Pro (3.5x)
+     *   448 × 998   Pixel 8 Pro (3x)
+     *   ~427 × 952  Pixel 9 Pro (3x, est.)
+     *
+     * ANDROID — OnePlus (source: yesviz.com)
+     *   412 × 869   OnePlus 6 (2.625x)
+     *   412 × 892   OnePlus 7 (2.625x)
+     *   412 × 915   OnePlus 8/8T/9/Nord/Nord 2 (2.625x)
+     *   412 × 919   OnePlus 9 Pro/11/12 (3.5x)
+     *
+     * ANDROID — Xiaomi/Redmi (source: yesviz.com, webmobilefirst.com)
+     *   360 × 640   Mi 3/Mi 4, Redmi 4X, Redmi Note 3/4 (3x) — legacy
+     *   393 × 786   Redmi Note 5, Pixel 3/3 XL (2.75x)
+     *   393 × 873   Redmi Note 9 Pro/Note 13/Note 14 (2.75x, est.)
+     *   412 × 915   Mi Note 10 (2.625x)
+     *
+     * ANDROID — Budget/older (various)
+     *   320 × 568+  Low-end devices (2x) — floor
+     *
+     * Unique viewport heights (sorted, shortest first — the constraint axis):
+     *   519  (Z Fold cover)   568  (SE 1st/budget)   640  (Galaxy S3-S6, legacy)
+     *   667  (iPhone 6-8/SE)  736  (iPhone 6+-8+)    740  (Galaxy S8-S10)
+     *   780  (mini/S21-S25)   812  (iPhone X/XS)     844  (iPhone 12-14)
+     *   852  (iPhone 14P-16e) 869  (OP6)             873  (Redmi Note 9P+)
+     *   874  (iPhone 16 Pro)  892  (OP7/Pixel 7P)    896  (iPhone XR/11)
+     *   915  (most Android)   919  (OP9P)            926  (iPhone 14+)
+     *   932  (iPhone 15PM+)   952  (Pixel 9P)        956  (iPhone 16PM)
+     *   998  (Pixel 8P)       1004 (Z Flip)          1076 (Z Fold open)
+     *
+     * Browser chrome reduces usable height:
+     *   Safari ≈ 94pt (top + bottom), Chrome Android ≈ 56-80px
+     *   568pt → ~474pt   667pt → ~573pt   780pt → ~700pt   915pt → ~840pt
      *
      * Strategy: svh-relative sizing via clamp() so all elements scale to the
      * available viewport height. 2-col card grid, hidden descriptions.
@@ -1526,10 +1565,11 @@
     /* Diff summary: full width */
     .diff-summary{width:100vw;right:0;border-radius:0}
 
-    /* Landing: narrow devices — iPhone SE (375pt), Galaxy S24/S25 (360pt), budget Android (320pt) */
+    /* Landing: narrow devices — iPhone SE (375pt), Galaxy S24/S25 (360pt), Galaxy Z Fold cover (320pt) */
     .landing{padding:2svh 10px 1.5svh}
     .landing-cta{max-width:260px}
     .landing-card{padding:clamp(5px,.9svh,10px) 8px;border-left-width:2px}
+    .landing-card h3{font-size:clamp(8px,1.3svh,10px)}
 
     /* Sidebar header */
     .sidebar-header h1{font-size:13px}
@@ -1537,6 +1577,16 @@
 
     /* IaC opts: stack vertically */
     .iac-opts{flex-direction:column;align-items:stretch}
+  }
+
+  /* --- ULTRA-NARROW: Galaxy Z Fold cover (320pt), budget Android (max-width 360px) --- */
+  @media (max-width:360px){
+    .landing{padding:2svh 8px 1svh}
+    .landing-cards{grid-template-columns:1fr;gap:clamp(3px,.5svh,6px)}
+    .landing-card{padding:clamp(4px,.7svh,8px) 8px}
+    .landing-cta{max-width:100%}
+    .landing-cta .btn-cta{padding:clamp(6px,1svh,10px) 12px;font-size:10px}
+    .landing h1{font-size:clamp(13px,2.2svh,16px)}
   }
 
   /* Mobile drag handle for bottom sheets */
