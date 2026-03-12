@@ -21468,6 +21468,9 @@ document.getElementById('landingDemo').addEventListener('click',function(){docum
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('fileInput').click()});
 document.getElementById('landingImportReport').addEventListener('click',function(){document.getElementById('importReportInput').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
+  // Immediately hide landing page and show loading overlay for instant feedback
+  document.getElementById('landingDash').style.display='none';
+  document.getElementById('loadingOverlay').style.display='flex';
   // OPTIMIZED: Generate demo data on first load (lazy initialization)
   if(typeof demo==='undefined'||!demo)demo=generateDemo();
   // Split demo data into 2 accounts for multi-account view
