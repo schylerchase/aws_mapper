@@ -60,13 +60,25 @@ npm run test:all     # Both (unit first, then E2E)
 Unit tests cover: utils, cidr-engine, network-rules, diff-engine, iam-engine, compliance-engine, budr-engine, governance-checks.
 E2E tests cover: smoke, dashboards, detail panel, exports, flow mode, edge cases, visual regression.
 
-## Version Bump Checklist
+## Version Bump
 
-All four locations must be updated together:
-1. `package.json` -- `"version": "X.Y.Z"`
+Single source of truth: `package.json` → auto-injected everywhere by build.
+
+```bash
+npm run version:bump -- patch    # 2.8.0 → 2.8.1
+npm run version:bump -- minor    # 2.8.0 → 2.9.0
+npm run version:bump -- major    # 2.8.0 → 3.0.0
+npm run version:bump -- 2.9.0   # explicit version
+```
+
+The script (`scripts/bump-version.js`) updates all 5 locations and verifies consistency:
+1. `package.json` -- `"version": "X.Y.Z"` (source of truth)
 2. `package-lock.json` -- `"version": "X.Y.Z"` (lines 3 and 9)
-3. `index.html` -- brand row `vX.Y.Z` (line ~46)
-4. `index.html` -- footer `vX.Y.Z` (line ~118)
+3. `index.html` -- brand row `v__VERSION__` (injected by `build.js`)
+4. `index.html` -- footer `v__VERSION__` (injected by `build.js`)
+5. `README.md` -- version badge (injected by `build.js`)
+
+**Never hardcode a version in index.html or README.md** — use `__VERSION__` placeholder in index.html; the build replaces it.
 
 ## Build & Deploy
 

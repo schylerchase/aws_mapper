@@ -10,6 +10,8 @@ const crypto = require('crypto');
 const isProd = process.argv.includes('--production') || process.env.NODE_ENV === 'production';
 const isDev = !isProd;
 const watch = process.argv.includes('--watch');
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+const VERSION = pkg.version;
 
 const buildConfig = {
   entryPoints: ['src/main.js'],
@@ -100,17 +102,30 @@ if (watch) {
     await buildCore();
     await buildD3();
 
-    if (!isProd) return;
-    // Auto-inject content hashes into index.html for cache busting
-    const bundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/app.bundle.js')).digest('hex').slice(0, 8);
-    const coreBundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/core.bundle.js')).digest('hex').slice(0, 8);
-    const coreHash = crypto.createHash('md5').update(fs.readFileSync('dist/app-core.js')).digest('hex').slice(0, 8);
+    // Inject version from package.json into index.html and README.md
+    // Matches both the __VERSION__ placeholder and any previously injected semver
     const htmlPath = path.join(__dirname, 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
-    html = html.replace(/core\.bundle\.js\?v=[^"]+/, `core.bundle.js?v=${coreBundleHash}`);
-    html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
+    html = html.replace(/brand-ver">v[^<]+</, `brand-ver">v${VERSION}<`);
+    html = html.replace(/landing-footer">v[\d.]+/, `landing-footer">v${VERSION}`);
+    const readmePath = path.join(__dirname, 'README.md');
+    if (fs.existsSync(readmePath)) {
+      let readme = fs.readFileSync(readmePath, 'utf8');
+      readme = readme.replace(/badge\/version-[^-]+-blue/g, `badge/version-${VERSION}-blue`);
+      fs.writeFileSync(readmePath, readme, 'utf8');
+    }
+    console.log(`Version: ${VERSION}`);
+
+    if (isProd) {
+      // Auto-inject content hashes into index.html for cache busting
+      const bundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/app.bundle.js')).digest('hex').slice(0, 8);
+      const coreBundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/core.bundle.js')).digest('hex').slice(0, 8);
+      const coreHash = crypto.createHash('md5').update(fs.readFileSync('dist/app-core.js')).digest('hex').slice(0, 8);
+      html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
+      html = html.replace(/core\.bundle\.js\?v=[^"]+/, `core.bundle.js?v=${coreBundleHash}`);
+      html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
+      console.log(`Cache bust: app.bundle.js?v=${bundleHash}, core.bundle.js?v=${coreBundleHash}, app-core.js?v=${coreHash}`);
+    }
     fs.writeFileSync(htmlPath, html, 'utf8');
-    console.log(`Cache bust: app.bundle.js?v=${bundleHash}, core.bundle.js?v=${coreBundleHash}, app-core.js?v=${coreHash}`);
   }).catch(() => process.exit(1));
 }
