@@ -12,3 +12,4 @@ aws-export-*/
 docs/
 delete-me/
 .vercel
+test-results/
