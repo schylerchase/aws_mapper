@@ -12330,7 +12330,8 @@ function addAccountContext(projectData, label){
     rlCtx:ctx,
     color:color,
     visible:true,
-    _isRegion:!!(projectData._isRegion)
+    _isRegion:!!(projectData._isRegion),
+    _counts:{vpcs:(ctx.vpcs||[]).length,subnets:(ctx.subnets||[]).length,instances:(ctx.instances||[]).length}
   });
 
   _renderAccountPanel();
@@ -12882,12 +12883,10 @@ function _renderAccountPanel(){
     h+='<span class="ac-region"'+(ctx._isRegion?' style="color:#60a5fa"':'')+'>'+esc(ctx.region)+'</span>';
     h+='</div>';
     h+='<div class="ac-meta">';
-    var _ctx=ctx.rlCtx;
-    if(!_ctx&&ctx.textareas){try{_ctx=_buildRlCtxFromData(Object.assign({},ctx.textareas),ctx.accountLabel)}catch(e){}}
-    if(_ctx){
-      const vc=(_ctx.vpcs||[]).length;
-      const sc=(_ctx.subnets||[]).length;
-      const ic=(_ctx.instances||[]).length;
+    var vc=0,sc=0,ic=0;
+    if(ctx.rlCtx){vc=(ctx.rlCtx.vpcs||[]).length;sc=(ctx.rlCtx.subnets||[]).length;ic=(ctx.rlCtx.instances||[]).length}
+    else if(ctx._counts){vc=ctx._counts.vpcs||0;sc=ctx._counts.subnets||0;ic=ctx._counts.instances||0}
+    if(vc||sc||ic){
       h+=vc+' VPC'+(vc!==1?'s':'')+' &middot; '+sc+' Subnet'+(sc!==1?'s':'')+' &middot; '+ic+' EC2';
     }else if(_importedReportData){
       var aid=ctx.accountId;
@@ -12962,6 +12961,7 @@ document.getElementById('mergeViewBtn').addEventListener('click',function(){
   else enterMultiView();
 });
 document.getElementById('mergeExitBtn').addEventListener('click',exitMultiView);
+document.getElementById('mergeBannerLabel').addEventListener('click',function(){openAccountPanel()});
 document.getElementById('mergeBannerCollapse').addEventListener('click',function(){
   var banner=document.getElementById('mergeBanner');
   var chips=document.getElementById('mergeAcctChips');
