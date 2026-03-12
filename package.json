@@ -22,7 +22,8 @@
     "test": "npx playwright test",
     "test:headed": "npx playwright test --headed",
     "test:unit": "node --test tests/unit/*.test.mjs",
-    "test:all": "npm run test:unit && npx playwright test"
+    "test:all": "npm run test:unit && npx playwright test",
+    "version:bump": "node scripts/bump-version.js"
   },
   "build": {
     "appId": "com.awsmapper.app",
