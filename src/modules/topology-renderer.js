@@ -408,7 +408,8 @@ function _renderMapInner(){
     }
   });
 
-  const W=document.querySelector('.main').clientWidth,H=document.querySelector('.main').clientHeight;
+  const _mainEl=document.querySelector('.main');
+  const W=_mainEl.clientWidth,H=_mainEl.clientHeight;
   
   // Center known VPCs (row 1)
   const knownVL=vL.filter(v=>getVpcRegion(v.vpc)!=='unknown');

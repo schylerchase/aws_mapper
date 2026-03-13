@@ -2856,6 +2856,18 @@ function _updateCompExpPreview(){
   document.getElementById('compExpPreview').textContent=count+' findings will be exported';
   document.getElementById('compExpDownload').disabled=count===0;
 }
+function _buildStatsBar(chipDefs){
+  const sb=document.getElementById('statsBar');sb.textContent='';sb.style.display='flex';
+  const grp=[['VPCs','Subnets','Public','Private'],['Gateways','RTs','NACLs','SGs'],['EC2','ENIs','ALBs','TGs','RDS','ECS','Lambda','Cache','Redshift'],['Peering','VPNs','Endpoints'],['Volumes','Snapshots','S3','R53','WAF','CF']];
+  grp.forEach(labels=>{
+    const active=chipDefs.filter(s=>labels.includes(s.l)&&s.v>0);
+    if(!active.length)return;
+    const g=document.createElement('div');g.className='stat-group';
+    active.forEach(s=>{const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;const b=document.createElement('b');b.textContent=s.v;c.appendChild(b);c.appendChild(document.createTextNode(s.l));c.addEventListener('click',()=>openResourceList(s.l));g.appendChild(c)});
+    sb.appendChild(g);
+  });
+  const hg=document.createElement('div');hg.className='stat-group stat-group-health';sb.appendChild(hg);return hg;
+}
 function addComplianceChip(sb2,findings){
   const c=document.createElement('div');
   // OPTIMIZED: Single pass to count severities instead of multiple filter() calls
@@ -8143,13 +8155,10 @@ function renderLandingZoneMap(ctx){
   // Stats bar
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,eniByInst,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb:cfByAlb||{},rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:lzRecsByZone,iamRoleResources,_multiAccount,_accounts,
     cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce};
-  const sb2=document.getElementById('statsBar');sb2.textContent='';sb2.style.display='flex';
-  [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
-    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
-  });
+  const _hg=_buildStatsBar([{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}]);
   // Compliance chip (landing zone)
-  try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
+  try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(_hg,findings);_addBUDRChip(_hg)}catch(ce){console.warn('Compliance check error:',ce)}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode('IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
@@ -10537,13 +10546,10 @@ async function _renderMapInner(){
   _markHeavy();
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources,
     cloudtrailTrails,cwAlarms,logGroups,flowLogs,configRecorders,configRules,configConformance,securityHubStds,accessAnalyzers,kmsKeys,guarddutyDetectors,secrets,ssmParams,ecrRepos,asgs,apiGateways,snsTopics,sqsQueues,flowLogsByVpc,apiGwByVpce};
-  const sb2=document.getElementById('statsBar');sb2.textContent='';sb2.style.display='flex';
-  [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
-    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
-  });
+  const _hg=_buildStatsBar([{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}]);
   // Compliance chip (grid layout)
-  try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
+  try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(_hg,findings);_addBUDRChip(_hg)}catch(ce){console.warn('Compliance check error:',ce)}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode('IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
@@ -10553,28 +10559,28 @@ async function _renderMapInner(){
     const sv=_lastDesignValidation;
     const dvC=document.createElement('div');
     dvC.className='compliance-chip '+(sv.errors.length?'critical':sv.warnings.length?'warn':'clean');
-    dvC.innerHTML='<b>'+(sv.errors.length+sv.warnings.length)+'</b> Design';
+    const db=document.createElement('b');db.textContent=sv.errors.length+sv.warnings.length;dvC.appendChild(db);dvC.appendChild(document.createTextNode(' Design'));
     dvC.title=sv.errors.concat(sv.warnings).join('\n');
     dvC.addEventListener('click',()=>{
       const cl=document.getElementById('changeLog');
       cl.style.display=cl.style.display==='block'?'none':'block';
     });
-    sb2.appendChild(dvC);
+    _hg.appendChild(dvC);
   }
   // Multi-account chip
   if(_multiAccount){
     const acC=document.createElement('div');
     acC.className='stat-chip';
     acC.classList.add('accent-purple');
-    acC.innerHTML='<b>'+_accounts.size+'</b> Accounts';
-    sb2.appendChild(acC);
+    const ab=document.createElement('b');ab.textContent=_accounts.size;acC.appendChild(ab);acC.appendChild(document.createTextNode(' Accounts'));
+    _hg.appendChild(acC);
   }
   if(_multiRegion){
     const rgC=document.createElement('div');
     rgC.className='stat-chip';
     rgC.classList.add('accent-blue');
-    rgC.innerHTML='<b>'+_regions.size+'</b> Regions';
-    sb2.appendChild(rgC);
+    const rb=document.createElement('b');rb.textContent=_regions.size;rgC.appendChild(rb);rgC.appendChild(document.createTextNode(' Regions'));
+    _hg.appendChild(rgC);
   }
   // Diff overlay (grid layout)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay failed:',de)}

@@ -130,7 +130,10 @@
   @media(prefers-reduced-motion:reduce){.landing-card{animation:none;opacity:1}}
   .landing-footer{margin-top:32px;text-align:center;font-family:var(--font-ui);font-size:9px;color:var(--text-muted);opacity:.5}
   .landing-footer a{color:var(--accent-cyan);text-decoration:none}
-  .stats-bar{position:absolute;bottom:68px;left:50%;transform:translateX(-50%);display:none;gap:3px;flex-wrap:wrap;justify-content:center;z-index:7;padding:4px 8px;background:var(--bg-secondary);border:1px solid var(--hover-bg-strong);border-radius:10px;box-shadow:0 4px 16px var(--shadow-color);max-width:720px}
+  .stats-bar{position:absolute;bottom:68px;left:50%;transform:translateX(-50%);display:none;gap:4px 6px;flex-wrap:wrap;justify-content:center;z-index:7;padding:5px 8px;background:var(--bg-secondary);border:1px solid var(--hover-bg-strong);border-radius:10px;box-shadow:0 4px 16px var(--shadow-color)}
+  .stat-group{display:inline-flex;gap:3px;align-items:center;padding:2px 0}
+  .stat-group:empty{display:none}
+  .stat-group+.stat-group{padding-left:6px;border-left:1px solid var(--border)}
   .main:has(.detail-panel.open) .export-bar{right:432px}
   .stat-chip{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));font-weight:500;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);color:var(--text-secondary);cursor:pointer;transition:all .15s}
   .stat-chip:hover{border-color:var(--accent-blue);background:rgba(59,130,246,.12)}

@@ -574,7 +574,7 @@ function _openRulesEditor(){
   var existing=document.getElementById('govRulesOverlay');
   if(existing) existing.remove();
   // Working copy of rules
-  var workRules=JSON.parse(JSON.stringify(_classificationRules));
+  var workRules=structuredClone(_classificationRules);
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
   var groupCollapsed={vpc:false,type:false,name:false};
   var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
@@ -790,7 +790,7 @@ function _openRulesEditor(){
   document.getElementById('govRulesClose').addEventListener('click',function(){overlay.remove()});
   overlay.addEventListener('click',function(e){if(e.target===overlay) overlay.remove()});
   document.getElementById('govRuleReset').addEventListener('click',function(){
-    workRules=JSON.parse(JSON.stringify(_DEFAULT_CLASS_RULES));
+    workRules=structuredClone(_DEFAULT_CLASS_RULES);
     workRules.forEach(function(r){r.enabled=true});
     renderRules();renderPreview();
   });
