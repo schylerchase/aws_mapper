@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     <div class="eb-row">
       <button class="eb-toggle" id="ebToggle" aria-label="Toggle export panel">Export &#9654;</button>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 8px">
+    <div class="eb-panel">
       <span style="font-family:var(--font-ui);font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;padding:2px 0">Visual</span>
       <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
       <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>
@@ -396,13 +396,6 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
       <button id="captureCurrentBtn" class="btn btn-secondary" style="font-size:10px;padding:8px 12px">Capture Current</button>
     </div>
   </div>
-  <!-- Multi-Account Merge Banner -->
-  <div class="account-merge-banner" id="mergeBanner" style="display:none">
-    <span class="merge-label" id="mergeBannerLabel" style="cursor:pointer" title="Click to view accounts">MULTI-ACCOUNT VIEW</span>
-    <span id="mergeAcctChips" style="display:flex;gap:4px;align-items:center"></span>
-    <button id="mergeExitBtn">Exit Merge</button>
-    <button id="mergeBannerCollapse" title="Collapse banner" style="padding:2px 6px;font-size:9px">▲</button>
-  </div>
   <!-- Flow Mode Banner -->
   <div class="flow-banner" id="flowBanner" style="display:none">
     <span id="flowLabel">TRACE FLOW</span>
@@ -573,6 +566,13 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <!-- Onboarding overlay (first-visit guide) -->
   <div id="onboardOverlay" class="onboard-overlay" style="display:none"></div>
   <div id="onboardTooltip" class="onboard-tooltip" style="display:none"></div>
+</div>
+<!-- Multi-Account Merge Banner (outside .main to avoid stacking context issues) -->
+<div class="account-merge-banner" id="mergeBanner" style="display:none">
+  <span class="merge-label" id="mergeBannerLabel" style="cursor:pointer" title="Click to view accounts">MULTI-ACCOUNT VIEW</span>
+  <span id="mergeAcctChips" style="display:flex;gap:4px;align-items:center"></span>
+  <button id="mergeExitBtn">Exit Merge</button>
+  <button id="mergeBannerCollapse" title="Collapse banner" style="padding:2px 6px;font-size:9px">&#9650;</button>
 </div>
 <div class="fw-full-panel" id="fwFullPanel">
   <div class="fw-fp-header">

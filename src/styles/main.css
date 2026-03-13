@@ -98,7 +98,7 @@
   .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--border);color:var(--text-primary)}
   .btn-demo{background:transparent;color:var(--accent-cyan);border:1px solid var(--accent-cyan);opacity:.7}.btn-demo:hover{opacity:1;background:rgba(6,182,212,.08)}
   .main{flex:1;position:relative;background:var(--bg-primary);overflow:hidden;display:flex;flex-direction:column}
-  .main svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;contain:layout style paint}
+  .main svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;contain:layout style paint;position:relative;z-index:0}
   .grid-bg{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,var(--grid-color) 1px,transparent 0);background-size:24px 24px;pointer-events:none}
   .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
   .empty-state .icon{width:80px;height:80px;border:2px dashed var(--border);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--text-muted);font-size:32px}
@@ -130,7 +130,7 @@
   @media(prefers-reduced-motion:reduce){.landing-card{animation:none;opacity:1}}
   .landing-footer{margin-top:32px;text-align:center;font-family:var(--font-ui);font-size:9px;color:var(--text-muted);opacity:.5}
   .landing-footer a{color:var(--accent-cyan);text-decoration:none}
-  .stats-bar{position:absolute;bottom:68px;left:50%;transform:translateX(-50%);display:none;gap:3px;flex-wrap:wrap;justify-content:center;z-index:7;padding:4px 8px;background:var(--bg-secondary);border:1px solid var(--hover-bg-strong);border-bottom:none;border-radius:10px 10px 0 0;box-shadow:0 -4px 16px var(--shadow-color)}
+  .stats-bar{position:absolute;bottom:68px;left:50%;transform:translateX(-50%);display:none;gap:3px;flex-wrap:wrap;justify-content:center;z-index:7;padding:4px 8px;background:var(--bg-secondary);border:1px solid var(--hover-bg-strong);border-radius:10px;box-shadow:0 4px 16px var(--shadow-color);max-width:720px}
   .main:has(.detail-panel.open) .export-bar{right:432px}
   .stat-chip{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));font-weight:500;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);color:var(--text-secondary);cursor:pointer;transition:all .15s}
   .stat-chip:hover{border-color:var(--accent-blue);background:rgba(59,130,246,.12)}
@@ -159,6 +159,8 @@
   .legend-title{font-family:var(--font-ui);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:3px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none}
   .legend-title .lg-arr{font-size:7px;transition:transform .2s}
   .legend.collapsed .legend-title .lg-arr{transform:rotate(-90deg)}
+  .legend.collapsed{padding:6px 14px;gap:0;border-radius:12px}
+  .legend.collapsed .legend-title{justify-content:center;margin-bottom:0;letter-spacing:0;gap:5px}
   .legend.collapsed .legend-item,.legend.collapsed .legend-hint{display:none}
   .legend-item{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--text-secondary)}
   .legend-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
@@ -202,7 +204,7 @@
   .hl-active .vpce-summary,.hl-active .dns-summary,.hl-active .gw-node,.hl-active .lz-gw-node,.hl-active .lz-tgw-node{opacity:.15}
   .hl-active .peering-label-g,.hl-active .internet-node{opacity:.08}
   .hl-active .gw-node.gw-hl,.hl-active .lz-gw-node.lz-hl,.hl-active .lz-tgw-node.lz-hl,.hl-active .internet-node.lz-hl{opacity:1}
-  .export-bar.collapsed .export-btn,.export-bar.collapsed .export-btn+.export-btn{display:none}
+  .export-bar.collapsed>div:not(.eb-row){display:none}
   .export-bar .eb-toggle{padding:4px 10px;background:var(--overlay-bg);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);font-family:var(--font-ui);font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s}
   .export-bar .eb-toggle:hover{color:var(--text-primary);border-color:var(--accent-blue)}
   .hl-locked-indicator{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--accent-cyan);border-radius:6px;padding:5px 14px;font-family:var(--font-ui);font-size:9px;color:var(--accent-cyan);display:none;z-index:10;cursor:pointer}
@@ -219,6 +221,7 @@
   @keyframes dashStruct{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
   .animated{animation:dashStruct 1s linear infinite}
   .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:10;flex-direction:column;align-items:flex-end}
+  .eb-panel{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px var(--shadow-color);max-width:260px}
   .eb-row{display:flex;align-items:center;gap:6px}
   .eb-layout-controls{display:flex;align-items:center;gap:6px;padding-right:8px;border-right:1px solid var(--border)}
   .eb-label{font-family:var(--font-ui);font-size:8px;color:var(--text-muted);text-transform:uppercase}
@@ -1236,7 +1239,8 @@
   .account-toggle:hover{border-color:var(--accent-blue);color:var(--text-primary)}
   .account-toggle.hidden-acct{opacity:.5;text-decoration:line-through}
   .account-merge-banner{position:fixed;top:6px;left:calc(50% + 180px);transform:translateX(-50%);height:32px;background:linear-gradient(90deg,#1a0c3e,#0c2d4a);z-index:55;display:flex;align-items:center;justify-content:center;gap:12px;font-family:var(--font-ui);font-size:12px;color:var(--accent-purple);font-weight:600;border-radius:8px;padding:0 16px;border:1px solid rgba(168,85,247,.2);box-shadow:0 4px 12px var(--shadow-color);white-space:nowrap;max-width:calc(100vw - 400px)}
-  .sidebar.collapsed~.main .history-banner,.sidebar.collapsed~.main .diff-banner,.sidebar.collapsed~.main .flow-banner,.sidebar.collapsed~.main .account-merge-banner{left:50%}
+  .sidebar.collapsed~.main .history-banner,.sidebar.collapsed~.main .diff-banner,.sidebar.collapsed~.main .flow-banner{left:50%}
+  .sidebar.collapsed~.main~.account-merge-banner{left:50%}
   .account-merge-banner.collapsed{gap:6px;padding:0 10px}
   .account-merge-banner button{background:rgba(0,0,0,.3);border:1px solid rgba(139,92,246,.4);color:var(--accent-purple);padding:2px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)}
   .account-merge-banner button:hover{background:rgba(139,92,246,.15)}
