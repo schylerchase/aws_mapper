@@ -2858,7 +2858,7 @@ function _updateCompExpPreview(){
 }
 function _buildStatsBar(chipDefs){
   const sb=document.getElementById('statsBar');sb.textContent='';sb.style.display='flex';
-  const grp=[['VPCs','Subnets','Public','Private'],['Gateways','RTs','NACLs','SGs'],['EC2','ENIs','ALBs','TGs','RDS','ECS','Lambda','Cache','Redshift'],['Peering','VPNs','Endpoints'],['Volumes','Snapshots','S3','R53','WAF','CF']];
+  const grp=[['VPCs','Subnets','Public','Private'],['Gateways','RTs','NACLs','SGs'],['EC2','ENIs','ALBs','TGs'],['RDS','ECS','Lambda','Cache','Redshift'],['Peering','VPNs','Endpoints'],['Volumes','Snapshots','S3','R53','WAF','CF']];
   grp.forEach(labels=>{
     const active=chipDefs.filter(s=>labels.includes(s.l)&&s.v>0);
     if(!active.length)return;
@@ -7541,7 +7541,7 @@ function renderLandingZoneMap(ctx){
     iG.append('text').attr('x',iX).attr('y',iY+4).attr('text-anchor','middle')
       .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(11px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
     iG.append('text').attr('x',iX).attr('y',iY+48).attr('text-anchor','middle')
-      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('Internet');
+      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(11px * var(--txt-scale,1))').attr('font-weight','500').attr('fill','var(--text-secondary)').text('Internet');
     iG.style('cursor','pointer');
     iG.on('mouseenter',function(){
       if(_lzLocked) return;
@@ -10136,9 +10136,9 @@ async function _renderMapInner(){
       .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(13px * var(--txt-scale,1))').attr('font-weight','700').attr('fill','var(--igw-color)').text('NET');
     // Text below circle
     iG.append('text').attr('x',iX).attr('y',iY+50).attr('text-anchor','middle')
-      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(8px * var(--txt-scale,1))').attr('fill','var(--text-muted)').text('Internet');
-    iG.append('text').attr('x',iX).attr('y',iY+62).attr('text-anchor','middle')
-      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill','var(--igw-color)').text(iGwList.length+' Gateway'+(iGwList.length>1?'s':''));
+      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(11px * var(--txt-scale,1))').attr('font-weight','500').attr('fill','var(--text-secondary)').text('Internet');
+    iG.append('text').attr('x',iX).attr('y',iY+64).attr('text-anchor','middle')
+      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(9px * var(--txt-scale,1))').attr('fill','var(--igw-color)').text(iGwList.length+' Gateway'+(iGwList.length>1?'s':''));
     
     // Draw NET connections: L-shaped paths from bus-bar to each IGW.
     // Each IGW gets its own L-bend: horizontal from NET node at bus-bar Y,
