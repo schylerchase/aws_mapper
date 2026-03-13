@@ -22120,7 +22120,7 @@ function _wrapImportForSummary(result){
   }
 })();
 
-// --- Export Bar Auto-Expand After First Render ---
+// --- Export Bar State After First Render ---
 var _ebAutoExpanded=false;
 function _autoExpandExportBar(){
   if(_ebAutoExpanded)return;
@@ -22128,15 +22128,12 @@ function _autoExpandExportBar(){
   var eb=document.getElementById('exportBar');
   var toggle=document.getElementById('ebToggle');
   if(!eb)return;
-  // Don't auto-expand on small/tablet screens — buttons stack and cover the map
-  if(window.innerWidth<=1024)return;
-  // Check localStorage for saved state
+  // Check localStorage — only expand if user previously opened it
   var saved;try{saved=localStorage.getItem('aws_mapper_eb_collapsed')}catch(e){}
-  if(saved==='1')return; // User previously collapsed it, respect that
-  eb.classList.remove('collapsed');
-  eb.classList.add('auto-expand');
-  if(toggle)toggle.innerHTML='Export &#9660;';
-  setTimeout(function(){eb.classList.remove('auto-expand')},500);
+  if(saved==='0'&&window.innerWidth>1024){
+    eb.classList.remove('collapsed');
+    if(toggle)toggle.innerHTML='Export &#9660;';
+  }
 }
 
 // --- Search Results Grouped by Type ---
