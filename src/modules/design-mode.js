@@ -5,6 +5,7 @@
 
 import { safeParse, ext, esc, gn } from './utils.js';
 import { parseCIDR, cidrContains, cidrOverlap, splitCIDR, ipInCIDR } from './cidr-engine.js';
+import { showToast } from './dom-helpers.js';
 
 // ---------------------------------------------------------------------------
 // State variables
@@ -582,7 +583,7 @@ export function _generateWarnings() {
 export function importDesignPlan(json, enterFn, addChangeFn) {
   try {
     const plan = typeof json === 'string' ? JSON.parse(json) : json;
-    if (!plan.changes || !Array.isArray(plan.changes)) { alert('Invalid plan format'); return; }
+    if (!plan.changes || !Array.isArray(plan.changes)) { showToast('Invalid plan format', 3000); return; }
     if (!_designMode) enterFn();
     if (plan.region) _designRegion = plan.region;
     let imported = 0, blocked = 0;
@@ -590,8 +591,8 @@ export function importDesignPlan(json, enterFn, addChangeFn) {
       addChangeFn(ch);
       if (ch._invalid) blocked++; else imported++;
     });
-    if (blocked > 0) alert('Imported ' + imported + ' changes, ' + blocked + ' blocked by validation errors. Check the change log for details.');
-  } catch (e) { alert('Failed to import plan: ' + e.message); }
+    if (blocked > 0) showToast('Imported ' + imported + ' changes, ' + blocked + ' blocked by validation errors. Check the change log for details.', 4000);
+  } catch (e) { showToast('Failed to import plan: ' + e.message, 4000); console.error('Plan import failed:', e); }
 }
 
 /**

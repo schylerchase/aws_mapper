@@ -973,9 +973,9 @@ export function generateCloudFormation(ctx, opts) {
 
 /** Generate unique logical ID for Checkov template */
 export function _ckId(name, prefix, seen) {
-  var base = (name || prefix || 'Res').replace(/[^a-zA-Z0-9]/g, '');
+  let base = (name || prefix || 'Res').replace(/[^a-zA-Z0-9]/g, '');
   if (!base || /^\d/.test(base)) base = (prefix || 'R') + base;
-  var id = base, i = 2;
+  let id = base, i = 2;
   while (seen.has(id)) { id = base + i; i++; }
   seen.add(id);
   return id;
@@ -983,7 +983,7 @@ export function _ckId(name, prefix, seen) {
 
 export function _ckVpcs(vpcs, res, seen) {
   vpcs.forEach(function(v) {
-    var id = _ckId(gn(v, v.VpcId), 'VPC', seen);
+    const id = _ckId(gn(v, v.VpcId), 'VPC', seen);
     res[id] = { Type: 'AWS::EC2::VPC', Properties: {
       CidrBlock: v.CidrBlock || '10.0.0.0/16',
       EnableDnsSupport: v.EnableDnsSupport !== false,
@@ -995,7 +995,7 @@ export function _ckVpcs(vpcs, res, seen) {
 
 export function _ckSubnets(subnets, res, seen) {
   subnets.forEach(function(s) {
-    var id = _ckId(gn(s, s.SubnetId), 'Subnet', seen);
+    const id = _ckId(gn(s, s.SubnetId), 'Subnet', seen);
     res[id] = { Type: 'AWS::EC2::Subnet', Properties: {
       VpcId: s.VpcId, CidrBlock: s.CidrBlock,
       AvailabilityZone: s.AvailabilityZone || '',
@@ -1006,9 +1006,9 @@ export function _ckSubnets(subnets, res, seen) {
 }
 
 export function _ckExpandRules(perms) {
-  var rules = [];
+  const rules = [];
   (perms || []).forEach(function(p) {
-    var base = { IpProtocol: p.IpProtocol || '-1' };
+    const base = { IpProtocol: p.IpProtocol || '-1' };
     if (p.FromPort != null) base.FromPort = p.FromPort;
     if (p.ToPort != null) base.ToPort = p.ToPort;
     (p.IpRanges || []).forEach(function(r) { rules.push(Object.assign({}, base, { CidrIp: r.CidrIp })); });
@@ -1021,7 +1021,7 @@ export function _ckExpandRules(perms) {
 
 export function _ckSgs(sgs, res, seen) {
   sgs.forEach(function(sg) {
-    var id = _ckId(sg.GroupName || sg.GroupId, 'SG', seen);
+    const id = _ckId(sg.GroupName || sg.GroupId, 'SG', seen);
     res[id] = { Type: 'AWS::EC2::SecurityGroup', Properties: {
       GroupDescription: sg.Description || sg.GroupName || '',
       VpcId: sg.VpcId,
@@ -1034,11 +1034,11 @@ export function _ckSgs(sgs, res, seen) {
 
 export function _ckNacls(nacls, res, seen) {
   nacls.forEach(function(nacl) {
-    var nId = _ckId(gn(nacl, nacl.NetworkAclId), 'NACL', seen);
+    const nId = _ckId(gn(nacl, nacl.NetworkAclId), 'NACL', seen);
     res[nId] = { Type: 'AWS::EC2::NetworkAcl', Properties: { VpcId: nacl.VpcId, Tags: _cfnTags(nacl) } };
     (nacl.Entries || []).forEach(function(e) {
-      var eId = _ckId(nId + 'Rule' + e.RuleNumber + (e.Egress ? 'E' : 'I'), 'NACLEntry', seen);
-      var props = { NetworkAclId: nacl.NetworkAclId, RuleNumber: e.RuleNumber,
+      const eId = _ckId(nId + 'Rule' + e.RuleNumber + (e.Egress ? 'E' : 'I'), 'NACLEntry', seen);
+      const props = { NetworkAclId: nacl.NetworkAclId, RuleNumber: e.RuleNumber,
         Protocol: String(e.Protocol), RuleAction: e.RuleAction, Egress: e.Egress === true };
       if (e.CidrBlock) props.CidrBlock = e.CidrBlock;
       if (e.Ipv6CidrBlock) props.Ipv6CidrBlock = e.Ipv6CidrBlock;
@@ -1050,12 +1050,12 @@ export function _ckNacls(nacls, res, seen) {
 
 export function _ckRts(rts, res, seen) {
   rts.forEach(function(rt) {
-    var rtId = _ckId(gn(rt, rt.RouteTableId), 'RT', seen);
+    const rtId = _ckId(gn(rt, rt.RouteTableId), 'RT', seen);
     res[rtId] = { Type: 'AWS::EC2::RouteTable', Properties: { VpcId: rt.VpcId, Tags: _cfnTags(rt) } };
     (rt.Routes || []).forEach(function(r) {
       if (r.GatewayId === 'local') return;
-      var rId = _ckId(rtId + (r.DestinationCidrBlock || '').replace(/[^a-zA-Z0-9]/g, ''), 'Route', seen);
-      var props = { RouteTableId: rt.RouteTableId };
+      const rId = _ckId(rtId + (r.DestinationCidrBlock || '').replace(/[^a-zA-Z0-9]/g, ''), 'Route', seen);
+      const props = { RouteTableId: rt.RouteTableId };
       if (r.DestinationCidrBlock) props.DestinationCidrBlock = r.DestinationCidrBlock;
       if (r.GatewayId) props.GatewayId = r.GatewayId;
       if (r.NatGatewayId) props.NatGatewayId = r.NatGatewayId;
@@ -1067,19 +1067,19 @@ export function _ckRts(rts, res, seen) {
 
 export function _ckEc2(instances, ctx, res, seen) {
   instances.forEach(function(inst) {
-    var id = _ckId(gn(inst, inst.InstanceId), 'EC2', seen);
-    var props = { InstanceType: inst.InstanceType || 't3.micro', SubnetId: inst.SubnetId || '',
+    const id = _ckId(gn(inst, inst.InstanceId), 'EC2', seen);
+    const props = { InstanceType: inst.InstanceType || 't3.micro', SubnetId: inst.SubnetId || '',
       SecurityGroupIds: (inst.SecurityGroups || []).map(function(s) { return s.GroupId; }),
       ImageId: inst.ImageId || '', Tags: _cfnTags(inst) };
     // IMDSv2 — Checkov CKV_AWS_79
-    var mo = inst.MetadataOptions || {};
+    const mo = inst.MetadataOptions || {};
     props.MetadataOptions = { HttpTokens: mo.HttpTokens || 'optional', HttpEndpoint: mo.HttpEndpoint || 'enabled' };
     // IAM profile
     if (inst.IamInstanceProfile) props.IamInstanceProfile = inst.IamInstanceProfile.Arn || '';
     // EBS encryption
     if (inst.BlockDeviceMappings && inst.BlockDeviceMappings.length) {
       props.BlockDeviceMappings = inst.BlockDeviceMappings.map(function(b) {
-        var r = { DeviceName: b.DeviceName || '/dev/xvda' };
+        const r = { DeviceName: b.DeviceName || '/dev/xvda' };
         if (b.Ebs) r.Ebs = { Encrypted: b.Ebs.Encrypted === true, VolumeSize: b.Ebs.VolumeSize || 8, VolumeType: b.Ebs.VolumeType || 'gp3' };
         return r;
       });
@@ -1090,7 +1090,7 @@ export function _ckEc2(instances, ctx, res, seen) {
 
 export function _ckRds(rdsInstances, res, seen) {
   rdsInstances.forEach(function(db) {
-    var id = _ckId(db.DBInstanceIdentifier, 'RDS', seen);
+    const id = _ckId(db.DBInstanceIdentifier, 'RDS', seen);
     res[id] = { Type: 'AWS::RDS::DBInstance', Properties: {
       DBInstanceIdentifier: db.DBInstanceIdentifier,
       Engine: db.Engine || '', EngineVersion: db.EngineVersion || '',
@@ -1108,8 +1108,8 @@ export function _ckRds(rdsInstances, res, seen) {
 
 export function _ckS3(buckets, res, seen) {
   buckets.forEach(function(bk) {
-    var id = _ckId(bk.Name, 'S3', seen);
-    var props = { BucketName: bk.Name };
+    const id = _ckId(bk.Name, 'S3', seen);
+    const props = { BucketName: bk.Name };
     // Omit encryption/versioning — Checkov flags their absence, which is correct
     if (bk.BucketEncryption) props.BucketEncryption = bk.BucketEncryption;
     if (bk.VersioningConfiguration) props.VersioningConfiguration = bk.VersioningConfiguration;
@@ -1119,8 +1119,8 @@ export function _ckS3(buckets, res, seen) {
 
 export function _ckAlbs(albs, res, seen) {
   albs.forEach(function(alb) {
-    var id = _ckId(alb.LoadBalancerName || alb.LoadBalancerArn, 'ALB', seen);
-    var props = { Type: alb.Type || 'application', Scheme: alb.Scheme || 'internet-facing' };
+    const id = _ckId(alb.LoadBalancerName || alb.LoadBalancerArn, 'ALB', seen);
+    const props = { Type: alb.Type || 'application', Scheme: alb.Scheme || 'internet-facing' };
     if (alb.SecurityGroups) props.SecurityGroups = alb.SecurityGroups;
     if (alb.Subnets) props.Subnets = alb.Subnets;
     else if (alb.AvailabilityZones) props.Subnets = alb.AvailabilityZones.map(function(az) { return az.SubnetId; }).filter(Boolean);
@@ -1130,8 +1130,8 @@ export function _ckAlbs(albs, res, seen) {
 
 export function _ckLambda(fns, res, seen) {
   fns.forEach(function(fn) {
-    var id = _ckId(fn.FunctionName, 'Lambda', seen);
-    var props = { FunctionName: fn.FunctionName, Runtime: fn.Runtime || '', Handler: fn.Handler || 'index.handler',
+    const id = _ckId(fn.FunctionName, 'Lambda', seen);
+    const props = { FunctionName: fn.FunctionName, Runtime: fn.Runtime || '', Handler: fn.Handler || 'index.handler',
       MemorySize: fn.MemorySize || 128, Timeout: fn.Timeout || 3,
       Role: fn.Role || 'arn:aws:iam::111222333444:role/LambdaRole',
       Code: { ZipFile: 'exports.handler=async()=>({})' } };
@@ -1144,10 +1144,10 @@ export function _ckLambda(fns, res, seen) {
 
 export function _ckIamRoles(roles, res, seen) {
   roles.forEach(function(role) {
-    var id = _ckId(role.RoleName, 'Role', seen);
-    var props = { RoleName: role.RoleName,
+    const id = _ckId(role.RoleName, 'Role', seen);
+    const props = { RoleName: role.RoleName,
       AssumeRolePolicyDocument: role.AssumeRolePolicyDocument || { Version: '2012-10-17', Statement: [] } };
-    var managed = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyArn; }).filter(Boolean);
+    const managed = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyArn; }).filter(Boolean);
     if (managed.length) props.ManagedPolicyArns = managed;
     if (role.RolePolicyList && role.RolePolicyList.length) {
       props.Policies = role.RolePolicyList.map(function(p) {
@@ -1160,9 +1160,9 @@ export function _ckIamRoles(roles, res, seen) {
 
 export function _ckIamUsers(users, res, seen) {
   users.forEach(function(user) {
-    var id = _ckId(user.UserName, 'User', seen);
-    var props = { UserName: user.UserName };
-    var managed = (user.AttachedManagedPolicies || []).map(function(p) { return p.PolicyArn; }).filter(Boolean);
+    const id = _ckId(user.UserName, 'User', seen);
+    const props = { UserName: user.UserName };
+    const managed = (user.AttachedManagedPolicies || []).map(function(p) { return p.PolicyArn; }).filter(Boolean);
     if (managed.length) props.ManagedPolicyArns = managed;
     if (user.UserPolicyList && user.UserPolicyList.length) {
       props.Policies = user.UserPolicyList.map(function(p) {
@@ -1175,7 +1175,7 @@ export function _ckIamUsers(users, res, seen) {
 
 export function _ckElastiCache(clusters, res, seen) {
   clusters.forEach(function(c) {
-    var id = _ckId(c.CacheClusterId, 'Cache', seen);
+    const id = _ckId(c.CacheClusterId, 'Cache', seen);
     res[id] = { Type: 'AWS::ElastiCache::CacheCluster', Properties: {
       Engine: c.Engine || 'redis', CacheNodeType: c.CacheNodeType || 'cache.t3.micro',
       NumCacheNodes: c.NumCacheNodes || 1,
@@ -1187,7 +1187,7 @@ export function _ckElastiCache(clusters, res, seen) {
 
 export function _ckRedshift(clusters, res, seen) {
   clusters.forEach(function(c) {
-    var id = _ckId(c.ClusterIdentifier, 'Redshift', seen);
+    const id = _ckId(c.ClusterIdentifier, 'Redshift', seen);
     res[id] = { Type: 'AWS::Redshift::Cluster', Properties: {
       ClusterIdentifier: c.ClusterIdentifier,
       NodeType: c.NodeType || 'dc2.large', NumberOfNodes: c.NumberOfNodes || 1,
@@ -1204,10 +1204,10 @@ export function _ckRedshift(clusters, res, seen) {
  */
 export function generateCheckovCfn(ctx, iamData) {
   if (!ctx || !ctx.vpcs) return null;
-  var template = { AWSTemplateFormatVersion: '2010-09-09',
+  const template = { AWSTemplateFormatVersion: '2010-09-09',
     Description: 'Generated by AWS Mapper for Checkov scanning — ' + new Date().toISOString().split('T')[0],
     Resources: {} };
-  var res = template.Resources, seen = new Set();
+  const res = template.Resources, seen = new Set();
   _ckVpcs(ctx.vpcs || [], res, seen);
   _ckSubnets(ctx.subnets || [], res, seen);
   _ckSgs(ctx.sgs || [], res, seen);

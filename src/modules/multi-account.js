@@ -247,3 +247,27 @@ export {
   mergedCtx as _mergedCtx,
   singleCtxBackup as _singleCtxBackup
 };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_multiViewMode', {
+    get() { return multiViewMode; },
+    set(v) { multiViewMode = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_loadedContexts', {
+    get() { return loadedContexts; },
+    set(v) { loadedContexts = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_mergedCtx', {
+    get() { return mergedCtx; },
+    set(v) { mergedCtx = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_singleCtxBackup', {
+    get() { return singleCtxBackup; },
+    set(v) { singleCtxBackup = v; },
+    configurable: true
+  });
+}

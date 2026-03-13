@@ -346,333 +346,8 @@ function _runComplianceWithCache(ctx){
 }
 // #endregion INITIALIZATION & GLOBALS
 // #region BUDR ENGINE
-// === BUDR: BACKUP, UPTIME, DISASTER RECOVERY ===
-const _BUDR_STRATEGY={hot:'Hot',warm:'Warm',pilot:'Pilot Light',cold:'Cold'};
-const _BUDR_STRATEGY_ORDER={hot:0,warm:1,pilot:2,cold:3};
-const _BUDR_STRATEGY_LEGEND=[
-  {k:'critical',label:'Critical (Hot)',color:'#ef4444',icon:'🔴',desc:'Active-active — full replica running at all times. Near-zero RTO & RPO.'},
-  {k:'high',label:'High (Warm)',color:'#f59e0b',icon:'🟡',desc:'Scaled-down replica running. Scale up on failover. Minutes to recover.'},
-  {k:'medium',label:'Medium (Pilot Light)',color:'#6366f1',icon:'🟣',desc:'Data replicated continuously, compute stopped. Spin up on failover. ~10-30 min.'},
-  {k:'low',label:'Low (Cold)',color:'#64748b',icon:'⚪',desc:'Backups only, no standby. Rebuild from scratch. Hours to recover.'}
-];
-const _BUDR_RTO_RPO={
-  rds_multi_az:{rto:'~5 min',rpo:'~1 min',tier:'protected',strategy:'warm'},
-  rds_single_backup:{rto:'~30 min',rpo:'~24 hr',tier:'partial',strategy:'pilot'},
-  rds_no_backup:{rto:'~8 hr',rpo:'total loss',tier:'at_risk',strategy:'cold'},
-  rds_aurora:{rto:'<30 sec',rpo:'~5 min (PITR)',tier:'protected',strategy:'hot'},
-  ec2_asg:{rto:'~3 min',rpo:'0 (stateless)',tier:'protected',strategy:'warm'},
-  ec2_ami_snap:{rto:'~15 min',rpo:'~7 days',tier:'partial',strategy:'pilot'},
-  ec2_standalone:{rto:'~8 hr',rpo:'total loss',tier:'at_risk',strategy:'cold'},
-  ecs_multi:{rto:'~1 min',rpo:'0 (stateless)',tier:'protected',strategy:'hot'},
-  ecs_single:{rto:'~5 min',rpo:'0 (stateless)',tier:'partial',strategy:'warm'},
-  lambda:{rto:'0 (managed)',rpo:'0 (stateless)',tier:'protected',strategy:'hot'},
-  ecache_multi:{rto:'~2 min',rpo:'~seconds',tier:'protected',strategy:'warm'},
-  ecache_single:{rto:'~15 min',rpo:'~7 days',tier:'partial',strategy:'pilot'},
-  ecache_no_snap:{rto:'~15 min',rpo:'total loss',tier:'at_risk',strategy:'cold'},
-  redshift_snap:{rto:'~30 min',rpo:'~8 hr',tier:'partial',strategy:'pilot'},
-  redshift_multi:{rto:'~15 min',rpo:'~5 min',tier:'protected',strategy:'warm'},
-  redshift_none:{rto:'~8 hr',rpo:'total loss',tier:'at_risk',strategy:'cold'},
-  alb_multi_az:{rto:'0 (managed)',rpo:'N/A',tier:'protected',strategy:'hot'},
-  alb_single_az:{rto:'~5 min',rpo:'N/A',tier:'partial',strategy:'warm'},
-  s3:{rto:'0 (managed)',rpo:'0 (durable)',tier:'protected',strategy:'hot'},
-  s3_versioned:{rto:'0 (managed)',rpo:'0 (versioned)',tier:'protected',strategy:'hot'},
-  s3_unversioned:{rto:'0 (managed)',rpo:'total loss',tier:'at_risk',strategy:'cold'},
-  s3_mfa_delete:{rto:'0 (managed)',rpo:'0 (immutable)',tier:'protected',strategy:'hot'},
-  ebs_snap:{rto:'~15 min',rpo:'~7 days',tier:'partial',strategy:'pilot'},
-  ebs_no_snap:{rto:'~8 hr',rpo:'total loss',tier:'at_risk',strategy:'cold'}
-};
-// Estimated minutes for each BUDR profile (for tier compliance comparison)
-// rtoWhy/rpoWhy: justification for estimated values
-const _BUDR_EST_MINUTES={
-  rds_multi_az:{rto:5,rpo:1,rtoWhy:'Multi-AZ automatic failover completes in 1-2 min; DNS propagation adds ~3 min',rpoWhy:'Synchronous replication to standby — data loss limited to in-flight transactions (~seconds)'},
-  rds_single_backup:{rto:30,rpo:1440,rtoWhy:'Restore from automated snapshot requires instance provisioning + data load (~20-30 min)',rpoWhy:'Automated backups run daily — worst case RPO is 24 hours since last backup window'},
-  rds_no_backup:{rto:480,rpo:Infinity,rtoWhy:'No backups — requires manual rebuild from application layer or external source',rpoWhy:'No backup mechanism configured — all data since creation is unrecoverable'},
-  rds_aurora:{rto:0.5,rpo:5,rtoWhy:'Aurora automatic failover promotes read replica in <30 sec; DNS TTL is 5 sec',rpoWhy:'Aurora replicates 6 copies across 3 AZs — RPO limited to last committed transaction (~seconds)'},
-  ec2_asg:{rto:3,rpo:0,rtoWhy:'ASG detects failure via health check (1-2 min) and launches replacement from AMI (~1-2 min)',rpoWhy:'Stateless compute — no persistent data on instance; state lives in external stores'},
-  ec2_ami_snap:{rto:15,rpo:10080,rtoWhy:'Manual AMI launch + EBS restore from snapshot (~10-15 min depending on volume size)',rpoWhy:'Snapshot frequency is typically weekly — worst case RPO is 7 days since last snapshot'},
-  ec2_standalone:{rto:480,rpo:Infinity,rtoWhy:'No AMI/snapshot — requires full OS install, config, and application deployment from scratch',rpoWhy:'No backup mechanism — local EBS data is unrecoverable if instance or volume is lost'},
-  ecs_multi:{rto:1,rpo:0,rtoWhy:'ECS service scheduler replaces failed tasks in ~30-60 sec from container image',rpoWhy:'Stateless containers — no persistent data; state lives in external stores (RDS, S3, etc.)'},
-  ecs_single:{rto:5,rpo:0,rtoWhy:'Single task replacement takes ~2-5 min including image pull and health check',rpoWhy:'Stateless containers — no persistent data; state lives in external stores'},
-  lambda:{rto:0,rpo:0,rtoWhy:'Fully managed — AWS handles all availability; cold start adds <1 sec latency',rpoWhy:'Stateless execution — no persistent data; code stored in S3 with versioning'},
-  ecache_multi:{rto:2,rpo:0.1,rtoWhy:'Multi-AZ auto-failover promotes replica in 1-2 min; DNS endpoint updates automatically',rpoWhy:'Async replication lag is typically <100ms — data loss limited to replication lag'},
-  ecache_single:{rto:15,rpo:10080,rtoWhy:'Restore from snapshot requires new cluster provisioning + data load (~10-15 min)',rpoWhy:'Snapshot frequency is typically daily/weekly — worst case RPO equals snapshot interval'},
-  ecache_no_snap:{rto:15,rpo:Infinity,rtoWhy:'New cluster provisioning takes ~10-15 min but cache starts cold (empty)',rpoWhy:'No snapshots — entire cache contents are lost; must be rebuilt from source of truth'},
-  redshift_snap:{rto:30,rpo:1440,rtoWhy:'Restore from snapshot creates new cluster (~20-30 min depending on data size)',rpoWhy:'Automated snapshots run every 8 hours by default — worst case RPO is snapshot interval'},
-  redshift_multi:{rto:15,rpo:5,rtoWhy:'Multi-node cluster redistributes work to surviving nodes (~10-15 min recovery)',rpoWhy:'Synchronous replication across nodes — RPO limited to in-flight queries (~minutes)'},
-  redshift_none:{rto:480,rpo:Infinity,rtoWhy:'No snapshots — requires full data reload from S3/source systems (hours to days)',rpoWhy:'No backup mechanism — all warehouse data is unrecoverable'},
-  alb_multi_az:{rto:0,rpo:0,rtoWhy:'Fully managed multi-AZ — AWS handles node replacement transparently',rpoWhy:'Stateless load balancer — no data to lose; config stored in AWS control plane'},
-  alb_single_az:{rto:5,rpo:0,rtoWhy:'Single-AZ ALB may need DNS failover if AZ goes down (~3-5 min)',rpoWhy:'Stateless load balancer — no data to lose'},
-  s3:{rto:0,rpo:0,rtoWhy:'11 nines durability — service is always available across 3+ AZs',rpoWhy:'Objects replicated across multiple AZs automatically'},
-  s3_versioned:{rto:0,rpo:0,rtoWhy:'Versioned objects can be restored to any previous version instantly',rpoWhy:'Every object change creates a new version — zero data loss possible'},
-  s3_unversioned:{rto:0,rpo:Infinity,rtoWhy:'Bucket is always available, but deleted/overwritten objects cannot be recovered',rpoWhy:'No versioning — overwrites and deletes are permanent and unrecoverable'},
-  s3_mfa_delete:{rto:0,rpo:0,rtoWhy:'MFA Delete prevents accidental deletion — objects recoverable from versions',rpoWhy:'Versioning + MFA Delete = immutable storage; data cannot be accidentally lost'},
-  ebs_snap:{rto:15,rpo:10080,rtoWhy:'Create new volume from snapshot + attach to instance (~10-15 min)',rpoWhy:'Snapshot frequency is typically weekly — worst case RPO is 7 days since last snapshot'},
-  ebs_no_snap:{rto:480,rpo:Infinity,rtoWhy:'No snapshots — volume data is unrecoverable if volume fails (rare but possible)',rpoWhy:'No backup mechanism — all volume data is permanently lost on failure'}
-};
-// Classification tier targets in minutes (from compliance policy)
-const _TIER_TARGETS={
-  critical:{rto:240,rpo:60,rtoLabel:'2-4 hours',rpoLabel:'Hourly'},
-  high:{rto:480,rpo:360,rtoLabel:'4-8 hours',rpoLabel:'6 hours'},
-  medium:{rto:720,rpo:1440,rtoLabel:'12 hours',rpoLabel:'Daily'},
-  low:{rto:1440,rpo:10080,rtoLabel:'24 hours',rpoLabel:'Weekly'}
-};
-// Compare estimated restore capability vs tier target — returns compliance status
-function _budrTierCompliance(profileKey,classTier){
-  if(!profileKey||!classTier)return{status:'unknown',issues:[]};
-  var est=_BUDR_EST_MINUTES[profileKey];var target=_TIER_TARGETS[classTier];
-  if(!est||!target)return{status:'unknown',issues:[]};
-  var issues=[];
-  if(est.rpo===Infinity)issues.push({field:'RPO',severity:'critical',msg:'No backup — RPO unrecoverable (target: '+target.rpoLabel+')'});
-  else if(est.rpo>target.rpo)issues.push({field:'RPO',severity:'warning',msg:'Est. RPO ~'+_fmtMin(est.rpo)+' exceeds '+classTier+' target of '+target.rpoLabel});
-  if(est.rto>target.rto)issues.push({field:'RTO',severity:'warning',msg:'Est. RTO ~'+_fmtMin(est.rto)+' exceeds '+classTier+' target of '+target.rtoLabel});
-  var status=issues.some(function(i){return i.severity==='critical'})?'fail':issues.length?'warn':'pass';
-  return{status:status,issues:issues,estRto:est.rto,estRpo:est.rpo,targetRto:target.rto,targetRpo:target.rpo,rtoWhy:est.rtoWhy||'',rpoWhy:est.rpoWhy||''};
-}
-function _fmtMin(m){if(m===0)return '0';if(m===Infinity)return '∞';if(m<60)return Math.round(m)+' min';if(m<1440)return Math.round(m/60*10)/10+' hr';return Math.round(m/1440*10)/10+' days'}
-var _budrFindings=[];
-var _budrAssessments=[];
-let _budrOverrides={};
-function runBUDRChecks(ctx){
-  const f=[];const assessments=[];
-  const gn=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
-  // RDS
-  (ctx.rdsInstances||[]).forEach(db=>{
-    if(db.ReadReplicaSourceDBInstanceIdentifier)return;
-    const id=db.DBInstanceIdentifier;const name=id;
-    const hasMultiAZ=!!db.MultiAZ;
-    const hasBackup=(db.BackupRetentionPeriod||0)>0;
-    const encrypted=!!db.StorageEncrypted;
-    const isMicro=(db.DBInstanceClass||'').includes('.micro');
-    const hasPITR=!!db.LatestRestorableTime;
-    const isAurora=(db.Engine||'').startsWith('aurora');
-    let profile,sev;
-    if(hasMultiAZ&&hasBackup){profile=_BUDR_RTO_RPO.rds_multi_az;sev=null}
-    else if(hasBackup){profile=_BUDR_RTO_RPO.rds_single_backup;sev=isMicro?null:'MEDIUM';
-      f.push({severity:'MEDIUM',control:'BUDR-HA-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS not Multi-AZ — single point of failure',remediation:'Enable Multi-AZ for automatic failover'})}
-    else{profile=_BUDR_RTO_RPO.rds_no_backup;sev='CRITICAL';
-      f.push({severity:'CRITICAL',control:'BUDR-BAK-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS has no automated backups (retention=0)',remediation:'Set BackupRetentionPeriod to at least 7 days'})}
-    if(isAurora&&hasBackup){profile=_BUDR_RTO_RPO.rds_aurora}
-    if(!hasMultiAZ&&!isMicro&&hasBackup)
-      f.push({severity:'HIGH',control:'BUDR-DR-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS single-AZ with backups only — extended RTO on AZ failure',remediation:'Enable Multi-AZ or create cross-region read replica'});
-    if(!db.DeletionProtection&&!isMicro)
-      f.push({severity:'MEDIUM',control:'BUDR-DEL-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS deletion protection disabled',remediation:'Enable DeletionProtection to prevent accidental deletion'});
-    assessments.push({type:'RDS',id,name,profile,signals:{MultiAZ:hasMultiAZ,Backup:hasBackup,Encrypted:encrypted,DeletionProtection:!!db.DeletionProtection,ReadReplicas:(db.ReadReplicaDBInstanceIdentifiers||[]).length,PITR:hasPITR}});
-  });
-  // EC2
-  const asgInstIds=new Set();
-  // Detect ASG membership from tags
-  (ctx.instances||[]).forEach(inst=>{
-    const asgTag=(inst.Tags||[]).find(t=>t.Key==='aws:autoscaling:groupName');
-    if(asgTag&&asgTag.Value)asgInstIds.add(inst.InstanceId);
-  });
-  (ctx.instances||[]).forEach(inst=>{
-    const id=inst.InstanceId;const name=gn(inst,id);
-    const inASG=asgInstIds.has(id);
-    const vols=(inst.BlockDeviceMappings||[]).map(b=>b.Ebs?.VolumeId).filter(Boolean);
-    const hasSnaps=vols.some(vid=>{const s=(ctx.snapByVol||{})[vid];return s&&s.length>0});
-    let newestSnap=null;
-    vols.forEach(vid=>{const ss=(ctx.snapByVol||{})[vid]||[];ss.forEach(s=>{
-      const d=new Date(s.StartTime);if(!newestSnap||d>newestSnap)newestSnap=d;
-    })});
-    const snapAgeDays=newestSnap?Math.floor((Date.now()-newestSnap.getTime())/(864e5)):null;
-    if(hasSnaps&&snapAgeDays!==null&&snapAgeDays>7){
-      f.push({severity:'MEDIUM',control:'BUDR-AGE-1',framework:'BUDR',resource:id,resourceName:name,message:'Newest EBS snapshot is '+snapAgeDays+' days old (>7 days)',remediation:'Configure AWS Backup or DLM to take snapshots at least weekly'});
-    }
-    const encrypted=vols.some(vid=>{const vs=(ctx.volumes||[]).filter(v=>v.VolumeId===vid);return vs.length&&vs[0].Encrypted});
-    let profile;
-    if(inASG){profile=_BUDR_RTO_RPO.ec2_asg}
-    else if(hasSnaps){profile=_BUDR_RTO_RPO.ec2_ami_snap;
-      f.push({severity:'LOW',control:'BUDR-HA-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 not in Auto Scaling group — manual recovery required',remediation:'Place behind ASG or create AMI + launch template for quick recovery'})}
-    else{profile=_BUDR_RTO_RPO.ec2_standalone;
-      f.push({severity:'HIGH',control:'BUDR-BAK-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 standalone with no EBS snapshots — unrecoverable on failure',remediation:'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'});
-      if(!inASG)f.push({severity:'MEDIUM',control:'BUDR-DR-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 has no disaster recovery strategy',remediation:'Create AMI, configure ASG with multi-AZ, or use EBS snapshots'})}
-    assessments.push({type:'EC2',id,name,profile,signals:{ASG:inASG,Snapshots:hasSnaps,SnapAgeDays:snapAgeDays,Encrypted:encrypted}});
-  });
-  // ECS
-  (ctx.ecsServices||[]).forEach(svc=>{
-    const id=svc.serviceName||svc.serviceArn;const name=svc.serviceName||id;
-    const desired=svc.desiredCount||0;
-    const multi=desired>1;
-    let profile;
-    if(multi){profile=_BUDR_RTO_RPO.ecs_multi}
-    else{profile=_BUDR_RTO_RPO.ecs_single;
-      f.push({severity:'LOW',control:'BUDR-HA-3',framework:'BUDR',resource:id,resourceName:name,message:'ECS service has desiredCount='+desired+' — no redundancy',remediation:'Set desiredCount ≥ 2 across multiple AZs'})}
-    assessments.push({type:'ECS',id,name,profile,signals:{DesiredCount:desired,MultiTask:multi}});
-  });
-  // Lambda (inherently resilient)
-  (ctx.lambdaFns||[]).forEach(fn=>{
-    assessments.push({type:'Lambda',id:fn.FunctionName,name:fn.FunctionName,profile:_BUDR_RTO_RPO.lambda,signals:{Managed:true}});
-  });
-  // ElastiCache
-  (ctx.ecacheClusters||[]).forEach(ec=>{
-    const id=ec.CacheClusterId;const name=id;
-    const multiNode=(ec.NumCacheNodes||1)>1;
-    const hasSnap=!!(ec.SnapshotWindow||ec.SnapshotRetentionLimit);
-    const autoFailover=ec.AutomaticFailover==='enabled';
-    let profile;
-    if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
-    else if(hasSnap){profile=_BUDR_RTO_RPO.ecache_single;
-      f.push({severity:'MEDIUM',control:'BUDR-HA-4',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node — failover requires manual intervention',remediation:'Add replicas or enable cluster mode for automatic failover'})}
-    else{profile=_BUDR_RTO_RPO.ecache_no_snap;
-      f.push({severity:'HIGH',control:'BUDR-BAK-3',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node with no snapshots — data loss risk',remediation:'Enable automatic snapshots and add read replicas'})}
-    assessments.push({type:'ElastiCache',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap,AutoFailover:autoFailover}});
-  });
-  // Redshift
-  (ctx.redshiftClusters||[]).forEach(rs=>{
-    const id=rs.ClusterIdentifier;const name=id;
-    const multiNode=(rs.NumberOfNodes||1)>1;
-    const hasSnap=(rs.AutomatedSnapshotRetentionPeriod||0)>0;
-    let profile;
-    if(multiNode&&hasSnap){profile=_BUDR_RTO_RPO.redshift_multi}
-    else if(hasSnap){profile=_BUDR_RTO_RPO.redshift_snap;
-      f.push({severity:'MEDIUM',control:'BUDR-HA-5',framework:'BUDR',resource:id,resourceName:name,message:'Redshift single-node cluster — no compute redundancy',remediation:'Resize to multi-node cluster for HA'})}
-    else{profile=_BUDR_RTO_RPO.redshift_none;
-      f.push({severity:'HIGH',control:'BUDR-BAK-4',framework:'BUDR',resource:id,resourceName:name,message:'Redshift with no automated snapshots — data loss risk',remediation:'Enable automated snapshots with ≥7 day retention'})}
-    assessments.push({type:'Redshift',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap}});
-  });
-  // ALBs
-  (ctx.albs||[]).forEach(alb=>{
-    const id=alb.LoadBalancerName||alb.LoadBalancerArn;const name=alb.LoadBalancerName||id;
-    const azs=(alb.AvailabilityZones||[]).length;
-    let profile;
-    if(azs>=2){profile=_BUDR_RTO_RPO.alb_multi_az}
-    else{profile=_BUDR_RTO_RPO.alb_single_az;
-      f.push({severity:'MEDIUM',control:'BUDR-HA-6',framework:'BUDR',resource:id,resourceName:name,message:'ALB in single AZ only — no failover',remediation:'Register subnets in at least 2 AZs'})}
-    assessments.push({type:'ALB',id,name,profile,signals:{AZCount:azs}});
-  });
-  // EBS volumes (standalone — not already counted via EC2)
-  (ctx.volumes||[]).forEach(vol=>{
-    if(vol.State!=='in-use')return;
-    const id=vol.VolumeId;const name=gn(vol,id);
-    const snaps=(ctx.snapByVol||{})[id]||[];
-    if(snaps.length===0){
-      f.push({severity:'MEDIUM',control:'BUDR-BAK-5',framework:'BUDR',resource:id,resourceName:name,message:'In-use EBS volume has no snapshots',remediation:'Create snapshot schedule via AWS Backup or DLM lifecycle policy'});
-    }
-  });
-  // S3
-  (ctx.s3bk||[]).forEach(bk=>{
-    const id=bk.Name||'unknown';const name=id;
-    const versioned=bk.Versioning&&bk.Versioning.Status==='Enabled';
-    const mfaDel=bk.Versioning&&bk.Versioning.MFADelete==='Enabled';
-    let profile;
-    if(mfaDel){profile=_BUDR_RTO_RPO.s3_mfa_delete}
-    else if(versioned){profile=_BUDR_RTO_RPO.s3_versioned}
-    else{profile=_BUDR_RTO_RPO.s3_unversioned;
-      f.push({severity:'HIGH',control:'BUDR-S3-1',framework:'BUDR',resource:id,resourceName:name,message:'S3 bucket has no versioning \u2014 data loss risk',remediation:'Enable versioning to protect against accidental deletes and overwrites'})}
-    assessments.push({type:'S3',id,name,profile,signals:{Versioned:versioned,MFADelete:mfaDel}});
-  });
-  // Enrich assessments with account/vpc/region from raw resources
-  var _budrLookup={};
-  var _bSubVpc={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)_bSubVpc[s.SubnetId]=s.VpcId||''});
-  (ctx.rdsInstances||[]).forEach(function(r){_budrLookup['RDS:'+r.DBInstanceIdentifier]={a:r._accountId||'',r:r._region||'',v:(r.DBSubnetGroup&&r.DBSubnetGroup.VpcId)||''}});
-  (ctx.instances||[]).forEach(function(r){_budrLookup['EC2:'+r.InstanceId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||_bSubVpc[r.SubnetId]||''}});
-  (ctx.ecsServices||[]).forEach(function(r){var nc=r.networkConfiguration&&r.networkConfiguration.awsvpcConfiguration;var sid=nc&&nc.subnets&&nc.subnets[0]?nc.subnets[0]:'';_budrLookup['ECS:'+(r.serviceName||r.serviceArn)]={a:r._accountId||'',r:r._region||'',v:sid?_bSubVpc[sid]||'':''}});
-  (ctx.lambdaFns||[]).forEach(function(r){_budrLookup['Lambda:'+r.FunctionName]={a:r._accountId||'',r:r._region||'',v:(r.VpcConfig&&r.VpcConfig.VpcId)||''}});
-  (ctx.ecacheClusters||[]).forEach(function(r){_budrLookup['ElastiCache:'+r.CacheClusterId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.redshiftClusters||[]).forEach(function(r){_budrLookup['Redshift:'+r.ClusterIdentifier]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.albs||[]).forEach(function(r){_budrLookup['ALB:'+(r.LoadBalancerName||r.LoadBalancerArn)]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
-  (ctx.s3bk||[]).forEach(function(r){_budrLookup['S3:'+r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
-  (ctx.volumes||[]).forEach(function(r){_budrLookup['EBS:'+r.VolumeId]={a:r._accountId||'',r:r._region||'',v:''}});
-  (ctx.snapshots||[]).forEach(function(r){_budrLookup['Snapshot:'+r.SnapshotId]={a:r._accountId||'',r:r._region||'',v:''}});
-  assessments.forEach(function(a){var info=_budrLookup[a.type+':'+a.id];if(info){a.account=info.a;a.region=info.r;a.vpcId=info.v}});
-  // Fallback: unmatched assessments get primary account
-  var _bAccts=new Set();(ctx.vpcs||[]).forEach(function(v){if(v._accountId&&v._accountId!=='default')_bAccts.add(v._accountId)});
-  if(_bAccts.size>=1){var _bPri=[..._bAccts][0];assessments.forEach(function(a){if(!a.account)a.account=_bPri})}
-  // Enrich BUDR findings with account/region (for Action Plan sheet)
-  var _bResLookup={};
-  Object.keys(_budrLookup).forEach(function(k){var id=k.split(':').slice(1).join(':');_bResLookup[id]=_budrLookup[k]});
-  f.forEach(function(finding){var info=_bResLookup[finding.resource];if(info){finding._accountId=info.a;finding._region=info.r;finding._vpcId=info.v}});
-  if(_bAccts.size>=1){var _bPri2=[..._bAccts][0];f.forEach(function(finding){if(!finding._accountId)finding._accountId=_bPri2})};
-  _budrFindings=f;
-  _budrAssessments=assessments;
-  // Cross-reference with classification engine for tier compliance
-  _enrichBudrWithClassification(ctx,f);
-  return f;
-}
-function _enrichBudrWithClassification(ctx,findings){
-  // Run classification if not already done
-  if(!_classificationData.length&&ctx) runClassificationEngine(ctx);
-  // Build lookup by resource id/name (type-qualified keys take priority to avoid cross-type collisions)
-  var classMap={};var classMapTyped={};
-  _classificationData.forEach(function(c){classMap[c.id]=c;classMap[c.name]=c;classMapTyped[c.type+'|'+c.id]=c;classMapTyped[c.type+'|'+c.name]=c});
-  // Enrich each BUDR assessment
-  _budrAssessments.forEach(function(a){
-    var cls=classMapTyped[a.type+'|'+a.id]||classMapTyped[a.type+'|'+a.name]||classMap[a.id]||classMap[a.name];
-    a.classTier=cls?cls.tier:'low';
-    a.classVpcName=cls?cls.vpcName:'';
-    // Find which profile key this assessment uses
-    var profileKey=null;
-    for(let k in _BUDR_RTO_RPO){if(_BUDR_RTO_RPO[k]===a.profile){profileKey=k;break}}
-    a.profileKey=profileKey;
-    a.compliance=_budrTierCompliance(profileKey,a.classTier);
-    // Generate findings for compliance gaps
-    if(a.compliance.issues.length>0){
-      a.compliance.issues.forEach(function(issue){
-        var sev=issue.severity==='critical'?'CRITICAL':'HIGH';
-        findings.push({severity:sev,control:'BUDR-TIER-'+issue.field,framework:'BUDR',resource:a.id,resourceName:a.name,
-          message:issue.msg+' ['+a.classTier+' tier]',
-          remediation:issue.field==='RPO'?'Configure automated backups to meet '+a.classTier+' RPO target':'Improve HA/DR strategy to meet '+a.classTier+' RTO target'});
-      });
-    }
-    // Apply manual override if present
-    var ov=_budrOverrides[a.id];
-    if(ov){
-      a.overridden=true;
-      a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
-      if(ov.strategy){
-        a.profile=Object.assign({},a.profile);
-        var sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
-        var tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
-        a.profile.strategy=sm[ov.strategy]||ov.strategy;
-        a.profile.tier=tm[ov.strategy]||a.profile.tier;
-      }
-      if(ov.rto) a.profile.rto=ov.rto;
-      if(ov.rpo) a.profile.rpo=ov.rpo;
-    }
-  });
-}
-function _reapplyBUDROverrides(){
-  _budrAssessments.forEach(function(a){
-    // Restore auto values first
-    if(a.autoProfile){
-      a.profile=Object.assign({},a.profile);
-      a.profile.strategy=a.autoProfile.strategy;
-      a.profile.rto=a.autoProfile.rto;
-      a.profile.rpo=a.autoProfile.rpo;
-      a.profile.tier=a.autoProfile.tier;
-      a.overridden=false;
-    }
-    var ov=_budrOverrides[a.id];
-    if(ov){
-      a.overridden=true;
-      if(!a.autoProfile)a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
-      a.profile=Object.assign({},a.profile);
-      if(ov.strategy){
-        var sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
-        var tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
-        a.profile.strategy=sm[ov.strategy]||ov.strategy;
-        a.profile.tier=tm[ov.strategy]||a.profile.tier;
-      }
-      if(ov.rto)a.profile.rto=ov.rto;
-      if(ov.rpo)a.profile.rpo=ov.rpo;
-    }
-  });
-}
-function _getBUDRTierCounts(){
-  const counts={protected:0,partial:0,at_risk:0};
-  _budrAssessments.forEach(a=>{
-    if(a.profile)counts[a.profile.tier]=(counts[a.profile.tier]||0)+1;
-  });
-  return counts;
-}
-function _getBudrComplianceCounts(){
-  var counts={pass:0,warn:0,fail:0,unknown:0};
-  _budrAssessments.forEach(function(a){
-    var s=a.compliance?a.compliance.status:'unknown';
-    counts[s]=(counts[s]||0)+1;
-  });
-  return counts;
-}
+// BUDR engine logic now lives in src/modules/budr-engine.js (window bridge provides live state).
+// Only the report module registry remains here.
 // === REPORT BUILDER MODULE REGISTRY ===
 var _RPT_MODULES=[
   {id:'exec-summary',name:'Executive Summary',icon:'',category:'overview',enabled:true,
@@ -1999,41 +1674,7 @@ function _rptIaCRecs(ctx, opts){
 }
 
 // === ACTIONABLE REPORT ENGINE ===
-var _EFFORT_MAP={
-  // CIS
-  'CIS 5.1':'low','CIS 5.2':'low','CIS 5.3':'low','CIS 5.4':'low',
-  'CIS 5.5':'med','NET-1':'med','NET-2':'low',
-  // WAF
-  'WAF-1':'med','WAF-2':'med','WAF-3':'med','WAF-4':'low',
-  // ARCH
-  'ARCH-N1':'med','ARCH-N2':'med','ARCH-N3':'high','ARCH-N5':'low',
-  'ARCH-C1':'low','ARCH-C2':'low','ARCH-C3':'med','ARCH-C4':'med','ARCH-C5':'low','ARCH-C6':'med',
-  'ARCH-D1':'low','ARCH-D2':'med','ARCH-D3':'high','ARCH-D4':'med','ARCH-D5':'high','ARCH-D6':'high','ARCH-D7':'low',
-  'ARCH-S1':'low','ARCH-S2':'low','ARCH-E1':'med','ARCH-E2':'low',
-  'ARCH-G1':'high','ARCH-G2':'low','ARCH-X1':'med',
-  // SOC2
-  'SOC2-CC6.1':'low','SOC2-CC6.3':'low','SOC2-CC6.6':'med','SOC2-CC6.7':'med',
-  'SOC2-CC6.8':'low','SOC2-CC6.10':'med','SOC2-CC7.2':'med','SOC2-CC7.3':'low',
-  'SOC2-CC8.1':'low','SOC2-A1.2':'med','SOC2-A1.3':'low','SOC2-A1.4':'med',
-  'SOC2-C1.1':'low','SOC2-C1.2':'low','SOC2-C1.3':'high','SOC2-PI1.1':'med',
-  // PCI
-  'PCI-1.3.1':'low','PCI-1.3.2':'low','PCI-1.3.4':'med','PCI-2.2.1':'low',
-  'PCI-2.3.1':'high','PCI-3.4.1':'med','PCI-3.5.1':'med',
-  'PCI-4.2.1':'med','PCI-6.3.1':'med','PCI-6.4.1':'med','PCI-7.2.1':'low',
-  'PCI-10.2.1':'med','PCI-11.3.1':'low','PCI-12.10.1':'med',
-  // IAM
-  'IAM-1':'med','IAM-2':'med','IAM-3':'low','IAM-4':'med','IAM-5':'low',
-  'IAM-6':'low','IAM-7':'low','IAM-8':'med','IAM-9':'low','IAM-10':'low',
-  'IAM-11':'low','IAM-12':'med','IAM-13':'low',
-  // CKV (standalone Checkov checks)
-  'CKV_AWS_79':'med','CKV_AWS_126':'med','CKV_AWS_21':'low','CKV_AWS_18':'low',
-  'CKV_AWS_26':'low','CKV_AWS_45':'low','CKV_AWS_50':'low',
-  // BUDR
-  'BUDR-HA-1':'med','BUDR-HA-2':'med','BUDR-HA-3':'low','BUDR-HA-4':'med',
-  'BUDR-HA-5':'med','BUDR-HA-6':'low',
-  'BUDR-BAK-1':'low','BUDR-BAK-2':'med','BUDR-BAK-3':'med','BUDR-BAK-4':'low','BUDR-BAK-5':'low',
-  'BUDR-DR-1':'high','BUDR-DR-2':'med'
-};
+// _EFFORT_MAP provided by compliance-view module via window._EFFORT_MAP
 var _EFFORT_LABELS={low:'Low',med:'Med',high:'High'};
 const _EFFORT_TIME={low:'~5 min',med:'~1-2 hrs',high:'~1+ days'};
 const _PRIORITY_META={
@@ -2043,99 +1684,11 @@ const _PRIORITY_META={
   low:{name:'Low',color:'#3b82f6',bg:'rgba(59,130,246,.08)',border:'rgba(59,130,246,.3)'}
 };
 var _TIER_META=_PRIORITY_META; // alias for backward compat
-function _getEffort(f){return _EFFORT_MAP[f.control]||'med'}
-function _classifyTier(f){
-  const e=_getEffort(f),s=f.severity;
-  if(s==='CRITICAL') return 'crit';
-  if(s==='HIGH'&&e==='low') return 'crit';
-  if(s==='HIGH') return 'high';
-  if(s==='MEDIUM'&&e==='low') return 'high';
-  if(s==='MEDIUM') return 'med';
-  return 'low';
-}
+// _getEffort, _classifyTier provided by compliance-view module via window bridge
 const _PRIORITY_ORDER={crit:1,high:2,med:3,low:4};
 var _PRIORITY_KEYS=['crit','high','med','low'];
-function _groupByResource(findings){
-  const map={};
-  findings.forEach(f=>{
-    const k=f.resource;
-    if(!map[k])map[k]={resource:f.resource,resourceName:f.resourceName||f.resource,findings:[],worstSev:'LOW',worstTier:'low',_accountId:f._accountId};
-    const tier=_classifyTier(f);
-    map[k].findings.push(Object.assign({},f,{effort:_getEffort(f),tier:tier}));
-    if((_SEV_ORDER[f.severity]||9)<(_SEV_ORDER[map[k].worstSev]||9))map[k].worstSev=f.severity;
-    if((_PRIORITY_ORDER[tier]||9)<(_PRIORITY_ORDER[map[k].worstTier]||9))map[k].worstTier=tier;
-  });
-  return Object.values(map).sort(function(a,b){
-    if(a.worstTier!==b.worstTier)return(_PRIORITY_ORDER[a.worstTier]||9)-(_PRIORITY_ORDER[b.worstTier]||9);
-    return(_SEV_ORDER[a.worstSev]||9)-(_SEV_ORDER[b.worstSev]||9);
-  });
-}
-function _getTierGroups(findings){
-  const g={crit:[],high:[],med:[],low:[]};
-  _groupByResource(findings).forEach(function(rg){g[rg.worstTier].push(rg)});
-  return g;
-}
-function _getSeverityGroups(findings){
-  const g={CRITICAL:[],HIGH:[],MEDIUM:[],LOW:[]};
-  _groupByResource(findings).forEach(function(rg){g[rg.worstSev].push(rg)});
-  return g;
-}
-function _estimateTotalEffort(resourceGroups){
-  var mins=0;
-  resourceGroups.forEach(function(rg){rg.findings.forEach(function(f){
-    if(f.effort==='low')mins+=5;else if(f.effort==='med')mins+=90;else mins+=480;
-  })});
-  if(mins<60)return'~'+mins+' min';
-  if(mins<480)return'~'+Math.round(mins/60)+' hrs';
-  return'~'+Math.round(mins/480)+' days';
-}
-// Unified compliance view builder — single source of truth for all filter/count consumers
-function _buildComplianceView(opts){
-  opts=opts||{};
-  var src=(opts.findings||_complianceFindings||[]).slice();
-  // Account filter (reports)
-  if(opts.accountFilter)src=_rptFilterByAccount(src,opts.accountFilter);
-  // Framework filter — string (dashboard) or array (export modal)
-  if(Array.isArray(opts.frameworks))src=src.filter(function(f){return opts.frameworks.indexOf(f.framework)!==-1});
-  else if(opts.frameworks&&opts.frameworks!=='all')src=src.filter(function(f){return f.framework===opts.frameworks});
-  // Severity pre-filter — array only (export modal multi-select)
-  if(Array.isArray(opts.severities))src=src.filter(function(f){return opts.severities.indexOf(f.severity)!==-1});
-  // Search filter
-  if(opts.search){var q=opts.search.toLowerCase();src=src.filter(function(f){return(f.message||'').toLowerCase().indexOf(q)!==-1||(f.resource||'').toLowerCase().indexOf(q)!==-1||(f.resourceName||'').toLowerCase().indexOf(q)!==-1||(f.control||'').toLowerCase().indexOf(q)!==-1||(f.ckv||'').toLowerCase().indexOf(q)!==-1||(f.remediation||'').toLowerCase().indexOf(q)!==-1})}
-  // Mute filter
-  if(!opts.includeMuted)src=src.filter(function(f){return!_isMuted(f)});
-  // Stamp _tier and _effort on every finding ONCE
-  var base=src.map(function(f){return Object.assign({},f,{_tier:_classifyTier(f),_effort:_getEffort(f)})});
-  // Severity sub-filter (dashboard pill selection — single string)
-  var filtered=(typeof opts.severity==='string'&&opts.severity!=='ALL')?base.filter(function(f){return f.severity===opts.severity}):base;
-  // Pre-compute counts from base (before severity pill filter)
-  var sevCounts={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
-  var tierCounts={crit:0,high:0,med:0,low:0};
-  base.forEach(function(f){sevCounts[f.severity]++;tierCounts[f._tier]++});
-  // Filtered tier counts (after severity pill filter)
-  var filteredTierCounts={crit:0,high:0,med:0,low:0};
-  var filteredSevCounts={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
-  filtered.forEach(function(f){filteredTierCounts[f._tier]++;filteredSevCounts[f.severity]++});
-  // Tier-grouped resource groups
-  var tiers=_getTierGroups(filtered);
-  var baseTiers=(typeof opts.severity==='string'&&opts.severity!=='ALL')?_getTierGroups(base):tiers;
-  // Severity-grouped resource groups (for Sort: Severity mode)
-  var sevGroups=_getSeverityGroups(filtered);
-  return{
-    base:base,
-    filtered:filtered,
-    tiers:tiers,
-    baseTiers:baseTiers,
-    sevGroups:sevGroups,
-    sevCounts:sevCounts,
-    tierCounts:tierCounts,
-    filteredTierCounts:filteredTierCounts,
-    filteredSevCounts:filteredSevCounts,
-    score:_calcComplianceScore(base),
-    effort:_estimateTotalEffort(_groupByResource(base)),
-    mutedCount:(_complianceFindings||[]).filter(function(f){return _isMuted(f)}).length
-  };
-}
+// _groupByResource, _getTierGroups, _getSeverityGroups, _estimateTotalEffort, _buildComplianceView
+// provided by compliance-view module via window bridge
 // Muted findings stored in localStorage
 const _MUTE_KEY=MUTE_KEY;
 let _mutedFindings=new Set();
@@ -2230,7 +1783,7 @@ const _complianceRefs={
 };
 // #endregion REPORT BUILDER
 // #region COMPLIANCE DASHBOARD
-let _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:'action'};
+// _compDashState moved to compliance-view.js module
 function renderCompliancePanel(findings,opts){
   _compDashState={sevFilter:'ALL',fwFilter:'all',search:'',sort:'severity',showMuted:false,execSummary:false,view:_compDashState.view||'action'};
   if(opts&&opts.search)_compDashState.search=opts.search;
@@ -2514,25 +2067,7 @@ function _renderActionPlan(view){
     if(rc){rc.closest('.comp-resource-card').classList.toggle('expanded')}
   })}
 }
-function _calcComplianceScore(findings){
-  const active=findings.filter(f=>!_isMuted(f));if(!active.length)return{score:100,grade:'A',color:'#22c55e'};
-  const w={CRITICAL:10,HIGH:5,MEDIUM:2,LOW:0.5};
-  const penalty=active.reduce((s,f)=>s+(w[f.severity]||0),0);
-  const maxPenalty=active.length*10; // worst case: all CRITICAL
-  const score=Math.max(0,Math.round(100-(penalty/maxPenalty)*100));
-  const grade=score>=90?'A':score>=80?'B':score>=70?'C':score>=50?'D':'F';
-  const color=score>=90?'#22c55e':score>=70?'#eab308':score>=50?'#f97316':'#ef4444';
-  return{score,grade,color};
-}
-function _aggregateTopResources(findings,limit){
-  const map={};findings.forEach(f=>{
-    const r=f.resourceName||f.resource;if(!r||r==='Multiple')return;
-    if(!map[r])map[r]={count:0,worst:'LOW',sevs:{}};
-    map[r].count++;map[r].sevs[f.severity]=(map[r].sevs[f.severity]||0)+1;
-    if((_SEV_ORDER[f.severity]||9)<(_SEV_ORDER[map[r].worst]||9))map[r].worst=f.severity;
-  });
-  return Object.entries(map).sort((a,b)=>{const sd=(_SEV_ORDER[a[1].worst]||9)-(_SEV_ORDER[b[1].worst]||9);return sd!==0?sd:b[1].count-a[1].count}).slice(0,limit);
-}
+// _calcComplianceScore, _aggregateTopResources provided by compliance-view module via window bridge
 function _renderExecSummary(view){
   const el=document.getElementById('compExecSummary');if(!el)return;
   // Use view if provided (respects current filters), otherwise build fresh
@@ -2893,12 +2428,8 @@ function _addBUDRChip(sb2){
 // #endregion COMPLIANCE DASHBOARD
 // #region DESIGN MODE
 // === DESIGN MODE ===
-let _designMode=false;
-let _designChanges=[];
-let _designBaseline=null;
-let _designDebounce=null;
-let _lastDesignValidation=null;
-let _sidebarWasCollapsed=false;
+// _designMode, _designChanges, _designBaseline, _designDebounce,
+// _lastDesignValidation, _sidebarWasCollapsed moved to design-mode.js module
 function _snapshotTextareas(){const snap={};document.querySelectorAll('.ji').forEach(el=>{snap[el.id]=el.value});return snap}
 function _restoreTextareas(snap){Object.entries(snap).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val})}
 function enterDesignMode(){
@@ -3164,240 +2695,9 @@ const _designApplyFns={
   }
 };
 
-// Region → AZ mapping (common regions)
-const _regionAZs={
-  'us-east-1':['us-east-1a','us-east-1b','us-east-1c','us-east-1d','us-east-1e','us-east-1f'],
-  'us-east-2':['us-east-2a','us-east-2b','us-east-2c'],
-  'us-west-1':['us-west-1a','us-west-1b'],
-  'us-west-2':['us-west-2a','us-west-2b','us-west-2c','us-west-2d'],
-  'eu-west-1':['eu-west-1a','eu-west-1b','eu-west-1c'],
-  'eu-west-2':['eu-west-2a','eu-west-2b','eu-west-2c'],
-  'eu-central-1':['eu-central-1a','eu-central-1b','eu-central-1c'],
-  'ap-southeast-1':['ap-southeast-1a','ap-southeast-1b','ap-southeast-1c'],
-  'ap-southeast-2':['ap-southeast-2a','ap-southeast-2b','ap-southeast-2c'],
-  'ap-northeast-1':['ap-northeast-1a','ap-northeast-1b','ap-northeast-1c','ap-northeast-1d'],
-  'ca-central-1':['ca-central-1a','ca-central-1b','ca-central-1d'],
-  'sa-east-1':['sa-east-1a','sa-east-1b','sa-east-1c'],
-};
-let _designRegion='us-east-1';
+// _regionAZs, _designRegion, _awsConstraints moved to design-mode.js module
 
-// AWS Constraints Registry (sourced from official AWS docs)
-const _awsConstraints={
-  vpc:{
-    cidrPrefixMin:16,cidrPrefixMax:28,maxCidrsPerVpc:5,maxPerRegion:5,
-    reservedCidrs:['172.17.0.0/16'],
-    rfc1918:['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16']
-  },
-  subnet:{cidrPrefixMin:16,cidrPrefixMax:28,reservedIps:5,maxPerVpc:200},
-  igw:{maxPerVpc:1},
-  nat:{maxPerAz:5,requiresPublicSubnet:true},
-  routeTable:{maxPerVpc:200,maxRoutesPerTable:500,reservedDestinations:['169.254.168.0/22'],localRouteImmutable:true},
-  securityGroup:{maxPerVpc:500,maxInboundRules:60,maxOutboundRules:60,maxPerEni:5,hardLimitRulesPerEni:1000},
-  nacl:{maxPerVpc:200,maxRulesPerDirection:20,ruleNumberMin:1,ruleNumberMax:32766},
-  peering:{maxActivePerVpc:50,noOverlappingCidrs:true,onePeerPerVpcPair:true}
-};
-
-// Validation Engine: validate a design change against AWS constraints
-function validateDesignChange(change,ctx){
-  const errors=[],warnings=[];
-  const vpcs=ctx?ctx.vpcs||[]:ext(safeParse(gv('in_vpcs')),['Vpcs']);
-  const subnets=ctx?ctx.subnets||[]:ext(safeParse(gv('in_subnets')),['Subnets']);
-  const igws=ctx?ctx.igws||[]:ext(safeParse(gv('in_igws')),['InternetGateways']);
-  const nats=ctx?ctx.nats||[]:ext(safeParse(gv('in_nats')),['NatGateways']);
-  const sgs=ctx?ctx.sgs||[]:ext(safeParse(gv('in_sgs')),['SecurityGroups']);
-  const rts=ctx?ctx.rts||[]:ext(safeParse(gv('in_rts')),['RouteTables']);
-  const pubSubs=ctx?ctx.pubSubs||new Set():new Set();
-
-  if(change.action==='add_vpc'){
-    const p=change.params;
-    const cidr=parseCIDR(p.CidrBlock);
-    if(!cidr){errors.push('Invalid CIDR: '+p.CidrBlock);return{valid:false,errors,warnings}}
-    const prefix=parseInt(p.CidrBlock.split('/')[1],10);
-    if(prefix<_awsConstraints.vpc.cidrPrefixMin||prefix>_awsConstraints.vpc.cidrPrefixMax)
-      errors.push('VPC CIDR must be /16 to /28, got /'+prefix);
-    const isRfc1918=_awsConstraints.vpc.rfc1918.some(r=>cidrContains(r,p.CidrBlock));
-    if(!isRfc1918)warnings.push('CIDR '+p.CidrBlock+' is not RFC 1918 — private subnets may have issues');
-    if(_awsConstraints.vpc.reservedCidrs.some(r=>cidrOverlap(p.CidrBlock,r)))
-      warnings.push('172.17.0.0/16 conflicts with Docker/SageMaker internal ranges');
-    vpcs.forEach(v=>{if(cidrOverlap(p.CidrBlock,v.CidrBlock))errors.push('Overlaps existing VPC '+gn(v,v.VpcId)+' ('+v.CidrBlock+')')});
-    if(vpcs.length>=_awsConstraints.vpc.maxPerRegion)warnings.push('Exceeds default quota of '+_awsConstraints.vpc.maxPerRegion+' VPCs per region (adjustable)');
-  }
-
-  if(change.action==='add_subnet'){
-    const p=change.params;
-    const cidr=parseCIDR(p.CidrBlock);
-    if(!cidr){errors.push('Invalid CIDR: '+p.CidrBlock);return{valid:false,errors,warnings}}
-    const prefix=parseInt(p.CidrBlock.split('/')[1],10);
-    if(prefix<_awsConstraints.subnet.cidrPrefixMin||prefix>_awsConstraints.subnet.cidrPrefixMax)
-      errors.push('Subnet CIDR must be /16 to /28, got /'+prefix);
-    const vpc=vpcs.find(v=>v.VpcId===p.VpcId);
-    if(!vpc){errors.push('VPC '+p.VpcId+' not found');return{valid:false,errors,warnings}}
-    if(!cidrContains(vpc.CidrBlock,p.CidrBlock))errors.push('Subnet CIDR '+p.CidrBlock+' is not within VPC CIDR '+vpc.CidrBlock);
-    const vpcSubs=subnets.filter(s=>s.VpcId===p.VpcId);
-    vpcSubs.forEach(s=>{if(cidrOverlap(p.CidrBlock,s.CidrBlock))errors.push('Overlaps subnet '+gn(s,s.SubnetId)+' ('+s.CidrBlock+')')});
-    if(vpcSubs.length>=_awsConstraints.subnet.maxPerVpc)warnings.push('Exceeds default quota of '+_awsConstraints.subnet.maxPerVpc+' subnets per VPC');
-    const usable=Math.pow(2,32-prefix)-_awsConstraints.subnet.reservedIps;
-    warnings.push(usable+' usable IPs ('+_awsConstraints.subnet.reservedIps+' reserved by AWS)');
-    // HA check: is there a subnet in another AZ for this VPC?
-    const otherAZSubs=vpcSubs.filter(s=>s.AvailabilityZone&&s.AvailabilityZone!==p.AZ);
-    if(vpcSubs.length>0&&otherAZSubs.length===0)warnings.push('All subnets in same AZ — consider multi-AZ for high availability');
-  }
-
-  if(change.action==='split_subnet'){
-    const prefix=parseInt((change.target.CidrBlock||'').split('/')[1],10);
-    if(prefix>=_awsConstraints.subnet.cidrPrefixMax)errors.push('Cannot split /'+prefix+' subnet (minimum is /'+_awsConstraints.subnet.cidrPrefixMax+')');
-    else{
-      const newPrefix=prefix+1;
-      const usable=Math.pow(2,32-newPrefix)-_awsConstraints.subnet.reservedIps;
-      warnings.push('Each half: /'+newPrefix+' = '+usable+' usable IPs');
-      if(usable<16)warnings.push('Very small subnets — limited IP capacity');
-    }
-    const insts=ctx?(ctx.instBySub||{})[change.target.SubnetId]||[]:[];
-    if(insts.length)warnings.push(insts.length+' instance(s) will require IP-based migration');
-  }
-
-  if(change.action==='add_gateway'){
-    const p=change.params;
-    if(p.GatewayType==='IGW'){
-      const vpcIgws=igws.filter(g=>(g.Attachments||[]).some(a=>a.VpcId===p.VpcId));
-      if(vpcIgws.length>=_awsConstraints.igw.maxPerVpc)
-        errors.push('VPC already has an Internet Gateway (hard limit: 1 per VPC)');
-    }
-    if(p.GatewayType==='NAT'){
-      if(p.SubnetId&&!pubSubs.has(p.SubnetId))
-        errors.push('NAT Gateway must be placed in a public subnet (one with 0.0.0.0/0 → IGW route)');
-      const subnetAZ=(subnets.find(s=>s.SubnetId===p.SubnetId)||{}).AvailabilityZone;
-      if(subnetAZ){
-        const azNats=nats.filter(n=>n.State!=='deleted'&&(subnets.find(s=>s.SubnetId===n.SubnetId)||{}).AvailabilityZone===subnetAZ);
-        if(azNats.length>=_awsConstraints.nat.maxPerAz)errors.push('Exceeds limit of '+_awsConstraints.nat.maxPerAz+' NAT Gateways in '+subnetAZ);
-        else if(azNats.length>0)warnings.push(subnetAZ+' already has '+azNats.length+' NAT GW(s) — AWS recommends 1 per AZ');
-      }
-    }
-  }
-
-  if(change.action==='add_route'){
-    const p=change.params;const t=change.target;
-    const dest=p.DestinationCidrBlock;
-    if(!parseCIDR(dest)&&dest!=='0.0.0.0/0')errors.push('Invalid destination CIDR: '+dest);
-    if(_awsConstraints.routeTable.reservedDestinations.some(r=>cidrContains(r,dest)||cidrContains(dest,r)))
-      errors.push('Cannot add routes to 169.254.168.0/22 (reserved for AWS services)');
-    const rt=rts.find(r=>r.RouteTableId===t.RouteTableId);
-    if(rt){
-      if((rt.Routes||[]).some(r=>r.DestinationCidrBlock===dest))
-        errors.push('Route table already has a route for '+dest);
-      if((rt.Routes||[]).length>=_awsConstraints.routeTable.maxRoutesPerTable)
-        warnings.push('Exceeds default quota of '+_awsConstraints.routeTable.maxRoutesPerTable+' routes per table');
-    }
-    if(dest==='0.0.0.0/0'&&p.TargetId&&p.TargetId.startsWith('igw-'))
-      warnings.push('This will make associated subnets public');
-  }
-
-  if(change.action==='add_security_group'){
-    const p=change.params;
-    const vpcSgs=sgs.filter(s=>s.VpcId===p.VpcId);
-    if(vpcSgs.length>=_awsConstraints.securityGroup.maxPerVpc)
-      warnings.push('Exceeds default quota of '+_awsConstraints.securityGroup.maxPerVpc+' SGs per VPC');
-    if((p.IngressRules||[]).length>_awsConstraints.securityGroup.maxInboundRules)
-      errors.push('Exceeds limit of '+_awsConstraints.securityGroup.maxInboundRules+' inbound rules per SG');
-    (p.IngressRules||[]).forEach(r=>{
-      if(r.CidrIp==='0.0.0.0/0'&&r.FromPort!==80&&r.FromPort!==443&&r.Protocol!=='-1')
-        warnings.push('Rule allows 0.0.0.0/0 on port '+r.FromPort+' — consider restricting source CIDR');
-    });
-  }
-
-  if(change.action==='add_resource'){
-    const p=change.params;
-    if(p.SubnetId){
-      const sub=subnets.find(s=>s.SubnetId===p.SubnetId);
-      if(sub){
-        const prefix=parseInt(sub.CidrBlock.split('/')[1],10);
-        const usable=Math.pow(2,32-prefix)-_awsConstraints.subnet.reservedIps;
-        const currentInst=(ctx?(ctx.instBySub||{})[p.SubnetId]||[]:ext(safeParse(gv('in_ec2')),['Reservations']).flatMap(r=>r.Instances||[]).filter(i=>i.SubnetId===p.SubnetId)).length;
-        const remaining=usable-currentInst;
-        if(remaining<=0)warnings.push('Subnet '+gn(sub,sub.SubnetId)+' has no remaining IP capacity ('+usable+' usable, '+currentInst+' used)');
-        else if(remaining<5)warnings.push('Subnet '+gn(sub,sub.SubnetId)+' has only '+remaining+' IPs remaining');
-      }
-    }
-  }
-
-  if(change.action==='remove_resource'){
-    const t=change.target;
-    if(t.ResourceType==='IGW'){
-      // Check if any subnets route through this IGW
-      const affectedRts=rts.filter(rt=>(rt.Routes||[]).some(r=>r.GatewayId===t.ResourceId));
-      if(affectedRts.length)warnings.push(affectedRts.length+' route table(s) reference this IGW — subnets will lose internet access');
-    }
-    if(t.ResourceType==='NAT'){
-      const affectedRts=rts.filter(rt=>(rt.Routes||[]).some(r=>r.NatGatewayId===t.ResourceId));
-      if(affectedRts.length)warnings.push(affectedRts.length+' route table(s) route through this NAT — private subnets will lose outbound access');
-    }
-    if(t.ResourceType==='Subnet'){
-      const sub=subnets.find(s=>s.SubnetId===t.ResourceId);
-      if(sub){
-        const insts=(ctx?(ctx.instBySub||{})[t.ResourceId]||[]:ext(safeParse(gv('in_ec2')),['Reservations']).flatMap(r=>r.Instances||[]).filter(i=>i.SubnetId===t.ResourceId));
-        if(insts.length)warnings.push(insts.length+' instance(s) in this subnet will be terminated');
-        // Check NATs in this subnet
-        const subNats=nats.filter(n=>n.SubnetId===t.ResourceId);
-        if(subNats.length)warnings.push(subNats.length+' NAT Gateway(s) in this subnet will be deleted');
-      }
-    }
-  }
-
-  return{valid:errors.length===0,errors,warnings};
-}
-
-// Full-state cross-change validation
-function validateDesignState(changes,ctx){
-  const errors=[],warnings=[],stats={subnetsAdded:0,gatewaysAdded:0,resourcesAdded:0,removed:0,routes:0,sgs:0};
-  changes.forEach(ch=>{
-    if(ch.action==='add_subnet')stats.subnetsAdded++;
-    if(ch.action==='add_gateway')stats.gatewaysAdded++;
-    if(ch.action==='add_resource')stats.resourcesAdded++;
-    if(ch.action==='remove_resource')stats.removed++;
-    if(ch.action==='add_route')stats.routes++;
-    if(ch.action==='add_security_group')stats.sgs++;
-  });
-  // Cross-check: IGW count per VPC
-  if(ctx){
-    const igwCounts={};
-    (ctx.igws||[]).forEach(g=>{(g.Attachments||[]).forEach(a=>{igwCounts[a.VpcId]=(igwCounts[a.VpcId]||0)+1})});
-    Object.entries(igwCounts).forEach(([vid,count])=>{
-      if(count>1){const v=(ctx.vpcs||[]).find(x=>x.VpcId===vid);errors.push('VPC '+(v?gn(v,vid):vid)+' has '+count+' IGWs (hard limit: 1)');}
-    });
-    // Cross-check: subnet overlaps within each VPC
-    const subsByVpc={};
-    (ctx.subnets||[]).forEach(s=>{(subsByVpc[s.VpcId]=subsByVpc[s.VpcId]||[]).push(s)});
-    Object.entries(subsByVpc).forEach(([vid,subs])=>{
-      for(let i=0;i<subs.length;i++){for(let j=i+1;j<subs.length;j++){
-        if(cidrOverlap(subs[i].CidrBlock,subs[j].CidrBlock))
-          errors.push('Subnets '+gn(subs[i],subs[i].SubnetId)+' and '+gn(subs[j],subs[j].SubnetId)+' have overlapping CIDRs');
-      }}
-    });
-    // HA analysis: single-AZ VPCs
-    Object.entries(subsByVpc).forEach(([vid,subs])=>{
-      const azs=new Set(subs.map(s=>s.AvailabilityZone).filter(Boolean));
-      if(subs.length>1&&azs.size===1){const v=(ctx.vpcs||[]).find(x=>x.VpcId===vid);warnings.push('VPC '+(v?gn(v,vid):vid)+' — all '+subs.length+' subnets in single AZ ('+[...azs][0]+') — no HA');}
-    });
-    // NAT in private subnet check
-    (ctx.nats||[]).forEach(n=>{
-      if(n.SubnetId&&ctx.pubSubs&&!ctx.pubSubs.has(n.SubnetId))
-        warnings.push('NAT Gateway '+gn(n,n.NatGatewayId)+' is in a private subnet — will not function');
-    });
-    // Peering CIDR overlap check
-    const peerPairs=[];
-    (ctx.peerings||[]).forEach(p=>{
-      const rv=p.RequesterVpcInfo,av=p.AccepterVpcInfo;
-      if(rv&&av&&rv.CidrBlock&&av.CidrBlock){
-        if(cidrOverlap(rv.CidrBlock,av.CidrBlock))
-          errors.push('VPC Peering '+gn(p,p.VpcPeeringConnectionId)+' — CIDRs overlap: '+rv.CidrBlock+' / '+av.CidrBlock);
-        const pair=[rv.VpcId,av.VpcId].sort().join(':');
-        if(peerPairs.includes(pair))warnings.push('Duplicate peering between '+rv.VpcId+' and '+av.VpcId);
-        peerPairs.push(pair);
-      }
-    });
-  }
-  return{valid:errors.length===0,errors,warnings,stats};
-}
+// validateDesignChange, validateDesignState provided by design-mode module via window bridge
 
 // Detect AZs from loaded subnet data, then design region, then fallback
 function _detectAZs(){
@@ -3689,61 +2989,7 @@ function exportDesignPlan(planName){
   const blob=new Blob([JSON.stringify(plan,null,2)],{type:'application/json'});
   downloadBlob(blob,(planName||'design-plan')+'.json');
 }
-function _generateCLI(ch){
-  const cmds=[];
-  if(ch.action==='add_vpc'){cmds.push(`aws ec2 create-vpc --cidr-block ${ch.params.CidrBlock}${ch.params.Name?' --tag-specifications \'ResourceType=vpc,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`);cmds.push('# Default route table, NACL, and SG are created automatically by AWS')}
-  if(ch.action==='add_subnet')cmds.push(`aws ec2 create-subnet --vpc-id ${ch.params.VpcId} --cidr-block ${ch.params.CidrBlock} --availability-zone ${ch.params.AZ}${ch.params.Name?' --tag-specifications \'ResourceType=subnet,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`);
-  if(ch.action==='split_subnet'){
-    cmds.push('# Split subnet: delete original, create two new');
-    cmds.push(`aws ec2 delete-subnet --subnet-id ${ch.target.SubnetId}`);
-    const halves=splitCIDR(ch.target.CidrBlock);
-    if(halves){
-      const az=ch.params.AZ||'$AZ';
-      cmds.push(`aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block ${halves[0]} --availability-zone ${az}${ch.params.names?.[0]?' --tag-specifications \'ResourceType=subnet,Tags=[{Key=Name,Value='+ch.params.names[0]+'}]\'':''}`);
-      cmds.push(`aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block ${halves[1]} --availability-zone ${az}${ch.params.names?.[1]?' --tag-specifications \'ResourceType=subnet,Tags=[{Key=Name,Value='+ch.params.names[1]+'}]\'':''}`);
-    }
-  }
-  if(ch.action==='add_gateway'){
-    if(ch.params.GatewayType==='IGW'){cmds.push(`aws ec2 create-internet-gateway${ch.params.Name?' --tag-specifications \'ResourceType=internet-gateway,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`);cmds.push(`aws ec2 attach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id ${ch.params.VpcId}`)}
-    if(ch.params.GatewayType==='NAT'){cmds.push('# Allocate EIP first: aws ec2 allocate-address --domain vpc');cmds.push(`aws ec2 create-nat-gateway --subnet-id ${ch.params.SubnetId||'$SUBNET_ID'} --allocation-id $EIP_ALLOC_ID${ch.params.Name?' --tag-specifications \'ResourceType=natgateway,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`)}
-    if(ch.params.GatewayType==='VPCE')cmds.push(`aws ec2 create-vpc-endpoint --vpc-id ${ch.params.VpcId} --service-name ${ch.params.ServiceName||'com.amazonaws.REGION.s3'} --vpc-endpoint-type ${ch.params.EndpointType||'Gateway'}`);
-  }
-  if(ch.action==='add_route')cmds.push(`aws ec2 create-route --route-table-id ${ch.target.RouteTableId} --destination-cidr-block ${ch.params.DestinationCidrBlock} --gateway-id ${ch.params.TargetId}`);
-  if(ch.action==='add_resource'){
-    if(ch.params.ResourceType==='EC2')cmds.push(`aws ec2 run-instances --subnet-id ${ch.params.SubnetId} --instance-type ${ch.params.InstanceType||'t3.micro'} --image-id $AMI_ID${ch.params.Name?' --tag-specifications \'ResourceType=instance,Tags=[{Key=Name,Value='+ch.params.Name+'}]\'':''}`);
-    if(ch.params.ResourceType==='RDS')cmds.push(`aws rds create-db-instance --db-instance-identifier ${ch.params.Name||'new-db'} --db-instance-class ${ch.params.InstanceClass||'db.t3.micro'} --engine ${ch.params.Engine||'mysql'} --master-username admin --master-user-password $DB_PASSWORD`);
-    if(ch.params.ResourceType==='Lambda')cmds.push(`aws lambda create-function --function-name ${ch.params.Name||'new-function'} --runtime ${ch.params.Runtime||'nodejs18.x'} --role $LAMBDA_ROLE_ARN --handler index.handler --zip-file fileb://function.zip --vpc-config SubnetIds=${ch.params.SubnetId}`);
-    if(ch.params.ResourceType==='ElastiCache')cmds.push(`aws elasticache create-cache-cluster --cache-cluster-id ${ch.params.Name||'new-cache'} --cache-node-type ${ch.params.NodeType||'cache.t3.micro'} --engine ${ch.params.Engine||'redis'} --num-cache-nodes 1`);
-    if(ch.params.ResourceType==='ECS')cmds.push(`aws ecs create-service --cluster $CLUSTER --service-name ${ch.params.Name||'new-service'} --task-definition $TASK_DEF --desired-count ${ch.params.DesiredCount||1} --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[${ch.params.SubnetId}]}"`);
-    if(ch.params.ResourceType==='Redshift')cmds.push(`aws redshift create-cluster --cluster-identifier ${ch.params.Name||'new-cluster'} --node-type ${ch.params.NodeType||'dc2.large'} --master-username admin --master-user-password $RS_PASSWORD --number-of-nodes 1`);
-  }
-  if(ch.action==='add_security_group'){
-    cmds.push(`aws ec2 create-security-group --group-name ${ch.params.Name||'new-sg'} --description "${ch.params.Description||'Design mode SG'}" --vpc-id ${ch.params.VpcId}`);
-    if(ch.params.IngressRules){ch.params.IngressRules.forEach(r=>{
-      if(r.Protocol==='-1')cmds.push(`aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol -1 --cidr ${r.CidrIp||'0.0.0.0/0'}`);
-      else cmds.push(`aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol ${r.Protocol} --port ${r.FromPort} --cidr ${r.CidrIp||'0.0.0.0/0'}`);
-    })}
-  }
-  if(ch.action==='remove_resource'){
-    const id=ch.target.ResourceId;const t=ch.target.ResourceType;
-    if(t==='EC2')cmds.push(`aws ec2 terminate-instances --instance-ids ${id}`);
-    if(t==='RDS')cmds.push(`aws rds delete-db-instance --db-instance-identifier ${id} --skip-final-snapshot`);
-    if(t==='Lambda')cmds.push(`aws lambda delete-function --function-name ${id}`);
-    if(t==='Subnet')cmds.push(`aws ec2 delete-subnet --subnet-id ${id}`);
-    if(t==='IGW'){cmds.push(`aws ec2 detach-internet-gateway --internet-gateway-id ${id} --vpc-id $VPC_ID`);cmds.push(`aws ec2 delete-internet-gateway --internet-gateway-id ${id}`)}
-    if(t==='NAT')cmds.push(`aws ec2 delete-nat-gateway --nat-gateway-id ${id}`);
-    if(t==='VPCE')cmds.push(`aws ec2 delete-vpc-endpoints --vpc-endpoint-ids ${id}`);
-  }
-  return cmds;
-}
-function _generateWarnings(){
-  const w=[];
-  const splits=_designChanges.filter(c=>c.action==='split_subnet');
-  if(splits.length)w.push(splits.length+' subnet split(s) require instance migration');
-  const removes=_designChanges.filter(c=>c.action==='remove_resource');
-  if(removes.length)w.push(removes.length+' resource removal(s) — verify dependencies first');
-  return w;
-}
+// _generateCLI, _generateWarnings provided by design-mode module via window bridge
 function importDesignPlan(json){
   try{
     const plan=typeof json==='string'?JSON.parse(json):json;
@@ -3841,192 +3087,14 @@ function generateRemediationCLI(findings){
 }
 // #endregion DESIGN MODE
 // #region IAM ENGINE
-// === IAM OVERLAY ===
-// Helpers: ensure Statement is always an array; safe JSON parse for policy docs
-function _stmtArr(s){return Array.isArray(s)?s:s?[s]:[]}
-function _safePolicyParse(s){if(typeof s!=='string')return s||{};try{return JSON.parse(s)}catch(e){return {}}}
-let _iamData=null;
-let _showIAM=false;
-function parseIAMData(raw){
-  if(!raw)return null;
-  const data={roles:[],users:[],policies:[]};
-  if(raw.RoleDetailList)data.roles=raw.RoleDetailList;
-  else if(raw.Roles)data.roles=raw.Roles;
-  if(raw.UserDetailList)data.users=raw.UserDetailList;
-  if(raw.Policies)data.policies=raw.Policies;
-  if(raw.PasswordPolicy)data.passwordPolicy=raw.PasswordPolicy;
-  if(raw.AccountPasswordPolicy)data.passwordPolicy=raw.AccountPasswordPolicy;
-  // OPTIMIZED: Pre-index policies for O(1) lookup
-  const policyMap=new Map();
-  data.policies.forEach(dp=>{if(dp.Arn)policyMap.set(dp.Arn,dp);if(dp.PolicyName)policyMap.set(dp.PolicyName,dp)});
-  // Helper: resolve a policy entry to its document statements
-  function _resolvePolicyDoc(p){
-    // Inline policy with PolicyDocument
-    if(p.PolicyDocument){const doc=_safePolicyParse(p.PolicyDocument);return _stmtArr(doc.Statement)}
-    if(p.Document){const doc=_safePolicyParse(p.Document);return _stmtArr(doc.Statement)}
-    // Managed policy reference: look up from policyMap (O(1) instead of O(n))
-    if(p.PolicyArn||p.PolicyName){
-      const pol=policyMap.get(p.PolicyArn)||policyMap.get(p.PolicyName);
-      if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=ver.Document;if(typeof dd==='string'){try{dd=JSON.parse(dd)}catch(e){dd={}}}return _stmtArr(dd.Statement)}}
-    }
-    return[];
-  }
-  // Analyze each role for VPC-scoped conditions
-  data.roles.forEach(role=>{
-    role._vpcAccess=[];role._isAdmin=false;role._hasWildcard=false;
-    const policies=[...(role.RolePolicyList||[]),...(role.AttachedManagedPolicies||[])];
-    policies.forEach(p=>{
-      const stmts=_resolvePolicyDoc(p);
-      stmts.forEach(stmt=>{
-        if(stmt.Effect!=='Allow')return;
-        const actions=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
-        const resources=Array.isArray(stmt.Resource)?stmt.Resource:[stmt.Resource||''];
-        const hasWildAction=actions.some(a=>a==='*'||a==='*:*');
-        const hasWildResource=resources.some(r=>r==='*');
-        if(hasWildAction&&hasWildResource)role._isAdmin=true;
-        if(hasWildResource)role._hasWildcard=true;
-        // Check for VPC conditions
-        const cond=stmt.Condition||{};
-        Object.values(cond).forEach(cv=>{
-          if(cv['aws:SourceVpc'])role._vpcAccess.push(...(Array.isArray(cv['aws:SourceVpc'])?cv['aws:SourceVpc']:[cv['aws:SourceVpc']]));
-          if(cv['ec2:Vpc'])role._vpcAccess.push(...(Array.isArray(cv['ec2:Vpc'])?cv['ec2:Vpc']:[cv['ec2:Vpc']]));
-        });
-        // Check for EC2/VPC actions
-        if(actions.some(a=>a.startsWith('ec2:'))||actions.some(a=>a==='ec2:*')){
-          resources.forEach(r=>{if(r.includes(':vpc/')||r.includes(':subnet/'))role._vpcAccess.push(r)});
-        }
-      });
-    });
-  });
-  return data;
-}
-function getIAMAccessForVpc(iamData,vpcId){
-  if(!iamData)return[];
-  return iamData.roles.filter(r=>r._isAdmin||r._hasWildcard||r._vpcAccess.some(v=>v===vpcId||v.includes(vpcId)||v==='*'));
-}
-function runIAMChecks(iamData){
-  const f=[];if(!iamData)return f;
-  // OPTIMIZED: Pre-index policies to avoid O(roles × policies) nested find()
-  const policyByArn=new Map();
-  (iamData.policies||[]).forEach(p=>{if(p.Arn)policyByArn.set(p.Arn,p);if(p.PolicyName)policyByArn.set(p.PolicyName,p)});
-  // Helper: derive account ID from a resource's ARN (supports merged multi-account data)
-  function _acctFromArn(r){if(!r||!r.Arn)return '';const m=r.Arn.match(/arn:aws:iam::(\d+):/);return m?m[1]:''}
-  (iamData.roles||[]).forEach(role=>{
-    const _iamOwnAccountId=_acctFromArn(role);
-    if(role._isAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
-    if(role._hasWildcard&&!role._isAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
-    // Check for cross-account trust without MFA condition
-    if(role.AssumeRolePolicyDocument){
-      const trust=_safePolicyParse(role.AssumeRolePolicyDocument);
-      const stmts=_stmtArr(trust.Statement);
-      const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId})});
-      const hasMFA=stmts.some(s=>JSON.stringify(s.Condition||{}).includes('aws:MultiFactorAuth'));
-      if(crossAccount&&!hasMFA)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
-    }
-    // IAM-4: Service wildcard actions (s3:*, ec2:* but not *) — scan both inline and managed
-    const allStmts4=[];
-    (role.RolePolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>allStmts4.push(s))});
-    (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=policyByArn.get(mp.PolicyArn)||policyByArn.get(mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>allStmts4.push(s))}}});
-    var hasIAM4=false;
-    allStmts4.forEach(stmt=>{
-      if(hasIAM4)return;
-      if(stmt.Effect!=='Allow')return;
-      const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
-      if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a))){hasIAM4=true;f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role uses service-level wildcard actions (e.g. s3:*)',remediation:'Scope actions to specific API calls needed'})}
-    });
-    // IAM-5: Unused role (>90 days or never used)
-    const lastUsed=role.RoleLastUsed?.LastUsedDate;
-    if(!lastUsed||(Date.now()-new Date(lastUsed).getTime())>90*86400000)f.push({severity:'LOW',control:'IAM-5',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role unused for >90 days or never used',remediation:'Review and remove unused roles'});
-    // IAM-6: Cross-account without ExternalId
-    if(role.AssumeRolePolicyDocument){
-      const tr6=_safePolicyParse(role.AssumeRolePolicyDocument);
-      _stmtArr(tr6.Statement).forEach(s=>{
-        const pr=s.Principal||{};const awsPr=pr.AWS||'';const awsList=Array.isArray(awsPr)?awsPr:[awsPr];
-        const isCross=awsList.some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId});
-        const hasExtId=s.Condition&&(s.Condition.StringEquals?.['sts:ExternalId']||s.Condition.StringLike?.['sts:ExternalId']);
-        if(isCross&&!hasExtId)f.push({severity:'HIGH',control:'IAM-6',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account trust without ExternalId condition',remediation:'Add sts:ExternalId condition to assume role policy'});
-      });
-    }
-    // IAM-7: Inline policies
-    if(role.RolePolicyList?.length>0)f.push({severity:'LOW',control:'IAM-7',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role uses inline policies instead of managed',remediation:'Convert inline policies to managed policies for reusability'});
-    // IAM-8: Admin/wildcard without permission boundary
-    if((role._isAdmin||role._hasWildcard)&&!role.PermissionsBoundary)f.push({severity:'MEDIUM',control:'IAM-8',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Privileged role without permission boundary',remediation:'Attach a permission boundary to limit effective permissions'});
-  });
-  // User checks
-  (iamData.users||[]).forEach(user=>{
-    // Parse user policies for admin/wildcard detection
-    let uIsAdmin=false,uHasWildcard=false;
-    const uPolicies=[...(user.UserPolicyList||[]),...(user.AttachedManagedPolicies||[])];
-    uPolicies.forEach(p=>{
-      const doc=_safePolicyParse(p.PolicyDocument);const stmts=_stmtArr(doc.Statement);
-      stmts.forEach(stmt=>{
-        if(stmt.Effect!=='Allow')return;
-        const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];
-        const res=Array.isArray(stmt.Resource)?stmt.Resource:[stmt.Resource||''];
-        const uHasWildAct=acts.some(a=>a==='*'||a==='*:*');
-        const uHasWildRes=res.some(r=>r==='*');
-        if(uHasWildAct&&uHasWildRes)uIsAdmin=true;
-        if(uHasWildRes)uHasWildcard=true;
-      });
-    });
-    // Check managed policies for admin
-    (user.AttachedManagedPolicies||[]).forEach(mp=>{
-      const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);
-      if(pol){
-        const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
-        if(ver){const dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{
-          if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*')&&r.some(x=>x==='*'))uIsAdmin=true;if(r.some(x=>x==='*'))uHasWildcard=true}
-        })}
-      }
-    });
-    if(uIsAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
-    if(uHasWildcard&&!uIsAdmin)f.push({severity:'HIGH',control:'IAM-2',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has wildcard Resource: "*"',remediation:'Scope Resource ARNs to specific resources'});
-    if(!(user.MFADevices||[]).length)f.push({severity:'HIGH',control:'IAM-3',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has no MFA device configured',remediation:'Enable MFA for all IAM users'});
-    if(user.UserPolicyList?.length>0)f.push({severity:'LOW',control:'IAM-7',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses inline policies instead of managed',remediation:'Convert inline policies to managed policies'});
-    // Service wildcard check for users — scan both inline and managed
-    const uStmts=[];(user.UserPolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>uStmts.push(s))});
-    (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>uStmts.push(s))}}});
-    var uHasIAM4=false;uStmts.forEach(stmt=>{if(uHasIAM4)return;if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a))){uHasIAM4=true;f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}}});
-    // IAM-9: Access key age >90 days
-    (user.AccessKeys||[]).forEach(ak=>{
-      if(ak.Status==='Active'&&ak.CreateDate){const cd=new Date(ak.CreateDate);if(isNaN(cd.getTime()))return;const age=(Date.now()-cd.getTime())/86400000;
-        if(age>90)f.push({severity:'MEDIUM',control:'IAM-9',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'Access key '+ak.AccessKeyId+' is '+ Math.floor(age)+' days old',remediation:'Rotate access keys every 90 days; use IAM roles for EC2/Lambda instead'})}
-    });
-    // IAM-10: Multiple active access keys
-    const activeKeys=(user.AccessKeys||[]).filter(ak=>ak.Status==='Active');
-    if(activeKeys.length>1)f.push({severity:'LOW',control:'IAM-10',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has '+activeKeys.length+' active access keys',remediation:'Maintain only one active key; rotate and deactivate old keys'});
-    // IAM-11: Console password without MFA
-    if(user.LoginProfile&&!(user.MFADevices||[]).length)f.push({severity:'CRITICAL',control:'IAM-11',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'Console login enabled without MFA',remediation:'Enable MFA immediately; enforce MFA via IAM policy condition'});
-    // IAM-12: Excessive managed policy attachments (>10)
-    if((user.AttachedManagedPolicies||[]).length>10)f.push({severity:'LOW',control:'IAM-12',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User has '+(user.AttachedManagedPolicies||[]).length+' managed policies attached',remediation:'Consolidate policies; use groups with managed policies instead'});
-  });
-  // IAM-13: Password policy checks (account-level)
-  if(iamData.passwordPolicy){
-    const pp=iamData.passwordPolicy;
-    if(!pp.RequireUppercaseCharacters||!pp.RequireLowercaseCharacters||!pp.RequireNumbers||!pp.RequireSymbols)
-      f.push({severity:'MEDIUM',control:'IAM-13',framework:'IAM',resource:'AccountPasswordPolicy',resourceName:'Password Policy',message:'Password policy does not require all character types',remediation:'Require uppercase, lowercase, numbers, and symbols'});
-    if((pp.MinimumPasswordLength||0)<14)
-      f.push({severity:'MEDIUM',control:'IAM-13',framework:'IAM',resource:'AccountPasswordPolicy',resourceName:'Password Policy',message:'Minimum password length is '+(pp.MinimumPasswordLength||'not set')+' (should be 14+)',remediation:'Set MinimumPasswordLength to at least 14 characters'});
-    if((pp.MaxPasswordAge||0)>90||!pp.MaxPasswordAge)
-      f.push({severity:'MEDIUM',control:'IAM-13',framework:'IAM',resource:'AccountPasswordPolicy',resourceName:'Password Policy',message:'Password max age is '+(pp.MaxPasswordAge||'unlimited')+' days',remediation:'Set MaxPasswordAge to 90 days or less'});
-  }
-  return f;
-}
-
+// #region IAM ENGINE
+// IAM engine logic now lives in src/modules/iam-engine.js (window bridge provides live state).
 // #endregion IAM ENGINE
 // #region GOVERNANCE & INVENTORY
 // === GOVERNANCE: ASSET CLASSIFICATION ENGINE ===
-let _govDashState={tab:'classification',filter:'all',search:'',sort:'tier',sortDir:'asc',page:1,perPage:50};
-let _iamDashState={filter:'all',search:'',sort:'name',sortDir:'asc',page:1,perPage:50};
-var _classificationData=[];
-let _classificationOverrides={};
-var _iamReviewData=[];
-var _inventoryData=[];
-let _invState={typeFilter:'all',regionFilter:'all',accountFilter:'all',vpcFilter:'all',viewMode:'flat',search:'',sort:'type',sortDir:'asc',page:1,perPage:50};
-var _appRegistry=[];
-let _appAutoDiscovered=false;
-let _appSummaryState={search:'',sort:'tier',sortDir:'asc',adding:false,editing:-1};
-const _APP_TYPE_SUGGESTIONS=['Web App','Database','Monitoring','CI/CD','Security','Analytics','Storage','Infrastructure'];
+// State variables (_govDashState, _iamDashState, _classificationData, _classificationOverrides,
+// _iamReviewData, _inventoryData, _invState, _appRegistry, _appAutoDiscovered,
+// _appSummaryState, _APP_TYPE_SUGGESTIONS) moved to governance.js module
 // Shared inventory row-building helpers — used by both sync and async paths
 function _invHelpers(ctx){
   var vpcNameMap={};
@@ -4823,443 +3891,12 @@ function _renderInventoryTree(body,footer){
   });
 }
 
-const _DEFAULT_CLASS_RULES=[
-  {pattern:'prod|production',scope:'vpc',tier:'critical',weight:100},
-  {pattern:'pci|complian',scope:'vpc',tier:'critical',weight:95},
-  {pattern:'dr-|disaster|recovery',scope:'vpc',tier:'critical',weight:90},
-  {pattern:'shared.?serv|data.?platform|security',scope:'vpc',tier:'high',weight:80},
-  {pattern:'edge|proxy|waf|cdn',scope:'vpc',tier:'high',weight:75},
-  {pattern:'staging|stage|qa|uat',scope:'vpc',tier:'medium',weight:50},
-  {pattern:'management|mgmt|monitor',scope:'vpc',tier:'medium',weight:45},
-  {pattern:'dev|develop|sandbox|test|experiment',scope:'vpc',tier:'low',weight:20},
-  {pattern:'rds|database|db|aurora|dynamo',scope:'type',tier:'critical',weight:90},
-  {pattern:'redshift|warehouse',scope:'type',tier:'critical',weight:85},
-  {pattern:'elasticache|redis|memcache|cache',scope:'type',tier:'high',weight:70},
-  {pattern:'alb|elb|loadbalancer|nlb',scope:'type',tier:'high',weight:65},
-  {pattern:'lambda|fargate|ecs',scope:'type',tier:'medium',weight:40},
-  {pattern:'bastion|jump|ssh',scope:'name',tier:'medium',weight:35},
-  // Tag-based rules — Environment tag is strongest classification signal
-  {pattern:'prod|production|prd',scope:'tag:Environment',tier:'critical',weight:120},
-  {pattern:'staging|stage|uat|qa',scope:'tag:Environment',tier:'medium',weight:110},
-  {pattern:'dev|develop|sandbox|test',scope:'tag:Environment',tier:'low',weight:110}
-];
-var _classificationRules=structuredClone(_DEFAULT_CLASS_RULES);
-var _discoveredTags={};
+// _DEFAULT_CLASS_RULES, _classificationRules, _discoveredTags, _TIER_RPO_RTO,
+// _getTagMap, _safeRegex moved to governance.js module
+// _scoreClassification, _discoverTagKeys moved to governance.js module
 
-var _TIER_RPO_RTO={
-  critical:{rpo:'Hourly',rto:'2-4 hours',priority:1,color:'#ef4444'},
-  high:{rpo:'6 hours',rto:'4-8 hours',priority:2,color:'#f59e0b'},
-  medium:{rpo:'Daily',rto:'12 hours',priority:3,color:'#22d3ee'},
-  low:{rpo:'Weekly',rto:'24 hours',priority:4,color:'#64748b'}
-};
-
-function _getTagMap(obj){
-  var arr=obj.Tags||obj.tags||obj.TagList||[];
-  var m={};arr.forEach(function(t){if(t.Key)m[t.Key]=t.Value||''});return m;
-}
-
-function _safeRegex(pattern){
-  try{var re=new RegExp(pattern,'i');
-    if(/(\+|\*|\{)\s*\)(\+|\*|\{)/.test(pattern)) return null;
-    return re;
-  }catch(e){return null}
-}
-function _scoreClassification(name,type,vpcName,rules,tagMap){
-  rules=rules||_classificationRules;
-  tagMap=tagMap||{};
-  var bestTier='low';var bestWeight=-1;
-  rules.forEach(function(rule){
-    if(rule.enabled===false) return;
-    var p=rule.pattern;if(!p) return;
-    p=p.replace(/^\|+|\|+$/g,'').replace(/\|{2,}/g,'|');if(!p) return;
-    var re=_safeRegex(p);if(!re) return;
-    var text='';
-    if(rule.scope==='any') text=(name||'')+' '+(type||'')+' '+(vpcName||'')+' '+Object.values(tagMap).join(' ');
-    else if(rule.scope==='vpc') text=vpcName||'';
-    else if(rule.scope==='type') text=type||'';
-    else if(rule.scope==='name') text=name||'';
-    else if(rule.scope.indexOf('tag:')===0) text=tagMap[rule.scope.substring(4)]||'';
-    else text=(name||'')+' '+(type||'')+' '+(vpcName||'');
-    if(re.test(text)&&rule.weight>bestWeight){bestWeight=rule.weight;bestTier=rule.tier}
-  });
-  return {tier:bestTier,weight:bestWeight};
-}
-
-function _discoverTagKeys(ctx){
-  if(!ctx) return {};
-  var disc={};
-  function scan(arr,typeName){
-    (arr||[]).forEach(function(obj){
-      var tagArr=obj.Tags||obj.tags||obj.TagList||[];
-      tagArr.forEach(function(t){
-        if(!t.Key||t.Key.indexOf('aws:')===0) return;
-        if(!disc[t.Key]) disc[t.Key]={count:0,samples:[],types:{}};
-        var d=disc[t.Key];d.count++;d.types[typeName]=true;
-        if(d.samples.length<5&&t.Value&&d.samples.indexOf(t.Value)<0) d.samples.push(t.Value);
-      });
-    });
-  }
-  scan(ctx.instances,'EC2');scan(ctx.rdsInstances,'RDS');scan(ctx.ecacheClusters,'ElastiCache');
-  scan(ctx.albs,'ALB');scan(ctx.lambdaFns,'Lambda');scan(ctx.ecsServices,'ECS');
-  scan(ctx.redshiftClusters,'Redshift');scan(ctx.vpcs,'VPC');scan(ctx.subnets,'Subnet');
-  scan(ctx.sgs,'SG');scan(ctx.s3bk,'S3');
-  Object.keys(disc).forEach(function(k){disc[k].types=Object.keys(disc[k].types)});
-  return disc;
-}
-
-function runClassificationEngine(ctx){
-  if(!ctx) return[];
-  var results=[];
-  var vpcNameMap={};
-  (ctx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
-  // Build subnet→VPC lookup for resources that only have SubnetId
-  var subnetVpcMap={};
-  (ctx.subnets||[]).forEach(function(s){if(s.VpcId) subnetVpcMap[s.SubnetId]=s.VpcId});
-  function resolveVpc(vpcId,subnetId){return vpcId||subnetVpcMap[subnetId]||''}
-  // Classify instances
-  (ctx.instances||[]).forEach(function(inst){
-    var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-    var vpcId=resolveVpc(inst.VpcId,inst.SubnetId);
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(inst);
-    var sc=_scoreClassification(name,'instance',vpcName,null,tm);
-    var tier=_classificationOverrides[inst.InstanceId]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:inst.InstanceId,name:name,type:'EC2',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[inst.InstanceId],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify RDS
-  (ctx.rdsInstances||[]).forEach(function(db){
-    var name=db.DBInstanceIdentifier;
-    var vpcId=db.DBSubnetGroup?db.DBSubnetGroup.VpcId:'';
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(db);
-    var sc=_scoreClassification(name,'rds',vpcName,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'RDS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify ElastiCache
-  (ctx.ecacheClusters||[]).forEach(function(ec){
-    var name=ec.CacheClusterId;
-    var vpcId=ec.VpcId||'';
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(ec);
-    var sc=_scoreClassification(name,'elasticache',vpcName,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ElastiCache',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify ALBs
-  (ctx.albs||[]).forEach(function(alb){
-    var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
-    var name=alb.LoadBalancerName||albId;
-    var vpcId=alb.VpcId||'';
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(alb);
-    var sc=_scoreClassification(name,'alb',vpcName,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ALB',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify Lambda
-  (ctx.lambdaFns||[]).forEach(function(fn){
-    var name=fn.FunctionName;
-    var vpcId=fn.VpcConfig?fn.VpcConfig.VpcId:'';
-    if(!vpcId&&fn.VpcConfig&&fn.VpcConfig.SubnetIds&&fn.VpcConfig.SubnetIds[0]) vpcId=subnetVpcMap[fn.VpcConfig.SubnetIds[0]]||'';
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(fn);
-    var sc=_scoreClassification(name,'lambda',vpcName,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'Lambda',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify ECS
-  (ctx.ecsServices||[]).forEach(function(svc){
-    var name=svc.serviceName||'';
-    var nc=svc.networkConfiguration&&svc.networkConfiguration.awsvpcConfiguration;
-    var vpcId=nc&&nc.subnets&&nc.subnets[0]?subnetVpcMap[nc.subnets[0]]||'':'';
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(svc);
-    var sc=_scoreClassification(name,'ecs',vpcName,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'ECS',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify Redshift
-  (ctx.redshiftClusters||[]).forEach(function(rs){
-    var name=rs.ClusterIdentifier;
-    var vpcId=rs.VpcId||'';
-    var vpcName=vpcNameMap[vpcId]||'';
-    var tm=_getTagMap(rs);
-    var sc=_scoreClassification(name,'redshift',vpcName,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;
-    var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'Redshift',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify Security Groups
-  (ctx.sgs||[]).forEach(function(sg){
-    var id=sg.GroupId;var name=gn(sg,id);
-    var vpcId=sg.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(sg);
-    var sc=_scoreClassification(name,'security-group',vpcName,null,tm);
-    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:id,name:name,type:'Security Group',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify VPCs
-  (ctx.vpcs||[]).forEach(function(v){
-    var id=v.VpcId;var name=gn(v,id);var tm=_getTagMap(v);
-    var sc=_scoreClassification(name,'vpc',name,null,tm);
-    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:id,name:name,type:'VPC',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:id,vpcName:name,tags:tm});
-  });
-  // Classify Subnets
-  (ctx.subnets||[]).forEach(function(s){
-    var id=s.SubnetId;var name=gn(s,id);var vpcId=s.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(s);
-    var sc=_scoreClassification(name,'subnet',vpcName,null,tm);
-    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:id,name:name,type:'Subnet',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify IGWs
-  (ctx.igws||[]).forEach(function(gw){
-    var id=gw.InternetGatewayId;var name=gn(gw,id);var vpcId=(gw.Attachments&&gw.Attachments[0])?gw.Attachments[0].VpcId:'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(gw);
-    var sc=_scoreClassification(name,'igw',vpcName,null,tm);
-    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:id,name:name,type:'IGW',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify NAT GWs
-  (ctx.nats||[]).forEach(function(ng){
-    var id=ng.NatGatewayId;var name=gn(ng,id);var vpcId=ng.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(ng);
-    var sc=_scoreClassification(name,'nat-gateway',vpcName,null,tm);
-    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:id,name:name,type:'NAT GW',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify VPC Endpoints
-  (ctx.vpces||[]).forEach(function(ve){
-    var id=ve.VpcEndpointId;var name=ve.ServiceName||id;var vpcId=ve.VpcId||'';var vpcName=vpcNameMap[vpcId]||'';var tm=_getTagMap(ve);
-    var sc=_scoreClassification(name,'vpc-endpoint',vpcName,null,tm);
-    var tier=_classificationOverrides[id]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:id,name:name,type:'VPC Endpoint',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[id],vpcId:vpcId,vpcName:vpcName,tags:tm});
-  });
-  // Classify S3 Buckets
-  (ctx.s3bk||[]).forEach(function(b){
-    var name=b.Name||'';var tm=_getTagMap(b);
-    var sc=_scoreClassification(name,'s3',''  ,null,tm);
-    var tier=_classificationOverrides[name]||sc.tier;var meta=_TIER_RPO_RTO[tier];
-    results.push({id:name,name:name,type:'S3',tier:tier,rpo:meta.rpo,rto:meta.rto,auto:!_classificationOverrides[name],vpcId:'',vpcName:'',tags:tm});
-  });
-  // Enrich classification data with account IDs from source resources
-  var _clResAcct={};
-  (ctx.instances||[]).forEach(function(r){_clResAcct[r.InstanceId]=r._accountId});
-  (ctx.rdsInstances||[]).forEach(function(r){_clResAcct[r.DBInstanceIdentifier]=r._accountId});
-  (ctx.ecacheClusters||[]).forEach(function(r){_clResAcct[r.CacheClusterId]=r._accountId});
-  (ctx.albs||[]).forEach(function(r){_clResAcct[r.LoadBalancerName||r.LoadBalancerArn]=r._accountId});
-  (ctx.lambdaFns||[]).forEach(function(r){_clResAcct[r.FunctionName]=r._accountId});
-  (ctx.ecsServices||[]).forEach(function(r){_clResAcct[r.serviceName||r.serviceArn]=r._accountId});
-  (ctx.sgs||[]).forEach(function(r){_clResAcct[r.GroupId]=r._accountId});
-  (ctx.vpcs||[]).forEach(function(r){_clResAcct[r.VpcId]=r._accountId});
-  (ctx.subnets||[]).forEach(function(r){_clResAcct[r.SubnetId]=r._accountId});
-  (ctx.s3bk||[]).forEach(function(r){_clResAcct[r.Name]=r._accountId});
-  results.forEach(function(r){if(_clResAcct[r.id])r._accountId=_clResAcct[r.id]});
-  _classificationData=results;
-  _discoveredTags=_discoverTagKeys(ctx);
-  return results;
-}
-
-// === GOVERNANCE: IAM REVIEW PREPARATION ===
-function prepareIAMReviewData(iamData){
-  if(!iamData) return[];
-  var items=[];
-  // Process roles
-  (iamData.roles||[]).forEach(function(role){
-    var created=role.CreateDate?new Date(role.CreateDate):null;
-    var lastUsed=role.RoleLastUsed&&role.RoleLastUsed.LastUsedDate?new Date(role.RoleLastUsed.LastUsedDate):null;
-    var trustDoc=role.AssumeRolePolicyDocument;
-    var trustParsed={};
-    if(typeof trustDoc==='string'){try{trustParsed=JSON.parse(trustDoc)}catch(e){console.warn('Failed to parse trust policy:',e)}}
-    else if(trustDoc) trustParsed=trustDoc;
-    var crossAccts=[];
-    _stmtArr(trustParsed.Statement).forEach(function(stmt){
-      if(stmt.Effect==='Allow'&&stmt.Principal){
-        var aws=stmt.Principal.AWS;
-        if(aws){(Array.isArray(aws)?aws:[aws]).forEach(function(arn){var m=String(arn).match(/:(\d{12}):/);if(m)crossAccts.push(m[1])})}
-      }
-    });
-    var findings=(_complianceFindings||[]).filter(function(f){return f.framework==='IAM'&&(f.resource===role.RoleName||f.resource===(role.Arn||''))});
-    var policyCount=(role.RolePolicyList||[]).length+(role.AttachedManagedPolicies||[]).length;
-    var policyNames=(role.AttachedManagedPolicies||[]).map(function(p){return p.PolicyName||p.PolicyArn||''});
-    var roleAcct=(role.Arn||'').match(/:(\d{12}):/);
-    items.push({name:role.RoleName||'',arn:role.Arn||'',type:'Role',created:created,lastUsed:lastUsed,isAdmin:role._isAdmin||false,hasWildcard:role._hasWildcard||false,crossAccounts:crossAccts,policies:policyCount,policyNames:policyNames,permBoundary:role.PermissionsBoundary?role.PermissionsBoundary.PermissionsBoundaryArn:'',findings:findings,_accountId:roleAcct?roleAcct[1]:'',_raw:role});
-  });
-  // Process users
-  (iamData.users||[]).forEach(function(user){
-    var created=user.CreateDate?new Date(user.CreateDate):null;
-    var lastUsed=user.PasswordLastUsed?new Date(user.PasswordLastUsed):null;
-    var hasMFA=(user.MFADevices||[]).length>0;
-    var hasConsole=!!user.LoginProfile;
-    var activeKeys=(user.AccessKeys||[]).filter(function(k){return k.Status==='Active'}).length;
-    var findings=(_complianceFindings||[]).filter(function(f){return f.framework==='IAM'&&(f.resource===user.UserName||f.resource===(user.Arn||''))});
-    var policyCount=(user.UserPolicyList||[]).length+(user.AttachedManagedPolicies||[]).length;
-    var policyNames=(user.AttachedManagedPolicies||[]).map(function(p){return p.PolicyName||p.PolicyArn||''});
-    // Detect admin for users by analyzing actual policy documents (not just name heuristic)
-    var uIsAdmin=false;
-    // Check inline policies
-    (user.UserPolicyList||[]).forEach(function(p){if(uIsAdmin)return;var doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(function(s){if(s.Effect==='Allow'){var a=Array.isArray(s.Action)?s.Action:[s.Action||''];var r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(function(x){return x==='*'})&&r.some(function(x){return x==='*'}))uIsAdmin=true}})});
-    // Check managed policies
-    (user.AttachedManagedPolicies||[]).forEach(function(mp){if(uIsAdmin)return;var pol=(iamData.policies||[]).find(function(p){return p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName});if(pol){var ver=(pol.PolicyVersionList||[]).find(function(v){return v.IsDefaultVersion});if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(function(s){if(s.Effect==='Allow'){var a=Array.isArray(s.Action)?s.Action:[s.Action||''];var r=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(function(x){return x==='*'})&&r.some(function(x){return x==='*'}))uIsAdmin=true}})}}});
-    var userAcct=(user.Arn||'').match(/:(\d{12}):/);
-    items.push({name:user.UserName||'',arn:user.Arn||'',type:'User',created:created,lastUsed:lastUsed,isAdmin:uIsAdmin,hasWildcard:false,crossAccounts:[],policies:policyCount,policyNames:policyNames,permBoundary:user.PermissionsBoundary?user.PermissionsBoundary.PermissionsBoundaryArn:'',findings:findings,_accountId:userAcct?userAcct[1]:'',hasMFA:hasMFA,hasConsole:hasConsole,activeKeys:activeKeys,_raw:user});
-  });
-  _iamReviewData=items;
-  return items;
-}
-
-// === EFFECTIVE PERMISSIONS ENGINE ===
-function matchAction(pattern,action){
-  if(!pattern||!action)return false;
-  if(pattern==='*')return true;
-  const re=new RegExp('^'+pattern.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*')+'$','i');
-  return re.test(action);
-}
-
-function matchResource(pattern,arn){
-  if(!pattern||!arn)return false;
-  if(pattern==='*')return true;
-  const pParts=pattern.split(':');const aParts=arn.split(':');
-  if(pParts.length!==aParts.length&&pParts.length<6)return false;
-  const reStr=pParts.map((p,i)=>{
-    if(p==='*'&&i===pParts.length-1)return '.*';
-    if(p==='*')return '[^:]*';
-    return p.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*');
-  }).join(':');
-  return new RegExp('^'+reStr+'$','i').test(arn);
-}
-
-function evaluateCondition(condBlock,context){
-  if(!condBlock||Object.keys(condBlock).length===0)return true;
-  for(const[op,keys]of Object.entries(condBlock)){
-    for(const[ck,cv]of Object.entries(keys)){
-      if(op==='Bool'&&ck==='aws:MultiFactorAuthPresent'){
-        if(context&&context.mfa!==undefined)return String(context.mfa)===String(cv);
-      }
-      if(op==='StringEquals'||op==='StringLike'){
-        if(context&&context[ck]){const vals=Array.isArray(cv)?cv:[cv];if(!vals.some(v=>v===context[ck]))return false}
-      }
-    }
-  }
-  return true;
-}
-
-function _collectStatements(principal,iamData){
-  const stmts=[];
-  const policyLists=principal.RolePolicyList||principal.UserPolicyList||[];
-  policyLists.forEach(p=>{
-    let doc=p.PolicyDocument;
-    if(typeof doc==='string'){try{doc=JSON.parse(decodeURIComponent(doc))}catch(e){try{doc=JSON.parse(doc)}catch(e2){doc={}}}}
-    if(!doc)doc={};
-    _stmtArr(doc.Statement).forEach(st=>stmts.push(st));
-  });
-  (principal.AttachedManagedPolicies||[]).forEach(mp=>{
-    const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn||p.PolicyName===mp.PolicyName);
-    if(pol){
-      const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
-      if(ver){
-        let dd=ver.Document;
-        if(typeof dd==='string'){try{dd=JSON.parse(decodeURIComponent(dd))}catch(e){try{dd=JSON.parse(dd)}catch(e2){dd={}}}}
-        if(dd){_stmtArr(dd.Statement).forEach(st=>stmts.push(st))}
-      }
-    }
-  });
-  return stmts;
-}
-
-function canDo(principal,action,resource,iamData){
-  const stmts=_collectStatements(principal,iamData);
-  for(const s of stmts){
-    if(s.Effect!=='Deny')continue;
-    const acts=Array.isArray(s.Action)?s.Action:[s.Action||''];
-    const res=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];
-    if(acts.some(a=>matchAction(a,action))&&res.some(r=>matchResource(r,resource))){
-      if(evaluateCondition(s.Condition))return{effect:'DENY',reason:'Explicit deny in policy',statements:[s]};
-    }
-  }
-  if(principal.PermissionsBoundary){
-    const bArn=principal.PermissionsBoundary.PermissionsBoundaryArn||principal.PermissionsBoundary;
-    const bPol=(iamData.policies||[]).find(p=>p.Arn===bArn);
-    if(bPol){
-      const ver=(bPol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
-      if(ver){
-        const dd=_safePolicyParse(ver.Document);
-        const bStmts=_stmtArr(dd.Statement);
-        const allowed=bStmts.some(s=>{
-          if(s.Effect!=='Allow')return false;
-          const ba=Array.isArray(s.Action)?s.Action:[s.Action||''];
-          const br=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];
-          return ba.some(a=>matchAction(a,action))&&br.some(r=>matchResource(r,resource));
-        });
-        if(!allowed)return{effect:'IMPLICIT_DENY',reason:'Not allowed by permission boundary',statements:[]};
-      }
-    }
-  }
-  const matchedStmts=[];
-  for(const s of stmts){
-    if(s.Effect!=='Allow')continue;
-    const acts=Array.isArray(s.Action)?s.Action:[s.Action||''];
-    const res=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];
-    if(acts.some(a=>matchAction(a,action))&&res.some(r=>matchResource(r,resource))){
-      if(evaluateCondition(s.Condition))matchedStmts.push(s);
-    }
-  }
-  if(matchedStmts.length)return{effect:'ALLOW',reason:'Allowed by policy',statements:matchedStmts};
-  return{effect:'IMPLICIT_DENY',reason:'No matching allow statement',statements:[]};
-}
-
-function summarizePermissions(principal,iamData){
-  const stmts=_collectStatements(principal,iamData);
-  const services={};let isAdmin=false;let hasWildcard=false;
-  const boundaryArn=principal.PermissionsBoundary?.PermissionsBoundaryArn||null;
-  stmts.forEach(s=>{
-    const acts=Array.isArray(s.Action)?s.Action:[s.Action||''];
-    const res=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];
-    if(s.NotAction){const na=Array.isArray(s.NotAction)?s.NotAction:[s.NotAction];na.forEach(a=>{const svc=a.includes(':')?a.split(':')[0]:'ALL';if(!services[svc])services[svc]={allowed:[],denied:[],resources:{}};services[svc].notActions=(services[svc].notActions||[]).concat(a)});return}
-    acts.forEach(a=>{
-      if(a==='*'||a==='*:*'){isAdmin=true;return}
-      const svc=a.includes(':')?a.split(':')[0]:'ALL';
-      if(!services[svc])services[svc]={allowed:[],denied:[],resources:{}};
-      const actionName=a.includes(':')?a.split(':')[1]:a;
-      if(s.Effect==='Allow'){
-        if(!services[svc].allowed.includes(actionName))services[svc].allowed.push(actionName);
-        res.forEach(r=>{services[svc].resources[actionName]=r});
-      }else if(s.Effect==='Deny'){
-        if(!services[svc].denied.includes(actionName))services[svc].denied.push(actionName);
-      }
-    });
-    if(res.some(r=>r==='*'))hasWildcard=true;
-  });
-  if(boundaryArn){
-    const bPol=(iamData.policies||[]).find(p=>p.Arn===boundaryArn);
-    if(bPol){
-      const ver=(bPol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);
-      if(ver){
-        const dd=_safePolicyParse(ver.Document);
-        const bStmts=_stmtArr(dd.Statement);
-        const bAllowed=new Set();
-        bStmts.forEach(s=>{
-          if(s.Effect!=='Allow')return;
-          const ba=Array.isArray(s.Action)?s.Action:[s.Action||''];
-          ba.forEach(a=>bAllowed.add(a));
-        });
-        if(!bAllowed.has('*')){
-          Object.keys(services).forEach(svc=>{
-            services[svc].allowed=services[svc].allowed.filter(a=>{
-              const full=svc+':'+a;
-              return Array.from(bAllowed).some(b=>matchAction(b,full));
-            });
-          });
-        }
-      }
-    }
-  }
-  return{services,isAdmin,hasWildcard,permissionBoundary:boundaryArn};
-}
+// _discoverTagKeys, runClassificationEngine, prepareIAMReviewData, matchAction, matchResource,
+// evaluateCondition, _collectStatements, canDo, summarizePermissions moved to governance.js module
 
 // === IAM PRINCIPAL DETAIL PANEL ===
 function openIAMPrincipalPanel(principal,iamData,ctx){
@@ -8158,7 +6795,8 @@ function renderLandingZoneMap(ctx){
   const _hg=_buildStatsBar([{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}]);
   // Compliance chip (landing zone)
   try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(_hg,findings);_addBUDRChip(_hg)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode('IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='compliance-chip clean';ic.style.cssText='border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.12);color:#60a5fa';const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode(' IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
+  {const sb=document.getElementById('statsBar');if(sb.querySelectorAll('.stat-chip,.compliance-chip').length===0)sb.style.display='none'}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
@@ -10549,7 +9187,8 @@ async function _renderMapInner(){
   const _hg=_buildStatsBar([{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}]);
   // Compliance chip (grid layout)
   try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(_hg,findings);_addBUDRChip(_hg)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode('IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='compliance-chip clean';ic.style.cssText='border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.12);color:#60a5fa';const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode(' IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
+  {const sb=document.getElementById('statsBar');if(sb.querySelectorAll('.stat-chip,.compliance-chip').length===0)sb.style.display='none'}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
@@ -11881,10 +10520,7 @@ function _openDetailForSearch(type,id){
 // === TIME-SERIES SNAPSHOTS ===
 const _SNAP_KEY=SNAP_KEY;
 const _MAX_SNAPSHOTS=window.electronAPI?5:MAX_SNAPSHOTS;
-let _snapshots=[];
-let _viewingHistory=false;
-let _currentSnapshot=null;// saved current state when viewing history
-try{const s=localStorage.getItem(_SNAP_KEY);if(s)_snapshots=JSON.parse(s)}catch(e){_snapshots=[]}
+// _snapshots, _viewingHistory, _currentSnapshot moved to timeline.js module (initialized from localStorage there)
 function _saveSnapshots(){try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e){
   // If storage full, trim oldest half
   if(_snapshots.length>4){_snapshots=_snapshots.slice(Math.floor(_snapshots.length/2));try{localStorage.setItem(_SNAP_KEY,JSON.stringify(_snapshots))}catch(e2){console.warn('Failed to save trimmed snapshots:',e2)}}
@@ -12006,15 +10642,14 @@ function _restoreSnapshot(){
 function openTimeline(){document.getElementById('timelineBar').classList.add('open');_renderTimeline()}
 function closeTimeline(){document.getElementById('timelineBar').classList.remove('open')}
 // Auto-snapshot on render (with 2-min minimum interval)
-let _lastAutoSnap=0;
+// _lastAutoSnap moved to timeline.js module
 const _origRenderMap=typeof renderMap==='function'?null:null;// renderMap defined elsewhere, hook via event
 // Hook: take auto-snapshot after successful render
 // We add this at the end of the stats bar rendering
 
 // === ANNOTATIONS / NOTES SYSTEM ===
 const _NOTES_KEY=NOTES_KEY;
-let _annotations={};// {resourceId: [{text,category,author,created,updated,pinned}]}
-let _annotationAuthor='';
+// _annotations, _annotationAuthor moved to timeline.js module (initialized from localStorage there)
 let _notesLoaded=false;
 function _ensureNotesLoaded(){if(_notesLoaded)return;_notesLoaded=true;try{const s=localStorage.getItem(_NOTES_KEY);if(s)_annotations=JSON.parse(s)}catch(e){console.warn('Failed to load annotations:',e)}try{_annotationAuthor=localStorage.getItem('aws_mapper_note_author')||''}catch(e){console.warn('Failed to load note author:',e)}}
 const _NOTE_CATEGORIES=['owner','status','incident','todo','info','warning'];
@@ -12273,10 +10908,7 @@ document.getElementById('historyRestore').addEventListener('click',_restoreSnaps
 // #endregion TIMELINE & ANNOTATIONS
 // #region MULTI-ACCOUNT
 // === MULTI-ACCOUNT / MULTI-REGION VIEW ===
-let _multiViewMode=false;
-let _loadedContexts=[];  // [{accountId, accountLabel, region, textareas, rlCtx, color, visible}]
-let _mergedCtx=null;
-let _singleCtxBackup=null;  // backup of original _rlCtx before merge
+// _multiViewMode, _loadedContexts, _mergedCtx, _singleCtxBackup moved to multi-account.js module
 
 function _captureCurrentAsContext(){
   if(!_rlCtx||!_rlCtx.vpcs||!_rlCtx.vpcs.length)return null;
@@ -12994,8 +11626,7 @@ document.getElementById('captureCurrentBtn').addEventListener('click',function()
 // #endregion MULTI-ACCOUNT
 // #region FIREWALL EDITOR
 // === FIREWALL EDITOR DATA MODEL ===
-let _fwEdits=[];
-let _fwSnapshot=null;
+// _fwEdits, _fwSnapshot moved to firewall-editor.js module
 
 function _fwTakeSnapshot(){
   if(_fwSnapshot) return;
@@ -13636,7 +12267,7 @@ function _fwShowRtEditForm(rtId, routeIdx, container, vpcId, lk){
 }
 
 // === FIREWALL FULL PANEL EDITOR ===
-var _fwFpType=null, _fwFpResId=null, _fwFpSub=null, _fwFpVpcId=null, _fwFpLk=null, _fwFpDir='ingress';
+// _fwFpType, _fwFpResId, _fwFpSub, _fwFpVpcId, _fwFpLk, _fwFpDir moved to firewall-editor.js module
 
 function _fwOpenFullEditor(type, resourceId, sub, vpcId, lk){
   _fwFpType=type;
@@ -14583,20 +13214,9 @@ document.getElementById('firewallBtn').addEventListener('click',openFirewallDash
 // #endregion FIREWALL EDITOR
 // #region FLOW TRACING
 // === TRAFFIC FLOW VISUALIZATION ===
-let _flowMode=false;
-let _flowSource=null;
-let _flowTarget=null;
-let _flowConfig={protocol:'tcp',port:443};
-let _flowPath=null;
-let _flowBlocked=null;
-let _flowStepIndex=-1;
-let _flowSelecting=null;
-// Multi-hop waypoint state
-let _flowWaypoints=[];       // [{ref:{type,id}, config:{protocol,port}}]
-let _flowLegs=[];            // [{source,target,config,result:{path,blocked}}]
-let _flowActiveLeg=-1;       // which leg is expanded in detail, -1=all
-let _flowSelectingWaypoint=-1; // insert position for new waypoint
-let _flowSuggestions=[];     // [{via:{type,id,name}, leg1Result, leg2Result, leg1Config}]
+// Flow state variables (_flowMode, _flowSource, _flowTarget, _flowConfig, _flowPath,
+// _flowBlocked, _flowStepIndex, _flowSelecting, _flowWaypoints, _flowLegs,
+// _flowActiveLeg, _flowSelectingWaypoint, _flowSuggestions) moved to flow-tracing.js module
 
 function _suggestPort(targetType, targetResource){
   if(targetType==='rds') return (targetResource&&targetResource.Endpoint&&targetResource.Endpoint.Port)||3306;
@@ -15916,174 +14536,10 @@ document.getElementById('flowStepFwd').addEventListener('click',_stepForward);
 // #endregion FLOW TRACING
 // #region FLOW ANALYSIS
 // === FLOW ANALYSIS — AUTO-DISCOVERY ENGINE ===
-let _flowAnalysisMode=null; // null|'tiers'|'ingress'|'egress'|'bastion'|'all'
-let _flowAnalysisCache=null;
-let _faDashState={section:'all',search:'',sort:'name',sortDir:'asc',page:1,perPage:50};
-let _faDashRows=null;
+// _flowAnalysisMode, _flowAnalysisCache, _faDashState, _faDashRows moved to flow-analysis.js module
+// discoverTrafficFlows moved to flow-analysis.js module
 
-function discoverTrafficFlows(ctx){
-  if(!ctx) return null;
-  var hasSgData=(ctx.instances||[]).some(function(i){return (i.SecurityGroups||[]).length>0});
-  var hasNaclEgress=(ctx.nacls||[]).some(function(n){return (n.Entries||[]).some(function(e){return e.Egress})});
-  var ingressPaths=_findIngressPaths(ctx);
-  var egressPaths=_findEgressPaths(ctx);
-  var bastions=_detectBastions(ctx);
-  var bastionChains=_findBastionChains(bastions,ctx);
-  var accessTiers=_classifyAllResources(ctx,ingressPaths,bastionChains);
-  return {ingressPaths:ingressPaths,egressPaths:egressPaths,accessTiers:accessTiers,bastionChains:bastionChains,bastions:bastions,hasSgData:hasSgData,hasNaclEgress:hasNaclEgress};
-}
-
-function _findIngressPaths(ctx){
-  var paths=[];
-  var igws=ctx.igws||[];
-  igws.forEach(function(igw){
-    var vpcId=(igw.Attachments||[])[0]?.VpcId;
-    if(!vpcId) return;
-    // Find public subnets in this VPC
-    (ctx.subnets||[]).forEach(function(sub){
-      if(sub.VpcId!==vpcId) return;
-      if(!ctx.pubSubs||!ctx.pubSubs.has(sub.SubnetId)) return;
-      // Instances in this subnet
-      (ctx.instBySub[sub.SubnetId]||[]).forEach(function(inst){
-        // Check common ports
-        [443,80,22].forEach(function(port){
-          var r=_traceInternetToResource({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:port},ctx,{discovery:true});
-          if(!r.blocked){
-            var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-            paths.push({from:'internet',to:{type:'instance',id:inst.InstanceId},toName:gn3,path:r.path,port:port,type:'direct',vpcId:vpcId});
-          }
-        });
-      });
-      // ALBs in this subnet
-      (ctx.albBySub[sub.SubnetId]||[]).forEach(function(alb){
-        var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
-        var r=_traceInternetToResource({type:'alb',id:albId||alb.LoadBalancerName},{protocol:'tcp',port:443},ctx,{discovery:true});
-        if(!r.blocked){
-          paths.push({from:'internet',to:{type:'alb',id:albId||alb.LoadBalancerName},toName:alb.LoadBalancerName||albId,path:r.path,port:443,type:'loadbalancer',vpcId:vpcId});
-        }
-      });
-    });
-  });
-  return paths;
-}
-
-function _findEgressPaths(ctx){
-  var paths=[];
-  // Check all resources for egress to internet
-  var checked=new Set();
-  (ctx.instances||[]).forEach(function(inst){
-    if(checked.has(inst.SubnetId)) return; // one per subnet suffices for egress
-    var r=_traceResourceToInternet({type:'instance',id:inst.InstanceId},{protocol:'tcp',port:443},ctx,{discovery:true});
-    if(!r.blocked){
-      checked.add(inst.SubnetId);
-      var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-      paths.push({from:{type:'instance',id:inst.InstanceId},fromName:gn3,to:'internet',subnetId:inst.SubnetId,via:r.path.some(function(h){return h.detail&&h.detail.includes('NAT')})?'nat':'igw'});
-    }
-  });
-  return paths;
-}
-
-function _detectBastions(ctx){
-  var bastions=[];
-  var hasSgData=(ctx.instances||[]).some(function(i){return (i.SecurityGroups||[]).length>0});
-  (ctx.instances||[]).forEach(function(inst){
-    if(!ctx.pubSubs||!ctx.pubSubs.has(inst.SubnetId)) return;
-    var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-    var nameMatch=/bastion|jump|ssh/i.test(gn3);
-    if(hasSgData){
-      var sgs=(inst.SecurityGroups||[]).map(function(s){return _sgById.get(s.GroupId)}).filter(Boolean);
-      var hasSSH=sgs.some(function(sg){return (sg.IpPermissions||[]).some(function(r){return r.FromPort<=22&&r.ToPort>=22})});
-      if(!hasSSH&&!nameMatch) return;
-    } else {
-      // No SG associations — use name heuristic only
-      if(!nameMatch) return;
-    }
-    bastions.push({type:'instance',id:inst.InstanceId,name:gn3,subnetId:inst.SubnetId,vpcId:inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId});
-  });
-  return bastions;
-}
-
-function _findBastionChains(bastions,ctx){
-  var chains=[];
-  var hasSgData=(ctx.instances||[]).some(function(i){return (i.SecurityGroups||[]).length>0});
-  // Pre-build reverse map: DBInstanceIdentifier → subnetId (O(1) lookup instead of O(n*m))
-  var _rdsSubMap=new Map();Object.keys(ctx.rdsBySub||{}).forEach(function(sid){(ctx.rdsBySub[sid]||[]).forEach(function(d){_rdsSubMap.set(d.DBInstanceIdentifier,sid)})});
-  bastions.forEach(function(bastion){
-    var targets=[];
-    var testedSubs=new Set(); // one trace per subnet to avoid O(n²)
-    // Find private resources in same VPC reachable from this bastion
-    (ctx.instances||[]).forEach(function(inst){
-      if(inst.InstanceId===bastion.id) return;
-      var instVpc=inst.VpcId||((ctx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId})||{}).VpcId;
-      if(instVpc!==bastion.vpcId) return;
-      if(ctx.pubSubs&&ctx.pubSubs.has(inst.SubnetId)) return; // skip public
-      var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-      if(!hasSgData){
-        // Without SG data, skip trace — just include private-subnet instances (cap at 50)
-        if(targets.length<50) targets.push({type:'instance',id:inst.InstanceId,name:gn3});
-      } else if(!testedSubs.has(inst.SubnetId)){
-        testedSubs.add(inst.SubnetId);
-        var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'instance',id:inst.InstanceId},{protocol:'tcp',port:22},ctx,{discovery:true});
-        if(!r.blocked) targets.push({type:'instance',id:inst.InstanceId,name:gn3});
-      } else {
-        // Same subnet already tested and passed — add without re-tracing
-        targets.push({type:'instance',id:inst.InstanceId,name:gn3});
-      }
-    });
-    // Check RDS
-    (ctx.rdsInstances||[]).forEach(function(db){
-      var rSid=_rdsSubMap.get(db.DBInstanceIdentifier);
-      if(!rSid) return;
-      var rVpc=((ctx.subnets||[]).find(function(s){return s.SubnetId===rSid})||{}).VpcId;
-      if(rVpc!==bastion.vpcId) return;
-      if(!hasSgData){
-        targets.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
-      } else {
-        var port=(db.Endpoint&&db.Endpoint.Port)||3306;
-        var r=_traceFlowLeg({type:'instance',id:bastion.id},{type:'rds',id:db.DBInstanceIdentifier},{protocol:'tcp',port:port},ctx,{discovery:true});
-        if(!r.blocked) targets.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
-      }
-    });
-    if(targets.length>0) chains.push({bastion:bastion,targets:targets});
-  });
-  return chains;
-}
-
-function _classifyAllResources(ctx,ingressPaths,bastionChains){
-  var tiers={internetFacing:[],bastionOnly:[],fullyPrivate:[],database:[]};
-  var ingressSet=new Set();
-  ingressPaths.forEach(function(p){ingressSet.add(p.to.type+':'+p.to.id)});
-  var bastionSet=new Set();
-  bastionChains.forEach(function(ch){ch.targets.forEach(function(t){bastionSet.add(t.type+':'+t.id)})});
-  // Classify instances
-  (ctx.instances||[]).forEach(function(inst){
-    var key='instance:'+inst.InstanceId;
-    var gn3=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
-    var ref={type:'instance',id:inst.InstanceId,name:gn3};
-    if(ingressSet.has(key)){tiers.internetFacing.push(ref);return}
-    if(bastionSet.has(key)){tiers.bastionOnly.push(ref);return}
-    tiers.fullyPrivate.push(ref);
-  });
-  // Classify ALBs
-  Object.keys(ctx.albBySub||{}).forEach(function(sid){
-    (ctx.albBySub[sid]||[]).forEach(function(alb){
-      var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
-      var key='alb:'+(albId||alb.LoadBalancerName);
-      var ref={type:'alb',id:albId||alb.LoadBalancerName,name:alb.LoadBalancerName||albId};
-      if(ingressSet.has(key)){tiers.internetFacing.push(ref);return}
-      tiers.fullyPrivate.push(ref);
-    });
-  });
-  // Classify RDS as database tier
-  (ctx.rdsInstances||[]).forEach(function(db){
-    tiers.database.push({type:'rds',id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier});
-  });
-  // ElastiCache as database tier
-  (ctx.ecacheClusters||[]).forEach(function(ec){
-    tiers.database.push({type:'ecache',id:ec.CacheClusterId,name:ec.CacheClusterId});
-  });
-  return tiers;
-}
+// _findIngressPaths, _findEgressPaths, _detectBastions, _findBastionChains, _classifyAllResources moved to flow-analysis.js module
 
 // --- Flow Analysis Visualization ---
 function _renderFlowAnalysisOverlay(mode){
@@ -18339,206 +16795,13 @@ function _compareWithSnapshot(snap){
 
 // #endregion DIFF MODE
 // #region DEPENDENCY GRAPH
-// === DEPENDENCY GRAPH / BLAST RADIUS ===
-let _depGraph=null;
-let _blastActive=false;
-function buildDependencyGraph(ctx){
-  if(!ctx)return {};
-  const g={};
-  const addEdge=(from,to,rel,strength)=>{if(!g[from])g[from]=[];g[from].push({id:to,rel,strength})};
-  // VPC -> subnets (hard)
-  (ctx.vpcs||[]).forEach(v=>{
-    (ctx.subnets||[]).filter(s=>s.VpcId===v.VpcId).forEach(s=>addEdge(v.VpcId,s.SubnetId,'contains','hard'));
-    // VPC -> gateways
-    (ctx.igws||[]).forEach(ig=>{if((ig.Attachments||[]).some(a=>a.VpcId===v.VpcId))addEdge(v.VpcId,ig.InternetGatewayId,'attached','hard')});
-    (ctx.nats||[]).filter(n=>n.VpcId===v.VpcId).forEach(n=>addEdge(v.VpcId,n.NatGatewayId,'contains','hard'));
-    (ctx.vpces||[]).filter(e=>e.VpcId===v.VpcId).forEach(e=>addEdge(v.VpcId,e.VpcEndpointId,'contains','soft'));
-    // VPC -> route tables
-    (ctx.rts||[]).filter(rt=>rt.VpcId===v.VpcId).forEach(rt=>addEdge(v.VpcId,rt.RouteTableId,'contains','config'));
-    // VPC -> NACLs
-    (ctx.nacls||[]).filter(n=>n.VpcId===v.VpcId).forEach(n=>addEdge(v.VpcId,n.NetworkAclId,'contains','config'));
-    // VPC -> SGs
-    (ctx.sgs||[]).filter(sg=>sg.VpcId===v.VpcId).forEach(sg=>addEdge(v.VpcId,sg.GroupId,'contains','config'));
-  });
-  // Subnet -> resources (hard)
-  (ctx.subnets||[]).forEach(sub=>{
-    ((ctx.instBySub||{})[sub.SubnetId]||[]).forEach(i=>addEdge(sub.SubnetId,i.InstanceId,'contains','hard'));
-    ((ctx.rdsBySub||{})[sub.SubnetId]||[]).forEach(r=>addEdge(sub.SubnetId,r.DBInstanceIdentifier,'contains','hard'));
-    ((ctx.ecsBySub||{})[sub.SubnetId]||[]).forEach(e=>addEdge(sub.SubnetId,e.serviceName,'contains','hard'));
-    ((ctx.lambdaBySub||{})[sub.SubnetId]||[]).forEach(l=>addEdge(sub.SubnetId,l.FunctionName,'contains','hard'));
-    ((ctx.albBySub||{})[sub.SubnetId]||[]).forEach(a=>addEdge(sub.SubnetId,a.LoadBalancerName,'contains','hard'));
-    // Subnet -> route table association
-    const rt=(ctx.subRT||{})[sub.SubnetId];
-    if(rt)addEdge(sub.SubnetId,rt.RouteTableId,'associated','config');
-    // Subnet -> NACL
-    const nacl=(ctx.subNacl||{})[sub.SubnetId];
-    if(nacl)addEdge(sub.SubnetId,nacl.NetworkAclId,'associated','config');
-  });
-  // EC2 -> SGs (soft)
-  (ctx.instances||[]).forEach(inst=>{
-    (inst.SecurityGroups||[]).forEach(sg=>addEdge(inst.InstanceId,sg.GroupId,'secured_by','soft'));
-    // EC2 -> EBS volumes
-    (inst.BlockDeviceMappings||[]).forEach(b=>{if(b.Ebs&&b.Ebs.VolumeId)addEdge(inst.InstanceId,b.Ebs.VolumeId,'attached','hard')});
-  });
-  // RDS -> SGs
-  (ctx.rdsInstances||[]).forEach(db=>{
-    (db.VpcSecurityGroups||[]).forEach(sg=>addEdge(db.DBInstanceIdentifier,sg.VpcSecurityGroupId,'secured_by','soft'));
-  });
-  // ALB -> SGs + target groups
-  (ctx.albs||[]).forEach(alb=>{
-    (alb.SecurityGroups||[]).forEach(gid=>addEdge(alb.LoadBalancerName,gid,'secured_by','soft'));
-    const tgs=(ctx.tgByAlb||{})[alb.LoadBalancerArn]||[];
-    tgs.forEach(tg=>{addEdge(alb.LoadBalancerName,tg.TargetGroupName||tg.TargetGroupArn,'targets','soft')});
-  });
-  // SG -> SG references (config)
-  (ctx.sgs||[]).forEach(sg=>{
-    [...(sg.IpPermissions||[]),...(sg.IpPermissionsEgress||[])].forEach(p=>{
-      (p.UserIdGroupPairs||[]).forEach(pair=>{
-        if(pair.GroupId&&pair.GroupId!==sg.GroupId)addEdge(sg.GroupId,pair.GroupId,'references','config');
-      });
-    });
-  });
-  // Route table -> gateways (config)
-  (ctx.rts||[]).forEach(rt=>{
-    (rt.Routes||[]).forEach(r=>{
-      if(r.GatewayId&&r.GatewayId!=='local')addEdge(rt.RouteTableId,r.GatewayId,'routes_through','config');
-      if(r.NatGatewayId)addEdge(rt.RouteTableId,r.NatGatewayId,'routes_through','config');
-      if(r.TransitGatewayId)addEdge(rt.RouteTableId,r.TransitGatewayId,'routes_through','config');
-      if(r.VpcPeeringConnectionId)addEdge(rt.RouteTableId,r.VpcPeeringConnectionId,'routes_through','config');
-    });
-  });
-  // Peering -> VPCs (soft)
-  (ctx.peerings||[]).forEach(p=>{
-    if(p.RequesterVpcInfo)addEdge(p.VpcPeeringConnectionId,p.RequesterVpcInfo.VpcId,'connects','soft');
-    if(p.AccepterVpcInfo)addEdge(p.VpcPeeringConnectionId,p.AccepterVpcInfo.VpcId,'connects','soft');
-  });
-  return g;
-}
-function getBlastRadius(resourceId,graph,maxDepth){
-  maxDepth=maxDepth||5;
-  const result={hard:[],soft:[],config:[],all:[]};
-  const visited=new Set([resourceId]);
-  const queue=[{id:resourceId,depth:0}];
-  while(queue.length){
-    const{id,depth}=queue.shift();
-    if(depth>=maxDepth)continue;
-    const edges=graph[id]||[];
-    edges.forEach(e=>{
-      if(visited.has(e.id))return;
-      visited.add(e.id);
-      const entry={id:e.id,rel:e.rel,strength:e.strength,depth:depth+1,parent:id};
-      result[e.strength]=(result[e.strength]||[]);result[e.strength].push(entry);
-      result.all.push(entry);
-      queue.push({id:e.id,depth:depth+1});
-    });
-  }
-  return result;
-}
-function _getResType(id){
-  if(!id)return'Unknown';
-  if(id.startsWith('vpc-'))return'VPC';if(id.startsWith('subnet-'))return'Subnet';
-  if(id.startsWith('i-'))return'EC2';if(id.startsWith('igw-'))return'IGW';
-  if(id.startsWith('nat-'))return'NAT';if(id.startsWith('vpce-'))return'VPCE';
-  if(id.startsWith('sg-'))return'SG';if(id.startsWith('rtb-'))return'RT';
-  if(id.startsWith('acl-'))return'NACL';if(id.startsWith('vol-'))return'EBS';
-  if(id.startsWith('pcx-'))return'Peering';if(id.startsWith('tgw-'))return'TGW';
-  if(id.startsWith('arn:'))return'ARN';
-  if(_rlCtx){
-    if((_rlCtx.rdsInstances||[]).some(r=>r.DBInstanceIdentifier===id))return'RDS';
-    if((_rlCtx.lambdaFns||[]).some(f=>f.FunctionName===id))return'Lambda';
-    if((_rlCtx.ecsServices||[]).some(e=>e.serviceName===id))return'ECS';
-    if((_rlCtx.albs||[]).some(a=>a.LoadBalancerName===id))return'ALB';
-    if((_rlCtx.ecacheClusters||[]).some(c=>c.CacheClusterId===id))return'ElastiCache';
-    if((_rlCtx.redshiftClusters||[]).some(c=>c.ClusterIdentifier===id))return'Redshift';
-  }
-  return'Resource';
-}
-function _getResName(id){
-  if(!_rlCtx)return id;
-  const v=(_rlCtx.vpcs||[]).find(x=>x.VpcId===id);if(v){const t=(v.Tags||[]).find(t=>t.Key==='Name');return t?t.Value:id}
-  const s=(_rlCtx.subnets||[]).find(x=>x.SubnetId===id);if(s){const t=(s.Tags||[]).find(t=>t.Key==='Name');return t?t.Value:id}
-  const i=(_rlCtx.instances||[]).find(x=>x.InstanceId===id);if(i){const t=(i.Tags||[]).find(t=>t.Key==='Name');return t?t.Value:id}
-  const sg=_sgById.get(id);if(sg)return sg.GroupName||id;
-  return id;
-}
-function showDependencies(resourceId){
-  if(!_rlCtx)return;
-  if(!_depGraph)_depGraph=buildDependencyGraph(_rlCtx);
-  const blast=getBlastRadius(resourceId,_depGraph);
-  const resName=_getResName(resourceId);const resType=_getResType(resourceId);
-  document.getElementById('depTitle').textContent='Dependencies: '+resType+' '+resName;
-  const body=document.getElementById('depBody');
-  let h='<div class="dep-summary">';
-  h+='<div class="dep-stat dep-hard"><b>'+blast.hard.length+'</b><span>Hard (destroyed)</span></div>';
-  h+='<div class="dep-stat dep-soft"><b>'+blast.soft.length+'</b><span>Soft (degraded)</span></div>';
-  h+='<div class="dep-stat dep-config"><b>'+blast.config.length+'</b><span>Config (dangling)</span></div>';
-  h+='<div class="dep-stat"><b>'+blast.all.length+'</b><span>Total affected</span></div>';
-  h+='</div>';
-  // Group by depth
-  const byDepth={};blast.all.forEach(e=>{(byDepth[e.depth]=byDepth[e.depth]||[]).push(e)});
-  h+='<div class="dep-tree">';
-  h+='<div class="dep-node dep-depth-0" style="border-left-color:var(--accent-cyan);font-weight:600"><span class="dep-type">'+resType+'</span>'+esc(resName)+' <span style="color:var(--text-muted);font-size:9px">'+resourceId+'</span></div>';
-  Object.keys(byDepth).sort((a,b)=>a-b).forEach(d=>{
-    byDepth[d].sort((a,b)=>{const o={hard:0,soft:1,config:2};return(o[a.strength]||3)-(o[b.strength]||3)}).forEach(e=>{
-      const depCls=Math.min(parseInt(d),3);
-      const name=_getResName(e.id);const type=_getResType(e.id);
-      h+='<div class="dep-node dep-'+e.strength+' dep-depth-'+depCls+'" data-id="'+e.id+'" title="'+e.id+'"><span class="dep-type">'+type+'</span>'+esc(name)+' <span class="dep-rel">'+e.rel+'</span></div>';
-    });
-  });
-  if(!blast.all.length)h+='<div style="padding:20px;color:var(--text-muted);font-size:12px;text-align:center">No dependencies found for this resource</div>';
-  h+='</div>';
-  body.innerHTML=h;
-  // Click to zoom
-  body.addEventListener('click',function(e){var el=e.target.closest('.dep-node[data-id]');if(!el)return;document.getElementById('depOverlay').classList.remove('open');_zoomToElement(el.dataset.id)});
-  document.getElementById('depOverlay').classList.add('open');
-  // Store for blast highlighting
-  document.getElementById('depBlastBtn').onclick=()=>{
-    document.getElementById('depOverlay').classList.remove('open');
-    _applyBlastRadius(resourceId,blast);
-  };
-}
-function _applyBlastRadius(sourceId,blast){
-  if(!_mapG)return;
-  _blastActive=true;
-  // Dim everything
-  _mapG.selectAll('.vpc-group,.subnet-node,.gw-node,.lz-gw-node,.lz-tgw-node').classed('blast-dimmed',true);
-  // Un-dim + glow source
-  const srcEl=_mapG.node().querySelector('[data-vpc-id="'+sourceId+'"],[data-subnet-id="'+sourceId+'"],[data-gwid="'+sourceId+'"],[data-id="'+sourceId+'"]');
-  if(srcEl)d3.select(srcEl).classed('blast-dimmed',false).classed('blast-glow-hard',true);
-  // Highlight dependents
-  blast.all.forEach(e=>{
-    const el=_mapG.node().querySelector('[data-vpc-id="'+e.id+'"],[data-subnet-id="'+e.id+'"],[data-gwid="'+e.id+'"],[data-id="'+e.id+'"]');
-    if(el)d3.select(el).classed('blast-dimmed',false).classed('blast-glow-'+e.strength,true);
-  });
-  _showToast('Blast radius active - click anywhere to clear');
-}
-function _clearBlastRadius(){
-  if(!_blastActive||!_mapG)return;
-  _blastActive=false;
-  _mapG.selectAll('.blast-dimmed,.blast-glow-hard,.blast-glow-soft,.blast-glow-config').classed('blast-dimmed',false).classed('blast-glow-hard',false).classed('blast-glow-soft',false).classed('blast-glow-config',false);
-}
-document.getElementById('depCloseBtn').addEventListener('click',()=>document.getElementById('depOverlay').classList.remove('open'));
-document.getElementById('depBlastBtn').addEventListener('click',()=>{});// overridden in showDependencies
-
-// === HELP ===
-document.getElementById('helpBtn').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='flex'});
-document.getElementById('helpClose').addEventListener('click',()=>{document.getElementById('helpOverlay').style.display='none'});
-
+// #region DEPENDENCY GRAPH
+// Dependency graph logic now lives in src/modules/dep-graph.js (window bridge provides live state).
 // #endregion DEPENDENCY GRAPH
 // #region UNIFIED DASHBOARD
 // === UNIFIED DASHBOARD TAB REGISTRY ===
-var _udashTab = null;
-var _udashAcctFilter = 'all';
+// _udashTab, _udashAcctFilter, _udashFilterByAccount moved to unified-dashboard.js module
 
-function _udashFilterByAccount(items){
-  if(!_udashAcctFilter||_udashAcctFilter==='all') return items;
-  var id=_udashAcctFilter;
-  var lbl=typeof _rptAccountLabel==='function'?_rptAccountLabel(id):'';
-  return items.filter(function(item){
-    var a=item._accountId||item.account||'';
-    return a===id||a===lbl;
-  });
-}
 const _UDASH_TABS = [
   {id:'classification', label:'Classification', color:'#a78bfa', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
@@ -18830,12 +17093,7 @@ document.getElementById('udashClose').addEventListener('click',closeUnifiedDash)
 // (Toolbar event listeners are now attached dynamically inside _renderCompDash)
 
 // === BUDR DASHBOARD ===
-let _budrDashState={tierFilter:'all',search:'',sort:'tier'};
-const _BUDR_TIER_META={
-  protected:{name:'Protected',color:'#10b981',icon:''},
-  partial:{name:'Partially Protected',color:'#f59e0b',icon:''},
-  at_risk:{name:'At Risk',color:'#ef4444',icon:''}
-};
+// _budrDashState, _BUDR_TIER_META moved to unified-dashboard.js module
 function openBUDRDash(){
   _budrDashState={tierFilter:'all',search:'',sort:'tier'};
   openUnifiedDash('budr');
@@ -21584,35 +19842,8 @@ let exportData={vL:[],gwP:new Map(),allS:[],tG:{},peerings:[],shGws:[]};
 
 // #endregion SESSION & EVENT WIRING
 // #region EXPORT UTILITIES
-// helper: resolve CSS vars to hex for SVG serialization (cached)
-const _resolveColorCache=new Map();
-function resolveColor(cssVar){
-  if(_resolveColorCache.has(cssVar))return _resolveColorCache.get(cssVar);
-  const el=document.createElement('div');el.style.color=cssVar;document.body.appendChild(el);
-  const c=getComputedStyle(el).color;document.body.removeChild(el);
-  const m=c.match(/(\d+)/g);if(!m)return'#888';
-  const hex='#'+m.slice(0,3).map(x=>(+x).toString(16).padStart(2,'0')).join('');
-  _resolveColorCache.set(cssVar,hex);
-  return hex;
-}
-
-function downloadBlob(blob,name){
-  if(_isElectron){
-    const ext=(name.match(/\.([^.]+)$/)||[])[1]||'*';
-    const filters=[{name:ext.toUpperCase()+' Files',extensions:[ext]},{name:'All Files',extensions:['*']}];
-    if(blob.type&&blob.type.startsWith('text')){
-      blob.text().then(text=>{
-        window.electronAPI.exportFile(text,name,filters).then(p=>{if(p)_showToast('Exported: '+p.split('/').pop())}).catch(e=>console.error('Export failed:',e));
-      });
-    } else {
-      blob.arrayBuffer().then(ab=>{
-        window.electronAPI.exportFile(new Uint8Array(ab),name,filters).then(p=>{if(p)_showToast('Exported: '+p.split('/').pop())}).catch(e=>console.error('Export failed:',e));
-      });
-    }
-    return;
-  }
-  const a=document.createElement('a');var objUrl=URL.createObjectURL(blob);a.href=objUrl;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(objUrl)},1000);
-}
+// resolveColor + downloadBlob: canonical copies in src/modules/export-utils.js,
+// exposed on window.resolveColor / window.downloadBlob via the module bridge.
 
 // PNG High-DPI Export
 document.getElementById('expPng').addEventListener('click',()=>{

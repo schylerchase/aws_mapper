@@ -3,8 +3,8 @@
 // Extracted from index.html for modularization
 
 // === UNIFIED DASHBOARD TAB REGISTRY ===
-var _udashTab = null;
-var _UDASH_TABS = [
+let _udashTab = null;
+const _UDASH_TABS = [
   {id:'classification', label:'Classification', color:'#a78bfa', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_classificationData.length) runClassificationEngine(_rlCtx);
@@ -13,8 +13,8 @@ var _UDASH_TABS = [
   {id:'iam', label:'IAM Review', color:'#f472b6', icon:'', prereq:function(){
     if(!_rlCtx){_showToast('Render map data first','warn');return false}
     if(!_iamReviewData.length){
-      try{var iamRaw=safeParse(gv('in_iam'));
-      if(iamRaw){var p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}}catch(e){console.warn('IAM parse error in prereq:',e)}
+      try{const iamRaw=safeParse(gv('in_iam'));
+      if(iamRaw){const p=parseIAMData(iamRaw);if(p)prepareIAMReviewData(p)}}catch(e){console.warn('IAM parse error in prereq:',e)}
     }
     return true;
   }, render:function(){ _renderIAMTab(); }},
@@ -41,11 +41,11 @@ var _UDASH_TABS = [
 ];
 
 function openUnifiedDash(tabId){
-  var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
+  let tab=_UDASH_TABS.find(function(t){return t.id===tabId});
   if(!tab) return;
   if(!tab.prereq()) return;
-  var el=document.getElementById('udash');
-  var wasOpen=el.classList.contains('open');
+  const el=document.getElementById('udash');
+  const wasOpen=el.classList.contains('open');
   if(wasOpen&&tabId===_udashTab) return;
   _udashTab=tabId;
   // Clean shared areas (prevents stale layout classes, hidden toolbars, wrong footers)
@@ -65,7 +65,7 @@ function openUnifiedDash(tabId){
 
 function _switchUdashTab(tabId){
   if(tabId===_udashTab) return;
-  var tab=_UDASH_TABS.find(function(t){return t.id===tabId});
+  let tab=_UDASH_TABS.find(function(t){return t.id===tabId});
   if(!tab||!tab.prereq()) return;
   _udashTab=tabId;
   _renderUdashTabs();
@@ -86,10 +86,10 @@ function _switchUdashTab(tabId){
 }
 
 function _renderUdashTabs(){
-  var c=document.getElementById('udashTabs');
+  const c=document.getElementById('udashTabs');
   c.innerHTML='';
   _UDASH_TABS.forEach(function(t){
-    var btn=document.createElement('button');
+    const btn=document.createElement('button');
     btn.className='udash-tab'+(t.id===_udashTab?' active':'');
     btn.style.setProperty('--tab-color',t.color);
     btn.textContent=t.label;
@@ -121,14 +121,14 @@ function openBUDRDash(){
   openUnifiedDash('budr');
 }
 function _renderBUDRDash(){
-  var tb=document.getElementById('udashToolbar');
-  var body=document.getElementById('udashBody');
-  var footer=document.getElementById('udashFooter');
-  var st=_budrDashState;
-  var counts=_getBUDRTierCounts();
-  var total=_budrAssessments.length;
+  const tb=document.getElementById('udashToolbar');
+  const body=document.getElementById('udashBody');
+  const footer=document.getElementById('udashFooter');
+  const st=_budrDashState;
+  const counts=_getBUDRTierCounts();
+  const total=_budrAssessments.length;
   // Toolbar: search + sort + tier pills
-  var th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;width:200px">';
+  let th='<input id="budrSearch" type="text" placeholder="Filter by name, ID, type..." value="'+_escHtml(st.search)+'" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:4px 10px;border-radius:4px;font-size:11px;font-family:Segoe UI,system-ui,sans-serif;width:200px">';
   th+='<select id="budrSort" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:4px;font-size:10px;font-family:Segoe UI,system-ui,sans-serif">';
   th+='<option value="tier"'+(st.sort==='tier'?' selected':'')+'>Sort: Tier</option>';
   th+='<option value="name"'+(st.sort==='name'?' selected':'')+'>Sort: Name</option>';
@@ -137,9 +137,9 @@ function _renderBUDRDash(){
   th+='<div id="budrPills" style="display:flex;gap:4px;margin-left:8px"></div>';
   tb.innerHTML=th;
   // Build tier pills
-  var pillBox=document.getElementById('budrPills');
+  const pillBox=document.getElementById('budrPills');
   [{tier:'all',label:'All ('+total+')'},{tier:'protected',label:'Protected ('+counts.protected+')'},{tier:'partial',label:'Partial ('+counts.partial+')'},{tier:'at_risk',label:'At Risk ('+counts.at_risk+')'}].forEach(function(p){
-    var btn=document.createElement('span');btn.className='budr-pill'+(st.tierFilter===p.tier?' active':'');
+    const btn=document.createElement('span');btn.className='budr-pill'+(st.tierFilter===p.tier?' active':'');
     btn.dataset.tier=p.tier;btn.textContent=p.label;
     btn.addEventListener('click',function(){st.tierFilter=p.tier;_renderBUDRDash()});pillBox.appendChild(btn);
   });
@@ -147,16 +147,16 @@ function _renderBUDRDash(){
   document.getElementById('budrSearch').addEventListener('input',function(){st.search=this.value;_renderBUDRDash()});
   document.getElementById('budrSort').addEventListener('change',function(){st.sort=this.value;_renderBUDRDash()});
   // Filter assessments
-  var items=_budrAssessments.slice();
+  let items=_budrAssessments.slice();
   if(st.tierFilter!=='all')items=items.filter(function(a){return a.profile&&a.profile.tier===st.tierFilter});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(a){return(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q)})}
+  if(st.search){const q=st.search.toLowerCase();items=items.filter(function(a){return(a.name||'').toLowerCase().includes(q)||(a.id||'').toLowerCase().includes(q)||(a.type||'').toLowerCase().includes(q)})}
   if(st.sort==='name')items.sort(function(a,b){return(a.name||a.id||'').localeCompare(b.name||b.id||'')});
   else if(st.sort==='type')items.sort(function(a,b){return(a.type||'').localeCompare(b.type||'')});
   // Summary cards
-  var h='<div class="budr-summary">';
+  let h='<div class="budr-summary">';
   ['protected','partial','at_risk'].forEach(function(tier){
-    var meta=_BUDR_TIER_META[tier];var c=counts[tier]||0;
-    var pct=total>0?Math.round(c/total*100):0;
+    const meta=_BUDR_TIER_META[tier];let c=counts[tier]||0;
+    const pct=total>0?Math.round(c/total*100):0;
     h+='<div class="budr-card '+tier+'" data-tier="'+tier+'">';
     h+='<div class="bc-count">'+c+'</div>';
     h+='<div class="bc-label">'+esc(meta.name)+'</div>';
@@ -165,13 +165,13 @@ function _renderBUDRDash(){
   });
   h+='</div>';
   // Group by tier
-  var groups={protected:[],partial:[],at_risk:[]};
+  const groups={protected:[],partial:[],at_risk:[]};
   items.forEach(function(a){if(a.profile)groups[a.profile.tier].push(a)});
   // Render sections
   ['at_risk','partial','protected'].forEach(function(tier){
-    var grp=groups[tier];if(!grp.length)return;
-    var meta=_BUDR_TIER_META[tier];
-    var collapsed=tier==='protected';
+    const grp=groups[tier];if(!grp.length)return;
+    const meta=_BUDR_TIER_META[tier];
+    const collapsed=tier==='protected';
     h+='<div class="budr-section" data-tier="'+tier+'">';
     h+='<div class="budr-section-hdr'+(collapsed?' collapsed':'')+'">';
     h+='<span class="bs-chevron">\u25BC</span>';
@@ -180,8 +180,8 @@ function _renderBUDRDash(){
     h+='</div>';
     h+='<div class="budr-section-body"'+(collapsed?' style="display:none"':'')+'>';
     grp.forEach(function(a,i){
-      var findings=_budrFindings.filter(function(f){return f.resource===a.id});
-      var expanded=tier==='at_risk';
+      const findings=_budrFindings.filter(function(f){return f.resource===a.id});
+      const expanded=tier==='at_risk';
       h+='<div class="budr-res'+(expanded?' expanded':'')+'" data-idx="'+tier+'-'+i+'">';
       h+='<div class="budr-res-hdr">';
       h+='<span class="br-dot '+tier+'"></span>';
@@ -194,11 +194,11 @@ function _renderBUDRDash(){
       if(a.signals){
         h+='<div class="budr-signals">';
         Object.entries(a.signals).forEach(function(entry){
-          var k=entry[0],v=entry[1];
-          var good=v===true||(typeof v==='number'&&v>1);
-          var bad=v===false||v===0;
-          var cls=good?'good':bad?'bad':'warn';
-          var icon=good?'✓':bad?'✗':'!';
+          const k=entry[0],v=entry[1];
+          const good=v===true||(typeof v==='number'&&v>1);
+          const bad=v===false||v===0;
+          const cls=good?'good':bad?'bad':'warn';
+          const icon=good?'✓':bad?'✗':'!';
           h+='<span class="budr-sig-badge '+cls+'">'+icon+' '+esc(k)+': '+esc(String(v))+'</span>';
         });
         h+='</div>';
@@ -225,7 +225,7 @@ function _renderBUDRDash(){
   // Event: section collapse
   body.querySelectorAll('.budr-section-hdr').forEach(function(hdr){
     hdr.addEventListener('click',function(){
-      var bd=hdr.nextElementSibling;
+      const bd=hdr.nextElementSibling;
       if(hdr.classList.contains('collapsed')){hdr.classList.remove('collapsed');bd.style.display=''}
       else{hdr.classList.add('collapsed');bd.style.display='none'}
     });
@@ -237,13 +237,13 @@ function _renderBUDRDash(){
   // Event: summary card click = filter
   body.querySelectorAll('.budr-card').forEach(function(card){
     card.addEventListener('click',function(){
-      var t=card.dataset.tier;
+      const t=card.dataset.tier;
       st.tierFilter=st.tierFilter===t?'all':t;
       _renderBUDRDash();
     });
   });
   // Footer: item count + export buttons
-  var fh='<button id="budrExportCSV">Export CSV</button>';
+  let fh='<button id="budrExportCSV">Export CSV</button>';
   fh+='<button id="budrExportJSON">Export JSON</button>';
   if(_isElectron) fh+='<button id="budrExportXLSX">Export XLSX</button>';
   fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+total+' resources</span>';
@@ -251,30 +251,30 @@ function _renderBUDRDash(){
   // Wire export listeners
   document.getElementById('budrExportCSV').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
+    let csv='Type,Resource,Name,Tier,RTO,RPO,Signals\n';
     _budrAssessments.forEach(function(a){
-      var tier=a.profile?a.profile.tier:'unknown';
-      var rto=a.profile?a.profile.rto:'';
-      var rpo=a.profile?a.profile.rpo:'';
-      var sigs=a.signals?Object.entries(a.signals).map(function(e){return e[0]+'='+e[1]}).join('; '):'';
-      var ce=function(s){return String(s||'').replace(/"/g,'""')};
+      let tier=a.profile?a.profile.tier:'unknown';
+      const rto=a.profile?a.profile.rto:'';
+      const rpo=a.profile?a.profile.rpo:'';
+      const sigs=a.signals?Object.entries(a.signals).map(function(e){return e[0]+'='+e[1]}).join('; '):'';
+      const ce=function(s){return String(s||'').replace(/"/g,'""')};
       csv+='"'+ce(a.type)+'","'+ce(a.id)+'","'+ce(a.name)+'","'+ce(tier)+'","'+ce(rto)+'","'+ce(rpo)+'","'+ce(sigs)+'"\n';
     });
     downloadBlob(new Blob([csv],{type:'text/csv'}),'budr-assessment.csv');
   });
   document.getElementById('budrExportJSON').addEventListener('click',function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    const data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
     downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'budr-assessment.json');
   });
-  var xlsxBtn=document.getElementById('budrExportXLSX');
+  const xlsxBtn=document.getElementById('budrExportXLSX');
   if(xlsxBtn) xlsxBtn.addEventListener('click',async function(){
     if(!_budrAssessments.length){_showToast('No BUDR data');return}
-    var data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
-    var jsonStr=JSON.stringify(data,null,2);
+    const data={timestamp:new Date().toISOString(),summary:_getBUDRTierCounts(),assessments:_budrAssessments,findings:_budrFindings};
+    const jsonStr=JSON.stringify(data,null,2);
     _showToast('Generating XLSX report\u2026');
     try{
-      var result=await window.electronAPI.exportBUDRXlsx(jsonStr);
+      const result=await window.electronAPI.exportBUDRXlsx(jsonStr);
       if(!result){_showToast('Export cancelled');return}
       if(result.error){_showToast('Error: '+result.error,'error');return}
       _showToast('Saved: '+result.path);
@@ -292,18 +292,18 @@ function openGovernanceDashboard(tab){
   else openUnifiedDash('classification');
 }
 
-var _govToolbarTab=null;
-var _compToolbarTab=null;
+let _govToolbarTab=null;
+let _compToolbarTab=null;
 
 function _renderClassificationTab(){
-  var tb=document.getElementById('udashToolbar');
-  var body=document.getElementById('udashBody');
-  var footer=document.getElementById('udashFooter');
-  var st=_govDashState;
+  const tb=document.getElementById('udashToolbar');
+  const body=document.getElementById('udashBody');
+  const footer=document.getElementById('udashFooter');
+  const st=_govDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='classification'){
     _govToolbarTab='classification';
-    var th='<label>Search</label>';
+    let th='<label>Search</label>';
     th+='<input id="govSearch" type="text" placeholder="Filter by name, type, VPC..." value="'+_escHtml(st.search)+'">';
     th+='<label>Tier</label>';
     th+='<select id="govFilter">';
@@ -321,11 +321,11 @@ function _renderClassificationTab(){
     document.getElementById('govRulesBtn').addEventListener('click',_openRulesEditor);
   }
   // Summary cards
-  var counts={critical:0,high:0,medium:0,low:0};
+  const counts={critical:0,high:0,medium:0,low:0};
   _classificationData.forEach(function(r){counts[r.tier]=(counts[r.tier]||0)+1});
-  var bh='<div class="gov-tier-cards">';
+  let bh='<div class="gov-tier-cards">';
   [{t:'critical',l:'Critical'},{t:'high',l:'High'},{t:'medium',l:'Medium'},{t:'low',l:'Low'}].forEach(function(d){
-    var meta=_TIER_RPO_RTO[d.t];
+    const meta=_TIER_RPO_RTO[d.t];
     bh+='<div class="gov-tier-card" data-gov-tier="'+d.t+'" style="border-color:'+meta.color+'">';
     bh+='<h3 style="color:'+meta.color+'">'+d.l+'</h3>';
     bh+='<div class="gov-tier-count" style="color:'+meta.color+'">'+(counts[d.t]||0)+'</div>';
@@ -334,26 +334,26 @@ function _renderClassificationTab(){
   });
   bh+='</div>';
   // Filter + sort
-  var items=_classificationData.slice();
+  let items=_classificationData.slice();
   if(st.filter!=='all') items=items.filter(function(r){return r.tier===st.filter});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
-  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  if(st.search){const q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1||(r.id||'').toLowerCase().indexOf(q)!==-1||(r.vpcName||'').toLowerCase().indexOf(q)!==-1})}
+  const sortKey=st.sort;let dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
     if(sortKey==='tier') return((_TIER_RPO_RTO[a.tier]||{priority:99}).priority-(_TIER_RPO_RTO[b.tier]||{priority:99}).priority)*dir;
-    var av=(a[sortKey]||'').toLowerCase();var bv=(b[sortKey]||'').toLowerCase();
+    const av=(a[sortKey]||'').toLowerCase();let bv=(b[sortKey]||'').toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
   // Paginate
-  var perPage=st.perPage<=0?items.length:st.perPage;
-  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  const perPage=st.perPage<=0?items.length:st.perPage;
+  const totalPages=Math.max(1,Math.ceil(items.length/perPage));
   st.page=Math.min(Math.max(1,st.page),totalPages);
-  var start=(st.page-1)*perPage;
-  var pageItems=items.slice(start,start+perPage);
+  const start=(st.page-1)*perPage;
+  const pageItems=items.slice(start,start+perPage);
   // Table
-  var cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
+  const cols=[{key:'name',label:'Resource'},{key:'type',label:'Type'},{key:'tier',label:'Tier'},{key:'rpo',label:'RPO',nosort:true},{key:'rto',label:'RTO',nosort:true},{key:'vpcName',label:'VPC'},{key:'auto',label:'Source',nosort:true},{key:'actions',label:'',nosort:true}];
   bh+='<table class="gov-table"><thead><tr>';
   cols.forEach(function(c){
-    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    const cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
     bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
   });
   bh+='</tr></thead><tbody>';
@@ -376,7 +376,7 @@ function _renderClassificationTab(){
   body.innerHTML=bh;
   body.scrollTop=0;
   // Footer
-  var fh='<button id="govExportCSV">Export CSV</button>';
+  let fh='<button id="govExportCSV">Export CSV</button>';
   fh+='<button id="govExportJSON">Export JSON</button>';
   fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_classificationData.length+'</span>';
   if(totalPages>1){
@@ -391,27 +391,27 @@ function _renderClassificationTab(){
   // Delegated click/change handlers for classification tab
   if(!body._govDelegated){body._govDelegated=true;
     body.addEventListener('click',function(e){
-      var th=e.target.closest('th[data-sort-col]');
-      if(th){var col=th.dataset.sortCol;if(st.sort===col)st.sortDir=st.sortDir==='asc'?'desc':'asc';else{st.sort=col;st.sortDir='asc'}st.page=1;_renderClassificationTab();return}
-      var card=e.target.closest('.gov-tier-card[data-gov-tier]');
-      if(card){var tier=card.dataset.govTier;st.filter=st.filter===tier?'all':tier;document.getElementById('govFilter').value=st.filter;st.page=1;_renderClassificationTab();return}
-      var link=e.target.closest('.gov-res-link');
-      if(link){e.stopPropagation();var rid=link.dataset.rid;if(!rid)return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250)}
+      let th=e.target.closest('th[data-sort-col]');
+      if(th){let col=th.dataset.sortCol;if(st.sort===col)st.sortDir=st.sortDir==='asc'?'desc':'asc';else{st.sort=col;st.sortDir='asc'}st.page=1;_renderClassificationTab();return}
+      const card=e.target.closest('.gov-tier-card[data-gov-tier]');
+      if(card){let tier=card.dataset.govTier;st.filter=st.filter===tier?'all':tier;document.getElementById('govFilter').value=st.filter;st.page=1;_renderClassificationTab();return}
+      const link=e.target.closest('.gov-res-link');
+      if(link){e.stopPropagation();let rid=link.dataset.rid;if(!rid)return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250)}
     });
     body.addEventListener('change',function(e){
-      var sel=e.target.closest('.gov-override-select');
-      if(!sel)return;var resId=sel.dataset.resId;var newTier=sel.value;
+      const sel=e.target.closest('.gov-override-select');
+      if(!sel)return;const resId=sel.dataset.resId;let newTier=sel.value;
       _classificationOverrides[resId]=newTier;
-      var item=_classificationData.find(function(r){return r.id===resId});
+      const item=_classificationData.find(function(r){return r.id===resId});
       if(item){item.tier=newTier;item.rpo=_TIER_RPO_RTO[newTier].rpo;item.rto=_TIER_RPO_RTO[newTier].rto;item.auto=false}
       _renderClassificationTab();
     });
   }
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
-    var rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
+    const rows=[['Resource','Type','Tier','RPO','RTO','Classification','VPC']];
     items.forEach(function(r){rows.push([r.name,r.type,r.tier,r.rpo,r.rto,r.auto?'Auto':'Manual',r.vpcName||''])});
-    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    let csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
     downloadBlob(new Blob([csv],{type:'text/csv'}),'asset-classification.csv');
   });
   document.getElementById('govExportJSON').addEventListener('click',function(){
@@ -420,14 +420,14 @@ function _renderClassificationTab(){
 }
 
 function _renderIAMTab(){
-  var tb=document.getElementById('udashToolbar');
-  var body=document.getElementById('udashBody');
-  var footer=document.getElementById('udashFooter');
-  var st=_iamDashState;
+  const tb=document.getElementById('udashToolbar');
+  const body=document.getElementById('udashBody');
+  const footer=document.getElementById('udashFooter');
+  const st=_iamDashState;
   // Toolbar — only rebuild on tab switch
   if(_govToolbarTab!=='iam'){
     _govToolbarTab='iam';
-    var th='<label>Search</label>';
+    let th='<label>Search</label>';
     th+='<input id="govSearch" type="text" placeholder="Filter by name, ARN, type..." value="'+_escHtml(st.search)+'">';
     th+='<label>Filter</label>';
     th+='<select id="govFilter">';
@@ -450,45 +450,45 @@ function _renderIAMTab(){
     return;
   }
   // Filter + sort
-  var items=_iamReviewData.slice();
+  let items=_iamReviewData.slice();
   if(st.filter==='roles') items=items.filter(function(r){return r.type==='Role'});
   else if(st.filter==='users') items=items.filter(function(r){return r.type==='User'});
   else if(st.filter==='admin') items=items.filter(function(r){return r.isAdmin});
   else if(st.filter==='findings') items=items.filter(function(r){return r.findings.length>0});
-  if(st.search){var q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.arn||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1})}
-  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
+  if(st.search){const q=st.search.toLowerCase();items=items.filter(function(r){return(r.name||'').toLowerCase().indexOf(q)!==-1||(r.arn||'').toLowerCase().indexOf(q)!==-1||(r.type||'').toLowerCase().indexOf(q)!==-1})}
+  const sortKey=st.sort;let dir=st.sortDir==='asc'?1:-1;
   items.sort(function(a,b){
     if(sortKey==='lastUsed'||sortKey==='created'){return((a[sortKey]||0)-(b[sortKey]||0))*dir}
-    var av=(a[sortKey]||'').toString().toLowerCase();var bv=(b[sortKey]||'').toString().toLowerCase();
+    const av=(a[sortKey]||'').toString().toLowerCase();let bv=(b[sortKey]||'').toString().toLowerCase();
     return av<bv?-dir:av>bv?dir:0;
   });
   // Paginate
-  var perPage=st.perPage<=0?items.length:st.perPage;
-  var totalPages=Math.max(1,Math.ceil(items.length/perPage));
+  const perPage=st.perPage<=0?items.length:st.perPage;
+  const totalPages=Math.max(1,Math.ceil(items.length/perPage));
   st.page=Math.min(Math.max(1,st.page),totalPages);
-  var start=(st.page-1)*perPage;
-  var pageItems=items.slice(start,start+perPage);
+  const start=(st.page-1)*perPage;
+  const pageItems=items.slice(start,start+perPage);
   // Summary
-  var roleCt=_iamReviewData.filter(function(r){return r.type==='Role'}).length;
-  var userCt=_iamReviewData.filter(function(r){return r.type==='User'}).length;
-  var adminCt=_iamReviewData.filter(function(r){return r.isAdmin}).length;
-  var findCt=_iamReviewData.filter(function(r){return r.findings.length>0}).length;
-  var bh='<div class="gov-tier-cards" style="margin-bottom:16px">';
+  const roleCt=_iamReviewData.filter(function(r){return r.type==='Role'}).length;
+  const userCt=_iamReviewData.filter(function(r){return r.type==='User'}).length;
+  const adminCt=_iamReviewData.filter(function(r){return r.isAdmin}).length;
+  const findCt=_iamReviewData.filter(function(r){return r.findings.length>0}).length;
+  let bh='<div class="gov-tier-cards" style="margin-bottom:16px">';
   [{l:'Roles',c:roleCt,color:'#8b5cf6'},{l:'Users',c:userCt,color:'#22d3ee'},{l:'Admin',c:adminCt,color:'#ef4444'},{l:'With Findings',c:findCt,color:'#f59e0b'}].forEach(function(d){
     bh+='<div class="gov-tier-card" style="border-color:'+d.color+'"><h3 style="color:'+d.color+'">'+d.l+'</h3><div class="gov-tier-count" style="color:'+d.color+'">'+d.c+'</div></div>';
   });
   bh+='</div>';
   // Table
-  var cols=[{key:'name',label:'Name'},{key:'type',label:'Type'},{key:'created',label:'Created'},{key:'lastUsed',label:'Last Used'},{key:'policies',label:'Policies',nosort:true},{key:'admin',label:'Admin',nosort:true},{key:'findings',label:'Findings',nosort:true},{key:'cross',label:'Cross-Acct',nosort:true}];
+  const cols=[{key:'name',label:'Name'},{key:'type',label:'Type'},{key:'created',label:'Created'},{key:'lastUsed',label:'Last Used'},{key:'policies',label:'Policies',nosort:true},{key:'admin',label:'Admin',nosort:true},{key:'findings',label:'Findings',nosort:true},{key:'cross',label:'Cross-Acct',nosort:true}];
   bh+='<table class="gov-table"><thead><tr>';
   cols.forEach(function(c){
-    var cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
+    const cls='';if(!c.nosort&&st.sort===c.key) cls=st.sortDir==='asc'?' sort-asc':' sort-desc';
     bh+='<th'+(c.nosort?'':' data-sort-col="'+c.key+'"')+' class="'+cls+'">'+c.label+'</th>';
   });
   bh+='</tr></thead><tbody>';
   if(!pageItems.length) bh+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:var(--text-muted)">No IAM entities match filters</td></tr>';
   pageItems.forEach(function(r,idx){
-    var rowId='iam-r-'+idx;
+    const rowId='iam-r-'+idx;
     bh+='<tr data-iam-row="'+rowId+'" style="cursor:pointer">';
     bh+='<td style="color:var(--accent-cyan)">'+_escHtml(r.name)+'</td>';
     bh+='<td>'+_escHtml(r.type)+'</td>';
@@ -513,7 +513,7 @@ function _renderIAMTab(){
     if(r.findings.length){
       bh+='<div><b>Findings ('+r.findings.length+'):</b><ul style="margin:4px 0 0;padding-left:20px;list-style:none">';
       r.findings.forEach(function(f){
-        var sColor=f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6';
+        const sColor=f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6';
         bh+='<li style="font-size:10px;color:var(--text-secondary);margin:3px 0"><span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,.2);color:'+sColor+';margin-right:4px">'+f.severity+'</span>'+_escHtml(f.message)+'</li>';
       });
       bh+='</ul></div>';
@@ -524,7 +524,7 @@ function _renderIAMTab(){
   body.innerHTML=bh;
   body.scrollTop=0;
   // Footer
-  var fh='<button id="govExportCSV">Export CSV</button>';
+  let fh='<button id="govExportCSV">Export CSV</button>';
   fh+='<button id="govExportJSON">Export JSON</button>';
   fh+='<span style="margin-left:auto;font-size:10px;color:var(--text-muted)">'+items.length+' of '+_iamReviewData.length+'</span>';
   if(totalPages>1){
@@ -539,7 +539,7 @@ function _renderIAMTab(){
   // Sort headers
   body.querySelectorAll('th[data-sort-col]').forEach(function(th){
     th.addEventListener('click',function(){
-      var col=this.dataset.sortCol;
+      let col=this.dataset.sortCol;
       if(st.sort===col) st.sortDir=st.sortDir==='asc'?'desc':'asc';
       else{st.sort=col;st.sortDir='asc'}
       st.page=1;_renderIAMTab();
@@ -548,10 +548,10 @@ function _renderIAMTab(){
   // Row expand/collapse
   body.querySelectorAll('tr[data-iam-row]').forEach(function(tr){
     tr.addEventListener('click',function(){
-      var rowId=this.dataset.iamRow;
-      var exp=document.getElementById(rowId+'-exp');
+      const rowId=this.dataset.iamRow;
+      const exp=document.getElementById(rowId+'-exp');
       if(!exp)return;
-      var isOpen=exp.classList.contains('open');
+      const isOpen=exp.classList.contains('open');
       body.querySelectorAll('.gov-iam-expand').forEach(function(e){e.classList.remove('open')});
       body.querySelectorAll('tr[data-iam-row]').forEach(function(r){r.classList.remove('expanded')});
       if(!isOpen){exp.classList.add('open');this.classList.add('expanded')}
@@ -559,9 +559,9 @@ function _renderIAMTab(){
   });
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
-    var rows=[['Name','Type','ARN','Created','Last Used','Policies','Admin','Findings','Cross-Account']];
+    const rows=[['Name','Type','ARN','Created','Last Used','Policies','Admin','Findings','Cross-Account']];
     items.forEach(function(r){rows.push([r.name,r.type,r.arn,r.created?r.created.toISOString():'',r.lastUsed?r.lastUsed.toISOString():'',r.policies,r.isAdmin?'Yes':'No',r.findings.length,r.crossAccounts.join(';')])});
-    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    let csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
     downloadBlob(new Blob([csv],{type:'text/csv'}),'iam-review.csv');
   });
   document.getElementById('govExportJSON').addEventListener('click',function(){
@@ -571,23 +571,23 @@ function _renderIAMTab(){
 
 // Rules editor overlay
 function _openRulesEditor(){
-  var existing=document.getElementById('govRulesOverlay');
+  const existing=document.getElementById('govRulesOverlay');
   if(existing) existing.remove();
   // Working copy of rules
-  var workRules=structuredClone(_classificationRules);
+  let workRules=structuredClone(_classificationRules);
   workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});
-  var groupCollapsed={vpc:false,type:false,name:false};
-  var scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
-  var scopeOrder=['vpc','type','name'];
-  var overlay=document.createElement('div');
+  const groupCollapsed={vpc:false,type:false,name:false};
+  const scopeLabels={vpc:'VPC Name Rules',type:'Resource Type Rules',name:'Instance Name Rules'};
+  const scopeOrder=['vpc','type','name'];
+  const overlay=document.createElement('div');
   overlay.id='govRulesOverlay';
   overlay.className='gov-rules-overlay';
 
   function readRulesFromDom(){
-    var rules=[];
+    const rules=[];
     overlay.querySelectorAll('.gov-rule-row[data-rule-idx]').forEach(function(row){
-      var idx=parseInt(row.dataset.ruleIdx);
-      var r=workRules[idx];if(!r) return;
+      let idx=parseInt(row.dataset.ruleIdx);
+      const r=workRules[idx];if(!r) return;
       r.pattern=row.querySelector('[data-field="pattern"]').value;
       r.scope=row.querySelector('[data-field="scope"]').value;
       r.tier=row.querySelector('[data-field="tier"]').value;
@@ -597,10 +597,10 @@ function _openRulesEditor(){
   }
   function countMatches(rule){
     if(!rule.pattern||rule.enabled===false) return 0;
-    var re;try{re=new RegExp(rule.pattern,'i')}catch(e){return -1}
-    var ct=0;
+    let re;try{re=new RegExp(rule.pattern,'i')}catch(e){return -1}
+    let ct=0;
     (_classificationData||[]).forEach(function(res){
-      var text='';
+      let text='';
       if(rule.scope==='vpc') text=res.vpcName||'';
       else if(rule.scope==='type') text=res.type||'';
       else if(rule.scope==='name') text=res.name||'';
@@ -610,17 +610,17 @@ function _openRulesEditor(){
   }
   function buildPreview(rules){
     if(!_rlCtx) return {critical:0,high:0,medium:0,low:0,samples:[]};
-    var counts={critical:0,high:0,medium:0,low:0};
-    var samples=[];
-    var vpcNameMap={};
+    const counts={critical:0,high:0,medium:0,low:0};
+    const samples=[];
+    const vpcNameMap={};
     (_rlCtx.vpcs||[]).forEach(function(v){vpcNameMap[v.VpcId]=gn(v,v.VpcId)});
     function classify(name,type,vpcName,id){
-      var tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules).tier);
+      let tier=(_classificationOverrides[id]||_scoreClassification(name,type,vpcName,rules).tier);
       counts[tier]=(counts[tier]||0)+1;
       if(samples.length<12) samples.push({name:name,type:type,tier:tier});
     }
     (_rlCtx.instances||[]).forEach(function(inst){
-      var name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
+      const name=inst.Tags?((inst.Tags.find(function(t){return t.Key==='Name'})||{}).Value||inst.InstanceId):inst.InstanceId;
       classify(name,'instance',vpcNameMap[inst.VpcId]||'',inst.InstanceId);
     });
     (_rlCtx.rdsInstances||[]).forEach(function(db){classify(db.DBInstanceIdentifier,'rds',vpcNameMap[(db.DBSubnetGroup||{}).VpcId]||'',db.DBInstanceIdentifier)});
@@ -632,24 +632,24 @@ function _openRulesEditor(){
     return {critical:counts.critical,high:counts.high,medium:counts.medium,low:counts.low,total:counts.critical+counts.high+counts.medium+counts.low,samples:samples};
   }
   function renderPreview(){
-    var el=document.getElementById('govRulesPreview');if(!el) return;
-    var rules=readRulesFromDom();
-    var p=buildPreview(rules);
-    var total=p.total||1;
-    var cur={critical:0,high:0,medium:0,low:0};
+    const el=document.getElementById('govRulesPreview');if(!el) return;
+    const rules=readRulesFromDom();
+    const p=buildPreview(rules);
+    const total=p.total||1;
+    const cur={critical:0,high:0,medium:0,low:0};
     _classificationData.forEach(function(r){cur[r.tier]=(cur[r.tier]||0)+1});
-    var ph='<div class="gov-preview-card"><h5>Classification Distribution</h5><div class="gov-preview-bars">';
+    let ph='<div class="gov-preview-card"><h5>Classification Distribution</h5><div class="gov-preview-bars">';
     [{k:'critical',l:'Critical',c:'#ef4444'},{k:'high',l:'High',c:'#f59e0b'},{k:'medium',l:'Medium',c:'#22d3ee'},{k:'low',l:'Low',c:'#64748b'}].forEach(function(d){
-      var pct=Math.round((p[d.k]/total)*100);
+      const pct=Math.round((p[d.k]/total)*100);
       ph+='<div class="gov-preview-bar"><span class="gov-preview-bar-label" style="color:'+d.c+'">'+d.l+'</span>';
       ph+='<div class="gov-preview-bar-track"><div class="gov-preview-bar-fill" style="width:'+pct+'%;background:'+d.c+'"></div></div>';
       ph+='<span class="gov-preview-bar-ct">'+p[d.k]+'</span></div>';
     });
     ph+='</div></div>';
     // Delta from current
-    var deltas=[];
+    const deltas=[];
     [{k:'critical',l:'Critical',c:'#ef4444'},{k:'high',l:'High',c:'#f59e0b'},{k:'medium',l:'Medium',c:'#22d3ee'},{k:'low',l:'Low',c:'#64748b'}].forEach(function(d){
-      var diff=p[d.k]-(cur[d.k]||0);
+      const diff=p[d.k]-(cur[d.k]||0);
       if(diff!==0) deltas.push('<span style="color:'+d.c+'">'+d.l+': <span class="'+(diff>0?'up':'down')+'">'+(diff>0?'+':'')+diff+'</span></span>');
     });
     if(deltas.length) ph+='<div class="gov-preview-delta">'+deltas.join(' &nbsp; ')+'</div>';
@@ -657,28 +657,28 @@ function _openRulesEditor(){
     // Sample
     ph+='<div class="gov-preview-card" style="margin-top:10px"><h5>Sample Resources</h5><div class="gov-preview-sample">';
     p.samples.forEach(function(s){
-      var tc=_TIER_RPO_RTO[s.tier]||{color:'#64748b'};
+      const tc=_TIER_RPO_RTO[s.tier]||{color:'#64748b'};
       ph+='<div class="gov-preview-sample-row"><span class="name">'+_escHtml(s.name)+'</span><span class="type">'+_escHtml(s.type)+'</span><span class="gov-tier-badge '+s.tier+'" style="font-size:8px;padding:1px 5px">'+s.tier+'</span></div>';
     });
     ph+='</div></div>';
     el.innerHTML=ph;
   }
   function renderRules(){
-    var list=document.getElementById('govRulesList');if(!list) return;
-    var h='';
+    const list=document.getElementById('govRulesList');if(!list) return;
+    let h='';
     scopeOrder.forEach(function(scope){
-      var rules=[];workRules.forEach(function(r,i){if(r.scope===scope) rules.push({rule:r,idx:i})});
+      const rules=[];workRules.forEach(function(r,i){if(r.scope===scope) rules.push({rule:r,idx:i})});
       if(!rules.length&&scope!=='vpc') return;
-      var collapsed=groupCollapsed[scope];
+      const collapsed=groupCollapsed[scope];
       h+='<div class="gov-rule-group" data-scope="'+scope+'">';
       h+='<div class="gov-rule-group-hdr" data-toggle-scope="'+scope+'"><span class="gov-rule-group-arrow'+(collapsed?' collapsed':'')+'">▼</span>';
       h+='<span class="gov-rule-group-label">'+(scopeLabels[scope]||scope)+'</span>';
       h+='<span class="gov-rule-group-count">'+rules.length+' rule'+(rules.length!==1?'s':'')+'</span></div>';
       h+='<div class="gov-rule-group-body'+(collapsed?' collapsed':'')+'" style="'+(collapsed?'max-height:0':'max-height:9999px')+'">';
       rules.forEach(function(d){
-        var r=d.rule;var i=d.idx;
-        var isValid=true;try{if(r.pattern) new RegExp(r.pattern,'i')}catch(e){isValid=false}
-        var mc=countMatches(r);
+        const r=d.rule;let i=d.idx;
+        const isValid=true;try{if(r.pattern) new RegExp(r.pattern,'i')}catch(e){isValid=false}
+        const mc=countMatches(r);
         h+='<div class="gov-rule-row'+(r.enabled===false?' disabled':'')+((!isValid)?' invalid':'')+'" data-rule-idx="'+i+'">';
         h+='<span class="gov-rule-drag" title="Drag to reorder">⠿</span>';
         h+='<div class="gov-rule-toggle'+(r.enabled!==false?' on':'')+'" data-toggle-idx="'+i+'" title="'+(r.enabled!==false?'Enabled — click to disable':'Disabled — click to enable')+'"></div>';
@@ -700,7 +700,7 @@ function _openRulesEditor(){
     // Toggle enable/disable
     overlay.querySelectorAll('[data-toggle-idx]').forEach(function(el){
       el.addEventListener('click',function(){
-        var idx=parseInt(this.dataset.toggleIdx);
+        let idx=parseInt(this.dataset.toggleIdx);
         workRules[idx].enabled=workRules[idx].enabled===false?true:false;
         renderRules();renderPreview();
       });
@@ -708,7 +708,7 @@ function _openRulesEditor(){
     // Delete
     overlay.querySelectorAll('[data-del-idx]').forEach(function(btn){
       btn.addEventListener('click',function(){
-        var idx=parseInt(this.dataset.delIdx);
+        let idx=parseInt(this.dataset.delIdx);
         workRules.splice(idx,1);
         renderRules();renderPreview();
       });
@@ -716,7 +716,7 @@ function _openRulesEditor(){
     // Group toggle
     overlay.querySelectorAll('[data-toggle-scope]').forEach(function(hdr){
       hdr.addEventListener('click',function(){
-        var scope=this.dataset.toggleScope;
+        let scope=this.dataset.toggleScope;
         groupCollapsed[scope]=!groupCollapsed[scope];
         renderRules();
       });
@@ -729,20 +729,20 @@ function _openRulesEditor(){
       });
     });
     // Live preview on input change (debounced)
-    var previewTimer;
+    let previewTimer;
     overlay.querySelectorAll('.gov-rule-row input,.gov-rule-row select').forEach(function(el){
       el.addEventListener('input',function(){
-        var row=this.closest('.gov-rule-row');
-        var idx=parseInt(row.dataset.ruleIdx);
-        var field=this.dataset.field;
+        let row=this.closest('.gov-rule-row');
+        let idx=parseInt(row.dataset.ruleIdx);
+        let field=this.dataset.field;
         if(field==='pattern'){
           workRules[idx].pattern=this.value;
-          var valid=true;try{if(this.value) new RegExp(this.value,'i')}catch(e){valid=false}
+          const valid=true;try{if(this.value) new RegExp(this.value,'i')}catch(e){valid=false}
           this.classList.toggle('invalid-pattern',!valid);
           row.classList.toggle('invalid',!valid);
           // Update match count inline
-          var mc=countMatches(workRules[idx]);
-          var mcEl=row.querySelector('.gov-rule-match-ct');
+          const mc=countMatches(workRules[idx]);
+          const mcEl=row.querySelector('.gov-rule-match-ct');
           if(mcEl){mcEl.textContent=mc<0?'!':mc;mcEl.classList.toggle('has-matches',mc>0)}
         } else if(field==='tier'){
           workRules[idx].tier=this.value;
@@ -753,9 +753,9 @@ function _openRulesEditor(){
         previewTimer=setTimeout(renderPreview,300);
       });
       el.addEventListener('change',function(){
-        var row=this.closest('.gov-rule-row');
-        var idx=parseInt(row.dataset.ruleIdx);
-        var field=this.dataset.field;
+        let row=this.closest('.gov-rule-row');
+        let idx=parseInt(row.dataset.ruleIdx);
+        let field=this.dataset.field;
         if(field==='tier') workRules[idx].tier=this.value;
         else if(field==='weight') workRules[idx].weight=parseInt(this.value)||0;
         clearTimeout(previewTimer);
@@ -765,7 +765,7 @@ function _openRulesEditor(){
   }
 
   // Build shell
-  var h='<div class="gov-rules-panel">';
+  let h='<div class="gov-rules-panel">';
   h+='<div class="gov-rules-hdr"><h3>Classification Rules</h3>';
   h+='<div class="gov-rules-hdr-actions">';
   h+='<button id="govRulesImport" title="Import rules from JSON">Import</button>';
@@ -796,18 +796,18 @@ function _openRulesEditor(){
   });
   document.getElementById('govRulesExport').addEventListener('click',function(){
     readRulesFromDom();
-    var json=JSON.stringify(workRules,null,2);
+    const json=JSON.stringify(workRules,null,2);
     downloadBlob(new Blob([json],{type:'application/json'}),'classification-rules.json');
     _showToast('Rules exported');
   });
   document.getElementById('govRulesImport').addEventListener('click',function(){
-    var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    const inp=document.createElement('input');inp.type='file';inp.accept='.json';
     inp.addEventListener('change',function(){
       if(!this.files[0]) return;
-      var reader=new FileReader();
+      const reader=new FileReader();
       reader.onload=function(e){
         try{
-          var imported=JSON.parse(e.target.result);
+          const imported=JSON.parse(e.target.result);
           if(!Array.isArray(imported)){_showToast('Invalid rules file','warn');return}
           workRules=imported;
           workRules.forEach(function(r){if(r.enabled===undefined) r.enabled=true});

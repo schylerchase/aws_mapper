@@ -186,3 +186,17 @@ export {
   parseIAMData, getIAMAccessForVpc, runIAMChecks,
   _iamData, _showIAM
 };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_iamData', {
+    get() { return _iamData; },
+    set(v) { _iamData = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_showIAM', {
+    get() { return _showIAM; },
+    set(v) { _showIAM = v; },
+    configurable: true
+  });
+}

@@ -219,3 +219,27 @@ export {
   faDashState as _faDashState,
   faDashRows as _faDashRows
 };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_flowAnalysisMode', {
+    get() { return flowAnalysisMode; },
+    set(v) { flowAnalysisMode = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_flowAnalysisCache', {
+    get() { return flowAnalysisCache; },
+    set(v) { flowAnalysisCache = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_faDashState', {
+    get() { return faDashState; },
+    set(v) { faDashState = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_faDashRows', {
+    get() { return faDashRows; },
+    set(v) { faDashRows = v; },
+    configurable: true
+  });
+}

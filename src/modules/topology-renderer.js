@@ -3,6 +3,8 @@
 // TODO: convert to ES module — export renderMap, _renderMapInner and import
 // dependencies (d3, _rlCtx, _designMode, etc.) instead of reading globals
 
+let _zoomRafPending = false;
+
 function renderMap(cb){
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
   const overlay=document.getElementById('loadingOverlay');
@@ -522,7 +524,7 @@ function _renderMapInner(){
 
   // SVG
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'});svg.call(zB);
+  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);if(!_zoomRafPending){_zoomRafPending=true;requestAnimationFrame(()=>{_zoomRafPending=false;document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'})}});svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
 
@@ -1985,7 +1987,7 @@ function _renderMapInner(){
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
-  }catch(e){console.error('renderMap error:',e);alert('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
+  }catch(e){console.error('renderMap error:',e);showToast('Render error — see console',4000);document.getElementById('loadingOverlay').style.display='none'}
 }
 
 document.getElementById('renderBtn').addEventListener('click',function(){

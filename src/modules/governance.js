@@ -18,10 +18,10 @@ let _invState = { typeFilter: 'all', regionFilter: 'all', accountFilter: 'all', 
 let _appRegistry = [];
 let _appAutoDiscovered = false;
 let _appSummaryState = { search: '', sort: 'tier', sortDir: 'asc', adding: false, editing: -1 };
-var _APP_TYPE_SUGGESTIONS = ['Web App', 'Database', 'Monitoring', 'CI/CD', 'Security', 'Analytics', 'Storage', 'Infrastructure'];
+const _APP_TYPE_SUGGESTIONS = ['Web App', 'Database', 'Monitoring', 'CI/CD', 'Security', 'Analytics', 'Storage', 'Infrastructure'];
 let _invToolbarRendered = false;
 
-var _INV_TYPE_COLORS = {
+const _INV_TYPE_COLORS = {
   'VPC': '#7C3AED', 'Subnet': '#6366f1', 'EC2': '#f97316', 'RDS': '#22d3ee',
   'Lambda': '#f59e0b', 'ECS': '#10b981', 'ALB': '#ec4899', 'ElastiCache': '#8b5cf6',
   'Redshift': '#06b6d4', 'SG': '#64748b', 'NACL': '#64748b', 'Route Table': '#64748b',
@@ -32,12 +32,12 @@ var _INV_TYPE_COLORS = {
   'Target Group': '#f9a8d4'
 };
 
-var _INV_NO_MAP_TYPES = { 'S3 Bucket': 1, 'Route 53': 1, 'WAF': 1, 'CloudFront': 1, 'Snapshot': 1, 'TGW Attachment': 1, 'Target Group': 1 };
+const _INV_NO_MAP_TYPES = { 'S3 Bucket': 1, 'Route 53': 1, 'WAF': 1, 'CloudFront': 1, 'Snapshot': 1, 'TGW Attachment': 1, 'Target Group': 1 };
 
 let _invFilterCache = null;
 let _invFilterKey = '';
 
-var _DEFAULT_CLASS_RULES = [
+const _DEFAULT_CLASS_RULES = [
   { pattern: 'prod|production', scope: 'vpc', tier: 'critical', weight: 100 },
   { pattern: 'pci|complian', scope: 'vpc', tier: 'critical', weight: 95 },
   { pattern: 'dr-|disaster|recovery', scope: 'vpc', tier: 'critical', weight: 90 },
@@ -60,7 +60,7 @@ var _DEFAULT_CLASS_RULES = [
 let _classificationRules = structuredClone(_DEFAULT_CLASS_RULES);
 let _discoveredTags = {};
 
-var _TIER_RPO_RTO = {
+const _TIER_RPO_RTO = {
   critical: { rpo: 'Hourly', rto: '2-4 hours', priority: 1, color: '#ef4444' },
   high: { rpo: '6 hours', rto: '4-8 hours', priority: 2, color: '#f59e0b' },
   medium: { rpo: 'Daily', rto: '12 hours', priority: 3, color: '#22d3ee' },
@@ -105,15 +105,15 @@ export function setDiscoveredTags(v) { _discoveredTags = v; }
  * Build inventory data rows from the resource context.
  * Populates _inventoryData with enriched resource rows.
  */
-var _buildInventoryDataSync = _buildInventoryData; // alias for callers that need sync path
+const _buildInventoryDataSync = _buildInventoryData; // alias for callers that need sync path
 function _buildInventoryData() {
   _inventoryData = [];
-  var ctx = rlCtx; if (!ctx) return;
-  var rows = [];
-  var vpcNameMap = {};
+  const ctx = rlCtx; if (!ctx) return;
+  const rows = [];
+  const vpcNameMap = {};
   (ctx.vpcs || []).forEach(function(v) { vpcNameMap[v.VpcId] = gn(v, v.VpcId); });
-  function tag(obj) { var t = (obj.Tags || obj.tags || []).find(function(x) { return x.Key === 'Name'; }); return t ? t.Value : ''; }
-  function tags(obj) { var m = {}; (obj.Tags || obj.tags || []).forEach(function(t) { m[t.Key] = t.Value; }); return m; }
+  function tag(obj) { const t = (obj.Tags || obj.tags || []).find(function(x) { return x.Key === 'Name'; }); return t ? t.Value : ''; }
+  function tags(obj) { const m = {}; (obj.Tags || obj.tags || []).forEach(function(t) { m[t.Key] = t.Value; }); return m; }
   function mkRow(id, type, name, obj, extra) {
     return { id: id, type: type, name: name,
       account: obj._accountLabel || obj._accountId || '', region: obj._region || '',
@@ -126,41 +126,41 @@ function _buildInventoryData() {
       _raw: obj, _related: extra.related || [] };
   }
   // Shared lookups: subnet->VPC, instance->VPC
-  var subVpcMap = {}; (ctx.subnets || []).forEach(function(s) { if (s.SubnetId) subVpcMap[s.SubnetId] = s.VpcId || ''; });
-  var instVpcMap = {}; (ctx.instances || []).forEach(function(i) { if (i.InstanceId) instVpcMap[i.InstanceId] = i.VpcId || subVpcMap[i.SubnetId] || ''; });
+  const subVpcMap = {}; (ctx.subnets || []).forEach(function(s) { if (s.SubnetId) subVpcMap[s.SubnetId] = s.VpcId || ''; });
+  const instVpcMap = {}; (ctx.instances || []).forEach(function(i) { if (i.InstanceId) instVpcMap[i.InstanceId] = i.VpcId || subVpcMap[i.SubnetId] || ''; });
   // 1. VPCs
   (ctx.vpcs || []).forEach(function(v) {
     rows.push(mkRow(v.VpcId, 'VPC', tag(v) || v.VpcId, v, { vpcId: v.VpcId, config: v.CidrBlock || '', state: v.State || '' }));
   });
   // 2. Subnets
   (ctx.subnets || []).forEach(function(s) {
-    var isPub = ctx.pubSubs && ctx.pubSubs.has(s.SubnetId);
+    const isPub = ctx.pubSubs && ctx.pubSubs.has(s.SubnetId);
     rows.push(mkRow(s.SubnetId, 'Subnet', tag(s) || s.SubnetId, s, { vpcId: s.VpcId, az: s.AvailabilityZone || '', config: (s.CidrBlock || '') + ' ' + (isPub ? 'public' : 'private'), state: s.State || '' }));
   });
   // 3. EC2
   (ctx.instances || []).forEach(function(i) {
-    var sgs = (i.SecurityGroups || []).map(function(g) { return g.GroupId; });
+    const sgs = (i.SecurityGroups || []).map(function(g) { return g.GroupId; });
     rows.push(mkRow(i.InstanceId, 'EC2', tag(i) || i.InstanceId, i, { vpcId: i.VpcId || subVpcMap[i.SubnetId] || '', subnetId: i.SubnetId || '', az: i.Placement ? i.Placement.AvailabilityZone : '', config: i.InstanceType || '', state: i.State ? i.State.Name || '' : '', sgCount: sgs.length, related: sgs }));
   });
   // 4. RDS
   (ctx.rdsInstances || []).forEach(function(db) {
-    var vpcId = (db.DBSubnetGroup && db.DBSubnetGroup.VpcId) || '';
+    let vpcId = (db.DBSubnetGroup && db.DBSubnetGroup.VpcId) || '';
     rows.push(mkRow(db.DBInstanceIdentifier, 'RDS', db.DBInstanceIdentifier, db, { vpcId: vpcId, az: db.AvailabilityZone || '', config: (db.Engine || '') + ' ' + (db.DBInstanceClass || ''), state: db.DBInstanceStatus || '', encrypted: !!db.StorageEncrypted }));
   });
   // 5. Lambda
   (ctx.lambdaFns || []).forEach(function(fn) {
-    var vc = fn.VpcConfig || {};
-    var vpcId = vc.VpcId || '';
-    var subId = (vc.SubnetIds && vc.SubnetIds[0]) || '';
+    const vc = fn.VpcConfig || {};
+    let vpcId = vc.VpcId || '';
+    const subId = (vc.SubnetIds && vc.SubnetIds[0]) || '';
     rows.push(mkRow(fn.FunctionName, 'Lambda', fn.FunctionName, fn, { vpcId: vpcId, subnetId: subId, config: (fn.Runtime || '') + (fn.MemorySize ? ' ' + fn.MemorySize + 'MB' : ''), state: fn.State || 'Active' }));
   });
   // 6. ECS
   (ctx.ecsServices || []).forEach(function(svc) {
-    var nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
-    var subId = nc && nc.subnets && nc.subnets[0] ? nc.subnets[0] : '';
-    var vpcId = '';
-    if (subId) { var subObj = (ctx.subnets || []).find(function(s) { return s.SubnetId === subId; }); if (subObj) vpcId = subObj.VpcId || ''; }
-    var cpu = svc.cpu || ''; var mem = svc.memory || '';
+    const nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
+    const subId = nc && nc.subnets && nc.subnets[0] ? nc.subnets[0] : '';
+    let vpcId = '';
+    if (subId) { const subObj = (ctx.subnets || []).find(function(s) { return s.SubnetId === subId; }); if (subObj) vpcId = subObj.VpcId || ''; }
+    const cpu = svc.cpu || ''; let mem = svc.memory || '';
     rows.push(mkRow(svc.serviceName, 'ECS', svc.serviceName, svc, { vpcId: vpcId, subnetId: subId, config: (svc.launchType || '') + ' ' + (cpu ? cpu + '/' : '') + (mem || ''), state: svc.status || '' }));
   });
   // 7. ALB
@@ -169,8 +169,8 @@ function _buildInventoryData() {
   });
   // 8. ElastiCache
   (ctx.ecacheClusters || []).forEach(function(ec) {
-    var vpcId = ec.VpcId || (ec.CacheSubnetGroupName ? '' : '');
-    if (!vpcId && ec.CacheNodes && ec.CacheNodes[0]) { var cn = ec.CacheNodes[0]; if (cn.SubnetId) vpcId = subVpcMap[cn.SubnetId] || ''; }
+    let vpcId = ec.VpcId || (ec.CacheSubnetGroupName ? '' : '');
+    if (!vpcId && ec.CacheNodes && ec.CacheNodes[0]) { const cn = ec.CacheNodes[0]; if (cn.SubnetId) vpcId = subVpcMap[cn.SubnetId] || ''; }
     rows.push(mkRow(ec.CacheClusterId, 'ElastiCache', ec.CacheClusterId, ec, { vpcId: vpcId, config: (ec.Engine || '') + ' ' + (ec.CacheNodeType || ''), state: ec.CacheClusterStatus || '' }));
   });
   // 9. Redshift
@@ -179,22 +179,22 @@ function _buildInventoryData() {
   });
   // 10. Security Groups
   (ctx.sgs || []).forEach(function(sg) {
-    var inCt = (sg.IpPermissions || []).length; var outCt = (sg.IpPermissionsEgress || []).length;
+    const inCt = (sg.IpPermissions || []).length; let outCt = (sg.IpPermissionsEgress || []).length;
     rows.push(mkRow(sg.GroupId, 'SG', sg.GroupName || sg.GroupId, sg, { vpcId: sg.VpcId || '', config: inCt + ' inbound / ' + outCt + ' outbound' }));
   });
   // 11. NACLs
   (ctx.nacls || []).forEach(function(n) {
-    var ct = (n.Entries || []).length;
+    const ct = (n.Entries || []).length;
     rows.push(mkRow(n.NetworkAclId, 'NACL', tag(n) || n.NetworkAclId, n, { vpcId: n.VpcId || '', config: ct + ' entries' }));
   });
   // 12. Route Tables
   (ctx.rts || []).forEach(function(rt) {
-    var ct = (rt.Routes || []).length;
+    const ct = (rt.Routes || []).length;
     rows.push(mkRow(rt.RouteTableId, 'Route Table', tag(rt) || rt.RouteTableId, rt, { vpcId: rt.VpcId || '', config: ct + ' routes' }));
   });
   // 13. IGWs
   (ctx.igws || []).forEach(function(g) {
-    var att = (g.Attachments || []); var attachedVpc = att.length ? att[0].VpcId : '';
+    const att = (g.Attachments || []); let attachedVpc = att.length ? att[0].VpcId : '';
     rows.push(mkRow(g.InternetGatewayId, 'IGW', tag(g) || g.InternetGatewayId, g, { vpcId: attachedVpc, config: attachedVpc ? 'attached: ' + attachedVpc : 'detached' }));
   });
   // 14. NAT Gateways
@@ -211,8 +211,8 @@ function _buildInventoryData() {
   });
   // 17. EBS Volumes
   (ctx.volumes || []).forEach(function(vol) {
-    var attInsts = (vol.Attachments || []).map(function(a) { return a.InstanceId; }).filter(Boolean);
-    var vpcId = ''; if (attInsts.length) vpcId = instVpcMap[attInsts[0]] || '';
+    const attInsts = (vol.Attachments || []).map(function(a) { return a.InstanceId; }).filter(Boolean);
+    let vpcId = ''; if (attInsts.length) vpcId = instVpcMap[attInsts[0]] || '';
     rows.push(mkRow(vol.VolumeId, 'EBS Volume', tag(vol) || vol.VolumeId, vol, { vpcId: vpcId, az: vol.AvailabilityZone || '', config: vol.Size + 'GB ' + (vol.VolumeType || ''), state: vol.State || '', encrypted: !!vol.Encrypted, related: attInsts }));
   });
   // 18. Snapshots
@@ -225,13 +225,13 @@ function _buildInventoryData() {
   });
   // 20. Route 53 Zones
   (ctx.zones || []).forEach(function(z) {
-    var recs = ctx.recsByZone && ctx.recsByZone[z.Id] ? ctx.recsByZone[z.Id].length : z.ResourceRecordSetCount || 0;
-    var vis = z.Config && z.Config.PrivateZone ? 'private' : 'public';
+    const recs = ctx.recsByZone && ctx.recsByZone[z.Id] ? ctx.recsByZone[z.Id].length : z.ResourceRecordSetCount || 0;
+    const vis = z.Config && z.Config.PrivateZone ? 'private' : 'public';
     rows.push(mkRow(z.Id, 'Route 53', z.Name || z.Id, z, { config: recs + ' records ' + vis }));
   });
   // 21. WAF ACLs
   (ctx.wafAcls || []).forEach(function(w) {
-    var ruleCount = (w.Rules || []).length;
+    const ruleCount = (w.Rules || []).length;
     rows.push(mkRow(w.Id || w.Name, 'WAF', w.Name || w.Id || '', w, { config: ruleCount + ' rules' }));
   });
   // 22. CloudFront
@@ -240,7 +240,7 @@ function _buildInventoryData() {
   });
   // 23. VPC Peering
   (ctx.peerings || []).forEach(function(p) {
-    var req = p.RequesterVpcInfo ? p.RequesterVpcInfo.VpcId : ''; var acc = p.AccepterVpcInfo ? p.AccepterVpcInfo.VpcId : '';
+    const req = p.RequesterVpcInfo ? p.RequesterVpcInfo.VpcId : ''; let acc = p.AccepterVpcInfo ? p.AccepterVpcInfo.VpcId : '';
     rows.push(mkRow(p.VpcPeeringConnectionId, 'VPC Peering', tag(p) || p.VpcPeeringConnectionId, p, { config: req + '\u2194' + acc, state: p.Status ? p.Status.Code || '' : '' }));
   });
   // 24. VPN
@@ -249,7 +249,7 @@ function _buildInventoryData() {
   });
   // 25. TGW Attachments
   (ctx.tgwAttachments || []).forEach(function(t) {
-    var tid = t.TransitGatewayAttachmentId || (t.TransitGatewayId + '-' + (t.VpcId || ''));
+    const tid = t.TransitGatewayAttachmentId || (t.TransitGatewayId + '-' + (t.VpcId || ''));
     rows.push(mkRow(tid, 'TGW Attachment', tag(t) || tid, t, { vpcId: t.VpcId || '', config: (t.ResourceType || '') + ' ' + (t.TransitGatewayId || ''), state: t.State || '' }));
   });
   // 26. Target Groups
@@ -258,16 +258,16 @@ function _buildInventoryData() {
   });
   // === Enrichment pass ===
   // 1. Classification tier lookup
-  var classMap = {};
+  const classMap = {};
   (_classificationData || []).forEach(function(c) { classMap[c.id] = c; });
   // 2. BUDR assessment lookup — use window bridge for cross-region data
-  var budrAssessments = (typeof window !== 'undefined' && window._budrAssessments) || [];
-  var budrMap = {};
+  const budrAssessments = (typeof window !== 'undefined' && window._budrAssessments) || [];
+  const budrMap = {};
   (budrAssessments || []).forEach(function(a) {
     budrMap[a.id] = { tier: a.profile ? a.profile.tier : null, strategy: a.profile ? a.profile.strategy : null, rto: a.profile ? a.profile.rto : null, rpo: a.profile ? a.profile.rpo : null };
   });
   // 3. Compliance findings lookup (count per resource)
-  var compMap = {};
+  const compMap = {};
   (complianceFindings || []).forEach(function(f) {
     if (!f.resource) return;
     if (!compMap[f.resource]) compMap[f.resource] = { pass: 0, fail: 0 };
@@ -276,11 +276,11 @@ function _buildInventoryData() {
   });
   // 4. Apply enrichment to all rows
   rows.forEach(function(r) {
-    var cls = classMap[r.id];
+    const cls = classMap[r.id];
     if (cls) r.classificationTier = cls.tier;
-    var budr = budrMap[r.id];
+    const budr = budrMap[r.id];
     if (budr) { r.budrTier = budr.tier; r.budrStrategy = budr.strategy; r.rto = budr.rto; r.rpo = budr.rpo; }
-    var comp = compMap[r.id];
+    const comp = compMap[r.id];
     if (comp) { r.compliancePass = comp.pass; r.complianceFail = comp.fail; }
   });
   _inventoryData = rows;
@@ -292,16 +292,16 @@ function _buildInventoryData() {
  * @returns {Object[]} filtered/sorted inventory rows
  */
 function _filterInventory() {
-  var st = _invState;
+  let st = _invState;
   // _udashFilterByAccount is a global UI function — access via window bridge
-  var filterFn = (typeof window !== 'undefined' && window._udashFilterByAccount) || function(x) { return x; };
-  var items = filterFn(_inventoryData).slice();
+  const filterFn = (typeof window !== 'undefined' && window._udashFilterByAccount) || function(x) { return x; };
+  let items = filterFn(_inventoryData).slice();
   if (st.typeFilter !== 'all') items = items.filter(function(r) { return r.type === st.typeFilter; });
   if (st.regionFilter !== 'all') items = items.filter(function(r) { return r.region === st.regionFilter; });
   if (st.accountFilter !== 'all') items = items.filter(function(r) { return r.account === st.accountFilter; });
   if (st.vpcFilter !== 'all') items = items.filter(function(r) { return r.vpcId === st.vpcFilter; });
   if (st.search) {
-    var q = st.search.toLowerCase();
+    const q = st.search.toLowerCase();
     items = items.filter(function(r) {
       return (r.name || '').toLowerCase().indexOf(q) !== -1
         || (r.id || '').toLowerCase().indexOf(q) !== -1
@@ -312,12 +312,12 @@ function _filterInventory() {
         || JSON.stringify(r.tags || {}).toLowerCase().indexOf(q) !== -1;
     });
   }
-  var sortKey = st.sort; var dir = st.sortDir === 'asc' ? 1 : -1;
+  const sortKey = st.sort; let dir = st.sortDir === 'asc' ? 1 : -1;
   items.sort(function(a, b) {
     if (sortKey === 'complianceFail') { return ((a.complianceFail || 0) - (b.complianceFail || 0)) * dir; }
     if (sortKey === 'tags') { return (Object.keys(a.tags || {}).length - Object.keys(b.tags || {}).length) * dir; }
-    var av = (a[sortKey] || '').toString().toLowerCase();
-    var bv = (b[sortKey] || '').toString().toLowerCase();
+    const av = (a[sortKey] || '').toString().toLowerCase();
+    const bv = (b[sortKey] || '').toString().toLowerCase();
     return av < bv ? -dir : av > bv ? dir : 0;
   });
   return items;
@@ -329,8 +329,8 @@ function _filterInventory() {
  * @returns {Object} key-value map of tags
  */
 function _getTagMap(obj) {
-  var arr = obj.Tags || obj.tags || obj.TagList || [];
-  var m = {}; arr.forEach(function(t) { if (t.Key) m[t.Key] = t.Value || ''; }); return m;
+  const arr = obj.Tags || obj.tags || obj.TagList || [];
+  const m = {}; arr.forEach(function(t) { if (t.Key) m[t.Key] = t.Value || ''; }); return m;
 }
 
 /**
@@ -340,7 +340,7 @@ function _getTagMap(obj) {
  */
 function _safeRegex(pattern) {
   try {
-    var re = new RegExp(pattern, 'i');
+    let re = new RegExp(pattern, 'i');
     if (/(\+|\*|\{)\s*\)(\+|\*|\{)/.test(pattern)) return null;
     return re;
   } catch (e) { return null; }
@@ -358,13 +358,13 @@ function _safeRegex(pattern) {
 function _scoreClassification(name, type, vpcName, rules, tagMap) {
   rules = rules || _classificationRules;
   tagMap = tagMap || {};
-  var bestTier = 'low'; var bestWeight = -1;
+  let bestTier = 'low'; let bestWeight = -1;
   rules.forEach(function(rule) {
     if (rule.enabled === false) return;
-    var p = rule.pattern; if (!p) return;
+    let p = rule.pattern; if (!p) return;
     p = p.replace(/^\|+|\|+$/g, '').replace(/\|{2,}/g, '|'); if (!p) return;
-    var re = _safeRegex(p); if (!re) return;
-    var text = '';
+    let re = _safeRegex(p); if (!re) return;
+    let text = '';
     if (rule.scope === 'any') text = (name || '') + ' ' + (type || '') + ' ' + (vpcName || '') + ' ' + Object.values(tagMap).join(' ');
     else if (rule.scope === 'vpc') text = vpcName || '';
     else if (rule.scope === 'type') text = type || '';
@@ -383,14 +383,14 @@ function _scoreClassification(name, type, vpcName, rules, tagMap) {
  */
 function _discoverTagKeys(ctx) {
   if (!ctx) return {};
-  var disc = {};
+  const disc = {};
   function scan(arr, typeName) {
     (arr || []).forEach(function(obj) {
-      var tagArr = obj.Tags || obj.tags || obj.TagList || [];
+      const tagArr = obj.Tags || obj.tags || obj.TagList || [];
       tagArr.forEach(function(t) {
         if (!t.Key || t.Key.indexOf('aws:') === 0) return;
         if (!disc[t.Key]) disc[t.Key] = { count: 0, samples: [], types: {} };
-        var d = disc[t.Key]; d.count++; d.types[typeName] = true;
+        const d = disc[t.Key]; d.count++; d.types[typeName] = true;
         if (d.samples.length < 5 && t.Value && d.samples.indexOf(t.Value) < 0) d.samples.push(t.Value);
       });
     });
@@ -411,145 +411,145 @@ function _discoverTagKeys(ctx) {
  */
 function runClassificationEngine(ctx) {
   if (!ctx) return [];
-  var results = [];
-  var vpcNameMap = {};
+  const results = [];
+  const vpcNameMap = {};
   (ctx.vpcs || []).forEach(function(v) { vpcNameMap[v.VpcId] = gn(v, v.VpcId); });
   // Build subnet->VPC lookup for resources that only have SubnetId
-  var subnetVpcMap = {};
+  const subnetVpcMap = {};
   (ctx.subnets || []).forEach(function(s) { if (s.VpcId) subnetVpcMap[s.SubnetId] = s.VpcId; });
   function resolveVpc(vpcId, subnetId) { return vpcId || subnetVpcMap[subnetId] || ''; }
   // Classify instances
   (ctx.instances || []).forEach(function(inst) {
-    var name = inst.Tags ? ((inst.Tags.find(function(t) { return t.Key === 'Name'; }) || {}).Value || inst.InstanceId) : inst.InstanceId;
-    var vpcId = resolveVpc(inst.VpcId, inst.SubnetId);
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(inst);
-    var sc = _scoreClassification(name, 'instance', vpcName, null, tm);
-    var tier = _classificationOverrides[inst.InstanceId] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const name = inst.Tags ? ((inst.Tags.find(function(t) { return t.Key === 'Name'; }) || {}).Value || inst.InstanceId) : inst.InstanceId;
+    let vpcId = resolveVpc(inst.VpcId, inst.SubnetId);
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(inst);
+    const sc = _scoreClassification(name, 'instance', vpcName, null, tm);
+    const tier = _classificationOverrides[inst.InstanceId] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: inst.InstanceId, name: name, type: 'EC2', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[inst.InstanceId], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify RDS
   (ctx.rdsInstances || []).forEach(function(db) {
-    var name = db.DBInstanceIdentifier;
-    var vpcId = db.DBSubnetGroup ? db.DBSubnetGroup.VpcId : '';
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(db);
-    var sc = _scoreClassification(name, 'rds', vpcName, null, tm);
-    var tier = _classificationOverrides[name] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const name = db.DBInstanceIdentifier;
+    let vpcId = db.DBSubnetGroup ? db.DBSubnetGroup.VpcId : '';
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(db);
+    const sc = _scoreClassification(name, 'rds', vpcName, null, tm);
+    const tier = _classificationOverrides[name] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'RDS', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify ElastiCache
   (ctx.ecacheClusters || []).forEach(function(ec) {
-    var name = ec.CacheClusterId;
-    var vpcId = ec.VpcId || '';
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(ec);
-    var sc = _scoreClassification(name, 'elasticache', vpcName, null, tm);
-    var tier = _classificationOverrides[name] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const name = ec.CacheClusterId;
+    let vpcId = ec.VpcId || '';
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(ec);
+    const sc = _scoreClassification(name, 'elasticache', vpcName, null, tm);
+    const tier = _classificationOverrides[name] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'ElastiCache', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify ALBs
   (ctx.albs || []).forEach(function(alb) {
-    var albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split('/').pop() : '';
-    var name = alb.LoadBalancerName || albId;
-    var vpcId = alb.VpcId || '';
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(alb);
-    var sc = _scoreClassification(name, 'alb', vpcName, null, tm);
-    var tier = _classificationOverrides[name] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split('/').pop() : '';
+    const name = alb.LoadBalancerName || albId;
+    let vpcId = alb.VpcId || '';
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(alb);
+    const sc = _scoreClassification(name, 'alb', vpcName, null, tm);
+    const tier = _classificationOverrides[name] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'ALB', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify Lambda
   (ctx.lambdaFns || []).forEach(function(fn) {
-    var name = fn.FunctionName;
-    var vpcId = fn.VpcConfig ? fn.VpcConfig.VpcId : '';
+    const name = fn.FunctionName;
+    let vpcId = fn.VpcConfig ? fn.VpcConfig.VpcId : '';
     if (!vpcId && fn.VpcConfig && fn.VpcConfig.SubnetIds && fn.VpcConfig.SubnetIds[0]) vpcId = subnetVpcMap[fn.VpcConfig.SubnetIds[0]] || '';
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(fn);
-    var sc = _scoreClassification(name, 'lambda', vpcName, null, tm);
-    var tier = _classificationOverrides[name] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(fn);
+    const sc = _scoreClassification(name, 'lambda', vpcName, null, tm);
+    const tier = _classificationOverrides[name] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'Lambda', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify ECS
   (ctx.ecsServices || []).forEach(function(svc) {
-    var name = svc.serviceName || '';
-    var nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
-    var vpcId = nc && nc.subnets && nc.subnets[0] ? subnetVpcMap[nc.subnets[0]] || '' : '';
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(svc);
-    var sc = _scoreClassification(name, 'ecs', vpcName, null, tm);
-    var tier = _classificationOverrides[name] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const name = svc.serviceName || '';
+    const nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
+    let vpcId = nc && nc.subnets && nc.subnets[0] ? subnetVpcMap[nc.subnets[0]] || '' : '';
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(svc);
+    const sc = _scoreClassification(name, 'ecs', vpcName, null, tm);
+    const tier = _classificationOverrides[name] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'ECS', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify Redshift
   (ctx.redshiftClusters || []).forEach(function(rs) {
-    var name = rs.ClusterIdentifier;
-    var vpcId = rs.VpcId || '';
-    var vpcName = vpcNameMap[vpcId] || '';
-    var tm = _getTagMap(rs);
-    var sc = _scoreClassification(name, 'redshift', vpcName, null, tm);
-    var tier = _classificationOverrides[name] || sc.tier;
-    var meta = _TIER_RPO_RTO[tier];
+    const name = rs.ClusterIdentifier;
+    let vpcId = rs.VpcId || '';
+    const vpcName = vpcNameMap[vpcId] || '';
+    const tm = _getTagMap(rs);
+    const sc = _scoreClassification(name, 'redshift', vpcName, null, tm);
+    const tier = _classificationOverrides[name] || sc.tier;
+    const meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'Redshift', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify Security Groups
   (ctx.sgs || []).forEach(function(sg) {
-    var id = sg.GroupId; var name = gn(sg, id);
-    var vpcId = sg.VpcId || ''; var vpcName = vpcNameMap[vpcId] || ''; var tm = _getTagMap(sg);
-    var sc = _scoreClassification(name, 'security-group', vpcName, null, tm);
-    var tier = _classificationOverrides[id] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const id = sg.GroupId; let name = gn(sg, id);
+    let vpcId = sg.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(sg);
+    const sc = _scoreClassification(name, 'security-group', vpcName, null, tm);
+    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: id, name: name, type: 'Security Group', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify VPCs
   (ctx.vpcs || []).forEach(function(v) {
-    var id = v.VpcId; var name = gn(v, id); var tm = _getTagMap(v);
-    var sc = _scoreClassification(name, 'vpc', name, null, tm);
-    var tier = _classificationOverrides[id] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const id = v.VpcId; let name = gn(v, id); let tm = _getTagMap(v);
+    const sc = _scoreClassification(name, 'vpc', name, null, tm);
+    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: id, name: name, type: 'VPC', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: id, vpcName: name, tags: tm });
   });
   // Classify Subnets
   (ctx.subnets || []).forEach(function(s) {
-    var id = s.SubnetId; var name = gn(s, id); var vpcId = s.VpcId || ''; var vpcName = vpcNameMap[vpcId] || ''; var tm = _getTagMap(s);
-    var sc = _scoreClassification(name, 'subnet', vpcName, null, tm);
-    var tier = _classificationOverrides[id] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const id = s.SubnetId; let name = gn(s, id); let vpcId = s.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(s);
+    const sc = _scoreClassification(name, 'subnet', vpcName, null, tm);
+    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: id, name: name, type: 'Subnet', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify IGWs
   (ctx.igws || []).forEach(function(gw) {
-    var id = gw.InternetGatewayId; var name = gn(gw, id); var vpcId = (gw.Attachments && gw.Attachments[0]) ? gw.Attachments[0].VpcId : ''; var vpcName = vpcNameMap[vpcId] || ''; var tm = _getTagMap(gw);
-    var sc = _scoreClassification(name, 'igw', vpcName, null, tm);
-    var tier = _classificationOverrides[id] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const id = gw.InternetGatewayId; let name = gn(gw, id); let vpcId = (gw.Attachments && gw.Attachments[0]) ? gw.Attachments[0].VpcId : ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(gw);
+    const sc = _scoreClassification(name, 'igw', vpcName, null, tm);
+    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: id, name: name, type: 'IGW', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify NAT GWs
   (ctx.nats || []).forEach(function(ng) {
-    var id = ng.NatGatewayId; var name = gn(ng, id); var vpcId = ng.VpcId || ''; var vpcName = vpcNameMap[vpcId] || ''; var tm = _getTagMap(ng);
-    var sc = _scoreClassification(name, 'nat-gateway', vpcName, null, tm);
-    var tier = _classificationOverrides[id] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const id = ng.NatGatewayId; let name = gn(ng, id); let vpcId = ng.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(ng);
+    const sc = _scoreClassification(name, 'nat-gateway', vpcName, null, tm);
+    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: id, name: name, type: 'NAT GW', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify VPC Endpoints
   (ctx.vpces || []).forEach(function(ve) {
-    var id = ve.VpcEndpointId; var name = ve.ServiceName || id; var vpcId = ve.VpcId || ''; var vpcName = vpcNameMap[vpcId] || ''; var tm = _getTagMap(ve);
-    var sc = _scoreClassification(name, 'vpc-endpoint', vpcName, null, tm);
-    var tier = _classificationOverrides[id] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const id = ve.VpcEndpointId; let name = ve.ServiceName || id; let vpcId = ve.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(ve);
+    const sc = _scoreClassification(name, 'vpc-endpoint', vpcName, null, tm);
+    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: id, name: name, type: 'VPC Endpoint', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify S3 Buckets
   (ctx.s3bk || []).forEach(function(b) {
-    var name = b.Name || ''; var tm = _getTagMap(b);
-    var sc = _scoreClassification(name, 's3', '', null, tm);
-    var tier = _classificationOverrides[name] || sc.tier; var meta = _TIER_RPO_RTO[tier];
+    const name = b.Name || ''; let tm = _getTagMap(b);
+    const sc = _scoreClassification(name, 's3', '', null, tm);
+    const tier = _classificationOverrides[name] || sc.tier; let meta = _TIER_RPO_RTO[tier];
     results.push({ id: name, name: name, type: 'S3', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: '', vpcName: '', tags: tm });
   });
   // Enrich classification data with account IDs from source resources
-  var _clResAcct = {};
+  const _clResAcct = {};
   (ctx.instances || []).forEach(function(r) { _clResAcct[r.InstanceId] = r._accountId; });
   (ctx.rdsInstances || []).forEach(function(r) { _clResAcct[r.DBInstanceIdentifier] = r._accountId; });
   (ctx.ecacheClusters || []).forEach(function(r) { _clResAcct[r.CacheClusterId] = r._accountId; });
@@ -574,45 +574,45 @@ function runClassificationEngine(ctx) {
  */
 function prepareIAMReviewData(iamData) {
   if (!iamData) return [];
-  var items = [];
+  let items = [];
   // Process roles
   (iamData.roles || []).forEach(function(role) {
-    var created = role.CreateDate ? new Date(role.CreateDate) : null;
-    var lastUsed = role.RoleLastUsed && role.RoleLastUsed.LastUsedDate ? new Date(role.RoleLastUsed.LastUsedDate) : null;
-    var trustDoc = role.AssumeRolePolicyDocument;
-    var trustParsed = {};
+    const created = role.CreateDate ? new Date(role.CreateDate) : null;
+    const lastUsed = role.RoleLastUsed && role.RoleLastUsed.LastUsedDate ? new Date(role.RoleLastUsed.LastUsedDate) : null;
+    const trustDoc = role.AssumeRolePolicyDocument;
+    let trustParsed = {};
     if (typeof trustDoc === 'string') { try { trustParsed = JSON.parse(trustDoc); } catch (e) { console.warn('Failed to parse trust policy:', e); } }
     else if (trustDoc) trustParsed = trustDoc;
-    var crossAccts = [];
+    const crossAccts = [];
     _stmtArr(trustParsed.Statement).forEach(function(stmt) {
       if (stmt.Effect === 'Allow' && stmt.Principal) {
-        var aws = stmt.Principal.AWS;
-        if (aws) { (Array.isArray(aws) ? aws : [aws]).forEach(function(arn) { var m = String(arn).match(/:(\d{12}):/); if (m) crossAccts.push(m[1]); }); }
+        const aws = stmt.Principal.AWS;
+        if (aws) { (Array.isArray(aws) ? aws : [aws]).forEach(function(arn) { const m = String(arn).match(/:(\d{12}):/); if (m) crossAccts.push(m[1]); }); }
       }
     });
-    var findings = (complianceFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === role.RoleName || f.resource === (role.Arn || '')); });
-    var policyCount = (role.RolePolicyList || []).length + (role.AttachedManagedPolicies || []).length;
-    var policyNames = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
-    var roleAcct = (role.Arn || '').match(/:(\d{12}):/);
+    const findings = (complianceFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === role.RoleName || f.resource === (role.Arn || '')); });
+    const policyCount = (role.RolePolicyList || []).length + (role.AttachedManagedPolicies || []).length;
+    const policyNames = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
+    const roleAcct = (role.Arn || '').match(/:(\d{12}):/);
     items.push({ name: role.RoleName || '', arn: role.Arn || '', type: 'Role', created: created, lastUsed: lastUsed, isAdmin: role._isAdmin || false, hasWildcard: role._hasWildcard || false, crossAccounts: crossAccts, policies: policyCount, policyNames: policyNames, permBoundary: role.PermissionsBoundary ? role.PermissionsBoundary.PermissionsBoundaryArn : '', findings: findings, _accountId: roleAcct ? roleAcct[1] : '', _raw: role });
   });
   // Process users
   (iamData.users || []).forEach(function(user) {
-    var created = user.CreateDate ? new Date(user.CreateDate) : null;
-    var lastUsed = user.PasswordLastUsed ? new Date(user.PasswordLastUsed) : null;
-    var hasMFA = (user.MFADevices || []).length > 0;
-    var hasConsole = !!user.LoginProfile;
-    var activeKeys = (user.AccessKeys || []).filter(function(k) { return k.Status === 'Active'; }).length;
-    var findings = (complianceFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === user.UserName || f.resource === (user.Arn || '')); });
-    var policyCount = (user.UserPolicyList || []).length + (user.AttachedManagedPolicies || []).length;
-    var policyNames = (user.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
+    const created = user.CreateDate ? new Date(user.CreateDate) : null;
+    const lastUsed = user.PasswordLastUsed ? new Date(user.PasswordLastUsed) : null;
+    const hasMFA = (user.MFADevices || []).length > 0;
+    const hasConsole = !!user.LoginProfile;
+    const activeKeys = (user.AccessKeys || []).filter(function(k) { return k.Status === 'Active'; }).length;
+    const findings = (complianceFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === user.UserName || f.resource === (user.Arn || '')); });
+    const policyCount = (user.UserPolicyList || []).length + (user.AttachedManagedPolicies || []).length;
+    const policyNames = (user.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
     // Detect admin for users by analyzing actual policy documents
-    var uIsAdmin = false;
+    let uIsAdmin = false;
     // Check inline policies
-    (user.UserPolicyList || []).forEach(function(p) { if (uIsAdmin) return; var doc = _safePolicyParse(p.PolicyDocument); _stmtArr(doc.Statement).forEach(function(s) { if (s.Effect === 'Allow') { var a = Array.isArray(s.Action) ? s.Action : [s.Action || '']; var r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || '']; if (a.some(function(x) { return x === '*'; }) && r.some(function(x) { return x === '*'; })) uIsAdmin = true; } }); });
+    (user.UserPolicyList || []).forEach(function(p) { if (uIsAdmin) return; let doc = _safePolicyParse(p.PolicyDocument); _stmtArr(doc.Statement).forEach(function(s) { if (s.Effect === 'Allow') { let a = Array.isArray(s.Action) ? s.Action : [s.Action || '']; let r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || '']; if (a.some(function(x) { return x === '*'; }) && r.some(function(x) { return x === '*'; })) uIsAdmin = true; } }); });
     // Check managed policies
-    (user.AttachedManagedPolicies || []).forEach(function(mp) { if (uIsAdmin) return; var pol = (iamData.policies || []).find(function(p) { return p.Arn === mp.PolicyArn || p.PolicyName === mp.PolicyName; }); if (pol) { var ver = (pol.PolicyVersionList || []).find(function(v) { return v.IsDefaultVersion; }); if (ver) { _stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(function(s) { if (s.Effect === 'Allow') { var a = Array.isArray(s.Action) ? s.Action : [s.Action || '']; var r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || '']; if (a.some(function(x) { return x === '*'; }) && r.some(function(x) { return x === '*'; })) uIsAdmin = true; } }); } } });
-    var userAcct = (user.Arn || '').match(/:(\d{12}):/);
+    (user.AttachedManagedPolicies || []).forEach(function(mp) { if (uIsAdmin) return; let pol = (iamData.policies || []).find(function(p) { return p.Arn === mp.PolicyArn || p.PolicyName === mp.PolicyName; }); if (pol) { let ver = (pol.PolicyVersionList || []).find(function(v) { return v.IsDefaultVersion; }); if (ver) { _stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(function(s) { if (s.Effect === 'Allow') { let a = Array.isArray(s.Action) ? s.Action : [s.Action || '']; let r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || '']; if (a.some(function(x) { return x === '*'; }) && r.some(function(x) { return x === '*'; })) uIsAdmin = true; } }); } } });
+    const userAcct = (user.Arn || '').match(/:(\d{12}):/);
     items.push({ name: user.UserName || '', arn: user.Arn || '', type: 'User', created: created, lastUsed: lastUsed, isAdmin: uIsAdmin, hasWildcard: false, crossAccounts: [], policies: policyCount, policyNames: policyNames, permBoundary: user.PermissionsBoundary ? user.PermissionsBoundary.PermissionsBoundaryArn : '', findings: findings, _accountId: userAcct ? userAcct[1] : '', hasMFA: hasMFA, hasConsole: hasConsole, activeKeys: activeKeys, _raw: user });
   });
   _iamReviewData = items;
@@ -854,3 +854,47 @@ export {
   prepareIAMReviewData, matchAction, matchResource, evaluateCondition,
   _collectStatements, canDo, summarizePermissions
 };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_classificationData', {
+    get() { return _classificationData; },
+    set(v) { _classificationData = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_iamReviewData', {
+    get() { return _iamReviewData; },
+    set(v) { _iamReviewData = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_inventoryData', {
+    get() { return _inventoryData; },
+    set(v) { _inventoryData = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_appRegistry', {
+    get() { return _appRegistry; },
+    set(v) { _appRegistry = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_classificationRules', {
+    get() { return _classificationRules; },
+    set(v) { _classificationRules = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_discoveredTags', {
+    get() { return _discoveredTags; },
+    set(v) { _discoveredTags = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_classificationOverrides', {
+    get() { return _classificationOverrides; },
+    set(v) { _classificationOverrides = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_appAutoDiscovered', {
+    get() { return _appAutoDiscovered; },
+    set(v) { _appAutoDiscovered = v; },
+    configurable: true
+  });
+}

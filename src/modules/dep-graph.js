@@ -188,3 +188,17 @@ export function isBlastActive() {
 
 // Expose for inline code during transition
 export { depGraph, blastActive };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_depGraph', {
+    get() { return depGraph; },
+    set(v) { depGraph = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_blastActive', {
+    get() { return blastActive; },
+    set(v) { blastActive = v; },
+    configurable: true
+  });
+}

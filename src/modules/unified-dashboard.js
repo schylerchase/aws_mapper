@@ -42,9 +42,21 @@ export function udashFilterByAccount(items) {
 
 // === Window Bridge (transitional) ===
 if (typeof window !== 'undefined') {
-  window._udashTab = _udashTab;
-  window._udashAcctFilter = _udashAcctFilter;
-  window._budrDashState = _budrDashState;
+  Object.defineProperty(window, '_udashTab', {
+    get() { return _udashTab; },
+    set(v) { _udashTab = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_udashAcctFilter', {
+    get() { return _udashAcctFilter; },
+    set(v) { _udashAcctFilter = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_budrDashState', {
+    get() { return _budrDashState; },
+    set(v) { _budrDashState = v; },
+    configurable: true
+  });
   window._BUDR_TIER_META = BUDR_TIER_META;
   window._udashFilterByAccount = udashFilterByAccount;
   window.getUdashTab = getUdashTab;

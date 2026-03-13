@@ -239,7 +239,7 @@ export function getSeverityGroups(findings) {
 
 /** Estimate total remediation effort from resource groups. */
 export function estimateTotalEffort(resourceGroups) {
-  var mins = 0;
+  let mins = 0;
   resourceGroups.forEach(rg => { rg.findings.forEach(f => {
     if (f.effort === 'low') mins += 5;
     else if (f.effort === 'med') mins += 90;
@@ -301,7 +301,7 @@ function _rptFilterByAccount(items, acctId) {
  */
 export function buildComplianceView(opts) {
   opts = opts || {};
-  var src = (opts.findings || complianceFindings || []).slice();
+  let src = (opts.findings || complianceFindings || []).slice();
   // Account filter (reports)
   if (opts.accountFilter) src = _rptFilterByAccount(src, opts.accountFilter);
   // Framework filter
@@ -311,7 +311,7 @@ export function buildComplianceView(opts) {
   if (Array.isArray(opts.severities)) src = src.filter(f => opts.severities.indexOf(f.severity) !== -1);
   // Search filter
   if (opts.search) {
-    var q = opts.search.toLowerCase();
+    const q = opts.search.toLowerCase();
     src = src.filter(f =>
       (f.message || '').toLowerCase().indexOf(q) !== -1 ||
       (f.resource || '').toLowerCase().indexOf(q) !== -1 ||
@@ -324,23 +324,23 @@ export function buildComplianceView(opts) {
   // Mute filter
   if (!opts.includeMuted) src = src.filter(f => !isMuted(f));
   // Stamp _tier and _effort on every finding ONCE
-  var base = src.map(f => Object.assign({}, f, { _tier: classifyTier(f), _effort: getEffort(f) }));
+  const base = src.map(f => Object.assign({}, f, { _tier: classifyTier(f), _effort: getEffort(f) }));
   // Severity sub-filter (dashboard pill selection)
-  var filtered = (typeof opts.severity === 'string' && opts.severity !== 'ALL')
+  const filtered = (typeof opts.severity === 'string' && opts.severity !== 'ALL')
     ? base.filter(f => f.severity === opts.severity) : base;
   // Pre-compute counts from base (before severity pill filter)
-  var sevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
-  var tierCounts = { crit: 0, high: 0, med: 0, low: 0 };
+  const sevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  const tierCounts = { crit: 0, high: 0, med: 0, low: 0 };
   base.forEach(f => { sevCounts[f.severity]++; tierCounts[f._tier]++; });
   // Filtered tier counts (after severity pill filter)
-  var filteredTierCounts = { crit: 0, high: 0, med: 0, low: 0 };
-  var filteredSevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  const filteredTierCounts = { crit: 0, high: 0, med: 0, low: 0 };
+  const filteredSevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
   filtered.forEach(f => { filteredTierCounts[f._tier]++; filteredSevCounts[f.severity]++; });
   // Tier-grouped resource groups
-  var tiers = getTierGroups(filtered);
-  var baseTiers = (typeof opts.severity === 'string' && opts.severity !== 'ALL') ? getTierGroups(base) : tiers;
+  const tiers = getTierGroups(filtered);
+  const baseTiers = (typeof opts.severity === 'string' && opts.severity !== 'ALL') ? getTierGroups(base) : tiers;
   // Severity-grouped resource groups
-  var sevGroups = getSeverityGroups(filtered);
+  const sevGroups = getSeverityGroups(filtered);
   return {
     base, filtered, tiers, baseTiers, sevGroups,
     sevCounts, tierCounts, filteredTierCounts, filteredSevCounts,
@@ -356,8 +356,16 @@ if (typeof window !== 'undefined') {
   // === Window bridge — legacy callers require these globals ===
   window._EFFORT_MAP = EFFORT_MAP;
   window._complianceRefs = complianceRefs;
-  window._compDashState = _compDashState;
-  window._mutedFindings = _mutedFindings;
+  Object.defineProperty(window, '_compDashState', {
+    get() { return _compDashState; },
+    set(v) { _compDashState = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_mutedFindings', {
+    get() { return _mutedFindings; },
+    set(v) { _mutedFindings = v; },
+    configurable: true
+  });
   window._saveMuted = saveMuted;
   window._muteKey = muteKey;
   window._isMuted = isMuted;

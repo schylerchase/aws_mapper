@@ -6,18 +6,18 @@
 function _zoomAndShowDetail(rid){
   if(!rid||rid==='Multiple') return;
   _zoomToElement(rid);
-  var type=_resolveResourceType(rid);
+  const type=_resolveResourceType(rid);
   if(type){
     setTimeout(function(){_openDetailForSearch(type,rid)},400);
   }
 }
 
 // === RESOURCE SPOTLIGHT (animated zoom window) ===
-var _spotlightActive=false;
+let _spotlightActive=false;
 function _closeSpotlight(){
   _spotlightActive=false;
-  var card=document.getElementById('spotlightCard');
-  var backdrop=document.getElementById('spotlightBackdrop');
+  const card=document.getElementById('spotlightCard');
+  const backdrop=document.getElementById('spotlightBackdrop');
   if(card){card.style.opacity='0';card.style.transform='translateY(20px) scale(.95)';setTimeout(function(){card.remove()},300)}
   if(backdrop){backdrop.classList.remove('active');setTimeout(function(){backdrop.remove()},400)}
   _mapG&&_mapG.selectAll('.spotlight-ring').remove();
@@ -27,19 +27,19 @@ function _openResourceSpotlight(rid){
   _closeSpotlight();
   _spotlightActive=true;
   // Find the SVG element
-  var el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
+  const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
   if(!el)return;
-  var bb=el.getBBox();
-  var cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
-  var svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
+  const bb=el.getBBox();
+  const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
+  const svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
   // Animated zoom - tighter zoom than normal
-  var scale=Math.min(svgW/(bb.width+300),svgH/(bb.height+300),3.5);
+  const scale=Math.min(svgW/(bb.width+300),svgH/(bb.height+300),3.5);
   _mapSvg.transition().duration(900).ease(d3.easeCubicInOut)
     .call(_mapZoom.transform,d3.zoomIdentity.translate(svgW/2-cx*scale,svgH/2-cy*scale).scale(scale));
   // Add animated ring around resource in SVG
   _mapG.selectAll('.spotlight-ring').remove();
-  var pad=12;
-  var ring=_mapG.append('rect').attr('class','spotlight-ring')
+  const pad=12;
+  const ring=_mapG.append('rect').attr('class','spotlight-ring')
     .attr('x',bb.x-pad).attr('y',bb.y-pad)
     .attr('width',bb.width+pad*2).attr('height',bb.height+pad*2)
     .attr('rx',8).attr('ry',8)
@@ -48,23 +48,23 @@ function _openResourceSpotlight(rid){
     .style('animation','spotlightRingPulse 2s ease-in-out infinite');
   ring.transition().duration(500).delay(400).attr('opacity',1);
   // Gather resource info
-  var info=_gatherResourceInfo(rid);
+  const info=_gatherResourceInfo(rid);
   if(!info)return;
   // Create backdrop
-  var backdrop=document.createElement('div');
+  const backdrop=document.createElement('div');
   backdrop.id='spotlightBackdrop';
   backdrop.className='spotlight-backdrop';
   backdrop.addEventListener('click',_closeSpotlight);
   document.body.appendChild(backdrop);
   requestAnimationFrame(function(){backdrop.classList.add('active')});
   // Build the card
-  var card=document.createElement('div');
+  const card=document.createElement('div');
   card.id='spotlightCard';
   card.className='spotlight-card';
-  var typeColors={EC2:'#f97316',RDS:'#a78bfa',Lambda:'#10b981',ALB:'#3b82f6',ECS:'#06b6d4',ElastiCache:'#ef4444',Redshift:'#ec4899',Subnet:'#22d3ee',VPC:'#60a5fa',SG:'#f59e0b',IGW:'#10b981',NAT:'#f97316',VGW:'#8b5cf6',VPCE:'#06b6d4',TGW:'#6366f1',PCX:'#a78bfa'};
-  var tc=typeColors[info.type]||'#22d3ee';
+  const typeColors={EC2:'#f97316',RDS:'#a78bfa',Lambda:'#10b981',ALB:'#3b82f6',ECS:'#06b6d4',ElastiCache:'#ef4444',Redshift:'#ec4899',Subnet:'#22d3ee',VPC:'#60a5fa',SG:'#f59e0b',IGW:'#10b981',NAT:'#f97316',VGW:'#8b5cf6',VPCE:'#06b6d4',TGW:'#6366f1',PCX:'#a78bfa'};
+  const tc=typeColors[info.type]||'#22d3ee';
   // Header
-  var h='<div class="spotlight-header">';
+  let h='<div class="spotlight-header">';
   h+='<button class="spotlight-close" onclick="_closeSpotlight()">&times;</button>';
   h+='<span class="sl-type-badge" style="background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44">'+_escHtml(info.type)+'</span>';
   h+='<h3>'+_escHtml(info.name)+'</h3>';
@@ -83,7 +83,7 @@ function _openResourceSpotlight(rid){
   if(info.findings&&info.findings.length){
     h+='<div class="spotlight-section"><div class="spotlight-section-title">Compliance ('+info.findings.length+')</div>';
     info.findings.slice(0,5).forEach(function(f){
-      var sc={CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#3b82f6'}[f.severity]||'#64748b';
+      const sc={CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#3b82f6'}[f.severity]||'#64748b';
       h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px">';
       h+='<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+sc+';flex-shrink:0"></span>';
       h+='<span style="color:'+sc+';font-weight:600;width:55px;flex-shrink:0">'+_escHtml(f.severity)+'</span>';
@@ -98,7 +98,7 @@ function _openResourceSpotlight(rid){
     h+='<div class="spotlight-section"><div class="spotlight-section-title">Related Resources</div>';
     h+='<div class="spotlight-nearby">';
     info.related.forEach(function(r){
-      var rc=typeColors[r.type]||'#64748b';
+      const rc=typeColors[r.type]||'#64748b';
       h+='<div class="spotlight-nearby-item" data-spotlight-rid="'+_escHtml(r.id)+'">';
       h+='<span class="sn-badge" style="background:'+rc+'"></span>';
       h+='<span class="sn-name">'+_escHtml(r.name)+'</span>';
@@ -112,7 +112,7 @@ function _openResourceSpotlight(rid){
     h+='<div class="spotlight-section"><div class="spotlight-section-title">Nearby Resources</div>';
     h+='<div class="spotlight-nearby">';
     info.nearby.forEach(function(r){
-      var rc=typeColors[r.type]||'#64748b';
+      const rc=typeColors[r.type]||'#64748b';
       h+='<div class="spotlight-nearby-item" data-spotlight-rid="'+_escHtml(r.id)+'">';
       h+='<span class="sn-badge" style="background:'+rc+'"></span>';
       h+='<span class="sn-name">'+_escHtml(r.name)+'</span>';
@@ -132,19 +132,19 @@ function _openResourceSpotlight(rid){
   // Wire events
   card.querySelectorAll('[data-spotlight-rid]').forEach(function(el){
     el.addEventListener('click',function(){
-      var nrid=this.dataset.spotlightRid;
+      const nrid=this.dataset.spotlightRid;
       _openResourceSpotlight(nrid);
     });
   });
   card.querySelector('[data-spotlight-detail]').addEventListener('click',function(){
-    var drid=this.dataset.spotlightDetail;
+    const drid=this.dataset.spotlightDetail;
     _closeSpotlight();
-    var type=_resolveResourceType(drid);
+    const type=_resolveResourceType(drid);
     if(type) _openDetailForSearch(type,drid);
   });
-  var depsBtn=card.querySelector('[data-spotlight-deps]');
+  const depsBtn=card.querySelector('[data-spotlight-deps]');
   if(depsBtn) depsBtn.addEventListener('click',function(){
-    var drid=this.dataset.spotlightDeps;
+    const drid=this.dataset.spotlightDeps;
     _closeSpotlight();
     if(typeof showDependencies==='function') showDependencies(drid);
   });
@@ -152,40 +152,40 @@ function _openResourceSpotlight(rid){
 
 function _gatherResourceInfo(rid){
   if(!_rlCtx) return null;
-  var info={id:rid,name:rid,type:'Unknown',details:[],findings:[],related:[],nearby:[]};
-  var gn2=function(obj,fallback){return obj&&obj.Tags?((obj.Tags.find(function(t){return t.Key==='Name'})||{}).Value||fallback):fallback};
+  const info={id:rid,name:rid,type:'Unknown',details:[],findings:[],related:[],nearby:[]};
+  const gn2=function(obj,fallback){return obj&&obj.Tags?((obj.Tags.find(function(t){return t.Key==='Name'})||{}).Value||fallback):fallback};
   // Determine type and gather details
   if(rid.startsWith('i-')){
-    var inst=(_rlCtx.instances||[]).find(function(i){return i.InstanceId===rid});
+    const inst=(_rlCtx.instances||[]).find(function(i){return i.InstanceId===rid});
     if(!inst) return null;
     info.type='EC2';info.name=gn2(inst,rid);
     info.details=[['Type',inst.InstanceType||'—'],['State',(inst.State||{}).Name||'—'],['Private IP',inst.PrivateIpAddress||'—'],['Public IP',inst.PublicIpAddress||'—'],['AZ',(inst.Placement||{}).AvailabilityZone||'—'],['Subnet',inst.SubnetId||'—'],['VPC',inst.VpcId||'—']];
     // Related: SGs, subnet, VPC
     (inst.SecurityGroups||[]).forEach(function(sg){info.related.push({id:sg.GroupId,name:sg.GroupName||sg.GroupId,type:'SG'})});
-    if(inst.SubnetId){var sub=(_rlCtx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId});if(sub) info.related.push({id:sub.SubnetId,name:gn2(sub,sub.SubnetId),type:'Subnet'})}
+    if(inst.SubnetId){const sub=(_rlCtx.subnets||[]).find(function(s){return s.SubnetId===inst.SubnetId});if(sub) info.related.push({id:sub.SubnetId,name:gn2(sub,sub.SubnetId),type:'Subnet'})}
     // Nearby: other instances in same subnet
     (_rlCtx.instances||[]).filter(function(i){return i.SubnetId===inst.SubnetId&&i.InstanceId!==rid}).slice(0,6).forEach(function(i){info.nearby.push({id:i.InstanceId,name:gn2(i,i.InstanceId),type:'EC2'})});
     // Also add RDS, ALBs in same subnet
-    (_rlCtx.rdsInstances||[]).forEach(function(db){var subs=(db.DBSubnetGroup&&db.DBSubnetGroup.Subnets||[]).map(function(s){return s.SubnetIdentifier});if(subs.indexOf(inst.SubnetId)!==-1) info.nearby.push({id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier,type:'RDS'})});
+    (_rlCtx.rdsInstances||[]).forEach(function(db){const subs=(db.DBSubnetGroup&&db.DBSubnetGroup.Subnets||[]).map(function(s){return s.SubnetIdentifier});if(subs.indexOf(inst.SubnetId)!==-1) info.nearby.push({id:db.DBInstanceIdentifier,name:db.DBInstanceIdentifier,type:'RDS'})});
   } else if(rid.startsWith('subnet-')){
-    var sub=(_rlCtx.subnets||[]).find(function(s){return s.SubnetId===rid});
+    const sub=(_rlCtx.subnets||[]).find(function(s){return s.SubnetId===rid});
     if(!sub) return null;
     info.type='Subnet';info.name=gn2(sub,rid);
-    var isPub=_rlCtx.pubSubs&&_rlCtx.pubSubs.has(rid);
+    const isPub=_rlCtx.pubSubs&&_rlCtx.pubSubs.has(rid);
     info.details=[['CIDR',sub.CidrBlock||'—'],['AZ',sub.AvailabilityZone||'—'],['Type',isPub?'Public':'Private'],['VPC',sub.VpcId||'—'],['Available IPs',''+(sub.AvailableIpAddressCount||0)]];
     // Nearby: resources in this subnet
     (_rlCtx.instances||[]).filter(function(i){return i.SubnetId===rid}).slice(0,8).forEach(function(i){info.nearby.push({id:i.InstanceId,name:gn2(i,i.InstanceId),type:'EC2'})});
     // Related: VPC, route table
     info.related.push({id:sub.VpcId,name:sub.VpcId,type:'VPC'});
   } else if(rid.startsWith('vpc-')){
-    var vpc=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===rid});
+    const vpc=(_rlCtx.vpcs||[]).find(function(v){return v.VpcId===rid});
     if(!vpc) return null;
     info.type='VPC';info.name=gn2(vpc,rid);
-    var vpcSubs=(_rlCtx.subnets||[]).filter(function(s){return s.VpcId===rid});
+    const vpcSubs=(_rlCtx.subnets||[]).filter(function(s){return s.VpcId===rid});
     info.details=[['CIDR',vpc.CidrBlock||'—'],['State',vpc.State||'—'],['Subnets',''+vpcSubs.length],['Instances',''+(_rlCtx.instances||[]).filter(function(i){return vpcSubs.some(function(s){return s.SubnetId===i.SubnetId})}).length]];
     vpcSubs.slice(0,8).forEach(function(s){info.nearby.push({id:s.SubnetId,name:gn2(s,s.SubnetId),type:'Subnet'})});
   } else if(rid.startsWith('sg-')){
-    var sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===rid});
+    const sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===rid});
     if(!sg) return null;
     info.type='SG';info.name=sg.GroupName||rid;
     info.details=[['Group ID',rid],['Description',sg.Description||'—'],['VPC',sg.VpcId||'—'],['Inbound Rules',''+(sg.IpPermissions||[]).length],['Outbound Rules',''+(sg.IpPermissionsEgress||[]).length]];
@@ -193,14 +193,14 @@ function _gatherResourceInfo(rid){
     // Instances using this SG
     (_rlCtx.instances||[]).filter(function(i){return(i.SecurityGroups||[]).some(function(s){return s.GroupId===rid})}).slice(0,6).forEach(function(i){info.nearby.push({id:i.InstanceId,name:gn2(i,i.InstanceId),type:'EC2'})});
   } else if(rid.startsWith('igw-')){
-    var igw=(_rlCtx.igws||[]).find(function(g){return g.InternetGatewayId===rid});
+    const igw=(_rlCtx.igws||[]).find(function(g){return g.InternetGatewayId===rid});
     if(!igw) return null;
     info.type='IGW';info.name=gn2(igw,rid);
-    var attachedVpcs=(igw.Attachments||[]).map(function(a){return a.VpcId});
+    const attachedVpcs=(igw.Attachments||[]).map(function(a){return a.VpcId});
     info.details=[['Gateway ID',rid],['Attached VPCs',attachedVpcs.join(', ')||'None']];
     attachedVpcs.forEach(function(v){info.related.push({id:v,name:v,type:'VPC'})});
   } else if(rid.startsWith('nat-')){
-    var nat=(_rlCtx.nats||[]).find(function(g){return g.NatGatewayId===rid});
+    const nat=(_rlCtx.nats||[]).find(function(g){return g.NatGatewayId===rid});
     if(!nat) return null;
     info.type='NAT';info.name=gn2(nat,rid);
     info.details=[['Gateway ID',rid],['State',nat.State||'—'],['Subnet',nat.SubnetId||'—'],['VPC',nat.VpcId||'—']];
@@ -208,18 +208,18 @@ function _gatherResourceInfo(rid){
     if(nat.SubnetId) info.related.push({id:nat.SubnetId,name:nat.SubnetId,type:'Subnet'});
   } else {
     // Try RDS, Lambda, etc. by name lookup
-    var rds=(_rlCtx.rdsInstances||[]).find(function(d){return d.DBInstanceIdentifier===rid});
+    const rds=(_rlCtx.rdsInstances||[]).find(function(d){return d.DBInstanceIdentifier===rid});
     if(rds){
       info.type='RDS';info.name=rds.DBInstanceIdentifier;
       info.details=[['Engine',(rds.Engine||'')+' '+(rds.EngineVersion||'')],['Class',rds.DBInstanceClass||'—'],['Status',rds.DBInstanceStatus||'—'],['Multi-AZ',rds.MultiAZ?'Yes':'No'],['Storage',(rds.AllocatedStorage||'?')+' GB'],['Encrypted',rds.StorageEncrypted?'Yes':'No']];
-      var rdsVpc=rds.DBSubnetGroup?rds.DBSubnetGroup.VpcId:'';
+      const rdsVpc=rds.DBSubnetGroup?rds.DBSubnetGroup.VpcId:'';
       if(rdsVpc) info.related.push({id:rdsVpc,name:rdsVpc,type:'VPC'});
     } else {
-      var lam=(_rlCtx.lambdaFns||[]).find(function(f){return f.FunctionName===rid});
+      const lam=(_rlCtx.lambdaFns||[]).find(function(f){return f.FunctionName===rid});
       if(lam){
         info.type='Lambda';info.name=lam.FunctionName;
         info.details=[['Runtime',lam.Runtime||'—'],['Memory',(lam.MemorySize||'?')+' MB'],['Timeout',(lam.Timeout||'?')+' sec'],['Handler',lam.Handler||'—'],['Code Size',((lam.CodeSize||0)/1024).toFixed(1)+' KB']];
-        var lamVpc=lam.VpcConfig?lam.VpcConfig.VpcId:'';
+        const lamVpc=lam.VpcConfig?lam.VpcConfig.VpcId:'';
         if(lamVpc) info.related.push({id:lamVpc,name:lamVpc,type:'VPC'});
       } else {
         return null;
@@ -248,15 +248,15 @@ function _dpBackBtnHtml(){
   return _navStack.length>0?'<span id="dpBack" style="cursor:pointer;color:var(--accent-blue);font-size:calc(10px * var(--txt-scale,1) * var(--dp-txt-scale,1));font-family:Segoe UI,system-ui,sans-serif;margin-right:8px" title="Back">&lt; Back</span>':'';
 }
 // Type badge colors for detail panel headers
-var _dpTypeColors={EC2:'#f97316',RDS:'#a78bfa',Lambda:'#10b981',VPC:'#60a5fa',SG:'#f59e0b'};
+const _dpTypeColors={EC2:'#f97316',RDS:'#a78bfa',Lambda:'#10b981',VPC:'#60a5fa',SG:'#f59e0b'};
 function _dpTypeBadge(type){
-  var tc=_dpTypeColors[type]||'#22d3ee';
+  const tc=_dpTypeColors[type]||'#22d3ee';
   return '<span style="display:inline-block;font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:8px;background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44;vertical-align:middle">'+esc(type)+'</span>';
 }
 
 // === SEARCH → DETAIL PANEL DISPATCH ===
 // NOTE: innerHTML usage here renders pre-escaped content via esc() and _escHtml() — no raw user input
-var _dpSkipPush=false;
+let _dpSkipPush=false;
 function _openDetailForSearch(type,id){
   if(!_rlCtx) return;
   const dp=document.getElementById('detailPanel');
@@ -462,7 +462,7 @@ function takeSnapshot(label,auto){
     accountLabel:(document.getElementById('accountLabel')||{}).value||'',
     layout:(document.getElementById('layoutMode')||{}).value||'grid',
     textareas:textareas,
-    annotations:JSON.parse(JSON.stringify(_annotations||{}))
+    annotations:structuredClone(_annotations||{})
   };
   _snapshots.push(snap);
   while(_snapshots.length>_MAX_SNAPSHOTS)_snapshots.shift();
@@ -510,7 +510,7 @@ function _viewSnapshot(idx){
     document.querySelectorAll('.ji').forEach(el=>{_currentSnapshot[el.id]=el.value});
     _currentSnapshot._accountLabel=(document.getElementById('accountLabel')||{}).value||'';
     _currentSnapshot._layout=(document.getElementById('layoutMode')||{}).value||'grid';
-    _currentSnapshot._annotations=JSON.parse(JSON.stringify(_annotations||{}));
+    _currentSnapshot._annotations=structuredClone(_annotations||{});
   }
   _viewingHistory=true;
   // Load snapshot data
@@ -520,7 +520,7 @@ function _viewSnapshot(idx){
     if(el){el.value=val;try{JSON.parse(val);el.className='ji valid'}catch(e){el.className='ji invalid'}}
   });
   if(snap.accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=snap.accountLabel}
-  if(snap.annotations)_annotations=JSON.parse(JSON.stringify(snap.annotations));
+  if(snap.annotations)_annotations=structuredClone(snap.annotations);
   renderMap();
   // Show history banner
   const d=new Date(snap.timestamp);
@@ -540,7 +540,7 @@ function _returnToCurrent(){
     if(el.value.trim()){try{JSON.parse(el.value);el.className='ji valid'}catch(e){el.className='ji invalid'}}else{el.className='ji'}
   });
   if(_currentSnapshot._accountLabel){const al=document.getElementById('accountLabel');if(al)al.value=_currentSnapshot._accountLabel}
-  if(_currentSnapshot._annotations)_annotations=JSON.parse(JSON.stringify(_currentSnapshot._annotations));
+  if(_currentSnapshot._annotations)_annotations=structuredClone(_currentSnapshot._annotations);
   document.getElementById('historyBanner').style.display='none';
   document.querySelectorAll('.timeline-dot').forEach(d=>d.classList.remove('active'));
   _currentSnapshot=null;

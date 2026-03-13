@@ -5,6 +5,10 @@
 import { safeParse, gv, gn } from './utils.js';
 import { EOL_RUNTIMES } from './constants.js';
 
+// === parseIAMData call-site cache ===
+let _cachedIamData = null;
+let _cachedIamRaw = null;
+
 // === CHECKOV (CKV) ID MAPPING ===
 // Maps existing control IDs to their Checkov equivalents for unified compliance view
 const _CKV_MAP={
@@ -548,7 +552,10 @@ export function runComplianceChecks(ctx){
   _complianceCacheCtx=ctx;
   _complianceFindings=[...runCISChecks(ctx),...runWAFChecks(ctx),...runArchChecks(ctx),...runSOC2Checks(ctx),...runPCIDSSChecks(ctx),...runBUDRChecks(ctx),...runGovernanceChecks(ctx)];
   try{const iamRaw=safeParse(gv('in_iam'));
-  if(iamRaw){const iamData=parseIAMData(iamRaw);_complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}
+  if(iamRaw){
+    let iamData;
+    if(iamRaw===_cachedIamRaw){iamData=_cachedIamData}else{iamData=parseIAMData(iamRaw);_cachedIamRaw=iamRaw;_cachedIamData=iamData}
+    _complianceFindings=_complianceFindings.concat(runIAMChecks(iamData))}}catch(e){console.warn('IAM compliance checks failed:',e)}
   // Annotate all findings with Checkov CKV IDs where mapping exists
   _complianceFindings.forEach(f=>{if(_CKV_MAP[f.control])f.ckv=_CKV_MAP[f.control]});
   // Sync to window so inline code can read it

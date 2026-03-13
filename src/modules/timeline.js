@@ -196,3 +196,37 @@ export {
 
 // Re-export constants used by inline code
 export { NOTE_CATEGORIES as _NOTE_CATEGORIES };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_snapshots', {
+    get() { return snapshots; },
+    set(v) { snapshots = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_viewingHistory', {
+    get() { return viewingHistory; },
+    set(v) { viewingHistory = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_currentSnapshot', {
+    get() { return currentSnapshot; },
+    set(v) { currentSnapshot = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_lastAutoSnap', {
+    get() { return lastAutoSnap; },
+    set(v) { lastAutoSnap = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_annotations', {
+    get() { return annotations; },
+    set(v) { annotations = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_annotationAuthor', {
+    get() { return annotationAuthor; },
+    set(v) { annotationAuthor = v; },
+    configurable: true
+  });
+}

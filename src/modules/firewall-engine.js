@@ -1056,7 +1056,7 @@ function _fwHandleAction(e, sub, vpcId, lk){
     if(!dSg) return;
     const dArr=dDir==='ingress'?dSg.IpPermissions:dSg.IpPermissionsEgress;
     if(!dArr||dRIdx>=dArr.length) return;
-    const dRule=JSON.parse(JSON.stringify(dArr[dRIdx]));
+    const dRule=structuredClone(dArr[dRIdx]);
     _fwTakeSnapshot();
     dArr.splice(dRIdx,1);
     _fwEdits.push({type:'sg',resourceId:dSgId,direction:dDir,action:'delete',rule:dRule,originalRule:dRule});
@@ -1114,13 +1114,13 @@ function _fwHandleAction(e, sub, vpcId, lk){
       const eIdx=parseInt(sEditIdx,10);
       const sArr=sDir==='ingress'?sSg.IpPermissions:sSg.IpPermissionsEgress;
       if(sArr&&eIdx<sArr.length){
-        sgOrig=JSON.parse(JSON.stringify(sArr[eIdx]));
+        sgOrig=structuredClone(sArr[eIdx]);
         sArr.splice(eIdx,1);
         sgEditAct='modify';
       }
     }
     _fwApplyRule('sg', sSgId, sDir, sgRule);
-    const sgEdit={type:'sg',resourceId:sSgId,direction:sDir,action:sgEditAct,rule:JSON.parse(JSON.stringify(sgRule))};
+    const sgEdit={type:'sg',resourceId:sSgId,direction:sDir,action:sgEditAct,rule:structuredClone(sgRule)};
     if(sgOrig) sgEdit.originalRule=sgOrig;
     _fwEdits.push(sgEdit);
     _fwRebuildLookups();
@@ -1473,7 +1473,7 @@ function _fwRenderFooter(shown,total){
       '<button id="fwDashResetAll" style="background:rgba(239,68,68,.1);border:1px solid var(--accent-red);color:var(--accent-red);padding:4px 10px;border-radius:4px;font-size:9px;font-family:Segoe UI,system-ui,sans-serif;cursor:pointer">Reset All</button>'+
     '</div></div>';
   document.getElementById('fwDashExportAll').addEventListener('click',function(){
-    if(!_fwEdits||!_fwEdits.length){alert('No edits to export');return}
+    if(!_fwEdits||!_fwEdits.length){showToast('No edits to export',3000);return}
     const cmds=_fwGenerateCli(_fwEdits);
     if(cmds.length&&navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(cmds.join('\n')).then(function(){
@@ -1482,7 +1482,7 @@ function _fwRenderFooter(shown,total){
     }
   });
   document.getElementById('fwDashResetAll').addEventListener('click',function(){
-    if(!_fwEdits||!_fwEdits.length){alert('No edits to reset');return}
+    if(!_fwEdits||!_fwEdits.length){showToast('No edits to reset',3000);return}
     if(!confirm('Reset all '+_fwEdits.length+' firewall edits?'))return;
     _fwResetAll();_fwDashRender();
   });

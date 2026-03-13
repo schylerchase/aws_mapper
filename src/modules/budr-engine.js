@@ -83,13 +83,13 @@ const _TIER_TARGETS={
 // Compare estimated restore capability vs tier target — returns compliance status
 function _budrTierCompliance(profileKey,classTier){
   if(!profileKey||!classTier)return{status:'unknown',issues:[]};
-  var est=_BUDR_EST_MINUTES[profileKey];var target=_TIER_TARGETS[classTier];
+  const est=_BUDR_EST_MINUTES[profileKey];const target=_TIER_TARGETS[classTier];
   if(!est||!target)return{status:'unknown',issues:[]};
-  var issues=[];
+  const issues=[];
   if(est.rpo===Infinity)issues.push({field:'RPO',severity:'critical',msg:'No backup — RPO unrecoverable (target: '+target.rpoLabel+')'});
   else if(est.rpo>target.rpo)issues.push({field:'RPO',severity:'warning',msg:'Est. RPO ~'+_fmtMin(est.rpo)+' exceeds '+classTier+' target of '+target.rpoLabel});
   if(est.rto>target.rto)issues.push({field:'RTO',severity:'warning',msg:'Est. RTO ~'+_fmtMin(est.rto)+' exceeds '+classTier+' target of '+target.rtoLabel});
-  var status=issues.some(function(i){return i.severity==='critical'})?'fail':issues.length?'warn':'pass';
+  const status=issues.some(function(i){return i.severity==='critical'})?'fail':issues.length?'warn':'pass';
   return{status:status,issues:issues,estRto:est.rto,estRpo:est.rpo,targetRto:target.rto,targetRpo:target.rpo,rtoWhy:est.rtoWhy||'',rpoWhy:est.rpoWhy||''};
 }
 function _fmtMin(m){if(m===0)return '0';if(m===Infinity)return '∞';if(m<60)return Math.round(m)+' min';if(m<1440)return Math.round(m/60*10)/10+' hr';return Math.round(m/1440*10)/10+' days'}
@@ -234,11 +234,11 @@ function runBUDRChecks(ctx){
     assessments.push({type:'S3',id,name,profile,signals:{Versioned:versioned,MFADelete:mfaDel}});
   });
   // Enrich assessments with account/vpc/region from raw resources
-  var _budrLookup={};
-  var _bSubVpc={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)_bSubVpc[s.SubnetId]=s.VpcId||''});
+  const _budrLookup={};
+  const _bSubVpc={};(ctx.subnets||[]).forEach(function(s){if(s.SubnetId)_bSubVpc[s.SubnetId]=s.VpcId||''});
   (ctx.rdsInstances||[]).forEach(function(r){_budrLookup['RDS:'+r.DBInstanceIdentifier]={a:r._accountId||'',r:r._region||'',v:(r.DBSubnetGroup&&r.DBSubnetGroup.VpcId)||''}});
   (ctx.instances||[]).forEach(function(r){_budrLookup['EC2:'+r.InstanceId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||_bSubVpc[r.SubnetId]||''}});
-  (ctx.ecsServices||[]).forEach(function(r){var nc=r.networkConfiguration&&r.networkConfiguration.awsvpcConfiguration;var sid=nc&&nc.subnets&&nc.subnets[0]?nc.subnets[0]:'';_budrLookup['ECS:'+(r.serviceName||r.serviceArn)]={a:r._accountId||'',r:r._region||'',v:sid?_bSubVpc[sid]||'':''}});
+  (ctx.ecsServices||[]).forEach(function(r){const nc=r.networkConfiguration&&r.networkConfiguration.awsvpcConfiguration;const sid=nc&&nc.subnets&&nc.subnets[0]?nc.subnets[0]:'';_budrLookup['ECS:'+(r.serviceName||r.serviceArn)]={a:r._accountId||'',r:r._region||'',v:sid?_bSubVpc[sid]||'':''}});
   (ctx.lambdaFns||[]).forEach(function(r){_budrLookup['Lambda:'+r.FunctionName]={a:r._accountId||'',r:r._region||'',v:(r.VpcConfig&&r.VpcConfig.VpcId)||''}});
   (ctx.ecacheClusters||[]).forEach(function(r){_budrLookup['ElastiCache:'+r.CacheClusterId]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
   (ctx.redshiftClusters||[]).forEach(function(r){_budrLookup['Redshift:'+r.ClusterIdentifier]={a:r._accountId||'',r:r._region||'',v:r.VpcId||''}});
@@ -246,15 +246,15 @@ function runBUDRChecks(ctx){
   (ctx.s3bk||[]).forEach(function(r){_budrLookup['S3:'+r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
   (ctx.volumes||[]).forEach(function(r){_budrLookup['EBS:'+r.VolumeId]={a:r._accountId||'',r:r._region||'',v:''}});
   (ctx.snapshots||[]).forEach(function(r){_budrLookup['Snapshot:'+r.SnapshotId]={a:r._accountId||'',r:r._region||'',v:''}});
-  assessments.forEach(function(a){var info=_budrLookup[a.type+':'+a.id];if(info){a.account=info.a;a.region=info.r;a.vpcId=info.v}});
+  assessments.forEach(function(a){const info=_budrLookup[a.type+':'+a.id];if(info){a.account=info.a;a.region=info.r;a.vpcId=info.v}});
   // Fallback: unmatched assessments get primary account
-  var _bAccts=new Set();(ctx.vpcs||[]).forEach(function(v){if(v._accountId&&v._accountId!=='default')_bAccts.add(v._accountId)});
-  if(_bAccts.size>=1){var _bPri=[..._bAccts][0];assessments.forEach(function(a){if(!a.account)a.account=_bPri})}
+  const _bAccts=new Set();(ctx.vpcs||[]).forEach(function(v){if(v._accountId&&v._accountId!=='default')_bAccts.add(v._accountId)});
+  if(_bAccts.size>=1){const _bPri=[..._bAccts][0];assessments.forEach(function(a){if(!a.account)a.account=_bPri})}
   // Enrich BUDR findings with account/region (for Action Plan sheet)
-  var _bResLookup={};
-  Object.keys(_budrLookup).forEach(function(k){var id=k.split(':').slice(1).join(':');_bResLookup[id]=_budrLookup[k]});
-  f.forEach(function(finding){var info=_bResLookup[finding.resource];if(info){finding._accountId=info.a;finding._region=info.r;finding._vpcId=info.v}});
-  if(_bAccts.size>=1){var _bPri2=[..._bAccts][0];f.forEach(function(finding){if(!finding._accountId)finding._accountId=_bPri2})};
+  const _bResLookup={};
+  Object.keys(_budrLookup).forEach(function(k){const id=k.split(':').slice(1).join(':');_bResLookup[id]=_budrLookup[k]});
+  f.forEach(function(finding){const info=_bResLookup[finding.resource];if(info){finding._accountId=info.a;finding._region=info.r;finding._vpcId=info.v}});
+  if(_bAccts.size>=1){const _bPri2=[..._bAccts][0];f.forEach(function(finding){if(!finding._accountId)finding._accountId=_bPri2})};
   budrFindings=f;
   budrAssessments=assessments;
   // Cross-reference with classification engine for tier compliance
@@ -265,40 +265,40 @@ function _enrichBudrWithClassification(ctx,findings){
   // Run classification if not already done
   // NOTE: _classificationData and runClassificationEngine are from the governance
   // region (not yet extracted). Access via window globals during transition.
-  var classData = _getClassificationData();
+  let classData = _getClassificationData();
   if(!classData.length&&ctx) _runClassificationEngine(ctx);
   classData = _getClassificationData();
   // Build lookup by resource id/name (type-qualified keys take priority to avoid cross-type collisions)
-  var classMap={};var classMapTyped={};
+  const classMap={};const classMapTyped={};
   classData.forEach(function(c){classMap[c.id]=c;classMap[c.name]=c;classMapTyped[c.type+'|'+c.id]=c;classMapTyped[c.type+'|'+c.name]=c});
   // Enrich each BUDR assessment
   budrAssessments.forEach(function(a){
-    var cls=classMapTyped[a.type+'|'+a.id]||classMapTyped[a.type+'|'+a.name]||classMap[a.id]||classMap[a.name];
+    const cls=classMapTyped[a.type+'|'+a.id]||classMapTyped[a.type+'|'+a.name]||classMap[a.id]||classMap[a.name];
     a.classTier=cls?cls.tier:'low';
     a.classVpcName=cls?cls.vpcName:'';
     // Find which profile key this assessment uses
-    var profileKey=null;
-    for(var k in _BUDR_RTO_RPO){if(_BUDR_RTO_RPO[k]===a.profile){profileKey=k;break}}
+    let profileKey=null;
+    for(let k in _BUDR_RTO_RPO){if(_BUDR_RTO_RPO[k]===a.profile){profileKey=k;break}}
     a.profileKey=profileKey;
     a.compliance=_budrTierCompliance(profileKey,a.classTier);
     // Generate findings for compliance gaps
     if(a.compliance.issues.length>0){
       a.compliance.issues.forEach(function(issue){
-        var sev=issue.severity==='critical'?'CRITICAL':'HIGH';
+        const sev=issue.severity==='critical'?'CRITICAL':'HIGH';
         findings.push({severity:sev,control:'BUDR-TIER-'+issue.field,framework:'BUDR',resource:a.id,resourceName:a.name,
           message:issue.msg+' ['+a.classTier+' tier]',
           remediation:issue.field==='RPO'?'Configure automated backups to meet '+a.classTier+' RPO target':'Improve HA/DR strategy to meet '+a.classTier+' RTO target'});
       });
     }
     // Apply manual override if present
-    var ov=budrOverrides[a.id];
+    const ov=budrOverrides[a.id];
     if(ov){
       a.overridden=true;
       a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
       if(ov.strategy){
         a.profile=Object.assign({},a.profile);
-        var sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
-        var tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
+        const sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
+        const tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
         a.profile.strategy=sm[ov.strategy]||ov.strategy;
         a.profile.tier=tm[ov.strategy]||a.profile.tier;
       }
@@ -318,14 +318,14 @@ function _reapplyBUDROverrides(){
       a.profile.tier=a.autoProfile.tier;
       a.overridden=false;
     }
-    var ov=budrOverrides[a.id];
+    const ov=budrOverrides[a.id];
     if(ov){
       a.overridden=true;
       if(!a.autoProfile)a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
       a.profile=Object.assign({},a.profile);
       if(ov.strategy){
-        var sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
-        var tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
+        const sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
+        const tm={critical:'protected',high:'protected',medium:'partial',low:'at_risk'};
         a.profile.strategy=sm[ov.strategy]||ov.strategy;
         a.profile.tier=tm[ov.strategy]||a.profile.tier;
       }
@@ -342,9 +342,9 @@ function _getBUDRTierCounts(){
   return counts;
 }
 function _getBudrComplianceCounts(){
-  var counts={pass:0,warn:0,fail:0,unknown:0};
+  const counts={pass:0,warn:0,fail:0,unknown:0};
   budrAssessments.forEach(function(a){
-    var s=a.compliance?a.compliance.status:'unknown';
+    const s=a.compliance?a.compliance.status:'unknown';
     counts[s]=(counts[s]||0)+1;
   });
   return counts;
@@ -389,3 +389,22 @@ export {
   budrAssessments as _budrAssessments,
   budrOverrides as _budrOverrides
 };
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_budrFindings', {
+    get() { return budrFindings; },
+    set(v) { budrFindings = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_budrAssessments', {
+    get() { return budrAssessments; },
+    set(v) { budrAssessments = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_budrOverrides', {
+    get() { return budrOverrides; },
+    set(v) { budrOverrides = v; },
+    configurable: true
+  });
+}

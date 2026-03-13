@@ -214,7 +214,7 @@ window._edgeCaseTests.snapshots = function(){
   const T = (name, fn) => { try { const r = fn(); results.push({name, pass:r.pass, detail:r.detail}); } catch(e){ results.push({name, pass:false, detail:'Exception: '+e.message}); }};
 
   // Save/restore snapshot state for isolation
-  const origSnaps = JSON.parse(JSON.stringify(_snapshots));
+  const origSnaps = structuredClone(_snapshots);
   const origViewing = _viewingHistory;
 
   // 1. localStorage QuotaExceededError handling
@@ -344,7 +344,7 @@ window._edgeCaseTests.notes = function(){
   const T = (name, fn) => { try { const r = fn(); results.push({name, pass:r.pass, detail:r.detail}); } catch(e){ results.push({name, pass:false, detail:'Exception: '+e.message}); }};
 
   // Save/restore annotation state for isolation
-  const origAnnotations = JSON.parse(JSON.stringify(_annotations));
+  const origAnnotations = structuredClone(_annotations);
   const origAuthor = _annotationAuthor;
 
   // 1. Orphaned notes
@@ -369,9 +369,9 @@ window._edgeCaseTests.notes = function(){
   T('Notes survive design mode context', () => {
     _annotations = {};
     addAnnotation('vpc-design-test', 'Design note', 'todo', false);
-    const before = JSON.parse(JSON.stringify(_annotations));
+    const before = structuredClone(_annotations);
     // Simulate design clear/reapply - annotations are independent of design changes
-    const after = JSON.parse(JSON.stringify(_annotations));
+    const after = structuredClone(_annotations);
     return {pass: JSON.stringify(before) === JSON.stringify(after) && Object.keys(after).length === 1,
       detail: 'Annotations preserved through simulated design cycle'};
   });
@@ -412,7 +412,7 @@ window._edgeCaseTests.notes = function(){
     _annotations = {};
     addAnnotation('vpc-rt1', 'Round trip test', 'owner', true);
     addAnnotation('subnet-rt1', 'Another note', 'incident', false);
-    const saved = JSON.parse(JSON.stringify(_annotations));
+    const saved = structuredClone(_annotations);
     const project = {annotations: saved};
     const json = JSON.stringify(project);
     const loaded = JSON.parse(json);
@@ -668,7 +668,7 @@ function _demoToDiffObj(demoData){
 // --- Demo Data: generateDemoBaseline ---
 window.generateDemoBaseline=function(){
   const d=generateDemo();
-  const b=JSON.parse(JSON.stringify(d));
+  const b=structuredClone(d);
   const bVpcs=b.vpcs.Vpcs;const bSubs=b.subnets.Subnets;const bInsts=b.ec2.Reservations[0].Instances;
   const bSgs=b.sgs.SecurityGroups;const bNats=b.nats.NatGateways;const bPeerings=b.peer.VpcPeeringConnections;
   // 1. Remove DR-Recovery and Sandbox VPCs + their resources
@@ -726,7 +726,7 @@ window._edgeCaseTests.diff=function(){
 
   // Test 1: Removed VPCs - baseline has VPCs not in current
   T('Removed VPCs detected',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
     bl.vpcs.push({VpcId:'vpc-removed-test',CidrBlock:'10.99.0.0/16',Tags:[{Key:'Name',Value:'Removed-VPC'}]});
     bl.subnets.push({SubnetId:'subnet-rem-1',VpcId:'vpc-removed-test',CidrBlock:'10.99.0.0/24',Tags:[{Key:'Name',Value:'rem-sub'}]});
     const d=computeDiff(bl,current);
@@ -735,7 +735,7 @@ window._edgeCaseTests.diff=function(){
 
   // Test 2: Entirely new VPCs - current has VPCs not in baseline
   T('New VPCs detected as added',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
     const idx=bl.vpcs.findIndex(v=>v.VpcId==='vpc-sandbox');
     if(idx>=0)bl.vpcs.splice(idx,1);
     const d=computeDiff(bl,current);
@@ -744,7 +744,7 @@ window._edgeCaseTests.diff=function(){
 
   // Test 3: Reordered SG rules - normalizeSG prevents false positive
   T('Reordered SG rules: no false positive',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
     const sg=bl.sgs.find(s=>s.IpPermissions&&s.IpPermissions.length>1);
     if(sg){sg.IpPermissions=[...sg.IpPermissions].reverse();if(sg.IpPermissions[0]?.IpRanges?.length>1)sg.IpPermissions[0].IpRanges=[...sg.IpPermissions[0].IpRanges].reverse()}
     const d=computeDiff(bl,current);
@@ -753,7 +753,7 @@ window._edgeCaseTests.diff=function(){
 
   // Test 4: InstanceType changed - classified as structural
   T('InstanceType change is structural',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
     const inst=bl.instances.find(i=>i.InstanceType==='t3.micro');
     if(inst)inst.InstanceType='t3.xlarge';
     const d=computeDiff(bl,current);
@@ -763,7 +763,7 @@ window._edgeCaseTests.diff=function(){
 
   // Test 5: Subnet CIDR changed - structural modification
   T('Subnet CIDR change is structural',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
     bl.subnets[0].CidrBlock='10.255.255.0/24';
     const d=computeDiff(bl,current);
     const mod=d.modified.find(r=>r.type==='subnets'&&r.key===bl.subnets[0].SubnetId);
@@ -772,7 +772,7 @@ window._edgeCaseTests.diff=function(){
 
   // Test 6: Instance moved between subnets - SubnetId diff detected
   T('Instance subnet move detected',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
     const inst=bl.instances[0];const orig=inst.SubnetId;
     const other=bl.subnets.find(s=>s.SubnetId!==orig);
     if(other)inst.SubnetId=other.SubnetId;
@@ -796,8 +796,8 @@ window._edgeCaseTests.diff=function(){
 
   // Test 9: Multi-account diff - new account resources added
   T('Multi-account new resources are added',()=>{
-    const bl=JSON.parse(JSON.stringify(current));
-    const mc=JSON.parse(JSON.stringify(current));
+    const bl=structuredClone(current);
+    const mc=structuredClone(current);
     mc.vpcs.push({VpcId:'vpc-acct2-prod',CidrBlock:'172.16.0.0/16',Tags:[{Key:'Name',Value:'Acct2'}]});
     mc.instances.push({InstanceId:'i-acct2-001',SubnetId:'subnet-acct2-1',InstanceType:'m5.large',State:{Name:'running'},Tags:[{Key:'Name',Value:'acct2-web'}]});
     const d=computeDiff(bl,mc);
@@ -1135,7 +1135,7 @@ window._edgeCaseTests.firewall=function(){
       const ctx=mkCtx();
       window._rlCtx=ctx;window._fwEdits=[];window._fwSnapshot=null;
       _fwTakeSnapshot();
-      const origRule=JSON.parse(JSON.stringify(ctx.sgs[0].IpPermissions[0]));
+      const origRule=structuredClone(ctx.sgs[0].IpPermissions[0]);
       const newRule={IpProtocol:'tcp',FromPort:8080,ToPort:8080,IpRanges:[{CidrIp:'10.0.0.0/8'}],UserIdGroupPairs:[]};
       ctx.sgs[0].IpPermissions[0]=Object.assign({},newRule);
       _fwEdits.push({type:'sg',action:'modify',resourceId:'sg-fw-1',direction:'ingress',rule:newRule,originalRule:origRule});
@@ -1204,7 +1204,7 @@ window._edgeCaseTests.firewall=function(){
       _fwTakeSnapshot();
       const origLen=ctx.nacls[0].Entries.filter(e=>!e.Egress).length;
       const delRule=ctx.nacls[0].Entries.find(e=>e.RuleNumber===100&&!e.Egress);
-      const delCopy=JSON.parse(JSON.stringify(delRule));
+      const delCopy=structuredClone(delRule);
       // Remove it via _fwRemoveRule-style splice
       const idx=ctx.nacls[0].Entries.indexOf(delRule);
       ctx.nacls[0].Entries.splice(idx,1);

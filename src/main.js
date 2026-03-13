@@ -142,24 +142,24 @@ window.AppModules = {
   parseIAMData, getIAMAccessForVpc, runIAMChecks,
   _iamData, _showIAM, setIamData, setShowIAM, getIamData, getShowIAM,
 
-  // Timeline & Annotations
-  Timeline,
+  // Timeline & Annotations (flattened for app-core.js backward compat)
+  Timeline, ...Timeline,
 
-  // Phase 3: Feature Engines
-  DesignMode,
-  FlowTracing,
-  FlowAnalysis,
-  FirewallEditor,
-  MultiAccount,
+  // Phase 3: Feature Engines (flattened)
+  DesignMode, ...DesignMode,
+  FlowTracing, ...FlowTracing,
+  FlowAnalysis, ...FlowAnalysis,
+  FirewallEditor, ...FirewallEditor,
+  MultiAccount, ...MultiAccount,
 
-  // Phase 4: Dashboards & Reports
-  ComplianceView,
-  UnifiedDashboard,
-  Governance,
+  // Phase 4: Dashboards & Reports (flattened)
+  ComplianceView, ...ComplianceView,
+  UnifiedDashboard, ...UnifiedDashboard,
+  Governance, ...Governance,
 
-  // Phase 5: Core
-  ExportUtils,
-  IacGenerator,
+  // Phase 5: Core (flattened)
+  ExportUtils, ...ExportUtils,
+  IacGenerator, ...IacGenerator,
 
   // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
 };

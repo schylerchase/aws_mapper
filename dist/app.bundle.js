@@ -1131,6 +1131,8 @@ var AppBundle = (() => {
   };
 
   // src/modules/compliance-engine.js
+  var _cachedIamData = null;
+  var _cachedIamRaw = null;
   var _CKV_MAP = {
     // CIS / NET → Checkov
     "CIS 5.2": "CKV_AWS_24",
@@ -1797,7 +1799,14 @@ var AppBundle = (() => {
     try {
       const iamRaw = safeParse(gv("in_iam"));
       if (iamRaw) {
-        const iamData = parseIAMData(iamRaw);
+        let iamData;
+        if (iamRaw === _cachedIamRaw) {
+          iamData = _cachedIamData;
+        } else {
+          iamData = parseIAMData(iamRaw);
+          _cachedIamRaw = iamRaw;
+          _cachedIamData = iamData;
+        }
         _complianceFindings = _complianceFindings.concat(runIAMChecks(iamData));
       }
     } catch (e) {
@@ -1886,64 +1895,64 @@ var AppBundle = (() => {
   }
   function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) {
     if (!nacl || !nacl.Entries) return { action: "allow", rule: "Default allow (no NACL)", ruleNum: "-" };
-    const entries = (nacl.Entries || []).filter(function(e2) {
-      return e2.Egress === (direction === "outbound");
+    const entries = (nacl.Entries || []).filter(function(e) {
+      return e.Egress === (direction === "outbound");
     }).sort(function(a, b) {
       return a.RuleNumber - b.RuleNumber;
     });
     if (entries.length === 0 && opts && opts.assumeAllow) return { action: "allow", rule: "No " + direction + " rules defined (assumed allow)", ruleNum: "-" };
-    for (var i = 0; i < entries.length; i++) {
-      var e = entries[i];
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
       if (e.RuleNumber === 32767) continue;
       if (!protoMatch(e.Protocol, protocol)) continue;
-      var portOk = true;
+      let portOk = true;
       if (e.PortRange) {
         portOk = portInRange(port, e.PortRange.From, e.PortRange.To);
       }
       if (!portOk) continue;
-      var cidrOk = false;
+      let cidrOk = false;
       if (e.CidrBlock) cidrOk = cidrContains2(e.CidrBlock, ipFromCidr(sourceCidr));
       if (!cidrOk && e.Ipv6CidrBlock) {
         if (e.Ipv6CidrBlock === "::/0") cidrOk = true;
         else continue;
       }
       if (!cidrOk) continue;
-      var act = e.RuleAction === "allow" ? "allow" : "deny";
-      var cidrLabel = e.CidrBlock || e.Ipv6CidrBlock || "";
+      const act = e.RuleAction === "allow" ? "allow" : "deny";
+      const cidrLabel = e.CidrBlock || e.Ipv6CidrBlock || "";
       return { action: act, rule: "Rule #" + e.RuleNumber + " " + act.toUpperCase() + " " + protoName(e.Protocol) + " port " + (e.PortRange ? e.PortRange.From + "-" + e.PortRange.To : "all") + " from " + cidrLabel, ruleNum: e.RuleNumber };
     }
     return { action: "deny", rule: "Default deny (no matching rule)", ruleNum: "*" };
   }
   function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts) {
     if (!sgs || sgs.length === 0) return { action: opts && opts.assumeAllow ? "allow" : "deny", rule: "No security groups attached", matchedSg: null };
-    var srcIp = ipFromCidr(sourceCidr);
-    var srcSgIds = opts && opts.sourceSgIds;
-    var srcSgSet = srcSgIds ? new Set(srcSgIds) : null;
-    for (var si = 0; si < sgs.length; si++) {
-      var sg = sgs[si];
-      var rules = direction === "inbound" ? sg.IpPermissions || [] : sg.IpPermissionsEgress || [];
-      for (var ri = 0; ri < rules.length; ri++) {
-        var r = rules[ri];
+    const srcIp = ipFromCidr(sourceCidr);
+    const srcSgIds = opts && opts.sourceSgIds;
+    const srcSgSet = srcSgIds ? new Set(srcSgIds) : null;
+    for (let si = 0; si < sgs.length; si++) {
+      const sg = sgs[si];
+      const rules = direction === "inbound" ? sg.IpPermissions || [] : sg.IpPermissionsEgress || [];
+      for (let ri = 0; ri < rules.length; ri++) {
+        const r = rules[ri];
         if (!protoMatch(String(r.IpProtocol), protocol)) continue;
-        var portOk = true;
+        let portOk = true;
         if (r.FromPort !== void 0 && r.FromPort !== -1) {
           portOk = portInRange(port, r.FromPort, r.ToPort);
         }
         if (!portOk) continue;
-        var cidrOk = false;
-        var ipRanges = r.IpRanges || [];
-        for (var ci = 0; ci < ipRanges.length && !cidrOk; ci++) {
+        let cidrOk = false;
+        const ipRanges = r.IpRanges || [];
+        for (let ci = 0; ci < ipRanges.length && !cidrOk; ci++) {
           if (cidrContains2(ipRanges[ci].CidrIp, srcIp)) cidrOk = true;
         }
         if (!cidrOk) {
-          var ipv6Ranges = r.Ipv6Ranges || [];
-          for (var v6i = 0; v6i < ipv6Ranges.length && !cidrOk; v6i++) {
+          const ipv6Ranges = r.Ipv6Ranges || [];
+          for (let v6i = 0; v6i < ipv6Ranges.length && !cidrOk; v6i++) {
             if (ipv6Ranges[v6i].CidrIpv6 === "::/0") cidrOk = true;
           }
         }
         if (!cidrOk && (r.UserIdGroupPairs || []).length > 0) {
-          var pairs = r.UserIdGroupPairs || [];
-          for (var pi = 0; pi < pairs.length && !cidrOk; pi++) {
+          const pairs = r.UserIdGroupPairs || [];
+          for (let pi = 0; pi < pairs.length && !cidrOk; pi++) {
             if (srcSgSet) {
               if (pairs[pi].GroupId && srcSgSet.has(pairs[pi].GroupId)) cidrOk = true;
             } else {
@@ -1952,7 +1961,7 @@ var AppBundle = (() => {
           }
         }
         if (cidrOk) {
-          var desc = sg.GroupName + ": " + protoName(String(r.IpProtocol)) + " port " + (r.FromPort !== -1 && r.FromPort !== void 0 ? r.FromPort + "-" + r.ToPort : "all");
+          const desc = sg.GroupName + ": " + protoName(String(r.IpProtocol)) + " port " + (r.FromPort !== -1 && r.FromPort !== void 0 ? r.FromPort + "-" + r.ToPort : "all");
           return { action: "allow", rule: desc, matchedSg: sg.GroupId || sg.GroupName };
         }
       }
@@ -2151,14 +2160,14 @@ var AppBundle = (() => {
   };
   function _budrTierCompliance(profileKey, classTier) {
     if (!profileKey || !classTier) return { status: "unknown", issues: [] };
-    var est = _BUDR_EST_MINUTES[profileKey];
-    var target = _TIER_TARGETS[classTier];
+    const est = _BUDR_EST_MINUTES[profileKey];
+    const target = _TIER_TARGETS[classTier];
     if (!est || !target) return { status: "unknown", issues: [] };
-    var issues = [];
+    const issues = [];
     if (est.rpo === Infinity) issues.push({ field: "RPO", severity: "critical", msg: "No backup \u2014 RPO unrecoverable (target: " + target.rpoLabel + ")" });
     else if (est.rpo > target.rpo) issues.push({ field: "RPO", severity: "warning", msg: "Est. RPO ~" + _fmtMin(est.rpo) + " exceeds " + classTier + " target of " + target.rpoLabel });
     if (est.rto > target.rto) issues.push({ field: "RTO", severity: "warning", msg: "Est. RTO ~" + _fmtMin(est.rto) + " exceeds " + classTier + " target of " + target.rtoLabel });
-    var status = issues.some(function(i) {
+    const status = issues.some(function(i) {
       return i.severity === "critical";
     }) ? "fail" : issues.length ? "warn" : "pass";
     return { status, issues, estRto: est.rto, estRpo: est.rpo, targetRto: target.rto, targetRpo: target.rpo, rtoWhy: est.rtoWhy || "", rpoWhy: est.rpoWhy || "" };
@@ -2355,8 +2364,8 @@ var AppBundle = (() => {
       }
       assessments.push({ type: "S3", id, name, profile, signals: { Versioned: versioned, MFADelete: mfaDel } });
     });
-    var _budrLookup = {};
-    var _bSubVpc = {};
+    const _budrLookup = {};
+    const _bSubVpc = {};
     (ctx.subnets || []).forEach(function(s) {
       if (s.SubnetId) _bSubVpc[s.SubnetId] = s.VpcId || "";
     });
@@ -2367,8 +2376,8 @@ var AppBundle = (() => {
       _budrLookup["EC2:" + r.InstanceId] = { a: r._accountId || "", r: r._region || "", v: r.VpcId || _bSubVpc[r.SubnetId] || "" };
     });
     (ctx.ecsServices || []).forEach(function(r) {
-      var nc = r.networkConfiguration && r.networkConfiguration.awsvpcConfiguration;
-      var sid2 = nc && nc.subnets && nc.subnets[0] ? nc.subnets[0] : "";
+      const nc = r.networkConfiguration && r.networkConfiguration.awsvpcConfiguration;
+      const sid2 = nc && nc.subnets && nc.subnets[0] ? nc.subnets[0] : "";
       _budrLookup["ECS:" + (r.serviceName || r.serviceArn)] = { a: r._accountId || "", r: r._region || "", v: sid2 ? _bSubVpc[sid2] || "" : "" };
     });
     (ctx.lambdaFns || []).forEach(function(r) {
@@ -2393,30 +2402,30 @@ var AppBundle = (() => {
       _budrLookup["Snapshot:" + r.SnapshotId] = { a: r._accountId || "", r: r._region || "", v: "" };
     });
     assessments.forEach(function(a) {
-      var info = _budrLookup[a.type + ":" + a.id];
+      const info = _budrLookup[a.type + ":" + a.id];
       if (info) {
         a.account = info.a;
         a.region = info.r;
         a.vpcId = info.v;
       }
     });
-    var _bAccts = /* @__PURE__ */ new Set();
+    const _bAccts = /* @__PURE__ */ new Set();
     (ctx.vpcs || []).forEach(function(v) {
       if (v._accountId && v._accountId !== "default") _bAccts.add(v._accountId);
     });
     if (_bAccts.size >= 1) {
-      var _bPri = [..._bAccts][0];
+      const _bPri = [..._bAccts][0];
       assessments.forEach(function(a) {
         if (!a.account) a.account = _bPri;
       });
     }
-    var _bResLookup = {};
+    const _bResLookup = {};
     Object.keys(_budrLookup).forEach(function(k) {
-      var id = k.split(":").slice(1).join(":");
+      const id = k.split(":").slice(1).join(":");
       _bResLookup[id] = _budrLookup[k];
     });
     f.forEach(function(finding) {
-      var info = _bResLookup[finding.resource];
+      const info = _bResLookup[finding.resource];
       if (info) {
         finding._accountId = info.a;
         finding._region = info.r;
@@ -2424,7 +2433,7 @@ var AppBundle = (() => {
       }
     });
     if (_bAccts.size >= 1) {
-      var _bPri2 = [..._bAccts][0];
+      const _bPri2 = [..._bAccts][0];
       f.forEach(function(finding) {
         if (!finding._accountId) finding._accountId = _bPri2;
       });
@@ -2436,11 +2445,11 @@ var AppBundle = (() => {
     return f;
   }
   function _enrichBudrWithClassification(ctx, findings) {
-    var classData = _getClassificationData();
+    let classData = _getClassificationData();
     if (!classData.length && ctx) _runClassificationEngine(ctx);
     classData = _getClassificationData();
-    var classMap = {};
-    var classMapTyped = {};
+    const classMap = {};
+    const classMapTyped = {};
     classData.forEach(function(c) {
       classMap[c.id] = c;
       classMap[c.name] = c;
@@ -2448,11 +2457,11 @@ var AppBundle = (() => {
       classMapTyped[c.type + "|" + c.name] = c;
     });
     budrAssessments.forEach(function(a) {
-      var cls = classMapTyped[a.type + "|" + a.id] || classMapTyped[a.type + "|" + a.name] || classMap[a.id] || classMap[a.name];
+      const cls = classMapTyped[a.type + "|" + a.id] || classMapTyped[a.type + "|" + a.name] || classMap[a.id] || classMap[a.name];
       a.classTier = cls ? cls.tier : "low";
       a.classVpcName = cls ? cls.vpcName : "";
-      var profileKey = null;
-      for (var k in _BUDR_RTO_RPO) {
+      let profileKey = null;
+      for (let k in _BUDR_RTO_RPO) {
         if (_BUDR_RTO_RPO[k] === a.profile) {
           profileKey = k;
           break;
@@ -2462,7 +2471,7 @@ var AppBundle = (() => {
       a.compliance = _budrTierCompliance(profileKey, a.classTier);
       if (a.compliance.issues.length > 0) {
         a.compliance.issues.forEach(function(issue) {
-          var sev = issue.severity === "critical" ? "CRITICAL" : "HIGH";
+          const sev = issue.severity === "critical" ? "CRITICAL" : "HIGH";
           findings.push({
             severity: sev,
             control: "BUDR-TIER-" + issue.field,
@@ -2474,14 +2483,14 @@ var AppBundle = (() => {
           });
         });
       }
-      var ov = budrOverrides[a.id];
+      const ov = budrOverrides[a.id];
       if (ov) {
         a.overridden = true;
         a.autoProfile = { strategy: a.profile.strategy, rto: a.profile.rto, rpo: a.profile.rpo, tier: a.profile.tier };
         if (ov.strategy) {
           a.profile = Object.assign({}, a.profile);
-          var sm = { critical: "hot", high: "warm", medium: "pilot", low: "cold" };
-          var tm = { critical: "protected", high: "protected", medium: "partial", low: "at_risk" };
+          const sm = { critical: "hot", high: "warm", medium: "pilot", low: "cold" };
+          const tm = { critical: "protected", high: "protected", medium: "partial", low: "at_risk" };
           a.profile.strategy = sm[ov.strategy] || ov.strategy;
           a.profile.tier = tm[ov.strategy] || a.profile.tier;
         }
@@ -2500,14 +2509,14 @@ var AppBundle = (() => {
         a.profile.tier = a.autoProfile.tier;
         a.overridden = false;
       }
-      var ov = budrOverrides[a.id];
+      const ov = budrOverrides[a.id];
       if (ov) {
         a.overridden = true;
         if (!a.autoProfile) a.autoProfile = { strategy: a.profile.strategy, rto: a.profile.rto, rpo: a.profile.rpo, tier: a.profile.tier };
         a.profile = Object.assign({}, a.profile);
         if (ov.strategy) {
-          var sm = { critical: "hot", high: "warm", medium: "pilot", low: "cold" };
-          var tm = { critical: "protected", high: "protected", medium: "partial", low: "at_risk" };
+          const sm = { critical: "hot", high: "warm", medium: "pilot", low: "cold" };
+          const tm = { critical: "protected", high: "protected", medium: "partial", low: "at_risk" };
           a.profile.strategy = sm[ov.strategy] || ov.strategy;
           a.profile.tier = tm[ov.strategy] || a.profile.tier;
         }
@@ -2524,12 +2533,41 @@ var AppBundle = (() => {
     return counts;
   }
   function _getBudrComplianceCounts() {
-    var counts = { pass: 0, warn: 0, fail: 0, unknown: 0 };
+    const counts = { pass: 0, warn: 0, fail: 0, unknown: 0 };
     budrAssessments.forEach(function(a) {
-      var s = a.compliance ? a.compliance.status : "unknown";
+      const s = a.compliance ? a.compliance.status : "unknown";
       counts[s] = (counts[s] || 0) + 1;
     });
     return counts;
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_budrFindings", {
+      get() {
+        return budrFindings;
+      },
+      set(v) {
+        budrFindings = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_budrAssessments", {
+      get() {
+        return budrAssessments;
+      },
+      set(v) {
+        budrAssessments = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_budrOverrides", {
+      get() {
+        return budrOverrides;
+      },
+      set(v) {
+        budrOverrides = v;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/dep-graph.js
@@ -2681,6 +2719,26 @@ var AppBundle = (() => {
   }
   function isBlastActive() {
     return blastActive;
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_depGraph", {
+      get() {
+        return depGraph;
+      },
+      set(v) {
+        depGraph = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_blastActive", {
+      get() {
+        return blastActive;
+      },
+      set(v) {
+        blastActive = v;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/iam-engine.js
@@ -2945,6 +3003,26 @@ var AppBundle = (() => {
     }
     return f;
   }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_iamData", {
+      get() {
+        return _iamData;
+      },
+      set(v) {
+        _iamData = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_showIAM", {
+      get() {
+        return _showIAM;
+      },
+      set(v) {
+        _showIAM = v;
+      },
+      configurable: true
+    });
+  }
 
   // src/modules/timeline.js
   var timeline_exports = {};
@@ -3181,6 +3259,62 @@ var AppBundle = (() => {
     annotations[resourceId].splice(noteIndex, 1);
     if (annotations[resourceId].length === 0) delete annotations[resourceId];
     saveAnnotations();
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_snapshots", {
+      get() {
+        return snapshots;
+      },
+      set(v) {
+        snapshots = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_viewingHistory", {
+      get() {
+        return viewingHistory;
+      },
+      set(v) {
+        viewingHistory = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_currentSnapshot", {
+      get() {
+        return currentSnapshot;
+      },
+      set(v) {
+        currentSnapshot = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_lastAutoSnap", {
+      get() {
+        return lastAutoSnap;
+      },
+      set(v) {
+        lastAutoSnap = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_annotations", {
+      get() {
+        return annotations;
+      },
+      set(v) {
+        annotations = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_annotationAuthor", {
+      get() {
+        return annotationAuthor;
+      },
+      set(v) {
+        annotationAuthor = v;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/design-mode.js
@@ -3805,7 +3939,7 @@ var AppBundle = (() => {
     try {
       const plan = typeof json === "string" ? JSON.parse(json) : json;
       if (!plan.changes || !Array.isArray(plan.changes)) {
-        alert("Invalid plan format");
+        showToast("Invalid plan format", 3e3);
         return;
       }
       if (!_designMode) enterFn();
@@ -3816,9 +3950,10 @@ var AppBundle = (() => {
         if (ch._invalid) blocked++;
         else imported++;
       });
-      if (blocked > 0) alert("Imported " + imported + " changes, " + blocked + " blocked by validation errors. Check the change log for details.");
+      if (blocked > 0) showToast("Imported " + imported + " changes, " + blocked + " blocked by validation errors. Check the change log for details.", 4e3);
     } catch (e) {
-      alert("Failed to import plan: " + e.message);
+      showToast("Failed to import plan: " + e.message, 4e3);
+      console.error("Plan import failed:", e);
     }
   }
   function detectAZs(subnets) {
@@ -4095,7 +4230,7 @@ var AppBundle = (() => {
       return { subnetId: null, vpcId: null, cidr: "0.0.0.0/0", sgs: [], name: "Internet", ip: "0.0.0.0" };
     }
     if (type === "subnet") {
-      var sub = (ctx.subnets || []).find(function(s) {
+      const sub = (ctx.subnets || []).find(function(s) {
         return s.SubnetId === id;
       });
       if (!sub) return null;
@@ -4110,17 +4245,17 @@ var AppBundle = (() => {
       };
     }
     if (type === "instance") {
-      var inst = null;
+      let inst = null;
       Object.keys(ctx.instBySub || {}).forEach(function(sid2) {
         (ctx.instBySub[sid2] || []).forEach(function(i) {
           if (i.InstanceId === id) inst = i;
         });
       });
       if (!inst) return null;
-      var iSgs = (inst.SecurityGroups || []).map(function(s) {
+      const iSgs = (inst.SecurityGroups || []).map(function(s) {
         return s.GroupId;
       });
-      var fullSgs = iSgs.map(function(gid) {
+      const fullSgs = iSgs.map(function(gid) {
         return (ctx.sgs || []).find(function(s) {
           return s.GroupId === gid;
         });
@@ -4139,8 +4274,8 @@ var AppBundle = (() => {
       };
     }
     if (type === "rds") {
-      var rds2 = null;
-      var rSid = null;
+      let rds2 = null;
+      let rSid = null;
       Object.keys(ctx.rdsBySub || {}).forEach(function(sid2) {
         (ctx.rdsBySub[sid2] || []).forEach(function(d) {
           if (d.DBInstanceIdentifier === id) {
@@ -4150,25 +4285,25 @@ var AppBundle = (() => {
         });
       });
       if (!rds2) return null;
-      var rVpc = ((ctx.subnets || []).find(function(s) {
+      const rVpc = ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === rSid;
       }) || {}).VpcId;
-      var rSgs2 = (rds2.VpcSecurityGroups || []).map(function(s) {
+      const rSgs2 = (rds2.VpcSecurityGroups || []).map(function(s) {
         return (ctx.sgs || []).find(function(sg) {
           return sg.GroupId === s.VpcSecurityGroupId;
         });
       }).filter(Boolean);
-      var rSubCidr = rSid ? ((ctx.subnets || []).find(function(s) {
+      const rSubCidr = rSid ? ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === rSid;
       }) || {}).CidrBlock : null;
       return { subnetId: rSid, vpcId: rVpc, cidr: rSubCidr, sgs: rSgs2, name: rds2.DBInstanceIdentifier };
     }
     if (type === "alb") {
-      var alb2 = null;
-      var aSid = null;
+      let alb2 = null;
+      let aSid = null;
       Object.keys(ctx.albBySub || {}).forEach(function(sid2) {
         (ctx.albBySub[sid2] || []).forEach(function(a) {
-          var aid = a.LoadBalancerArn ? a.LoadBalancerArn.split("/").pop() : "";
+          const aid = a.LoadBalancerArn ? a.LoadBalancerArn.split("/").pop() : "";
           if (aid === id || a.LoadBalancerName === id) {
             alb2 = a;
             aSid = sid2;
@@ -4176,10 +4311,10 @@ var AppBundle = (() => {
         });
       });
       if (!alb2) return null;
-      var aVpc = ((ctx.subnets || []).find(function(s) {
+      const aVpc = ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === aSid;
       }) || {}).VpcId;
-      var aSgs = (alb2.SecurityGroups || []).map(function(gid) {
+      const aSgs = (alb2.SecurityGroups || []).map(function(gid) {
         return (ctx.sgs || []).find(function(sg) {
           return sg.GroupId === gid;
         });
@@ -4187,8 +4322,8 @@ var AppBundle = (() => {
       return { subnetId: aSid, vpcId: aVpc, cidr: null, sgs: aSgs, name: alb2.LoadBalancerName || id };
     }
     if (type === "lambda") {
-      var fn2 = null;
-      var fSid = null;
+      let fn2 = null;
+      let fSid = null;
       Object.keys(ctx.lambdaBySub || {}).forEach(function(sid2) {
         (ctx.lambdaBySub[sid2] || []).forEach(function(f) {
           if (f.FunctionName === id) {
@@ -4198,10 +4333,10 @@ var AppBundle = (() => {
         });
       });
       if (!fn2) return null;
-      var fVpc = ((ctx.subnets || []).find(function(s) {
+      const fVpc = ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === fSid;
       }) || {}).VpcId;
-      var fSgs2 = ((fn2.VpcConfig || {}).SecurityGroupIds || []).map(function(gid) {
+      const fSgs2 = ((fn2.VpcConfig || {}).SecurityGroupIds || []).map(function(gid) {
         return (ctx.sgs || []).find(function(sg) {
           return sg.GroupId === gid;
         });
@@ -4209,8 +4344,8 @@ var AppBundle = (() => {
       return { subnetId: fSid, vpcId: fVpc, cidr: null, sgs: fSgs2, name: fn2.FunctionName };
     }
     if (type === "ecs") {
-      var ecs2 = null;
-      var eSid = null;
+      let ecs2 = null;
+      let eSid = null;
       Object.keys(ctx.ecsBySub || {}).forEach(function(sid2) {
         (ctx.ecsBySub[sid2] || []).forEach(function(s) {
           if (s.serviceName === id) {
@@ -4220,11 +4355,11 @@ var AppBundle = (() => {
         });
       });
       if (!ecs2) return null;
-      var eVpc = ((ctx.subnets || []).find(function(s) {
+      const eVpc = ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === eSid;
       }) || {}).VpcId;
-      var eNc = (ecs2.networkConfiguration || {}).awsvpcConfiguration || {};
-      var eSgs2 = (eNc.securityGroups || []).map(function(gid) {
+      const eNc = (ecs2.networkConfiguration || {}).awsvpcConfiguration || {};
+      const eSgs2 = (eNc.securityGroups || []).map(function(gid) {
         return (ctx.sgs || []).find(function(sg) {
           return sg.GroupId === gid;
         });
@@ -4232,65 +4367,65 @@ var AppBundle = (() => {
       return { subnetId: eSid, vpcId: eVpc, cidr: null, sgs: eSgs2, name: ecs2.serviceName || id };
     }
     if (type === "ecache") {
-      var ec2 = null;
-      var ecVpc = null;
+      let ec2 = null;
+      let ecVpc = null;
       (ctx.ecacheClusters || []).forEach(function(c) {
         if (c.CacheClusterId === id) ec2 = c;
       });
       if (!ec2) return null;
-      var ecMap = ctx.ecacheByVpc || {};
-      var ecKeys = ecMap instanceof Map ? Array.from(ecMap.keys()) : Object.keys(ecMap);
+      const ecMap = ctx.ecacheByVpc || {};
+      const ecKeys = ecMap instanceof Map ? Array.from(ecMap.keys()) : Object.keys(ecMap);
       ecKeys.forEach(function(vid) {
-        var arr = ecMap instanceof Map ? ecMap.get(vid) : ecMap[vid];
+        const arr = ecMap instanceof Map ? ecMap.get(vid) : ecMap[vid];
         (arr || []).forEach(function(c) {
           if (c.CacheClusterId === id) ecVpc = vid;
         });
       });
-      var ecSgs = (ec2.SecurityGroups || []).map(function(s) {
+      const ecSgs = (ec2.SecurityGroups || []).map(function(s) {
         return (ctx.sgs || []).find(function(sg) {
           return sg.GroupId === (s.SecurityGroupId || s);
         });
       }).filter(Boolean);
-      var ecSid = null;
+      let ecSid = null;
       if (ecVpc) (ctx.subnets || []).forEach(function(s) {
         if (!ecSid && s.VpcId === ecVpc && !(ctx.pubSubs && ctx.pubSubs.has(s.SubnetId))) ecSid = s.SubnetId;
       });
       if (!ecSid && ecVpc) (ctx.subnets || []).forEach(function(s) {
         if (!ecSid && s.VpcId === ecVpc) ecSid = s.SubnetId;
       });
-      var ecSubCidr = ecSid ? ((ctx.subnets || []).find(function(s) {
+      const ecSubCidr = ecSid ? ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === ecSid;
       }) || {}).CidrBlock : null;
       return { subnetId: ecSid, vpcId: ecVpc, cidr: ecSubCidr, sgs: ecSgs, name: ec2.CacheClusterId };
     }
     if (type === "redshift") {
-      var rs2 = null;
-      var rsVpc = null;
+      let rs2 = null;
+      let rsVpc = null;
       (ctx.redshiftClusters || []).forEach(function(c) {
         if (c.ClusterIdentifier === id) rs2 = c;
       });
       if (!rs2) return null;
-      var rsMap = ctx.redshiftByVpc || {};
-      var rsKeys = rsMap instanceof Map ? Array.from(rsMap.keys()) : Object.keys(rsMap);
+      const rsMap = ctx.redshiftByVpc || {};
+      const rsKeys = rsMap instanceof Map ? Array.from(rsMap.keys()) : Object.keys(rsMap);
       rsKeys.forEach(function(vid) {
-        var arr = rsMap instanceof Map ? rsMap.get(vid) : rsMap[vid];
+        const arr = rsMap instanceof Map ? rsMap.get(vid) : rsMap[vid];
         (arr || []).forEach(function(c) {
           if (c.ClusterIdentifier === id) rsVpc = vid;
         });
       });
-      var rsSgs = (rs2.VpcSecurityGroups || []).map(function(s) {
+      const rsSgs = (rs2.VpcSecurityGroups || []).map(function(s) {
         return (ctx.sgs || []).find(function(sg) {
           return sg.GroupId === (s.VpcSecurityGroupId || s);
         });
       }).filter(Boolean);
-      var rsSid = null;
+      let rsSid = null;
       if (rsVpc) (ctx.subnets || []).forEach(function(s) {
         if (!rsSid && s.VpcId === rsVpc && !(ctx.pubSubs && ctx.pubSubs.has(s.SubnetId))) rsSid = s.SubnetId;
       });
       if (!rsSid && rsVpc) (ctx.subnets || []).forEach(function(s) {
         if (!rsSid && s.VpcId === rsVpc) rsSid = s.SubnetId;
       });
-      var rsSubCidr = rsSid ? ((ctx.subnets || []).find(function(s) {
+      const rsSubCidr = rsSid ? ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === rsSid;
       }) || {}).CidrBlock : null;
       return { subnetId: rsSid, vpcId: rsVpc, cidr: rsSubCidr, sgs: rsSgs, name: rs2.ClusterIdentifier };
@@ -4299,16 +4434,16 @@ var AppBundle = (() => {
   }
   function resolveClickTarget(el, ctx, buildResTreeFn) {
     if (!ctx) return null;
-    var inetNode = el.closest(".internet-node");
+    const inetNode = el.closest(".internet-node");
     if (inetNode) return { type: "internet", id: "internet" };
-    var resNode = el.closest(".res-node");
-    var subNode = el.closest(".subnet-node");
+    const resNode = el.closest(".res-node");
+    const subNode = el.closest(".subnet-node");
     if (resNode && subNode) {
-      var subId = subNode.getAttribute("data-subnet-id");
-      var resIdx = Array.from(subNode.querySelectorAll(".res-node")).indexOf(resNode);
-      var tree = buildResTreeFn ? buildResTreeFn(subId, ctx) : null;
+      const subId = subNode.getAttribute("data-subnet-id");
+      const resIdx = Array.from(subNode.querySelectorAll(".res-node")).indexOf(resNode);
+      const tree = buildResTreeFn ? buildResTreeFn(subId, ctx) : null;
       if (tree && tree[resIdx]) {
-        var res = tree[resIdx];
+        const res = tree[resIdx];
         if (res.type === "EC2") return { type: "instance", id: res.rid || "" };
         if (res.type === "ALB") return { type: "alb", id: res.rid || res.name };
         if (res.type === "RDS") return { type: "rds", id: res.rid || res.name };
@@ -4326,13 +4461,13 @@ var AppBundle = (() => {
     return null;
   }
   function traceInternetToResource(target, config, ctx, opts) {
-    var path = [];
-    var hopN = 1;
-    var tgtPos = resolveNetworkPosition(target.type, target.id, ctx);
+    const path = [];
+    let hopN = 1;
+    let tgtPos = resolveNetworkPosition(target.type, target.id, ctx);
     if (!tgtPos) return { path: [{ hop: 1, type: "error", id: "-", action: "block", detail: "Cannot resolve target" }], blocked: { hop: 1, reason: "Target not found" } };
     path.push({ hop: hopN++, type: "source", id: "Internet", action: "allow", detail: "Source: Internet (0.0.0.0/0)" });
-    var vpcId = tgtPos.vpcId;
-    var igw = (ctx.igws || []).find(function(g) {
+    const vpcId = tgtPos.vpcId;
+    const igw = (ctx.igws || []).find(function(g) {
       return (g.Attachments || []).some(function(a) {
         return a.VpcId === vpcId;
       });
@@ -4343,23 +4478,23 @@ var AppBundle = (() => {
       return { path, blocked: { hop: 2, reason: "No Internet Gateway in target VPC", suggestion: "Attach an Internet Gateway to VPC " + vpcId } };
     }
     path.push({ hop: hopN++, type: "igw-check", id: igw.InternetGatewayId || "IGW", action: "allow", detail: "Internet Gateway " + igw.InternetGatewayId + " attached to VPC" });
-    var isPublic = ctx.pubSubs && ctx.pubSubs.has(tgtPos.subnetId);
+    const isPublic = ctx.pubSubs && ctx.pubSubs.has(tgtPos.subnetId);
     if (!isPublic) {
       path.push({ hop: hopN++, type: "route-table", id: "No IGW route", action: "block", detail: "Target subnet " + tgtPos.subnetId + " has no route to IGW (private subnet)" });
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Target in private subnet", subnetId: tgtPos.subnetId });
       return { path, blocked: { hop: hopN - 2, reason: "Target is in a private subnet with no IGW route", suggestion: "Move resource to a public subnet or use an ALB/NAT" } };
     }
     path.push({ hop: hopN++, type: "route-table", id: "IGW route", action: "allow", detail: "Target subnet has route to Internet Gateway" });
-    var tgtNacl = (ctx.subNacl || {})[tgtPos.subnetId];
-    var naclOpts = opts && opts.discovery ? { assumeAllow: true } : null;
-    var naclIn = evaluateNACL(tgtNacl, "inbound", config.protocol, config.port, "0.0.0.0/0", naclOpts);
+    const tgtNacl = (ctx.subNacl || {})[tgtPos.subnetId];
+    const naclOpts = opts && opts.discovery ? { assumeAllow: true } : null;
+    const naclIn = evaluateNACL(tgtNacl, "inbound", config.protocol, config.port, "0.0.0.0/0", naclOpts);
     path.push({ hop: hopN++, type: "nacl-inbound", id: tgtNacl ? tgtNacl.NetworkAclId || "NACL" : "Default NACL", action: naclIn.action, detail: "Target subnet NACL inbound from Internet", rule: naclIn.rule });
     if (naclIn.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by NACL", subnetId: tgtPos.subnetId });
       return { path, blocked: { hop: hopN - 2, reason: "NACL denies inbound from Internet", suggestion: "Add NACL inbound rule allowing " + config.protocol + "/" + config.port + " from 0.0.0.0/0" } };
     }
-    var sgOpts = opts && opts.discovery ? { assumeAllow: true } : null;
-    var sgIn = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, "0.0.0.0/0", sgOpts);
+    const sgOpts = opts && opts.discovery ? { assumeAllow: true } : null;
+    const sgIn = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, "0.0.0.0/0", sgOpts);
     path.push({ hop: hopN++, type: "sg-inbound", id: "Target SG", action: sgIn.action, detail: "Security Group inbound from Internet", rule: sgIn.rule });
     if (sgIn.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by SG", subnetId: tgtPos.subnetId });
@@ -4369,30 +4504,30 @@ var AppBundle = (() => {
     return { path, blocked: null };
   }
   function traceResourceToInternet(source, config, ctx, opts) {
-    var path = [];
-    var hopN = 1;
-    var srcPos = resolveNetworkPosition(source.type, source.id, ctx);
+    const path = [];
+    let hopN = 1;
+    let srcPos = resolveNetworkPosition(source.type, source.id, ctx);
     if (!srcPos) return { path: [{ hop: 1, type: "error", id: "-", action: "block", detail: "Cannot resolve source" }], blocked: { hop: 1, reason: "Source not found" } };
     path.push({ hop: hopN++, type: "source", id: srcPos.name || source.id, action: "allow", detail: "Source: " + (srcPos.name || source.id) + " (" + source.type + ")", subnetId: srcPos.subnetId });
-    var sgOpts = opts && opts.discovery ? { assumeAllow: true } : null;
-    var sgOut = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, "0.0.0.0/0", sgOpts);
+    const sgOpts = opts && opts.discovery ? { assumeAllow: true } : null;
+    const sgOut = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, "0.0.0.0/0", sgOpts);
     path.push({ hop: hopN++, type: "sg-outbound", id: "Source SG", action: sgOut.action, detail: "SG outbound to Internet", rule: sgOut.rule });
     if (sgOut.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: "Internet", action: "block", detail: "Blocked by SG" });
       return { path, blocked: { hop: 2, reason: "Security group denies outbound", suggestion: "Add SG outbound rule allowing " + config.protocol + "/" + config.port + " to 0.0.0.0/0" } };
     }
-    var srcNacl = (ctx.subNacl || {})[srcPos.subnetId];
-    var naclOpts = opts && opts.discovery ? { assumeAllow: true } : null;
-    var naclOut = evaluateNACL(srcNacl, "outbound", config.protocol, config.port, "0.0.0.0/0", naclOpts);
+    const srcNacl = (ctx.subNacl || {})[srcPos.subnetId];
+    const naclOpts = opts && opts.discovery ? { assumeAllow: true } : null;
+    const naclOut = evaluateNACL(srcNacl, "outbound", config.protocol, config.port, "0.0.0.0/0", naclOpts);
     path.push({ hop: hopN++, type: "nacl-outbound", id: srcNacl ? srcNacl.NetworkAclId || "NACL" : "Default NACL", action: naclOut.action, detail: "Source subnet NACL outbound to Internet", rule: naclOut.rule });
     if (naclOut.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: "Internet", action: "block", detail: "Blocked by NACL" });
       return { path, blocked: { hop: hopN - 2, reason: "NACL denies outbound to Internet", suggestion: "Add NACL outbound rule allowing " + config.protocol + "/" + config.port } };
     }
-    var srcRT = (ctx.subRT || {})[srcPos.subnetId];
-    var hasIgwRoute = false;
-    var hasNatRoute = false;
-    var routeTarget = "";
+    const srcRT = (ctx.subRT || {})[srcPos.subnetId];
+    let hasIgwRoute = false;
+    let hasNatRoute = false;
+    let routeTarget = "";
     if (srcRT && srcRT.Routes) {
       srcRT.Routes.forEach(function(r) {
         if (r.GatewayId && r.GatewayId.startsWith("igw-")) {
@@ -4421,39 +4556,39 @@ var AppBundle = (() => {
     return traceFlow(source, target, config, ctx);
   }
   function traceFlow(source, target, config, ctx) {
-    var path = [];
-    var srcPos = resolveNetworkPosition(source.type, source.id, ctx);
-    var tgtPos = resolveNetworkPosition(target.type, target.id, ctx);
+    const path = [];
+    const srcPos = resolveNetworkPosition(source.type, source.id, ctx);
+    const tgtPos = resolveNetworkPosition(target.type, target.id, ctx);
     if (!srcPos) {
       return { path: [{ hop: 1, type: "error", id: "-", action: "block", detail: "Cannot resolve source position" }], blocked: { hop: 1, reason: "Source not found" } };
     }
     if (!tgtPos) {
       return { path: [{ hop: 1, type: "error", id: "-", action: "block", detail: "Cannot resolve target position" }], blocked: { hop: 1, reason: "Target not found" } };
     }
-    var hopN = 1;
-    var srcCidr = srcPos.ip || srcPos.cidr || ((ctx.subnets || []).find(function(s) {
+    let hopN = 1;
+    const srcCidr = srcPos.ip || srcPos.cidr || ((ctx.subnets || []).find(function(s) {
       return s.SubnetId === srcPos.subnetId;
     }) || {}).CidrBlock || "10.0.0.0/8";
-    var tgtCidr = tgtPos.ip || tgtPos.cidr || ((ctx.subnets || []).find(function(s) {
+    const tgtCidr = tgtPos.ip || tgtPos.cidr || ((ctx.subnets || []).find(function(s) {
       return s.SubnetId === tgtPos.subnetId;
     }) || {}).CidrBlock || "10.0.0.0/8";
     path.push({ hop: hopN++, type: "source", id: srcPos.name || source.id, action: "allow", detail: "Source: " + (srcPos.name || source.id) + " (" + source.type + ") in subnet " + srcPos.subnetId, subnetId: srcPos.subnetId });
-    var srcSgIds = srcPos.sgs.map(function(s) {
+    const srcSgIds = srcPos.sgs.map(function(s) {
       return s.GroupId;
     }).filter(Boolean);
-    var tgtSgIds = tgtPos.sgs.map(function(s) {
+    const tgtSgIds = tgtPos.sgs.map(function(s) {
       return s.GroupId;
     }).filter(Boolean);
     if (srcPos.subnetId === tgtPos.subnetId) {
-      var sgOut = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, tgtCidr, { sourceSgIds: tgtSgIds });
+      const sgOut = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, tgtCidr, { sourceSgIds: tgtSgIds });
       path.push({ hop: hopN++, type: "sg-outbound", id: "Source SG", action: sgOut.action, detail: "Security Group outbound check", rule: sgOut.rule });
       if (sgOut.action === "deny") {
-        var sgInSkip = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
+        const sgInSkip = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
         path.push({ hop: hopN++, type: "sg-inbound", id: "Target SG", action: "skip", detail: "Skipped (blocked upstream)", rule: sgInSkip.rule });
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Target: " + (tgtPos.name || target.id), subnetId: tgtPos.subnetId });
         return { path, blocked: { hop: 2, reason: "Source security group denies outbound " + config.protocol + "/" + config.port, suggestion: "Add outbound rule to source SG allowing " + config.protocol + "/" + config.port + " to " + tgtCidr } };
       }
-      var sgIn = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
+      const sgIn = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
       path.push({ hop: hopN++, type: "sg-inbound", id: "Target SG", action: sgIn.action, detail: "Security Group inbound check", rule: sgIn.rule });
       if (sgIn.action === "deny") {
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Target: " + (tgtPos.name || target.id), subnetId: tgtPos.subnetId });
@@ -4463,34 +4598,34 @@ var AppBundle = (() => {
       return { path, blocked: null };
     }
     if (srcPos.vpcId === tgtPos.vpcId) {
-      var srcRT = (ctx.subRT || {})[srcPos.subnetId];
-      var rtResult = evaluateRouteTable(srcRT, tgtCidr);
+      const srcRT = (ctx.subRT || {})[srcPos.subnetId];
+      const rtResult = evaluateRouteTable(srcRT, tgtCidr);
       path.push({ hop: hopN++, type: "route-table", id: srcRT ? srcRT.RouteTableId || "RT" : "Main RT", action: rtResult.type === "blackhole" ? "block" : "allow", detail: "Route table lookup for " + tgtCidr + " => " + rtResult.type + (rtResult.target !== "local" ? " (" + rtResult.target + ")" : ""), rule: "Route: " + rtResult.type + (rtResult.target !== "local" ? " via " + rtResult.target : "") });
       if (rtResult.type === "blackhole") {
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Target unreachable", subnetId: tgtPos.subnetId });
         return { path, blocked: { hop: hopN - 2, reason: "Route table has no route to destination", suggestion: "Add a route to " + tgtCidr + " in the source subnet route table" } };
       }
-      var srcNacl = (ctx.subNacl || {})[srcPos.subnetId];
-      var naclOut = evaluateNACL(srcNacl, "outbound", config.protocol, config.port, tgtCidr);
+      const srcNacl = (ctx.subNacl || {})[srcPos.subnetId];
+      const naclOut = evaluateNACL(srcNacl, "outbound", config.protocol, config.port, tgtCidr);
       path.push({ hop: hopN++, type: "nacl-outbound", id: srcNacl ? srcNacl.NetworkAclId || "NACL" : "Default NACL", action: naclOut.action, detail: "Source subnet NACL outbound", rule: naclOut.rule });
       if (naclOut.action === "deny") {
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by NACL", subnetId: tgtPos.subnetId });
         return { path, blocked: { hop: hopN - 2, reason: "Source NACL denies outbound traffic", suggestion: "Add NACL outbound rule allowing " + config.protocol + "/" + config.port } };
       }
-      var sgOut2 = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, tgtCidr, { sourceSgIds: tgtSgIds });
+      const sgOut2 = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, tgtCidr, { sourceSgIds: tgtSgIds });
       path.push({ hop: hopN++, type: "sg-outbound", id: "Source SG", action: sgOut2.action, detail: "Source SG outbound", rule: sgOut2.rule });
       if (sgOut2.action === "deny") {
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by SG", subnetId: tgtPos.subnetId });
         return { path, blocked: { hop: hopN - 2, reason: "Source security group denies outbound", suggestion: "Add SG outbound rule for " + config.protocol + "/" + config.port } };
       }
-      var tgtNacl = (ctx.subNacl || {})[tgtPos.subnetId];
-      var naclIn = evaluateNACL(tgtNacl, "inbound", config.protocol, config.port, srcCidr);
+      const tgtNacl = (ctx.subNacl || {})[tgtPos.subnetId];
+      const naclIn = evaluateNACL(tgtNacl, "inbound", config.protocol, config.port, srcCidr);
       path.push({ hop: hopN++, type: "nacl-inbound", id: tgtNacl ? tgtNacl.NetworkAclId || "NACL" : "Default NACL", action: naclIn.action, detail: "Target subnet NACL inbound", rule: naclIn.rule });
       if (naclIn.action === "deny") {
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by NACL", subnetId: tgtPos.subnetId });
         return { path, blocked: { hop: hopN - 2, reason: "Target NACL denies inbound traffic", suggestion: "Add NACL inbound rule allowing " + config.protocol + "/" + config.port + " from " + srcCidr } };
       }
-      var sgIn2 = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
+      const sgIn2 = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
       path.push({ hop: hopN++, type: "sg-inbound", id: "Target SG", action: sgIn2.action, detail: "Target SG inbound", rule: sgIn2.rule });
       if (sgIn2.action === "deny") {
         path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by SG", subnetId: tgtPos.subnetId });
@@ -4499,30 +4634,30 @@ var AppBundle = (() => {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "allow", detail: "Target: " + (tgtPos.name || target.id) + " (" + target.type + ")", subnetId: tgtPos.subnetId });
       return { path, blocked: null };
     }
-    var srcRTx = (ctx.subRT || {})[srcPos.subnetId];
-    var rtResultX = evaluateRouteTable(srcRTx, tgtCidr);
+    const srcRTx = (ctx.subRT || {})[srcPos.subnetId];
+    const rtResultX = evaluateRouteTable(srcRTx, tgtCidr);
     path.push({ hop: hopN++, type: "route-table", id: srcRTx ? srcRTx.RouteTableId || "RT" : "Main RT", action: rtResultX.type === "blackhole" ? "block" : "allow", detail: "Route table lookup for " + tgtCidr + " => " + rtResultX.type + (rtResultX.target !== "local" ? " (" + rtResultX.target + ")" : ""), rule: "Route: " + rtResultX.type + (rtResultX.target !== "local" ? " via " + rtResultX.target : "") });
     if (rtResultX.type === "blackhole") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Target unreachable", subnetId: tgtPos.subnetId });
       return { path, blocked: { hop: hopN - 2, reason: "Route table has no route to destination", suggestion: "Add a route to " + tgtCidr + " via peering or TGW" } };
     }
-    var srcNaclX = (ctx.subNacl || {})[srcPos.subnetId];
-    var naclOutX = evaluateNACL(srcNaclX, "outbound", config.protocol, config.port, tgtCidr);
+    const srcNaclX = (ctx.subNacl || {})[srcPos.subnetId];
+    const naclOutX = evaluateNACL(srcNaclX, "outbound", config.protocol, config.port, tgtCidr);
     path.push({ hop: hopN++, type: "nacl-outbound", id: srcNaclX ? srcNaclX.NetworkAclId || "NACL" : "Default NACL", action: naclOutX.action, detail: "Source subnet NACL outbound", rule: naclOutX.rule });
     if (naclOutX.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by NACL", subnetId: tgtPos.subnetId });
       return { path, blocked: { hop: hopN - 2, reason: "Source NACL denies outbound traffic", suggestion: "Add NACL outbound rule allowing " + config.protocol + "/" + config.port } };
     }
-    var sgOutX = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, tgtCidr, { sourceSgIds: tgtSgIds });
+    const sgOutX = evaluateSG(srcPos.sgs, "outbound", config.protocol, config.port, tgtCidr, { sourceSgIds: tgtSgIds });
     path.push({ hop: hopN++, type: "sg-outbound", id: "Source SG", action: sgOutX.action, detail: "Source SG outbound", rule: sgOutX.rule });
     if (sgOutX.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by SG", subnetId: tgtPos.subnetId });
       return { path, blocked: { hop: hopN - 2, reason: "Source security group denies outbound", suggestion: "Add SG outbound rule for " + config.protocol + "/" + config.port } };
     }
-    var peeringRoute = null;
+    let peeringRoute = null;
     (ctx.peerings || []).forEach(function(p) {
-      var req = p.RequesterVpcInfo || {};
-      var acc = p.AccepterVpcInfo || {};
+      const req = p.RequesterVpcInfo || {};
+      const acc = p.AccepterVpcInfo || {};
       if (req.VpcId === srcPos.vpcId && acc.VpcId === tgtPos.vpcId || acc.VpcId === srcPos.vpcId && req.VpcId === tgtPos.vpcId) {
         peeringRoute = p;
       }
@@ -4530,7 +4665,7 @@ var AppBundle = (() => {
     if (peeringRoute) {
       path.push({ hop: hopN++, type: "peering", id: peeringRoute.VpcPeeringConnectionId || "PCX", action: "allow", detail: "VPC Peering connection between " + srcPos.vpcId + " and " + tgtPos.vpcId, rule: "Peering: " + peeringRoute.VpcPeeringConnectionId });
     } else {
-      var tgwRoute = false;
+      let tgwRoute = false;
       (ctx.tgwAttachments || []).forEach(function(att) {
         if (att.ResourceId === srcPos.vpcId || att.ResourceId === tgtPos.vpcId) tgwRoute = true;
       });
@@ -4542,14 +4677,14 @@ var AppBundle = (() => {
         return { path, blocked: { hop: hopN - 2, reason: "No connectivity between VPCs", suggestion: "Create a VPC peering connection or Transit Gateway attachment" } };
       }
     }
-    var tgtNaclX = (ctx.subNacl || {})[tgtPos.subnetId];
-    var naclInX = evaluateNACL(tgtNaclX, "inbound", config.protocol, config.port, srcCidr);
+    const tgtNaclX = (ctx.subNacl || {})[tgtPos.subnetId];
+    const naclInX = evaluateNACL(tgtNaclX, "inbound", config.protocol, config.port, srcCidr);
     path.push({ hop: hopN++, type: "nacl-inbound", id: tgtNaclX ? tgtNaclX.NetworkAclId || "NACL" : "Default NACL", action: naclInX.action, detail: "Target subnet NACL inbound", rule: naclInX.rule });
     if (naclInX.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by NACL", subnetId: tgtPos.subnetId });
       return { path, blocked: { hop: hopN - 2, reason: "Target NACL denies inbound traffic", suggestion: "Add NACL inbound rule allowing " + config.protocol + "/" + config.port + " from " + srcCidr } };
     }
-    var sgIn3 = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
+    const sgIn3 = evaluateSG(tgtPos.sgs, "inbound", config.protocol, config.port, srcCidr, { sourceSgIds: srcSgIds });
     path.push({ hop: hopN++, type: "sg-inbound", id: "Target SG", action: sgIn3.action, detail: "Target SG inbound (cross-VPC)", rule: sgIn3.rule });
     if (sgIn3.action === "deny") {
       path.push({ hop: hopN++, type: "target", id: tgtPos.name || target.id, action: "block", detail: "Blocked by SG", subnetId: tgtPos.subnetId });
@@ -4560,32 +4695,32 @@ var AppBundle = (() => {
   }
   function findAlternatePaths(source, target, config, ctx) {
     if (!ctx) return [];
-    var tgtPos = resolveNetworkPosition(target.type, target.id, ctx);
+    let tgtPos = resolveNetworkPosition(target.type, target.id, ctx);
     if (!tgtPos) return [];
-    var vpcId = tgtPos.vpcId;
-    var results = [];
-    var candidates = [];
-    var isInternet = source.type === "internet";
+    const vpcId = tgtPos.vpcId;
+    const results = [];
+    const candidates = [];
+    const isInternet = source.type === "internet";
     (ctx.instances || []).forEach(function(inst) {
-      var instVpc = inst.VpcId || ((ctx.subnets || []).find(function(s) {
+      const instVpc = inst.VpcId || ((ctx.subnets || []).find(function(s) {
         return s.SubnetId === inst.SubnetId;
       }) || {}).VpcId;
       if (!isInternet && instVpc !== vpcId) return;
       if (inst.InstanceId === (target.type === "instance" ? target.id : "")) return;
       if (inst.InstanceId === (source.type === "instance" ? source.id : "")) return;
-      var isPub = ctx.pubSubs && ctx.pubSubs.has(inst.SubnetId);
-      var gn2 = inst.Tags ? (inst.Tags.find(function(t) {
+      const isPub = ctx.pubSubs && ctx.pubSubs.has(inst.SubnetId);
+      const gn2 = inst.Tags ? (inst.Tags.find(function(t) {
         return t.Key === "Name";
       }) || {}).Value || inst.InstanceId : inst.InstanceId;
       candidates.push({ ref: { type: "instance", id: inst.InstanceId }, name: gn2, isPub, defaultPort: 22 });
     });
     Object.keys(ctx.albBySub || {}).forEach(function(sid2) {
-      var sub = (ctx.subnets || []).find(function(s) {
+      const sub = (ctx.subnets || []).find(function(s) {
         return s.SubnetId === sid2;
       });
       if (!sub || !isInternet && sub.VpcId !== vpcId) return;
       (ctx.albBySub[sid2] || []).forEach(function(alb) {
-        var albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split("/").pop() : "";
+        const albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split("/").pop() : "";
         if (albId === (target.type === "alb" ? target.id : "")) return;
         candidates.push({ ref: { type: "alb", id: albId || alb.LoadBalancerName }, name: alb.LoadBalancerName || albId, isPub: true, defaultPort: 443 });
       });
@@ -4593,18 +4728,137 @@ var AppBundle = (() => {
     candidates.sort(function(a, b) {
       return (b.isPub ? 1 : 0) - (a.isPub ? 1 : 0);
     });
-    var tested = 0;
-    for (var i = 0; i < candidates.length && tested < 20 && results.length < 5; i++) {
-      var cand = candidates[i];
+    let tested = 0;
+    for (let i = 0; i < candidates.length && tested < 20 && results.length < 5; i++) {
+      const cand = candidates[i];
       tested++;
-      var leg1Config = { protocol: "tcp", port: cand.defaultPort };
-      var leg1 = traceFlowLeg(source, cand.ref, leg1Config, ctx);
+      const leg1Config = { protocol: "tcp", port: cand.defaultPort };
+      const leg1 = traceFlowLeg(source, cand.ref, leg1Config, ctx);
       if (leg1.blocked) continue;
-      var leg2 = traceFlowLeg(cand.ref, target, config, ctx);
+      const leg2 = traceFlowLeg(cand.ref, target, config, ctx);
       if (leg2.blocked) continue;
       results.push({ via: { type: cand.ref.type, id: cand.ref.id, name: cand.name }, leg1Result: leg1, leg2Result: leg2, leg1Config });
     }
     return results;
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_flowMode", {
+      get() {
+        return _flowMode;
+      },
+      set(v) {
+        _flowMode = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowSource", {
+      get() {
+        return _flowSource;
+      },
+      set(v) {
+        _flowSource = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowTarget", {
+      get() {
+        return _flowTarget;
+      },
+      set(v) {
+        _flowTarget = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowConfig", {
+      get() {
+        return _flowConfig;
+      },
+      set(v) {
+        _flowConfig = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowPath", {
+      get() {
+        return _flowPath;
+      },
+      set(v) {
+        _flowPath = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowBlocked", {
+      get() {
+        return _flowBlocked;
+      },
+      set(v) {
+        _flowBlocked = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowStepIndex", {
+      get() {
+        return _flowStepIndex;
+      },
+      set(v) {
+        _flowStepIndex = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowSelecting", {
+      get() {
+        return _flowSelecting;
+      },
+      set(v) {
+        _flowSelecting = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowWaypoints", {
+      get() {
+        return _flowWaypoints;
+      },
+      set(v) {
+        _flowWaypoints = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowLegs", {
+      get() {
+        return _flowLegs;
+      },
+      set(v) {
+        _flowLegs = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowActiveLeg", {
+      get() {
+        return _flowActiveLeg;
+      },
+      set(v) {
+        _flowActiveLeg = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowSelectingWaypoint", {
+      get() {
+        return _flowSelectingWaypoint;
+      },
+      set(v) {
+        _flowSelectingWaypoint = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowSuggestions", {
+      get() {
+        return _flowSuggestions;
+      },
+      set(v) {
+        _flowSuggestions = v;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/flow-analysis.js
@@ -4840,6 +5094,44 @@ var AppBundle = (() => {
       tiers.database.push({ type: "ecache", id: ec.CacheClusterId, name: ec.CacheClusterId });
     });
     return tiers;
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_flowAnalysisMode", {
+      get() {
+        return flowAnalysisMode;
+      },
+      set(v) {
+        flowAnalysisMode = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_flowAnalysisCache", {
+      get() {
+        return flowAnalysisCache;
+      },
+      set(v) {
+        flowAnalysisCache = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_faDashState", {
+      get() {
+        return faDashState;
+      },
+      set(v) {
+        faDashState = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_faDashRows", {
+      get() {
+        return faDashRows;
+      },
+      set(v) {
+        faDashRows = v;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/firewall-editor.js
@@ -5148,19 +5440,19 @@ var AppBundle = (() => {
     if (_fwSnapshot) return;
     if (!ctx) return;
     _fwSnapshot = {
-      nacls: JSON.parse(JSON.stringify(ctx.nacls || [])),
-      sgs: JSON.parse(JSON.stringify(ctx.sgs || [])),
-      rts: JSON.parse(JSON.stringify(ctx.rts || []))
+      nacls: structuredClone(ctx.nacls || []),
+      sgs: structuredClone(ctx.sgs || []),
+      rts: structuredClone(ctx.rts || [])
     };
   }
   function fwResetAll(ctx) {
     if (!_fwSnapshot || !ctx) return;
     ctx.nacls.length = 0;
-    _fwSnapshot.nacls.forEach((n) => ctx.nacls.push(JSON.parse(JSON.stringify(n))));
+    _fwSnapshot.nacls.forEach((n) => ctx.nacls.push(structuredClone(n)));
     ctx.sgs.length = 0;
-    _fwSnapshot.sgs.forEach((s) => ctx.sgs.push(JSON.parse(JSON.stringify(s))));
+    _fwSnapshot.sgs.forEach((s) => ctx.sgs.push(structuredClone(s)));
     ctx.rts.length = 0;
-    _fwSnapshot.rts.forEach((r) => ctx.rts.push(JSON.parse(JSON.stringify(r))));
+    _fwSnapshot.rts.forEach((r) => ctx.rts.push(structuredClone(r)));
     fwRebuildLookups(ctx);
     _fwEdits = [];
     _fwSnapshot = null;
@@ -5262,6 +5554,80 @@ var AppBundle = (() => {
     }
     fwRebuildLookups(ctx);
     return edit;
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_fwEdits", {
+      get() {
+        return _fwEdits;
+      },
+      set(v) {
+        _fwEdits = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwSnapshot", {
+      get() {
+        return _fwSnapshot;
+      },
+      set(v) {
+        _fwSnapshot = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwFpType", {
+      get() {
+        return _fwFpType;
+      },
+      set(v) {
+        _fwFpType = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwFpResId", {
+      get() {
+        return _fwFpResId;
+      },
+      set(v) {
+        _fwFpResId = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwFpSub", {
+      get() {
+        return _fwFpSub;
+      },
+      set(v) {
+        _fwFpSub = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwFpVpcId", {
+      get() {
+        return _fwFpVpcId;
+      },
+      set(v) {
+        _fwFpVpcId = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwFpLk", {
+      get() {
+        return _fwFpLk;
+      },
+      set(v) {
+        _fwFpLk = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_fwFpDir", {
+      get() {
+        return _fwFpDir;
+      },
+      set(v) {
+        _fwFpDir = v;
+      },
+      configurable: true
+    });
   }
 
   // src/modules/multi-account.js
@@ -5868,6 +6234,44 @@ var AppBundle = (() => {
     merged._multiRegion = merged._regions.size > 1;
     return merged;
   }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_multiViewMode", {
+      get() {
+        return multiViewMode;
+      },
+      set(v) {
+        multiViewMode = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_loadedContexts", {
+      get() {
+        return loadedContexts;
+      },
+      set(v) {
+        loadedContexts = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_mergedCtx", {
+      get() {
+        return mergedCtx;
+      },
+      set(v) {
+        mergedCtx = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_singleCtxBackup", {
+      get() {
+        return singleCtxBackup;
+      },
+      set(v) {
+        singleCtxBackup = v;
+      },
+      configurable: true
+    });
+  }
 
   // src/modules/compliance-view.js
   var compliance_view_exports = {};
@@ -6205,7 +6609,7 @@ var AppBundle = (() => {
     return g;
   }
   function estimateTotalEffort(resourceGroups) {
-    var mins = 0;
+    let mins = 0;
     resourceGroups.forEach((rg) => {
       rg.findings.forEach((f) => {
         if (f.effort === "low") mins += 5;
@@ -6252,35 +6656,35 @@ var AppBundle = (() => {
   }
   function buildComplianceView(opts) {
     opts = opts || {};
-    var src = (opts.findings || complianceFindings || []).slice();
+    let src = (opts.findings || complianceFindings || []).slice();
     if (opts.accountFilter) src = _rptFilterByAccount(src, opts.accountFilter);
     if (Array.isArray(opts.frameworks)) src = src.filter((f) => opts.frameworks.indexOf(f.framework) !== -1);
     else if (opts.frameworks && opts.frameworks !== "all") src = src.filter((f) => f.framework === opts.frameworks);
     if (Array.isArray(opts.severities)) src = src.filter((f) => opts.severities.indexOf(f.severity) !== -1);
     if (opts.search) {
-      var q = opts.search.toLowerCase();
+      const q = opts.search.toLowerCase();
       src = src.filter(
         (f) => (f.message || "").toLowerCase().indexOf(q) !== -1 || (f.resource || "").toLowerCase().indexOf(q) !== -1 || (f.resourceName || "").toLowerCase().indexOf(q) !== -1 || (f.control || "").toLowerCase().indexOf(q) !== -1 || (f.ckv || "").toLowerCase().indexOf(q) !== -1 || (f.remediation || "").toLowerCase().indexOf(q) !== -1
       );
     }
     if (!opts.includeMuted) src = src.filter((f) => !isMuted(f));
-    var base = src.map((f) => Object.assign({}, f, { _tier: classifyTier(f), _effort: getEffort(f) }));
-    var filtered = typeof opts.severity === "string" && opts.severity !== "ALL" ? base.filter((f) => f.severity === opts.severity) : base;
-    var sevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
-    var tierCounts = { crit: 0, high: 0, med: 0, low: 0 };
+    const base = src.map((f) => Object.assign({}, f, { _tier: classifyTier(f), _effort: getEffort(f) }));
+    const filtered = typeof opts.severity === "string" && opts.severity !== "ALL" ? base.filter((f) => f.severity === opts.severity) : base;
+    const sevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    const tierCounts = { crit: 0, high: 0, med: 0, low: 0 };
     base.forEach((f) => {
       sevCounts[f.severity]++;
       tierCounts[f._tier]++;
     });
-    var filteredTierCounts = { crit: 0, high: 0, med: 0, low: 0 };
-    var filteredSevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    const filteredTierCounts = { crit: 0, high: 0, med: 0, low: 0 };
+    const filteredSevCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
     filtered.forEach((f) => {
       filteredTierCounts[f._tier]++;
       filteredSevCounts[f.severity]++;
     });
-    var tiers = getTierGroups(filtered);
-    var baseTiers = typeof opts.severity === "string" && opts.severity !== "ALL" ? getTierGroups(base) : tiers;
-    var sevGroups = getSeverityGroups(filtered);
+    const tiers = getTierGroups(filtered);
+    const baseTiers = typeof opts.severity === "string" && opts.severity !== "ALL" ? getTierGroups(base) : tiers;
+    const sevGroups = getSeverityGroups(filtered);
     return {
       base,
       filtered,
@@ -6299,8 +6703,24 @@ var AppBundle = (() => {
   if (typeof window !== "undefined") {
     window._EFFORT_MAP = EFFORT_MAP;
     window._complianceRefs = complianceRefs;
-    window._compDashState = _compDashState;
-    window._mutedFindings = _mutedFindings;
+    Object.defineProperty(window, "_compDashState", {
+      get() {
+        return _compDashState;
+      },
+      set(v) {
+        _compDashState = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_mutedFindings", {
+      get() {
+        return _mutedFindings;
+      },
+      set(v) {
+        _mutedFindings = v;
+      },
+      configurable: true
+    });
     window._saveMuted = saveMuted;
     window._muteKey = muteKey;
     window._isMuted = isMuted;
@@ -6368,9 +6788,33 @@ var AppBundle = (() => {
     });
   }
   if (typeof window !== "undefined") {
-    window._udashTab = _udashTab;
-    window._udashAcctFilter = _udashAcctFilter;
-    window._budrDashState = _budrDashState;
+    Object.defineProperty(window, "_udashTab", {
+      get() {
+        return _udashTab;
+      },
+      set(v) {
+        _udashTab = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_udashAcctFilter", {
+      get() {
+        return _udashAcctFilter;
+      },
+      set(v) {
+        _udashAcctFilter = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_budrDashState", {
+      get() {
+        return _budrDashState;
+      },
+      set(v) {
+        _budrDashState = v;
+      },
+      configurable: true
+    });
     window._BUDR_TIER_META = BUDR_TIER_META;
     window._udashFilterByAccount = udashFilterByAccount;
     window.getUdashTab = getUdashTab;
@@ -6612,21 +7056,21 @@ var AppBundle = (() => {
   var _buildInventoryDataSync = _buildInventoryData;
   function _buildInventoryData() {
     _inventoryData = [];
-    var ctx = rlCtx;
+    const ctx = rlCtx;
     if (!ctx) return;
-    var rows = [];
-    var vpcNameMap = {};
+    const rows = [];
+    const vpcNameMap = {};
     (ctx.vpcs || []).forEach(function(v) {
       vpcNameMap[v.VpcId] = gn(v, v.VpcId);
     });
     function tag(obj) {
-      var t = (obj.Tags || obj.tags || []).find(function(x) {
+      const t = (obj.Tags || obj.tags || []).find(function(x) {
         return x.Key === "Name";
       });
       return t ? t.Value : "";
     }
     function tags(obj) {
-      var m = {};
+      const m = {};
       (obj.Tags || obj.tags || []).forEach(function(t) {
         m[t.Key] = t.Value;
       });
@@ -6659,11 +7103,11 @@ var AppBundle = (() => {
         _related: extra.related || []
       };
     }
-    var subVpcMap = {};
+    const subVpcMap = {};
     (ctx.subnets || []).forEach(function(s) {
       if (s.SubnetId) subVpcMap[s.SubnetId] = s.VpcId || "";
     });
-    var instVpcMap = {};
+    const instVpcMap = {};
     (ctx.instances || []).forEach(function(i) {
       if (i.InstanceId) instVpcMap[i.InstanceId] = i.VpcId || subVpcMap[i.SubnetId] || "";
     });
@@ -6671,46 +7115,46 @@ var AppBundle = (() => {
       rows.push(mkRow(v.VpcId, "VPC", tag(v) || v.VpcId, v, { vpcId: v.VpcId, config: v.CidrBlock || "", state: v.State || "" }));
     });
     (ctx.subnets || []).forEach(function(s) {
-      var isPub = ctx.pubSubs && ctx.pubSubs.has(s.SubnetId);
+      const isPub = ctx.pubSubs && ctx.pubSubs.has(s.SubnetId);
       rows.push(mkRow(s.SubnetId, "Subnet", tag(s) || s.SubnetId, s, { vpcId: s.VpcId, az: s.AvailabilityZone || "", config: (s.CidrBlock || "") + " " + (isPub ? "public" : "private"), state: s.State || "" }));
     });
     (ctx.instances || []).forEach(function(i) {
-      var sgs = (i.SecurityGroups || []).map(function(g) {
+      const sgs = (i.SecurityGroups || []).map(function(g) {
         return g.GroupId;
       });
       rows.push(mkRow(i.InstanceId, "EC2", tag(i) || i.InstanceId, i, { vpcId: i.VpcId || subVpcMap[i.SubnetId] || "", subnetId: i.SubnetId || "", az: i.Placement ? i.Placement.AvailabilityZone : "", config: i.InstanceType || "", state: i.State ? i.State.Name || "" : "", sgCount: sgs.length, related: sgs }));
     });
     (ctx.rdsInstances || []).forEach(function(db) {
-      var vpcId = db.DBSubnetGroup && db.DBSubnetGroup.VpcId || "";
+      let vpcId = db.DBSubnetGroup && db.DBSubnetGroup.VpcId || "";
       rows.push(mkRow(db.DBInstanceIdentifier, "RDS", db.DBInstanceIdentifier, db, { vpcId, az: db.AvailabilityZone || "", config: (db.Engine || "") + " " + (db.DBInstanceClass || ""), state: db.DBInstanceStatus || "", encrypted: !!db.StorageEncrypted }));
     });
     (ctx.lambdaFns || []).forEach(function(fn) {
-      var vc = fn.VpcConfig || {};
-      var vpcId = vc.VpcId || "";
-      var subId = vc.SubnetIds && vc.SubnetIds[0] || "";
+      const vc = fn.VpcConfig || {};
+      let vpcId = vc.VpcId || "";
+      const subId = vc.SubnetIds && vc.SubnetIds[0] || "";
       rows.push(mkRow(fn.FunctionName, "Lambda", fn.FunctionName, fn, { vpcId, subnetId: subId, config: (fn.Runtime || "") + (fn.MemorySize ? " " + fn.MemorySize + "MB" : ""), state: fn.State || "Active" }));
     });
     (ctx.ecsServices || []).forEach(function(svc) {
-      var nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
-      var subId = nc && nc.subnets && nc.subnets[0] ? nc.subnets[0] : "";
-      var vpcId = "";
+      const nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
+      const subId = nc && nc.subnets && nc.subnets[0] ? nc.subnets[0] : "";
+      let vpcId = "";
       if (subId) {
-        var subObj = (ctx.subnets || []).find(function(s) {
+        const subObj = (ctx.subnets || []).find(function(s) {
           return s.SubnetId === subId;
         });
         if (subObj) vpcId = subObj.VpcId || "";
       }
-      var cpu = svc.cpu || "";
-      var mem = svc.memory || "";
+      const cpu = svc.cpu || "";
+      let mem = svc.memory || "";
       rows.push(mkRow(svc.serviceName, "ECS", svc.serviceName, svc, { vpcId, subnetId: subId, config: (svc.launchType || "") + " " + (cpu ? cpu + "/" : "") + (mem || ""), state: svc.status || "" }));
     });
     (ctx.albs || []).forEach(function(a) {
       rows.push(mkRow(a.LoadBalancerName, "ALB", a.LoadBalancerName, a, { vpcId: a.VpcId || "", config: (a.Type || "application") + " " + (a.Scheme || ""), state: a.State ? a.State.Code || "" : "" }));
     });
     (ctx.ecacheClusters || []).forEach(function(ec) {
-      var vpcId = ec.VpcId || (ec.CacheSubnetGroupName ? "" : "");
+      let vpcId = ec.VpcId || (ec.CacheSubnetGroupName ? "" : "");
       if (!vpcId && ec.CacheNodes && ec.CacheNodes[0]) {
-        var cn = ec.CacheNodes[0];
+        const cn = ec.CacheNodes[0];
         if (cn.SubnetId) vpcId = subVpcMap[cn.SubnetId] || "";
       }
       rows.push(mkRow(ec.CacheClusterId, "ElastiCache", ec.CacheClusterId, ec, { vpcId, config: (ec.Engine || "") + " " + (ec.CacheNodeType || ""), state: ec.CacheClusterStatus || "" }));
@@ -6719,21 +7163,21 @@ var AppBundle = (() => {
       rows.push(mkRow(rs.ClusterIdentifier, "Redshift", rs.ClusterIdentifier, rs, { vpcId: rs.VpcId || "", config: (rs.NodeType || "") + " x" + (rs.NumberOfNodes || 1), state: rs.ClusterStatus || "", encrypted: !!rs.Encrypted }));
     });
     (ctx.sgs || []).forEach(function(sg) {
-      var inCt = (sg.IpPermissions || []).length;
-      var outCt = (sg.IpPermissionsEgress || []).length;
+      const inCt = (sg.IpPermissions || []).length;
+      let outCt = (sg.IpPermissionsEgress || []).length;
       rows.push(mkRow(sg.GroupId, "SG", sg.GroupName || sg.GroupId, sg, { vpcId: sg.VpcId || "", config: inCt + " inbound / " + outCt + " outbound" }));
     });
     (ctx.nacls || []).forEach(function(n) {
-      var ct = (n.Entries || []).length;
+      const ct = (n.Entries || []).length;
       rows.push(mkRow(n.NetworkAclId, "NACL", tag(n) || n.NetworkAclId, n, { vpcId: n.VpcId || "", config: ct + " entries" }));
     });
     (ctx.rts || []).forEach(function(rt) {
-      var ct = (rt.Routes || []).length;
+      const ct = (rt.Routes || []).length;
       rows.push(mkRow(rt.RouteTableId, "Route Table", tag(rt) || rt.RouteTableId, rt, { vpcId: rt.VpcId || "", config: ct + " routes" }));
     });
     (ctx.igws || []).forEach(function(g) {
-      var att = g.Attachments || [];
-      var attachedVpc = att.length ? att[0].VpcId : "";
+      const att = g.Attachments || [];
+      let attachedVpc = att.length ? att[0].VpcId : "";
       rows.push(mkRow(g.InternetGatewayId, "IGW", tag(g) || g.InternetGatewayId, g, { vpcId: attachedVpc, config: attachedVpc ? "attached: " + attachedVpc : "detached" }));
     });
     (ctx.nats || []).forEach(function(n) {
@@ -6746,10 +7190,10 @@ var AppBundle = (() => {
       rows.push(mkRow(e.NetworkInterfaceId, "ENI", e.Description || e.NetworkInterfaceId, e, { vpcId: e.VpcId || "", subnetId: e.SubnetId || "", az: e.AvailabilityZone || "", config: e.PrivateIpAddress || "", state: e.Status || "" }));
     });
     (ctx.volumes || []).forEach(function(vol) {
-      var attInsts = (vol.Attachments || []).map(function(a) {
+      const attInsts = (vol.Attachments || []).map(function(a) {
         return a.InstanceId;
       }).filter(Boolean);
-      var vpcId = "";
+      let vpcId = "";
       if (attInsts.length) vpcId = instVpcMap[attInsts[0]] || "";
       rows.push(mkRow(vol.VolumeId, "EBS Volume", tag(vol) || vol.VolumeId, vol, { vpcId, az: vol.AvailabilityZone || "", config: vol.Size + "GB " + (vol.VolumeType || ""), state: vol.State || "", encrypted: !!vol.Encrypted, related: attInsts }));
     });
@@ -6760,42 +7204,42 @@ var AppBundle = (() => {
       rows.push(mkRow(b.Name, "S3 Bucket", b.Name, b, { config: b.CreationDate || "" }));
     });
     (ctx.zones || []).forEach(function(z) {
-      var recs = ctx.recsByZone && ctx.recsByZone[z.Id] ? ctx.recsByZone[z.Id].length : z.ResourceRecordSetCount || 0;
-      var vis = z.Config && z.Config.PrivateZone ? "private" : "public";
+      const recs = ctx.recsByZone && ctx.recsByZone[z.Id] ? ctx.recsByZone[z.Id].length : z.ResourceRecordSetCount || 0;
+      const vis = z.Config && z.Config.PrivateZone ? "private" : "public";
       rows.push(mkRow(z.Id, "Route 53", z.Name || z.Id, z, { config: recs + " records " + vis }));
     });
     (ctx.wafAcls || []).forEach(function(w) {
-      var ruleCount = (w.Rules || []).length;
+      const ruleCount = (w.Rules || []).length;
       rows.push(mkRow(w.Id || w.Name, "WAF", w.Name || w.Id || "", w, { config: ruleCount + " rules" }));
     });
     (ctx.cfDistributions || []).forEach(function(cf) {
       rows.push(mkRow(cf.Id, "CloudFront", cf.DomainName || cf.Id, cf, { config: cf.Status || "", state: cf.Status || "" }));
     });
     (ctx.peerings || []).forEach(function(p) {
-      var req = p.RequesterVpcInfo ? p.RequesterVpcInfo.VpcId : "";
-      var acc = p.AccepterVpcInfo ? p.AccepterVpcInfo.VpcId : "";
+      const req = p.RequesterVpcInfo ? p.RequesterVpcInfo.VpcId : "";
+      let acc = p.AccepterVpcInfo ? p.AccepterVpcInfo.VpcId : "";
       rows.push(mkRow(p.VpcPeeringConnectionId, "VPC Peering", tag(p) || p.VpcPeeringConnectionId, p, { config: req + "\u2194" + acc, state: p.Status ? p.Status.Code || "" : "" }));
     });
     (ctx.vpns || []).forEach(function(v) {
       rows.push(mkRow(v.VpnConnectionId, "VPN", tag(v) || v.VpnConnectionId, v, { config: (v.State || "") + " " + (v.Type || ""), state: v.State || "" }));
     });
     (ctx.tgwAttachments || []).forEach(function(t) {
-      var tid = t.TransitGatewayAttachmentId || t.TransitGatewayId + "-" + (t.VpcId || "");
+      const tid = t.TransitGatewayAttachmentId || t.TransitGatewayId + "-" + (t.VpcId || "");
       rows.push(mkRow(tid, "TGW Attachment", tag(t) || tid, t, { vpcId: t.VpcId || "", config: (t.ResourceType || "") + " " + (t.TransitGatewayId || ""), state: t.State || "" }));
     });
     (ctx.tgs || []).forEach(function(tg) {
       rows.push(mkRow(tg.TargetGroupName, "Target Group", tg.TargetGroupName, tg, { vpcId: tg.VpcId || "", config: (tg.Protocol || "") + ":" + (tg.Port || ""), state: tg.TargetType || "" }));
     });
-    var classMap = {};
+    const classMap = {};
     (_classificationData || []).forEach(function(c) {
       classMap[c.id] = c;
     });
-    var budrAssessments2 = typeof window !== "undefined" && window._budrAssessments || [];
-    var budrMap = {};
+    const budrAssessments2 = typeof window !== "undefined" && window._budrAssessments || [];
+    const budrMap = {};
     (budrAssessments2 || []).forEach(function(a) {
       budrMap[a.id] = { tier: a.profile ? a.profile.tier : null, strategy: a.profile ? a.profile.strategy : null, rto: a.profile ? a.profile.rto : null, rpo: a.profile ? a.profile.rpo : null };
     });
-    var compMap = {};
+    const compMap = {};
     (complianceFindings || []).forEach(function(f) {
       if (!f.resource) return;
       if (!compMap[f.resource]) compMap[f.resource] = { pass: 0, fail: 0 };
@@ -6803,16 +7247,16 @@ var AppBundle = (() => {
       else compMap[f.resource].fail++;
     });
     rows.forEach(function(r) {
-      var cls = classMap[r.id];
+      const cls = classMap[r.id];
       if (cls) r.classificationTier = cls.tier;
-      var budr = budrMap[r.id];
+      const budr = budrMap[r.id];
       if (budr) {
         r.budrTier = budr.tier;
         r.budrStrategy = budr.strategy;
         r.rto = budr.rto;
         r.rpo = budr.rpo;
       }
-      var comp = compMap[r.id];
+      const comp = compMap[r.id];
       if (comp) {
         r.compliancePass = comp.pass;
         r.complianceFail = comp.fail;
@@ -6821,11 +7265,11 @@ var AppBundle = (() => {
     _inventoryData = rows;
   }
   function _filterInventory() {
-    var st = _invState;
-    var filterFn = typeof window !== "undefined" && window._udashFilterByAccount || function(x) {
+    let st = _invState;
+    const filterFn = typeof window !== "undefined" && window._udashFilterByAccount || function(x) {
       return x;
     };
-    var items = filterFn(_inventoryData).slice();
+    let items = filterFn(_inventoryData).slice();
     if (st.typeFilter !== "all") items = items.filter(function(r) {
       return r.type === st.typeFilter;
     });
@@ -6839,13 +7283,13 @@ var AppBundle = (() => {
       return r.vpcId === st.vpcFilter;
     });
     if (st.search) {
-      var q = st.search.toLowerCase();
+      const q = st.search.toLowerCase();
       items = items.filter(function(r) {
         return (r.name || "").toLowerCase().indexOf(q) !== -1 || (r.id || "").toLowerCase().indexOf(q) !== -1 || (r.type || "").toLowerCase().indexOf(q) !== -1 || (r.config || "").toLowerCase().indexOf(q) !== -1 || (r.vpcName || "").toLowerCase().indexOf(q) !== -1 || (r.region || "").toLowerCase().indexOf(q) !== -1 || JSON.stringify(r.tags || {}).toLowerCase().indexOf(q) !== -1;
       });
     }
-    var sortKey = st.sort;
-    var dir = st.sortDir === "asc" ? 1 : -1;
+    const sortKey = st.sort;
+    let dir = st.sortDir === "asc" ? 1 : -1;
     items.sort(function(a, b) {
       if (sortKey === "complianceFail") {
         return ((a.complianceFail || 0) - (b.complianceFail || 0)) * dir;
@@ -6853,15 +7297,15 @@ var AppBundle = (() => {
       if (sortKey === "tags") {
         return (Object.keys(a.tags || {}).length - Object.keys(b.tags || {}).length) * dir;
       }
-      var av = (a[sortKey] || "").toString().toLowerCase();
-      var bv = (b[sortKey] || "").toString().toLowerCase();
+      const av = (a[sortKey] || "").toString().toLowerCase();
+      const bv = (b[sortKey] || "").toString().toLowerCase();
       return av < bv ? -dir : av > bv ? dir : 0;
     });
     return items;
   }
   function _getTagMap(obj) {
-    var arr = obj.Tags || obj.tags || obj.TagList || [];
-    var m = {};
+    const arr = obj.Tags || obj.tags || obj.TagList || [];
+    const m = {};
     arr.forEach(function(t) {
       if (t.Key) m[t.Key] = t.Value || "";
     });
@@ -6869,7 +7313,7 @@ var AppBundle = (() => {
   }
   function _safeRegex(pattern) {
     try {
-      var re = new RegExp(pattern, "i");
+      let re = new RegExp(pattern, "i");
       if (/(\+|\*|\{)\s*\)(\+|\*|\{)/.test(pattern)) return null;
       return re;
     } catch (e) {
@@ -6879,17 +7323,17 @@ var AppBundle = (() => {
   function _scoreClassification(name, type, vpcName, rules, tagMap) {
     rules = rules || _classificationRules;
     tagMap = tagMap || {};
-    var bestTier = "low";
-    var bestWeight = -1;
+    let bestTier = "low";
+    let bestWeight = -1;
     rules.forEach(function(rule) {
       if (rule.enabled === false) return;
-      var p = rule.pattern;
+      let p = rule.pattern;
       if (!p) return;
       p = p.replace(/^\|+|\|+$/g, "").replace(/\|{2,}/g, "|");
       if (!p) return;
-      var re = _safeRegex(p);
+      let re = _safeRegex(p);
       if (!re) return;
-      var text = "";
+      let text = "";
       if (rule.scope === "any") text = (name || "") + " " + (type || "") + " " + (vpcName || "") + " " + Object.values(tagMap).join(" ");
       else if (rule.scope === "vpc") text = vpcName || "";
       else if (rule.scope === "type") text = type || "";
@@ -6905,14 +7349,14 @@ var AppBundle = (() => {
   }
   function _discoverTagKeys(ctx) {
     if (!ctx) return {};
-    var disc = {};
+    const disc = {};
     function scan(arr, typeName) {
       (arr || []).forEach(function(obj) {
-        var tagArr = obj.Tags || obj.tags || obj.TagList || [];
+        const tagArr = obj.Tags || obj.tags || obj.TagList || [];
         tagArr.forEach(function(t) {
           if (!t.Key || t.Key.indexOf("aws:") === 0) return;
           if (!disc[t.Key]) disc[t.Key] = { count: 0, samples: [], types: {} };
-          var d = disc[t.Key];
+          const d = disc[t.Key];
           d.count++;
           d.types[typeName] = true;
           if (d.samples.length < 5 && t.Value && d.samples.indexOf(t.Value) < 0) d.samples.push(t.Value);
@@ -6937,12 +7381,12 @@ var AppBundle = (() => {
   }
   function runClassificationEngine(ctx) {
     if (!ctx) return [];
-    var results = [];
-    var vpcNameMap = {};
+    const results = [];
+    const vpcNameMap = {};
     (ctx.vpcs || []).forEach(function(v) {
       vpcNameMap[v.VpcId] = gn(v, v.VpcId);
     });
-    var subnetVpcMap = {};
+    const subnetVpcMap = {};
     (ctx.subnets || []).forEach(function(s) {
       if (s.VpcId) subnetVpcMap[s.SubnetId] = s.VpcId;
     });
@@ -6950,153 +7394,153 @@ var AppBundle = (() => {
       return vpcId || subnetVpcMap[subnetId] || "";
     }
     (ctx.instances || []).forEach(function(inst) {
-      var name = inst.Tags ? (inst.Tags.find(function(t) {
+      const name = inst.Tags ? (inst.Tags.find(function(t) {
         return t.Key === "Name";
       }) || {}).Value || inst.InstanceId : inst.InstanceId;
-      var vpcId = resolveVpc(inst.VpcId, inst.SubnetId);
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(inst);
-      var sc = _scoreClassification(name, "instance", vpcName, null, tm);
-      var tier = _classificationOverrides[inst.InstanceId] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      let vpcId = resolveVpc(inst.VpcId, inst.SubnetId);
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(inst);
+      const sc = _scoreClassification(name, "instance", vpcName, null, tm);
+      const tier = _classificationOverrides[inst.InstanceId] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: inst.InstanceId, name, type: "EC2", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[inst.InstanceId], vpcId, vpcName, tags: tm });
     });
     (ctx.rdsInstances || []).forEach(function(db) {
-      var name = db.DBInstanceIdentifier;
-      var vpcId = db.DBSubnetGroup ? db.DBSubnetGroup.VpcId : "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(db);
-      var sc = _scoreClassification(name, "rds", vpcName, null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const name = db.DBInstanceIdentifier;
+      let vpcId = db.DBSubnetGroup ? db.DBSubnetGroup.VpcId : "";
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(db);
+      const sc = _scoreClassification(name, "rds", vpcName, null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "RDS", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId, vpcName, tags: tm });
     });
     (ctx.ecacheClusters || []).forEach(function(ec) {
-      var name = ec.CacheClusterId;
-      var vpcId = ec.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(ec);
-      var sc = _scoreClassification(name, "elasticache", vpcName, null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const name = ec.CacheClusterId;
+      let vpcId = ec.VpcId || "";
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(ec);
+      const sc = _scoreClassification(name, "elasticache", vpcName, null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "ElastiCache", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId, vpcName, tags: tm });
     });
     (ctx.albs || []).forEach(function(alb) {
-      var albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split("/").pop() : "";
-      var name = alb.LoadBalancerName || albId;
-      var vpcId = alb.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(alb);
-      var sc = _scoreClassification(name, "alb", vpcName, null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split("/").pop() : "";
+      const name = alb.LoadBalancerName || albId;
+      let vpcId = alb.VpcId || "";
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(alb);
+      const sc = _scoreClassification(name, "alb", vpcName, null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "ALB", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId, vpcName, tags: tm });
     });
     (ctx.lambdaFns || []).forEach(function(fn) {
-      var name = fn.FunctionName;
-      var vpcId = fn.VpcConfig ? fn.VpcConfig.VpcId : "";
+      const name = fn.FunctionName;
+      let vpcId = fn.VpcConfig ? fn.VpcConfig.VpcId : "";
       if (!vpcId && fn.VpcConfig && fn.VpcConfig.SubnetIds && fn.VpcConfig.SubnetIds[0]) vpcId = subnetVpcMap[fn.VpcConfig.SubnetIds[0]] || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(fn);
-      var sc = _scoreClassification(name, "lambda", vpcName, null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(fn);
+      const sc = _scoreClassification(name, "lambda", vpcName, null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "Lambda", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId, vpcName, tags: tm });
     });
     (ctx.ecsServices || []).forEach(function(svc) {
-      var name = svc.serviceName || "";
-      var nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
-      var vpcId = nc && nc.subnets && nc.subnets[0] ? subnetVpcMap[nc.subnets[0]] || "" : "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(svc);
-      var sc = _scoreClassification(name, "ecs", vpcName, null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const name = svc.serviceName || "";
+      const nc = svc.networkConfiguration && svc.networkConfiguration.awsvpcConfiguration;
+      let vpcId = nc && nc.subnets && nc.subnets[0] ? subnetVpcMap[nc.subnets[0]] || "" : "";
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(svc);
+      const sc = _scoreClassification(name, "ecs", vpcName, null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "ECS", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId, vpcName, tags: tm });
     });
     (ctx.redshiftClusters || []).forEach(function(rs) {
-      var name = rs.ClusterIdentifier;
-      var vpcId = rs.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(rs);
-      var sc = _scoreClassification(name, "redshift", vpcName, null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const name = rs.ClusterIdentifier;
+      let vpcId = rs.VpcId || "";
+      const vpcName = vpcNameMap[vpcId] || "";
+      const tm = _getTagMap(rs);
+      const sc = _scoreClassification(name, "redshift", vpcName, null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      const meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "Redshift", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId, vpcName, tags: tm });
     });
     (ctx.sgs || []).forEach(function(sg) {
-      var id = sg.GroupId;
-      var name = gn(sg, id);
-      var vpcId = sg.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(sg);
-      var sc = _scoreClassification(name, "security-group", vpcName, null, tm);
-      var tier = _classificationOverrides[id] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const id = sg.GroupId;
+      let name = gn(sg, id);
+      let vpcId = sg.VpcId || "";
+      let vpcName = vpcNameMap[vpcId] || "";
+      let tm = _getTagMap(sg);
+      const sc = _scoreClassification(name, "security-group", vpcName, null, tm);
+      const tier = _classificationOverrides[id] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id, name, type: "Security Group", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId, vpcName, tags: tm });
     });
     (ctx.vpcs || []).forEach(function(v) {
-      var id = v.VpcId;
-      var name = gn(v, id);
-      var tm = _getTagMap(v);
-      var sc = _scoreClassification(name, "vpc", name, null, tm);
-      var tier = _classificationOverrides[id] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const id = v.VpcId;
+      let name = gn(v, id);
+      let tm = _getTagMap(v);
+      const sc = _scoreClassification(name, "vpc", name, null, tm);
+      const tier = _classificationOverrides[id] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id, name, type: "VPC", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: id, vpcName: name, tags: tm });
     });
     (ctx.subnets || []).forEach(function(s) {
-      var id = s.SubnetId;
-      var name = gn(s, id);
-      var vpcId = s.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(s);
-      var sc = _scoreClassification(name, "subnet", vpcName, null, tm);
-      var tier = _classificationOverrides[id] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const id = s.SubnetId;
+      let name = gn(s, id);
+      let vpcId = s.VpcId || "";
+      let vpcName = vpcNameMap[vpcId] || "";
+      let tm = _getTagMap(s);
+      const sc = _scoreClassification(name, "subnet", vpcName, null, tm);
+      const tier = _classificationOverrides[id] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id, name, type: "Subnet", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId, vpcName, tags: tm });
     });
     (ctx.igws || []).forEach(function(gw) {
-      var id = gw.InternetGatewayId;
-      var name = gn(gw, id);
-      var vpcId = gw.Attachments && gw.Attachments[0] ? gw.Attachments[0].VpcId : "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(gw);
-      var sc = _scoreClassification(name, "igw", vpcName, null, tm);
-      var tier = _classificationOverrides[id] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const id = gw.InternetGatewayId;
+      let name = gn(gw, id);
+      let vpcId = gw.Attachments && gw.Attachments[0] ? gw.Attachments[0].VpcId : "";
+      let vpcName = vpcNameMap[vpcId] || "";
+      let tm = _getTagMap(gw);
+      const sc = _scoreClassification(name, "igw", vpcName, null, tm);
+      const tier = _classificationOverrides[id] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id, name, type: "IGW", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId, vpcName, tags: tm });
     });
     (ctx.nats || []).forEach(function(ng) {
-      var id = ng.NatGatewayId;
-      var name = gn(ng, id);
-      var vpcId = ng.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(ng);
-      var sc = _scoreClassification(name, "nat-gateway", vpcName, null, tm);
-      var tier = _classificationOverrides[id] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const id = ng.NatGatewayId;
+      let name = gn(ng, id);
+      let vpcId = ng.VpcId || "";
+      let vpcName = vpcNameMap[vpcId] || "";
+      let tm = _getTagMap(ng);
+      const sc = _scoreClassification(name, "nat-gateway", vpcName, null, tm);
+      const tier = _classificationOverrides[id] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id, name, type: "NAT GW", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId, vpcName, tags: tm });
     });
     (ctx.vpces || []).forEach(function(ve) {
-      var id = ve.VpcEndpointId;
-      var name = ve.ServiceName || id;
-      var vpcId = ve.VpcId || "";
-      var vpcName = vpcNameMap[vpcId] || "";
-      var tm = _getTagMap(ve);
-      var sc = _scoreClassification(name, "vpc-endpoint", vpcName, null, tm);
-      var tier = _classificationOverrides[id] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const id = ve.VpcEndpointId;
+      let name = ve.ServiceName || id;
+      let vpcId = ve.VpcId || "";
+      let vpcName = vpcNameMap[vpcId] || "";
+      let tm = _getTagMap(ve);
+      const sc = _scoreClassification(name, "vpc-endpoint", vpcName, null, tm);
+      const tier = _classificationOverrides[id] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id, name, type: "VPC Endpoint", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId, vpcName, tags: tm });
     });
     (ctx.s3bk || []).forEach(function(b) {
-      var name = b.Name || "";
-      var tm = _getTagMap(b);
-      var sc = _scoreClassification(name, "s3", "", null, tm);
-      var tier = _classificationOverrides[name] || sc.tier;
-      var meta = _TIER_RPO_RTO[tier];
+      const name = b.Name || "";
+      let tm = _getTagMap(b);
+      const sc = _scoreClassification(name, "s3", "", null, tm);
+      const tier = _classificationOverrides[name] || sc.tier;
+      let meta = _TIER_RPO_RTO[tier];
       results.push({ id: name, name, type: "S3", tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: "", vpcName: "", tags: tm });
     });
-    var _clResAcct = {};
+    const _clResAcct = {};
     (ctx.instances || []).forEach(function(r) {
       _clResAcct[r.InstanceId] = r._accountId;
     });
@@ -7136,12 +7580,12 @@ var AppBundle = (() => {
   }
   function prepareIAMReviewData(iamData) {
     if (!iamData) return [];
-    var items = [];
+    let items = [];
     (iamData.roles || []).forEach(function(role) {
-      var created = role.CreateDate ? new Date(role.CreateDate) : null;
-      var lastUsed = role.RoleLastUsed && role.RoleLastUsed.LastUsedDate ? new Date(role.RoleLastUsed.LastUsedDate) : null;
-      var trustDoc = role.AssumeRolePolicyDocument;
-      var trustParsed = {};
+      const created = role.CreateDate ? new Date(role.CreateDate) : null;
+      const lastUsed = role.RoleLastUsed && role.RoleLastUsed.LastUsedDate ? new Date(role.RoleLastUsed.LastUsedDate) : null;
+      const trustDoc = role.AssumeRolePolicyDocument;
+      let trustParsed = {};
       if (typeof trustDoc === "string") {
         try {
           trustParsed = JSON.parse(trustDoc);
@@ -7149,51 +7593,51 @@ var AppBundle = (() => {
           console.warn("Failed to parse trust policy:", e);
         }
       } else if (trustDoc) trustParsed = trustDoc;
-      var crossAccts = [];
+      const crossAccts = [];
       _stmtArr(trustParsed.Statement).forEach(function(stmt) {
         if (stmt.Effect === "Allow" && stmt.Principal) {
-          var aws = stmt.Principal.AWS;
+          const aws = stmt.Principal.AWS;
           if (aws) {
             (Array.isArray(aws) ? aws : [aws]).forEach(function(arn) {
-              var m = String(arn).match(/:(\d{12}):/);
+              const m = String(arn).match(/:(\d{12}):/);
               if (m) crossAccts.push(m[1]);
             });
           }
         }
       });
-      var findings = (complianceFindings || []).filter(function(f) {
+      const findings = (complianceFindings || []).filter(function(f) {
         return f.framework === "IAM" && (f.resource === role.RoleName || f.resource === (role.Arn || ""));
       });
-      var policyCount = (role.RolePolicyList || []).length + (role.AttachedManagedPolicies || []).length;
-      var policyNames = (role.AttachedManagedPolicies || []).map(function(p) {
+      const policyCount = (role.RolePolicyList || []).length + (role.AttachedManagedPolicies || []).length;
+      const policyNames = (role.AttachedManagedPolicies || []).map(function(p) {
         return p.PolicyName || p.PolicyArn || "";
       });
-      var roleAcct = (role.Arn || "").match(/:(\d{12}):/);
+      const roleAcct = (role.Arn || "").match(/:(\d{12}):/);
       items.push({ name: role.RoleName || "", arn: role.Arn || "", type: "Role", created, lastUsed, isAdmin: role._isAdmin || false, hasWildcard: role._hasWildcard || false, crossAccounts: crossAccts, policies: policyCount, policyNames, permBoundary: role.PermissionsBoundary ? role.PermissionsBoundary.PermissionsBoundaryArn : "", findings, _accountId: roleAcct ? roleAcct[1] : "", _raw: role });
     });
     (iamData.users || []).forEach(function(user) {
-      var created = user.CreateDate ? new Date(user.CreateDate) : null;
-      var lastUsed = user.PasswordLastUsed ? new Date(user.PasswordLastUsed) : null;
-      var hasMFA = (user.MFADevices || []).length > 0;
-      var hasConsole = !!user.LoginProfile;
-      var activeKeys = (user.AccessKeys || []).filter(function(k) {
+      const created = user.CreateDate ? new Date(user.CreateDate) : null;
+      const lastUsed = user.PasswordLastUsed ? new Date(user.PasswordLastUsed) : null;
+      const hasMFA = (user.MFADevices || []).length > 0;
+      const hasConsole = !!user.LoginProfile;
+      const activeKeys = (user.AccessKeys || []).filter(function(k) {
         return k.Status === "Active";
       }).length;
-      var findings = (complianceFindings || []).filter(function(f) {
+      const findings = (complianceFindings || []).filter(function(f) {
         return f.framework === "IAM" && (f.resource === user.UserName || f.resource === (user.Arn || ""));
       });
-      var policyCount = (user.UserPolicyList || []).length + (user.AttachedManagedPolicies || []).length;
-      var policyNames = (user.AttachedManagedPolicies || []).map(function(p) {
+      const policyCount = (user.UserPolicyList || []).length + (user.AttachedManagedPolicies || []).length;
+      const policyNames = (user.AttachedManagedPolicies || []).map(function(p) {
         return p.PolicyName || p.PolicyArn || "";
       });
-      var uIsAdmin = false;
+      let uIsAdmin = false;
       (user.UserPolicyList || []).forEach(function(p) {
         if (uIsAdmin) return;
-        var doc = _safePolicyParse(p.PolicyDocument);
+        let doc = _safePolicyParse(p.PolicyDocument);
         _stmtArr(doc.Statement).forEach(function(s) {
           if (s.Effect === "Allow") {
-            var a = Array.isArray(s.Action) ? s.Action : [s.Action || ""];
-            var r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || ""];
+            let a = Array.isArray(s.Action) ? s.Action : [s.Action || ""];
+            let r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || ""];
             if (a.some(function(x) {
               return x === "*";
             }) && r.some(function(x) {
@@ -7204,18 +7648,18 @@ var AppBundle = (() => {
       });
       (user.AttachedManagedPolicies || []).forEach(function(mp) {
         if (uIsAdmin) return;
-        var pol = (iamData.policies || []).find(function(p) {
+        let pol = (iamData.policies || []).find(function(p) {
           return p.Arn === mp.PolicyArn || p.PolicyName === mp.PolicyName;
         });
         if (pol) {
-          var ver = (pol.PolicyVersionList || []).find(function(v) {
+          let ver = (pol.PolicyVersionList || []).find(function(v) {
             return v.IsDefaultVersion;
           });
           if (ver) {
             _stmtArr(_safePolicyParse(ver.Document).Statement).forEach(function(s) {
               if (s.Effect === "Allow") {
-                var a = Array.isArray(s.Action) ? s.Action : [s.Action || ""];
-                var r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || ""];
+                let a = Array.isArray(s.Action) ? s.Action : [s.Action || ""];
+                let r = Array.isArray(s.Resource) ? s.Resource : [s.Resource || ""];
                 if (a.some(function(x) {
                   return x === "*";
                 }) && r.some(function(x) {
@@ -7226,7 +7670,7 @@ var AppBundle = (() => {
           }
         }
       });
-      var userAcct = (user.Arn || "").match(/:(\d{12}):/);
+      const userAcct = (user.Arn || "").match(/:(\d{12}):/);
       items.push({ name: user.UserName || "", arn: user.Arn || "", type: "User", created, lastUsed, isAdmin: uIsAdmin, hasWildcard: false, crossAccounts: [], policies: policyCount, policyNames, permBoundary: user.PermissionsBoundary ? user.PermissionsBoundary.PermissionsBoundaryArn : "", findings, _accountId: userAcct ? userAcct[1] : "", hasMFA, hasConsole, activeKeys, _raw: user });
     });
     _iamReviewData = items;
@@ -7485,6 +7929,80 @@ var AppBundle = (() => {
       _collectStatements,
       canDo,
       summarizePermissions
+    });
+  }
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "_classificationData", {
+      get() {
+        return _classificationData;
+      },
+      set(v) {
+        _classificationData = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_iamReviewData", {
+      get() {
+        return _iamReviewData;
+      },
+      set(v) {
+        _iamReviewData = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_inventoryData", {
+      get() {
+        return _inventoryData;
+      },
+      set(v) {
+        _inventoryData = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_appRegistry", {
+      get() {
+        return _appRegistry;
+      },
+      set(v) {
+        _appRegistry = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_classificationRules", {
+      get() {
+        return _classificationRules;
+      },
+      set(v) {
+        _classificationRules = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_discoveredTags", {
+      get() {
+        return _discoveredTags;
+      },
+      set(v) {
+        _discoveredTags = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_classificationOverrides", {
+      get() {
+        return _classificationOverrides;
+      },
+      set(v) {
+        _classificationOverrides = v;
+      },
+      configurable: true
+    });
+    Object.defineProperty(window, "_appAutoDiscovered", {
+      get() {
+        return _appAutoDiscovered;
+      },
+      set(v) {
+        _appAutoDiscovered = v;
+      },
+      configurable: true
     });
   }
 
@@ -8698,9 +9216,9 @@ var AppBundle = (() => {
     return { code, warnings, stats: { resources: Object.keys(template.Resources).length } };
   }
   function _ckId(name, prefix, seen) {
-    var base = (name || prefix || "Res").replace(/[^a-zA-Z0-9]/g, "");
+    let base = (name || prefix || "Res").replace(/[^a-zA-Z0-9]/g, "");
     if (!base || /^\d/.test(base)) base = (prefix || "R") + base;
-    var id = base, i = 2;
+    let id = base, i = 2;
     while (seen.has(id)) {
       id = base + i;
       i++;
@@ -8710,7 +9228,7 @@ var AppBundle = (() => {
   }
   function _ckVpcs(vpcs, res, seen) {
     vpcs.forEach(function(v) {
-      var id = _ckId(gn(v, v.VpcId), "VPC", seen);
+      const id = _ckId(gn(v, v.VpcId), "VPC", seen);
       res[id] = { Type: "AWS::EC2::VPC", Properties: {
         CidrBlock: v.CidrBlock || "10.0.0.0/16",
         EnableDnsSupport: v.EnableDnsSupport !== false,
@@ -8721,7 +9239,7 @@ var AppBundle = (() => {
   }
   function _ckSubnets(subnets, res, seen) {
     subnets.forEach(function(s) {
-      var id = _ckId(gn(s, s.SubnetId), "Subnet", seen);
+      const id = _ckId(gn(s, s.SubnetId), "Subnet", seen);
       res[id] = { Type: "AWS::EC2::Subnet", Properties: {
         VpcId: s.VpcId,
         CidrBlock: s.CidrBlock,
@@ -8732,9 +9250,9 @@ var AppBundle = (() => {
     });
   }
   function _ckExpandRules(perms) {
-    var rules = [];
+    const rules = [];
     (perms || []).forEach(function(p) {
-      var base = { IpProtocol: p.IpProtocol || "-1" };
+      const base = { IpProtocol: p.IpProtocol || "-1" };
       if (p.FromPort != null) base.FromPort = p.FromPort;
       if (p.ToPort != null) base.ToPort = p.ToPort;
       (p.IpRanges || []).forEach(function(r) {
@@ -8752,7 +9270,7 @@ var AppBundle = (() => {
   }
   function _ckSgs(sgs, res, seen) {
     sgs.forEach(function(sg) {
-      var id = _ckId(sg.GroupName || sg.GroupId, "SG", seen);
+      const id = _ckId(sg.GroupName || sg.GroupId, "SG", seen);
       res[id] = { Type: "AWS::EC2::SecurityGroup", Properties: {
         GroupDescription: sg.Description || sg.GroupName || "",
         VpcId: sg.VpcId,
@@ -8764,11 +9282,11 @@ var AppBundle = (() => {
   }
   function _ckNacls(nacls, res, seen) {
     nacls.forEach(function(nacl) {
-      var nId = _ckId(gn(nacl, nacl.NetworkAclId), "NACL", seen);
+      const nId = _ckId(gn(nacl, nacl.NetworkAclId), "NACL", seen);
       res[nId] = { Type: "AWS::EC2::NetworkAcl", Properties: { VpcId: nacl.VpcId, Tags: _cfnTags(nacl) } };
       (nacl.Entries || []).forEach(function(e) {
-        var eId = _ckId(nId + "Rule" + e.RuleNumber + (e.Egress ? "E" : "I"), "NACLEntry", seen);
-        var props = {
+        const eId = _ckId(nId + "Rule" + e.RuleNumber + (e.Egress ? "E" : "I"), "NACLEntry", seen);
+        const props = {
           NetworkAclId: nacl.NetworkAclId,
           RuleNumber: e.RuleNumber,
           Protocol: String(e.Protocol),
@@ -8784,12 +9302,12 @@ var AppBundle = (() => {
   }
   function _ckRts(rts, res, seen) {
     rts.forEach(function(rt) {
-      var rtId = _ckId(gn(rt, rt.RouteTableId), "RT", seen);
+      const rtId = _ckId(gn(rt, rt.RouteTableId), "RT", seen);
       res[rtId] = { Type: "AWS::EC2::RouteTable", Properties: { VpcId: rt.VpcId, Tags: _cfnTags(rt) } };
       (rt.Routes || []).forEach(function(r) {
         if (r.GatewayId === "local") return;
-        var rId = _ckId(rtId + (r.DestinationCidrBlock || "").replace(/[^a-zA-Z0-9]/g, ""), "Route", seen);
-        var props = { RouteTableId: rt.RouteTableId };
+        const rId = _ckId(rtId + (r.DestinationCidrBlock || "").replace(/[^a-zA-Z0-9]/g, ""), "Route", seen);
+        const props = { RouteTableId: rt.RouteTableId };
         if (r.DestinationCidrBlock) props.DestinationCidrBlock = r.DestinationCidrBlock;
         if (r.GatewayId) props.GatewayId = r.GatewayId;
         if (r.NatGatewayId) props.NatGatewayId = r.NatGatewayId;
@@ -8800,8 +9318,8 @@ var AppBundle = (() => {
   }
   function _ckEc2(instances, ctx, res, seen) {
     instances.forEach(function(inst) {
-      var id = _ckId(gn(inst, inst.InstanceId), "EC2", seen);
-      var props = {
+      const id = _ckId(gn(inst, inst.InstanceId), "EC2", seen);
+      const props = {
         InstanceType: inst.InstanceType || "t3.micro",
         SubnetId: inst.SubnetId || "",
         SecurityGroupIds: (inst.SecurityGroups || []).map(function(s) {
@@ -8810,12 +9328,12 @@ var AppBundle = (() => {
         ImageId: inst.ImageId || "",
         Tags: _cfnTags(inst)
       };
-      var mo = inst.MetadataOptions || {};
+      const mo = inst.MetadataOptions || {};
       props.MetadataOptions = { HttpTokens: mo.HttpTokens || "optional", HttpEndpoint: mo.HttpEndpoint || "enabled" };
       if (inst.IamInstanceProfile) props.IamInstanceProfile = inst.IamInstanceProfile.Arn || "";
       if (inst.BlockDeviceMappings && inst.BlockDeviceMappings.length) {
         props.BlockDeviceMappings = inst.BlockDeviceMappings.map(function(b) {
-          var r = { DeviceName: b.DeviceName || "/dev/xvda" };
+          const r = { DeviceName: b.DeviceName || "/dev/xvda" };
           if (b.Ebs) r.Ebs = { Encrypted: b.Ebs.Encrypted === true, VolumeSize: b.Ebs.VolumeSize || 8, VolumeType: b.Ebs.VolumeType || "gp3" };
           return r;
         });
@@ -8825,7 +9343,7 @@ var AppBundle = (() => {
   }
   function _ckRds(rdsInstances, res, seen) {
     rdsInstances.forEach(function(db) {
-      var id = _ckId(db.DBInstanceIdentifier, "RDS", seen);
+      const id = _ckId(db.DBInstanceIdentifier, "RDS", seen);
       res[id] = { Type: "AWS::RDS::DBInstance", Properties: {
         DBInstanceIdentifier: db.DBInstanceIdentifier,
         Engine: db.Engine || "",
@@ -8843,8 +9361,8 @@ var AppBundle = (() => {
   }
   function _ckS3(buckets, res, seen) {
     buckets.forEach(function(bk) {
-      var id = _ckId(bk.Name, "S3", seen);
-      var props = { BucketName: bk.Name };
+      const id = _ckId(bk.Name, "S3", seen);
+      const props = { BucketName: bk.Name };
       if (bk.BucketEncryption) props.BucketEncryption = bk.BucketEncryption;
       if (bk.VersioningConfiguration) props.VersioningConfiguration = bk.VersioningConfiguration;
       res[id] = { Type: "AWS::S3::Bucket", Properties: props };
@@ -8852,8 +9370,8 @@ var AppBundle = (() => {
   }
   function _ckAlbs(albs, res, seen) {
     albs.forEach(function(alb) {
-      var id = _ckId(alb.LoadBalancerName || alb.LoadBalancerArn, "ALB", seen);
-      var props = { Type: alb.Type || "application", Scheme: alb.Scheme || "internet-facing" };
+      const id = _ckId(alb.LoadBalancerName || alb.LoadBalancerArn, "ALB", seen);
+      const props = { Type: alb.Type || "application", Scheme: alb.Scheme || "internet-facing" };
       if (alb.SecurityGroups) props.SecurityGroups = alb.SecurityGroups;
       if (alb.Subnets) props.Subnets = alb.Subnets;
       else if (alb.AvailabilityZones) props.Subnets = alb.AvailabilityZones.map(function(az) {
@@ -8864,8 +9382,8 @@ var AppBundle = (() => {
   }
   function _ckLambda(fns, res, seen) {
     fns.forEach(function(fn) {
-      var id = _ckId(fn.FunctionName, "Lambda", seen);
-      var props = {
+      const id = _ckId(fn.FunctionName, "Lambda", seen);
+      const props = {
         FunctionName: fn.FunctionName,
         Runtime: fn.Runtime || "",
         Handler: fn.Handler || "index.handler",
@@ -8882,12 +9400,12 @@ var AppBundle = (() => {
   }
   function _ckIamRoles(roles, res, seen) {
     roles.forEach(function(role) {
-      var id = _ckId(role.RoleName, "Role", seen);
-      var props = {
+      const id = _ckId(role.RoleName, "Role", seen);
+      const props = {
         RoleName: role.RoleName,
         AssumeRolePolicyDocument: role.AssumeRolePolicyDocument || { Version: "2012-10-17", Statement: [] }
       };
-      var managed = (role.AttachedManagedPolicies || []).map(function(p) {
+      const managed = (role.AttachedManagedPolicies || []).map(function(p) {
         return p.PolicyArn;
       }).filter(Boolean);
       if (managed.length) props.ManagedPolicyArns = managed;
@@ -8901,9 +9419,9 @@ var AppBundle = (() => {
   }
   function _ckIamUsers(users, res, seen) {
     users.forEach(function(user) {
-      var id = _ckId(user.UserName, "User", seen);
-      var props = { UserName: user.UserName };
-      var managed = (user.AttachedManagedPolicies || []).map(function(p) {
+      const id = _ckId(user.UserName, "User", seen);
+      const props = { UserName: user.UserName };
+      const managed = (user.AttachedManagedPolicies || []).map(function(p) {
         return p.PolicyArn;
       }).filter(Boolean);
       if (managed.length) props.ManagedPolicyArns = managed;
@@ -8917,7 +9435,7 @@ var AppBundle = (() => {
   }
   function _ckElastiCache(clusters, res, seen) {
     clusters.forEach(function(c) {
-      var id = _ckId(c.CacheClusterId, "Cache", seen);
+      const id = _ckId(c.CacheClusterId, "Cache", seen);
       res[id] = { Type: "AWS::ElastiCache::CacheCluster", Properties: {
         Engine: c.Engine || "redis",
         CacheNodeType: c.CacheNodeType || "cache.t3.micro",
@@ -8929,7 +9447,7 @@ var AppBundle = (() => {
   }
   function _ckRedshift(clusters, res, seen) {
     clusters.forEach(function(c) {
-      var id = _ckId(c.ClusterIdentifier, "Redshift", seen);
+      const id = _ckId(c.ClusterIdentifier, "Redshift", seen);
       res[id] = { Type: "AWS::Redshift::Cluster", Properties: {
         ClusterIdentifier: c.ClusterIdentifier,
         NodeType: c.NodeType || "dc2.large",
@@ -8944,12 +9462,12 @@ var AppBundle = (() => {
   }
   function generateCheckovCfn(ctx, iamData) {
     if (!ctx || !ctx.vpcs) return null;
-    var template = {
+    const template = {
       AWSTemplateFormatVersion: "2010-09-09",
       Description: "Generated by AWS Mapper for Checkov scanning \u2014 " + (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
       Resources: {}
     };
-    var res = template.Resources, seen = /* @__PURE__ */ new Set();
+    const res = template.Resources, seen = /* @__PURE__ */ new Set();
     _ckVpcs(ctx.vpcs || [], res, seen);
     _ckSubnets(ctx.subnets || [], res, seen);
     _ckSgs(ctx.sgs || [], res, seen);
@@ -9226,21 +9744,32 @@ var AppBundle = (() => {
     setShowIAM,
     getIamData,
     getShowIAM,
-    // Timeline & Annotations
+    // Timeline & Annotations (flattened for app-core.js backward compat)
     Timeline: timeline_exports,
-    // Phase 3: Feature Engines
+    ...timeline_exports,
+    // Phase 3: Feature Engines (flattened)
     DesignMode: design_mode_exports,
+    ...design_mode_exports,
     FlowTracing: flow_tracing_exports,
+    ...flow_tracing_exports,
     FlowAnalysis: flow_analysis_exports,
+    ...flow_analysis_exports,
     FirewallEditor: firewall_editor_exports,
+    ...firewall_editor_exports,
     MultiAccount: multi_account_exports,
-    // Phase 4: Dashboards & Reports
+    ...multi_account_exports,
+    // Phase 4: Dashboards & Reports (flattened)
     ComplianceView: compliance_view_exports,
+    ...compliance_view_exports,
     UnifiedDashboard: unified_dashboard_exports,
+    ...unified_dashboard_exports,
     Governance: governance_exports,
-    // Phase 5: Core
+    ...governance_exports,
+    // Phase 5: Core (flattened)
     ExportUtils: export_utils_exports,
-    IacGenerator: iac_generator_exports
+    ...export_utils_exports,
+    IacGenerator: iac_generator_exports,
+    ...iac_generator_exports
     // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
   };
   Object.assign(window, window.AppModules);

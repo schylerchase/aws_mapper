@@ -88,24 +88,24 @@ export function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) 
     .filter(function (e) { return e.Egress === (direction === 'outbound'); })
     .sort(function (a, b) { return a.RuleNumber - b.RuleNumber; });
   if (entries.length === 0 && opts && opts.assumeAllow) return { action: 'allow', rule: 'No ' + direction + ' rules defined (assumed allow)', ruleNum: '-' };
-  for (var i = 0; i < entries.length; i++) {
-    var e = entries[i];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
     if (e.RuleNumber === 32767) continue;
     if (!protoMatch(e.Protocol, protocol)) continue;
-    var portOk = true;
+    let portOk = true;
     if (e.PortRange) {
       portOk = portInRange(port, e.PortRange.From, e.PortRange.To);
     }
     if (!portOk) continue;
-    var cidrOk = false;
+    let cidrOk = false;
     if (e.CidrBlock) cidrOk = cidrContains(e.CidrBlock, ipFromCidr(sourceCidr));
     if (!cidrOk && e.Ipv6CidrBlock) {
       if (e.Ipv6CidrBlock === '::/0') cidrOk = true;
       else continue;
     }
     if (!cidrOk) continue;
-    var act = e.RuleAction === 'allow' ? 'allow' : 'deny';
-    var cidrLabel = e.CidrBlock || e.Ipv6CidrBlock || '';
+    const act = e.RuleAction === 'allow' ? 'allow' : 'deny';
+    const cidrLabel = e.CidrBlock || e.Ipv6CidrBlock || '';
     return { action: act, rule: 'Rule #' + e.RuleNumber + ' ' + act.toUpperCase() + ' ' + protoName(e.Protocol) + ' port ' + (e.PortRange ? e.PortRange.From + '-' + e.PortRange.To : 'all') + ' from ' + cidrLabel, ruleNum: e.RuleNumber };
   }
   return { action: 'deny', rule: 'Default deny (no matching rule)', ruleNum: '*' };
@@ -113,40 +113,40 @@ export function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) 
 
 export function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts) {
   if (!sgs || sgs.length === 0) return { action: (opts && opts.assumeAllow) ? 'allow' : 'deny', rule: 'No security groups attached', matchedSg: null };
-  var srcIp = ipFromCidr(sourceCidr);
-  var srcSgIds = opts && opts.sourceSgIds;
-  var srcSgSet = srcSgIds ? new Set(srcSgIds) : null;
-  for (var si = 0; si < sgs.length; si++) {
-    var sg = sgs[si];
-    var rules = direction === 'inbound' ? (sg.IpPermissions || []) : (sg.IpPermissionsEgress || []);
-    for (var ri = 0; ri < rules.length; ri++) {
-      var r = rules[ri];
+  const srcIp = ipFromCidr(sourceCidr);
+  const srcSgIds = opts && opts.sourceSgIds;
+  const srcSgSet = srcSgIds ? new Set(srcSgIds) : null;
+  for (let si = 0; si < sgs.length; si++) {
+    const sg = sgs[si];
+    const rules = direction === 'inbound' ? (sg.IpPermissions || []) : (sg.IpPermissionsEgress || []);
+    for (let ri = 0; ri < rules.length; ri++) {
+      const r = rules[ri];
       if (!protoMatch(String(r.IpProtocol), protocol)) continue;
-      var portOk = true;
+      let portOk = true;
       if (r.FromPort !== undefined && r.FromPort !== -1) {
         portOk = portInRange(port, r.FromPort, r.ToPort);
       }
       if (!portOk) continue;
-      var cidrOk = false;
-      var ipRanges = r.IpRanges || [];
-      for (var ci = 0; ci < ipRanges.length && !cidrOk; ci++) {
+      let cidrOk = false;
+      const ipRanges = r.IpRanges || [];
+      for (let ci = 0; ci < ipRanges.length && !cidrOk; ci++) {
         if (cidrContains(ipRanges[ci].CidrIp, srcIp)) cidrOk = true;
       }
       if (!cidrOk) {
-        var ipv6Ranges = r.Ipv6Ranges || [];
-        for (var v6i = 0; v6i < ipv6Ranges.length && !cidrOk; v6i++) {
+        const ipv6Ranges = r.Ipv6Ranges || [];
+        for (let v6i = 0; v6i < ipv6Ranges.length && !cidrOk; v6i++) {
           if (ipv6Ranges[v6i].CidrIpv6 === '::/0') cidrOk = true;
         }
       }
       if (!cidrOk && (r.UserIdGroupPairs || []).length > 0) {
-        var pairs = r.UserIdGroupPairs || [];
-        for (var pi = 0; pi < pairs.length && !cidrOk; pi++) {
+        const pairs = r.UserIdGroupPairs || [];
+        for (let pi = 0; pi < pairs.length && !cidrOk; pi++) {
           if (srcSgSet) { if (pairs[pi].GroupId && srcSgSet.has(pairs[pi].GroupId)) cidrOk = true; }
           else { if (pairs[pi].GroupId) cidrOk = true; }
         }
       }
       if (cidrOk) {
-        var desc = sg.GroupName + ': ' + protoName(String(r.IpProtocol)) + ' port ' + (r.FromPort !== -1 && r.FromPort !== undefined ? r.FromPort + '-' + r.ToPort : 'all');
+        const desc = sg.GroupName + ': ' + protoName(String(r.IpProtocol)) + ' port ' + (r.FromPort !== -1 && r.FromPort !== undefined ? r.FromPort + '-' + r.ToPort : 'all');
         return { action: 'allow', rule: desc, matchedSg: sg.GroupId || sg.GroupName };
       }
     }

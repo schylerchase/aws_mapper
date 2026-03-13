@@ -1,7 +1,7 @@
 # Optimization Plan
 
-Updated: 2026-03-12
-Status: 22/46 completed, 24 remaining
+Updated: 2026-03-13
+Status: 31/46 completed, 15 remaining
 
 ---
 
@@ -31,6 +31,15 @@ Status: 22/46 completed, 24 remaining
 | 20 | `dashboards.js` 2× `JSON.parse(JSON.stringify())` → `structuredClone()` | pending |
 | 21 | `topology-renderer.js` `.main` querySelector cached | pending |
 | 22 | `export-utils.js` `resolveColor` Map cache | prior |
+| 23 | H4: `structuredClone` in modules (29 replacements across 4 files) | 2026-03-13 |
+| 24 | H5: `alert()` → `showToast()` in modules (6 replacements) | 2026-03-13 |
+| 25 | H6: Deduplicate `resolveColor` + `downloadBlob` from app-core.js | 2026-03-13 |
+| 26 | M8: Cache `parseIAMData` in compliance-engine.js | 2026-03-13 |
+| 27 | M9: Throttle zoom DOM update with requestAnimationFrame | 2026-03-13 |
+| 28 | M3 (partial): `var` → `const/let` in budr-engine, iac-generator, network-rules, compliance-view, search | 2026-03-13 |
+| 29 | H1 (partial): Deleted BUDR ENGINE, IAM ENGINE, DEP GRAPH regions from app-core.js (-676 lines) | 2026-03-13 |
+| 30 | State bridges: `Object.defineProperty` live bindings added to 11 modules | 2026-03-13 |
+| 31 | Flattened namespace exports in main.js for app-core.js backward compat | 2026-03-13 |
 
 ---
 
@@ -50,7 +59,7 @@ Status: 22/46 completed, 24 remaining
 
 The original monolith. Modules were extracted from it but code was NOT removed, creating duplicates. Contains copies of `_sanitizeName`, `resolveColor`, test harness, snapshot logic, and report-builder functions that also exist in their respective modules.
 
-**Fix**: Identify code in `app-core.js` that is already in extracted modules. Delete the duplicates. What remains becomes the app initialization + orchestration layer (target: < 3,000 lines).
+**Status**: In progress. BUDR ENGINE, IAM ENGINE, DEP GRAPH regions deleted (-676 lines). State bridges added to 11 modules. Namespace exports flattened in main.js. Remaining regions contain mostly DOM rendering code NOT in modules — individual function overlap being deleted. Realistic target: ~20,000 lines (modules hold 5-97% of region logic; DOM rendering must stay).
 
 ---
 
@@ -72,31 +81,18 @@ Single function with 5+ nesting levels. Impossible to test stages independently.
 
 ---
 
-### H4. 46 `JSON.parse(JSON.stringify())` calls remain
-**Category**: performance | **Effort**: Low | **Impact**: Medium
-
-Spread across 6 files: `report-builder.js` (16), `app-core.js` (15), `firewall-editor.js` (6), `detail-panel.js` (4), `firewall-engine.js` (3), `dashboards.js` (2).
-
-**Fix**: Replace all with `structuredClone()`. Batch find-and-replace with manual review for edge cases.
+### ~~H4. `JSON.parse(JSON.stringify())` → `structuredClone()`~~ ✅ DONE
+Replaced 29 occurrences across firewall-editor (6), detail-panel (4), firewall-engine (3), edge-tests (16).
 
 ---
 
-### H5. 17 `alert()` calls in production code
-**Category**: code_quality | **Effort**: Low | **Impact**: Medium
-
-Blocks main thread, inconsistent with toast-based UX. Found in: `report-builder.js` (12), `design-mode.js` (3), `topology-renderer.js` (1), `firewall-engine.js` (2). (Excludes 2 XSS test strings.)
-
-**Fix**: Replace with `showToast(msg, 'error')` or `showToast(msg, 'warning')` as appropriate. Log full errors to `console.error`.
+### ~~H5. `alert()` → `showToast()` in modules~~ ✅ DONE
+Replaced 6 production alert() calls in design-mode (3), topology-renderer (1), firewall-engine (2).
 
 ---
 
-### H6. `_sanitizeName` defined in 2 places, `resolveColor` in 3
-**Category**: code_quality | **Effort**: Low | **Impact**: Medium
-
-- `_sanitizeName`: `app-core.js:25917`, `report-builder.js:4526`
-- `resolveColor`: `export-utils.js:361`, `app-core.js:23149`, `report-builder.js:1762`
-
-**Fix**: Keep canonical copies in `export-utils.js`. Import everywhere else. Delete duplicates.
+### ~~H6. Deduplicate `resolveColor` + `downloadBlob`~~ ✅ DONE
+Deleted duplicate definitions from app-core.js. Canonical copies in export-utils.js, bridged via `window.*`.
 
 ---
 
@@ -165,21 +161,13 @@ Belongs in `governance.js`. Forces `diff-engine.js` to load when only governance
 
 ---
 
-### M8. `compliance-engine.js:430` — `parseIAMData` not cached
-**Category**: performance | **Effort**: Low | **Impact**: Medium
-
-Re-processes IAM data on every compliance check.
-
-**Fix**: Parse once, cache in module-level variable, invalidate on data reload.
+### ~~M8. Cache `parseIAMData`~~ ✅ DONE
+Added module-level cache in compliance-engine.js — skips re-parse if raw data unchanged.
 
 ---
 
-### M9. `topology-renderer.js:523` — zoom level DOM update on every frame
-**Category**: performance | **Effort**: Low | **Impact**: Low
-
-Fires many times per second during scroll/pinch.
-
-**Fix**: Throttle with `requestAnimationFrame` — set dirty flag, update DOM only in rAF callback.
+### ~~M9. Throttle zoom DOM update~~ ✅ DONE
+Wrapped zoom-level textContent update in `requestAnimationFrame` guard in topology-renderer.js.
 
 ---
 

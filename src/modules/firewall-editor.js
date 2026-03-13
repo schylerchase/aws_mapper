@@ -360,9 +360,9 @@ export function fwTakeSnapshot(ctx) {
   if (_fwSnapshot) return;
   if (!ctx) return;
   _fwSnapshot = {
-    nacls: JSON.parse(JSON.stringify(ctx.nacls || [])),
-    sgs: JSON.parse(JSON.stringify(ctx.sgs || [])),
-    rts: JSON.parse(JSON.stringify(ctx.rts || []))
+    nacls: structuredClone(ctx.nacls || []),
+    sgs: structuredClone(ctx.sgs || []),
+    rts: structuredClone(ctx.rts || [])
   };
 }
 
@@ -374,11 +374,11 @@ export function fwTakeSnapshot(ctx) {
 export function fwResetAll(ctx) {
   if (!_fwSnapshot || !ctx) return;
   ctx.nacls.length = 0;
-  _fwSnapshot.nacls.forEach(n => ctx.nacls.push(JSON.parse(JSON.stringify(n))));
+  _fwSnapshot.nacls.forEach(n => ctx.nacls.push(structuredClone(n)));
   ctx.sgs.length = 0;
-  _fwSnapshot.sgs.forEach(s => ctx.sgs.push(JSON.parse(JSON.stringify(s))));
+  _fwSnapshot.sgs.forEach(s => ctx.sgs.push(structuredClone(s)));
   ctx.rts.length = 0;
-  _fwSnapshot.rts.forEach(r => ctx.rts.push(JSON.parse(JSON.stringify(r))));
+  _fwSnapshot.rts.forEach(r => ctx.rts.push(structuredClone(r)));
   fwRebuildLookups(ctx);
   _fwEdits = [];
   _fwSnapshot = null;
@@ -524,4 +524,48 @@ export function fwUndo(ctx) {
   }
   fwRebuildLookups(ctx);
   return edit;
+}
+
+// Window bridge: expose mutable state to app-core.js via live bindings
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '_fwEdits', {
+    get() { return _fwEdits; },
+    set(v) { _fwEdits = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwSnapshot', {
+    get() { return _fwSnapshot; },
+    set(v) { _fwSnapshot = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwFpType', {
+    get() { return _fwFpType; },
+    set(v) { _fwFpType = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwFpResId', {
+    get() { return _fwFpResId; },
+    set(v) { _fwFpResId = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwFpSub', {
+    get() { return _fwFpSub; },
+    set(v) { _fwFpSub = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwFpVpcId', {
+    get() { return _fwFpVpcId; },
+    set(v) { _fwFpVpcId = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwFpLk', {
+    get() { return _fwFpLk; },
+    set(v) { _fwFpLk = v; },
+    configurable: true
+  });
+  Object.defineProperty(window, '_fwFpDir', {
+    get() { return _fwFpDir; },
+    set(v) { _fwFpDir = v; },
+    configurable: true
+  });
 }
