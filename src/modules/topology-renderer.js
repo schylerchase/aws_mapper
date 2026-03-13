@@ -1489,8 +1489,8 @@ function _renderMapInner(){
     const lblY=pos.y+GR+14;
     const lblTxt=nm&&nm!==gw.id?nm:sid(gw.id);
     const lblClass=nm&&nm!==gw.id?'gw-name':'gw-id';
-    const tw=lblTxt.length*6.2+16;
-    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
+    const tw=lblTxt.length*7+18;
+    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-10).attr('width',tw).attr('height',18).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
     gG.append('text').attr('class',lblClass).attr('x',pos.x).attr('y',lblY).attr('text-anchor','middle').text(lblTxt);
     gG.on('mouseenter',function(){
       if(_hlLocked) return;

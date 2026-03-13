@@ -189,8 +189,8 @@
   .subnet-badge{font-family:var(--font-ui);font-size:calc(8px * var(--txt-scale));font-weight:600;pointer-events:none}
   .gw-node{cursor:pointer}
   .gw-label{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));font-weight:600;pointer-events:none}
-  .gw-id{font-family:var(--font-ui);font-size:calc(8px * var(--txt-scale));fill:var(--text-muted);pointer-events:none}
-  .gw-name{font-family:var(--font-ui);font-size:calc(8px * var(--txt-scale));fill:var(--text-secondary);pointer-events:none}
+  .gw-id{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));fill:var(--text-muted);pointer-events:none;opacity:.8}
+  .gw-name{font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale));fill:var(--text-primary);font-weight:500;pointer-events:none}
   .route-group{opacity:.35;filter:url(#alphaClamp)}
   .struct-group{opacity:1}
   .route-line{fill:none;stroke-width:1.5;opacity:1;pointer-events:none}
@@ -564,8 +564,8 @@
   .compliance-filter button{background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text-muted);font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1) * var(--dp-txt-scale,1));padding:4px 12px;cursor:pointer}
   .compliance-filter button.active{background:rgba(96,165,250,.15);border-color:var(--accent-cyan);color:var(--accent-cyan)}
   /* Gateway label styles */
-  .gw-id{font-family:var(--font-ui);font-size:calc(9px * var(--txt-scale));fill:var(--text-muted);pointer-events:none;opacity:.8}
-  .gw-name{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));fill:var(--text-primary);font-weight:500;pointer-events:none}
+  .gw-id{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));fill:var(--text-muted);pointer-events:none;opacity:.8}
+  .gw-name{font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale));fill:var(--text-primary);font-weight:500;pointer-events:none}
   /* Design highlight pulse */
   @keyframes designHlPulse{0%{opacity:.8;stroke-width:3}50%{opacity:.3;stroke-width:1}100%{opacity:.8;stroke-width:3}}
   /* Full-screen compliance dashboard */

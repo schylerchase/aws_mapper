@@ -7575,10 +7575,10 @@ function renderLandingZoneMap(ctx){
     const gwNm=gwNames[gw.id]||'';
     const lzLblTxt=gwNm||sid(gw.id);
     const lzLblY=gwY+GR+14;
-    const lzTw=lzLblTxt.length*5.2+14;
-    gG.append('rect').attr('x',gx-lzTw/2).attr('y',lzLblY-9).attr('width',lzTw).attr('height',14).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
+    const lzTw=lzLblTxt.length*7+18;
+    gG.append('rect').attr('x',gx-lzTw/2).attr('y',lzLblY-10).attr('width',lzTw).attr('height',18).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
     gG.append('text').attr('x',gx).attr('y',lzLblY).attr('text-anchor','middle')
-      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',gwNm?'var(--text-secondary)':'var(--text-muted)').text(lzLblTxt);
+      .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(11px * var(--txt-scale,1))').attr('fill',gwNm?'var(--text-primary)':'var(--text-muted)').text(lzLblTxt);
 
     // Gateway tooltip
     const gwName=gwNames[gw.id]||sid(gw.id);
@@ -7690,10 +7690,10 @@ function renderLandingZoneMap(ctx){
       const sgNm=gwNames[gw.id]||'';
       const skLblTxt=sgNm||sid(gw.id);
       const skLblY=sgY+22;
-      const skTw=skLblTxt.length*5.2+14;
-      gG.append('rect').attr('x',sgX-skTw/2).attr('y',skLblY-9).attr('width',skTw).attr('height',14).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
+      const skTw=skLblTxt.length*7+18;
+      gG.append('rect').attr('x',sgX-skTw/2).attr('y',skLblY-10).attr('width',skTw).attr('height',18).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
       gG.append('text').attr('x',sgX).attr('y',skLblY).attr('text-anchor','middle')
-        .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(7px * var(--txt-scale,1))').attr('fill',sgNm?'var(--text-secondary)':'var(--text-muted)').text(skLblTxt);
+        .attr('font-family','Segoe UI,system-ui,sans-serif').style('font-size','calc(11px * var(--txt-scale,1))').attr('fill',sgNm?'var(--text-primary)':'var(--text-muted)').text(skLblTxt);
 
       // Connection line from spoke to gateway
       const psg=lzRouteG.append('path')
@@ -10093,8 +10093,8 @@ async function _renderMapInner(){
     const lblY=pos.y+GR+14;
     const lblTxt=nm&&nm!==gw.id?nm:sid(gw.id);
     const lblClass=nm&&nm!==gw.id?'gw-name':'gw-id';
-    const tw=lblTxt.length*6.2+16;
-    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-9).attr('width',tw).attr('height',15).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
+    const tw=lblTxt.length*7+18;
+    gG.append('rect').attr('x',pos.x-tw/2).attr('y',lblY-10).attr('width',tw).attr('height',18).attr('rx',4).attr('class','gw-label-bg').attr('fill','var(--overlay-bg)').attr('stroke','var(--hover-bg)').attr('stroke-width',.5);
     gG.append('text').attr('class',lblClass).attr('x',pos.x).attr('y',lblY).attr('text-anchor','middle').text(lblTxt);
     gG.on('mouseenter',function(){
       if(_hlLocked) return;
