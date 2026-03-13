@@ -84,6 +84,9 @@ import * as ExportUtils from './modules/export-utils.js';
 // IAC generator (Terraform, CloudFormation, Checkov — DOM modal remains inline)
 import * as IacGenerator from './modules/iac-generator.js';
 
+// Report HTML generators (section renderers, CSS, interactive JS — extracted from app-core.js)
+import * as ReportHtml from './modules/report-html.js';
+
 // NOTE: Diff and report code lives in app-core.js (DOM-coupled).
 // Pure diff logic extracted to src/exports/diff-logic.js (bundled into core.bundle.js).
 
@@ -160,6 +163,7 @@ window.AppModules = {
   // Phase 5: Core (flattened)
   ExportUtils, ...ExportUtils,
   IacGenerator, ...IacGenerator,
+  ReportHtml, ...ReportHtml,
 
   // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
 };
