@@ -72,12 +72,10 @@ Contains HTML report generation, XLSX export, IaC generation, modal logic, and t
 
 ---
 
-### H3. `topology-renderer.js` — `_renderMapInner` is 1,973 lines
+### H3. `topology-renderer.js` — `_renderMapInner` split (PARTIAL ✅)
 **Category**: code_quality | **Effort**: High | **Impact**: High
 
-Single function with 5+ nesting levels. Impossible to test stages independently.
-
-**Fix**: Extract into `parseInputData()`, `buildLookupMaps()`, `computeLayout()`, `renderVpcGroups()`, `renderResources()`, `renderConnections()`. Each < 150 lines.
+Extracted `_parseInputs()` (~46 lines) and `_buildLookupMaps()` (~120 lines) as pure-data sub-functions. Remaining ~1,700 lines of grid rendering stay inline — D3 selections, highlight closures, and event handlers share too much state for safe automated extraction. Further splitting needs manual incremental work.
 
 ---
 
@@ -175,14 +173,14 @@ Wrapped zoom-level textContent update in `requestAnimationFrame` guard in topolo
 
 | # | File | Issue | Fix |
 |---|------|-------|-----|
-| L1 | `design-mode.js:613` | State exported as `window` globals | Expose via getter/setter functions |
-| L2 | `report-builder.js:7271` | iOS gesture listeners in wrong module | Move to `mobile-compat.js` or app init |
-| L3 | `firewall-engine.js:293` | 293 `var` declarations | Convert to ES module, codemod `var` → `const/let` |
-| L4 | `detail-panel.js:392` | Duplicate snapshot loading logic | Centralize in `snapshots.js` |
-| L5 | `dom-helpers.js:9` | `showToast` creates new DOM node every call | Reuse one persistent element |
-| L6 | `search.js:27` | Search results built by string concat + innerHTML | Use `DocumentFragment` + `textContent` |
-| L7 | `export-utils.js:449` | VSDX bridge initialized at module load | Wrap in lazy-init `getVsdxBridge()` |
-| L8 | `topology-renderer.js:5` | Not an ES module | Add `export`/`import`, load as `type="module"` |
+| L1 | ~~`design-mode.js` window globals~~ | ✅ DONE — getter/setter bridges in place | |
+| L2 | `report-builder.js` iOS gesture listeners | Move to `mobile-compat.js` or app init | Low ROI |
+| L3 | ~~`firewall-engine.js` var declarations~~ | ✅ DONE — 0 var remain | |
+| L4 | `detail-panel.js` snapshot logic | Centralize in `timeline.js` | Low ROI |
+| L5 | ~~`dom-helpers.js` showToast~~ | ✅ DONE — uses persistent singleton | |
+| L6 | `search.js` innerHTML (4 calls) | Use `DocumentFragment` + `textContent` | Low ROI |
+| L7 | ~~`export-utils.js` VSDX bridge~~ | ✅ DONE — lazy-init via `Object.defineProperty` | |
+| L8 | `topology-renderer.js` not ES module | Blocked by M2 (window globals) | Deferred |
 
 ---
 
@@ -190,10 +188,10 @@ Wrapped zoom-level textContent update in `requestAnimationFrame` guard in topolo
 
 | Category | Done | Remaining | Total |
 |----------|------|-----------|-------|
-| Code Quality | 10 | 14 | 24 |
-| Performance | 10 | 6 | 16 |
-| Bundle Size | 2 | 2 | 4 |
-| **Total** | **22** | **24** | **46** |
+| Code Quality | 22 | 6 | 28 |
+| Performance | 12 | 4 | 16 |
+| Bundle Size | 2 | 1 | 3 |
+| **Total** | **36** | **11** | **47** |
 
 ## Recommended Order
 
