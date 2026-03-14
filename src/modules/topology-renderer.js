@@ -893,8 +893,8 @@ function _renderMapInner(){
       .on('mouseleave.hl',function(){if(!_hlLocked)clr()})
       .on('click.hl',function(event){
         event.stopPropagation();
-        var resEl=d3.select(this);
-        var resId=resEl.attr('data-id');
+        const resEl=d3.select(this);
+        const resId=resEl.attr('data-id');
         if(resId){
           forceClr();hlSub(sid);_hlLocked=true;_hlKey=sid;_hlType='sub';showLockInd(true);
           _openResourceSpotlight(resId);

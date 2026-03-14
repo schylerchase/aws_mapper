@@ -30,12 +30,12 @@ export function setBudrDashState(v) { _budrDashState = v; }
  */
 export function udashFilterByAccount(items) {
   if (!_udashAcctFilter || _udashAcctFilter === 'all') return items;
-  var id = _udashAcctFilter;
+  let id = _udashAcctFilter;
   // Resolve account label via window bridge (report builder provides _rptAccountLabel)
-  var lbl = (typeof window !== 'undefined' && typeof window._rptAccountLabel === 'function')
+  let lbl = (typeof window !== 'undefined' && typeof window._rptAccountLabel === 'function')
     ? window._rptAccountLabel(id) : '';
   return items.filter(function(item) {
-    var a = item._accountId || item.account || '';
+    let a = item._accountId || item.account || '';
     return a === id || a === lbl;
   });
 }

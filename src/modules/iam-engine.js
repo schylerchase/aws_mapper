@@ -94,7 +94,7 @@ function runIAMChecks(iamData){
     const allStmts4=[];
     (role.RolePolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>allStmts4.push(s))});
     (role.AttachedManagedPolicies||[]).forEach(mp=>{const pol=policyByArn.get(mp.PolicyArn)||policyByArn.get(mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>allStmts4.push(s))}}});
-    var hasIAM4=false;
+    let hasIAM4=false;
     allStmts4.forEach(stmt=>{
       if(hasIAM4)return;
       if(stmt.Effect!=='Allow')return;
@@ -153,7 +153,7 @@ function runIAMChecks(iamData){
     // Service wildcard check for users — scan both inline and managed
     const uStmts=[];(user.UserPolicyList||[]).forEach(p=>{_stmtArr((_safePolicyParse(p.PolicyDocument)).Statement).forEach(s=>uStmts.push(s))});
     (user.AttachedManagedPolicies||[]).forEach(mp=>{const pol=policyByArn.get(mp.PolicyArn)||policyByArn.get(mp.PolicyName);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){_stmtArr((_safePolicyParse(ver.Document)).Statement).forEach(s=>uStmts.push(s))}}});
-    var uHasIAM4=false;uStmts.forEach(stmt=>{if(uHasIAM4)return;if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a))){uHasIAM4=true;f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}}});
+    let uHasIAM4=false;uStmts.forEach(stmt=>{if(uHasIAM4)return;if(stmt.Effect==='Allow'){const acts=Array.isArray(stmt.Action)?stmt.Action:[stmt.Action||''];if(acts.some(a=>/^[a-z0-9]+:\*$/i.test(a))){uHasIAM4=true;f.push({severity:'MEDIUM',control:'IAM-4',framework:'IAM',resource:user.UserName||'',resourceName:user.UserName||'',message:'User uses service-level wildcard actions',remediation:'Scope actions to specific API calls needed'})}}});
     // IAM-9: Access key age >90 days
     (user.AccessKeys||[]).forEach(ak=>{
       if(ak.Status==='Active'&&ak.CreateDate){const cd=new Date(ak.CreateDate);if(isNaN(cd.getTime()))return;const age=(Date.now()-cd.getTime())/86400000;

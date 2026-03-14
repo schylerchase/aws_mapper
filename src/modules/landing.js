@@ -624,7 +624,7 @@ function renderLandingZoneMap(ctx){
           tt.style.display='none';
         }).on('click',function(event){
           event.stopPropagation();
-          var resId=d3.select(this).attr('data-id');
+          let resId=d3.select(this).attr('data-id');
           if(resId) _openResourceSpotlight(resId);
         });
         rG.style('cursor','pointer');
@@ -1696,8 +1696,8 @@ function renderExecutiveOverview(ctx){
   setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
-var _renderMapTimer=null;
-var _parseCache={};
+let _renderMapTimer=null;
+let _parseCache={};
 function _cachedParse(id){
   const el=document.getElementById(id);
   const val=el?el.value:'';

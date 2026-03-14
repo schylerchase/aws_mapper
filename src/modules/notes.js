@@ -113,7 +113,7 @@ function _renderNotesPanel(){
   }
   body.innerHTML=h;
   if(!body._notesDelegated){body._notesDelegated=true;body.addEventListener('click',function(e){
-    var btn=e.target.closest('.note-zoom-btn,.note-edit-btn,.note-del-btn');if(!btn)return;e.stopPropagation();
+    let btn=e.target.closest('.note-zoom-btn,.note-edit-btn,.note-del-btn');if(!btn)return;e.stopPropagation();
     if(btn.classList.contains('note-zoom-btn')){closeNotesPanel();_zoomToElement(btn.dataset.rid)}
     else if(btn.classList.contains('note-edit-btn')){_showEditNote(btn.dataset.rid,parseInt(btn.dataset.ni))}
     else if(btn.classList.contains('note-del-btn')){deleteAnnotation(btn.dataset.rid,parseInt(btn.dataset.ni))}
