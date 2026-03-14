@@ -14,18 +14,8 @@ function renderMap(cb){
     requestAnimationFrame(()=>{setTimeout(()=>{_renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()},0)});
   },50);
 }
-function _renderMapInner(){
-  try{
-  const svg=d3.select('#mapSvg');svg.selectAll('*').remove();svg.style('display','block');
-  // SVG filter to prevent alpha stacking in route groups
-  const defs=svg.append('defs');
-  defs.append('filter').attr('id','alphaClamp')
-    .append('feComponentTransfer')
-    .append('feFuncA').attr('type','table').attr('tableValues','0 1 1 1');
-  document.getElementById('emptyState').style.display='none';
-  document.getElementById('landingDash').style.display='none';
-
-  // parse all 18 inputs (cached — skips JSON.parse if textarea unchanged)
+// --- Sub-function: parse all 18 cached textarea inputs ---
+function _parseInputs(){
   let vpcs=ext(_cachedParse('in_vpcs'),['Vpcs']);
   let subnets=ext(_cachedParse('in_subnets'),['Subnets']);
   let rts=ext(_cachedParse('in_rts'),['RouteTables']);
@@ -41,7 +31,6 @@ function _renderMapInner(){
     const reservations=ext(eRaw,['Reservations']);
     if(reservations.length){reservations.forEach(r=>{if(r.Instances)instances=instances.concat(r.Instances);else if(r.InstanceId)instances.push(r)})}
     else{
-      // fallback: {Instances:[...]} or bare array of instances
       const flat=ext(eRaw,['Instances']);
       if(flat.length)instances=flat;
       else{const arr=Array.isArray(eRaw)?eRaw:[eRaw];arr.forEach(x=>{if(x.InstanceId)instances.push(x)})}
@@ -68,9 +57,99 @@ function _renderMapInner(){
   let cfDistributions=[];
   const cfRaw=_cachedParse('in_cf');
   if(cfRaw){const dl=cfRaw.DistributionList||cfRaw;cfDistributions=dl.Items||dl.Distributions||[];}
-  // Parse IAM data
   const iamRaw=_cachedParse('in_iam');
   if(iamRaw&&!_iamData)_iamData=parseIAMData(iamRaw);
+  return {vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,
+    volumes,snapshots,s3bk,zones,recsByZoneMap,wafAcls,rdsInstances,ecsServices,lambdaFns,
+    ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions};
+}
+
+// --- Sub-function: build all lookup maps from parsed data ---
+function _buildLookupMaps(d){
+  const {subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,
+    volumes,snapshots,wafAcls,rdsInstances,ecsServices,lambdaFns,ecacheClusters,
+    redshiftClusters,tgwAttachments,cfDistributions}=d;
+  const subByVpc={};subnets.forEach(s=>(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s));
+  const pubSubs=new Set(),subRT={},gwSet=new Map();
+  gwNames={};
+  igws.forEach(g=>{gwNames[g.InternetGatewayId]=gn(g,g.InternetGatewayId)});
+  nats.forEach(g=>{gwNames[g.NatGatewayId]=gn(g,g.NatGatewayId)});
+  vpces.forEach(g=>{gwNames[g.VpcEndpointId]=gn(g,g.VpcEndpointId)});
+  vpns.forEach(g=>{if(g.VpnGatewayId) gwNames[g.VpnGatewayId]=gn(g,g.VpnGatewayId)});
+  peerings.forEach(g=>{gwNames[g.VpcPeeringConnectionId]=gn(g,g.VpcPeeringConnectionId)});
+  tgwAttachments.forEach(g=>{if(g.TransitGatewayId&&!gwNames[g.TransitGatewayId]) gwNames[g.TransitGatewayId]=gn(g,g.TransitGatewayId)});
+  const mainRT={};
+  rts.forEach(rt=>{if((rt.Associations||[]).some(a=>a.Main)) mainRT[rt.VpcId]=rt});
+  rts.forEach(rt=>{
+    const hasIgw=(rt.Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State!=='blackhole');
+    (rt.Associations||[]).forEach(a=>{if(a.SubnetId){subRT[a.SubnetId]=rt;if(hasIgw)pubSubs.add(a.SubnetId)}});
+    (rt.Routes||[]).forEach(r=>{
+      if(r.GatewayId&&r.GatewayId!=='local')gwSet.set(r.GatewayId,{type:clsGw(r.GatewayId),id:r.GatewayId,vpcId:rt.VpcId});
+      if(r.NatGatewayId)gwSet.set(r.NatGatewayId,{type:'NAT',id:r.NatGatewayId,vpcId:rt.VpcId});
+      if(r.TransitGatewayId)gwSet.set(r.TransitGatewayId,{type:'TGW',id:r.TransitGatewayId,vpcId:'shared'});
+      if(r.VpcPeeringConnectionId)gwSet.set(r.VpcPeeringConnectionId,{type:'PCX',id:r.VpcPeeringConnectionId,vpcId:'shared'});
+    });
+  });
+  igws.forEach(g=>{if(!gwSet.has(g.InternetGatewayId)){const v=(g.Attachments||[])[0];gwSet.set(g.InternetGatewayId,{type:'IGW',id:g.InternetGatewayId,vpcId:v?v.VpcId:'unk'})}});
+  nats.forEach(g=>{if(!gwSet.has(g.NatGatewayId))gwSet.set(g.NatGatewayId,{type:'NAT',id:g.NatGatewayId,vpcId:g.VpcId||'unk'})});
+  vpces.forEach(g=>{if(!gwSet.has(g.VpcEndpointId))gwSet.set(g.VpcEndpointId,{type:'VPCE',id:g.VpcEndpointId,vpcId:g.VpcId||'unk'})});
+  subnets.forEach(s=>{
+    if(!subRT[s.SubnetId]&&mainRT[s.VpcId]){
+      subRT[s.SubnetId]=mainRT[s.VpcId];
+      const hasIgw=(mainRT[s.VpcId].Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State!=='blackhole');
+      if(hasIgw)pubSubs.add(s.SubnetId);
+    }
+  });
+  const subNacl={};nacls.forEach(n=>(n.Associations||[]).forEach(a=>{if(a.SubnetId)subNacl[a.SubnetId]=n}));
+  const sgByVpc={};sgs.forEach(sg=>(sgByVpc[sg.VpcId]=sgByVpc[sg.VpcId]||[]).push(sg));
+  const iamRoleResources={};
+  if(_iamData){
+    (instances||[]).forEach(i=>{const pa=i.IamInstanceProfile?.Arn;if(pa){const rn=pa.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ec2.push(i)}});
+    (lambdaFns||[]).forEach(fn=>{if(fn.Role){const rn=fn.Role.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].lambda.push(fn)}});
+    (ecsServices||[]).forEach(svc=>{const ra=svc.taskRoleArn||svc.executionRoleArn;if(ra){const rn=ra.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ecs.push(svc)}});
+  }
+  const instBySub={};instances.forEach(i=>{if(i.SubnetId)(instBySub[i.SubnetId]=instBySub[i.SubnetId]||[]).push(i)});
+  const eniByInst={};const eniBySub={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});
+  const albBySub={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(albBySub[az.SubnetId]=albBySub[az.SubnetId]||[]).push(lb)})});
+  const volByInst={};volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId)(volByInst[a.InstanceId]=volByInst[a.InstanceId]||[]).push(v)})});
+  const knownInstIds=new Set(instances.map(i=>i.InstanceId));
+  const instSubFromEni={};enis.forEach(e=>{if(e.SubnetId&&e.Attachment&&e.Attachment.InstanceId)instSubFromEni[e.Attachment.InstanceId]=e.SubnetId});
+  const volBySub={};volumes.forEach(v=>{const att=(v.Attachments||[])[0];if(att&&att.InstanceId){if(knownInstIds.has(att.InstanceId))return;const sid2=instSubFromEni[att.InstanceId];if(sid2)(volBySub[sid2]=volBySub[sid2]||[]).push(v)}});
+  const snapByVol={};snapshots.forEach(s=>{if(s.VolumeId)(snapByVol[s.VolumeId]=snapByVol[s.VolumeId]||[]).push(s)});
+  const tgByAlb={};tgs.forEach(tg=>{(tg.LoadBalancerArns||[]).forEach(arn=>{(tgByAlb[arn]=tgByAlb[arn]||[]).push(tg)})});
+  const wafByAlb={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(wafByAlb[arn]=wafByAlb[arn]||[]).push(acl)})});
+  const rdsBySub={};rdsInstances.forEach(db=>{const sg=db.DBSubnetGroup;if(!sg)return;(sg.Subnets||[]).forEach(s=>{if(s.SubnetIdentifier)(rdsBySub[s.SubnetIdentifier]=rdsBySub[s.SubnetIdentifier]||[]).push(db)})});
+  const ecsBySub={};ecsServices.forEach(svc=>{const nc=svc.networkConfiguration?.awsvpcConfiguration;if(!nc)return;(nc.subnets||[]).forEach(sid2=>{(ecsBySub[sid2]=ecsBySub[sid2]||[]).push(svc)})});
+  const lambdaBySub={};lambdaFns.forEach(fn=>{(fn.VpcConfig?.SubnetIds||[]).forEach(sid2=>{(lambdaBySub[sid2]=lambdaBySub[sid2]||[]).push(fn)})});
+  const ecacheByVpc={};ecacheClusters.forEach(c=>{if(c.VpcId)(ecacheByVpc[c.VpcId]=ecacheByVpc[c.VpcId]||[]).push(c)});
+  const redshiftByVpc={};redshiftClusters.forEach(c=>{if(c.VpcId)(redshiftByVpc[c.VpcId]=redshiftByVpc[c.VpcId]||[]).push(c)});
+  const cfByAlb={};cfDistributions.forEach(dd=>{(dd.Origins?.Items||[]).forEach(o=>{const matchAlb=albs.find(a=>a.DNSName&&o.DomainName&&o.DomainName.includes(a.DNSName));if(matchAlb)(cfByAlb[matchAlb.LoadBalancerArn]=cfByAlb[matchAlb.LoadBalancerArn]||[]).push(dd)})});
+  const pvGws={},shGws=[],vpceByVpc={},vpceIds=new Set();
+  [...gwSet.values()].forEach(gw=>{
+    if(gw.type==='VPCE'){(vpceByVpc[gw.vpcId]=vpceByVpc[gw.vpcId]||[]).push(gw);vpceIds.add(gw.id);return}
+    if(isShared(gw.type)){if(!shGws.find(g=>g.id===gw.id))shGws.push(gw)}
+    else(pvGws[gw.vpcId]=pvGws[gw.vpcId]||[]).push(gw);
+  });
+  return {subByVpc,pubSubs,subRT,gwSet,gwNames,subNacl,sgByVpc,iamRoleResources,
+    instBySub,eniBySub,eniByInst,albBySub,volByInst,volBySub,snapByVol,tgByAlb,wafByAlb,
+    rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,pvGws,shGws,vpceByVpc,vpceIds};
+}
+
+function _renderMapInner(){
+  try{
+  const svg=d3.select('#mapSvg');svg.selectAll('*').remove();svg.style('display','block');
+  const defs=svg.append('defs');
+  defs.append('filter').attr('id','alphaClamp')
+    .append('feComponentTransfer')
+    .append('feFuncA').attr('type','table').attr('tableValues','0 1 1 1');
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('landingDash').style.display='none';
+
+  // Parse all inputs
+  const _p=_parseInputs();
+  let {vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,
+    volumes,snapshots,s3bk,zones,recsByZoneMap,wafAcls,rdsInstances,ecsServices,lambdaFns,
+    ecacheClusters,redshiftClusters,tgwAttachments,cfDistributions}=_p;
 
   // Multi-account: tag all resources with account ID
   const userAccount=(document.getElementById('accountLabel')||{}).value||'';
@@ -105,126 +184,11 @@ function _renderMapInner(){
     document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';svg.style('display','none');return;
   }
 
-  // lookups
-  const subByVpc={};subnets.forEach(s=>(subByVpc[s.VpcId]=subByVpc[s.VpcId]||[]).push(s));
-  const pubSubs=new Set(),subRT={},gwSet=new Map();
-
-  // gateway name enrichment from dedicated JSON
-  gwNames={};
-  igws.forEach(g=>{gwNames[g.InternetGatewayId]=gn(g,g.InternetGatewayId)});
-  nats.forEach(g=>{gwNames[g.NatGatewayId]=gn(g,g.NatGatewayId)});
-  vpces.forEach(g=>{gwNames[g.VpcEndpointId]=gn(g,g.VpcEndpointId)});
-  vpns.forEach(g=>{if(g.VpnGatewayId) gwNames[g.VpnGatewayId]=gn(g,g.VpnGatewayId)});
-  peerings.forEach(g=>{gwNames[g.VpcPeeringConnectionId]=gn(g,g.VpcPeeringConnectionId)});
-  tgwAttachments.forEach(g=>{if(g.TransitGatewayId&&!gwNames[g.TransitGatewayId]) gwNames[g.TransitGatewayId]=gn(g,g.TransitGatewayId)});
-
-  // Build Main route table fallback per VPC
-  const mainRT={};
-  rts.forEach(rt=>{
-    if((rt.Associations||[]).some(a=>a.Main)) mainRT[rt.VpcId]=rt;
-  });
-
-  // discover gateways from route tables
-  rts.forEach(rt=>{
-    const hasIgw=(rt.Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State!=='blackhole');
-    (rt.Associations||[]).forEach(a=>{if(a.SubnetId){subRT[a.SubnetId]=rt;if(hasIgw)pubSubs.add(a.SubnetId)}});
-    (rt.Routes||[]).forEach(r=>{
-      if(r.GatewayId&&r.GatewayId!=='local')gwSet.set(r.GatewayId,{type:clsGw(r.GatewayId),id:r.GatewayId,vpcId:rt.VpcId});
-      if(r.NatGatewayId)gwSet.set(r.NatGatewayId,{type:'NAT',id:r.NatGatewayId,vpcId:rt.VpcId});
-      if(r.TransitGatewayId)gwSet.set(r.TransitGatewayId,{type:'TGW',id:r.TransitGatewayId,vpcId:'shared'});
-      if(r.VpcPeeringConnectionId)gwSet.set(r.VpcPeeringConnectionId,{type:'PCX',id:r.VpcPeeringConnectionId,vpcId:'shared'});
-    });
-  });
-
-  // also pull gateways from dedicated JSON even if not in route tables
-  igws.forEach(g=>{if(!gwSet.has(g.InternetGatewayId)){const v=(g.Attachments||[])[0];gwSet.set(g.InternetGatewayId,{type:'IGW',id:g.InternetGatewayId,vpcId:v?v.VpcId:'unk'})}});
-  nats.forEach(g=>{if(!gwSet.has(g.NatGatewayId))gwSet.set(g.NatGatewayId,{type:'NAT',id:g.NatGatewayId,vpcId:g.VpcId||'unk'})});
-  vpces.forEach(g=>{if(!gwSet.has(g.VpcEndpointId)){const t=g.VpcEndpointType==='Gateway'?'VPCE':'VPCE';gwSet.set(g.VpcEndpointId,{type:'VPCE',id:g.VpcEndpointId,vpcId:g.VpcId||'unk'})}});
-
-  // Assign Main route table to subnets without explicit associations
-  subnets.forEach(s=>{
-    if(!subRT[s.SubnetId]&&mainRT[s.VpcId]){
-      subRT[s.SubnetId]=mainRT[s.VpcId];
-      const hasIgw=(mainRT[s.VpcId].Routes||[]).some(r=>r.GatewayId&&r.GatewayId.startsWith('igw-')&&r.State!=='blackhole');
-      if(hasIgw)pubSubs.add(s.SubnetId);
-    }
-  });
-
-  const subNacl={};nacls.forEach(n=>(n.Associations||[]).forEach(a=>{if(a.SubnetId)subNacl[a.SubnetId]=n}));
-  const sgByVpc={};sgs.forEach(sg=>(sgByVpc[sg.VpcId]=sgByVpc[sg.VpcId]||[]).push(sg));
-  // IAM role -> resource cross-references
-  const iamRoleResources={};
-  if(_iamData){
-    (instances||[]).forEach(i=>{const pa=i.IamInstanceProfile?.Arn;if(pa){const rn=pa.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ec2.push(i)}});
-    (lambdaFns||[]).forEach(fn=>{if(fn.Role){const rn=fn.Role.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].lambda.push(fn)}});
-    (ecsServices||[]).forEach(svc=>{const ra=svc.taskRoleArn||svc.executionRoleArn;if(ra){const rn=ra.split('/').pop();if(!iamRoleResources[rn])iamRoleResources[rn]={ec2:[],lambda:[],ecs:[]};iamRoleResources[rn].ecs.push(svc)}});
-  }
-  const instBySub={};instances.forEach(i=>{if(i.SubnetId)(instBySub[i.SubnetId]=instBySub[i.SubnetId]||[]).push(i)});
-  const eniBySub={};const eniByInst={};enis.forEach(e=>{if(e.SubnetId)(eniBySub[e.SubnetId]=eniBySub[e.SubnetId]||[]).push(e);if(e.Attachment&&e.Attachment.InstanceId)(eniByInst[e.Attachment.InstanceId]=eniByInst[e.Attachment.InstanceId]||[]).push(e)});
-  const albBySub={};albs.forEach(lb=>{(lb.AvailabilityZones||[]).forEach(az=>{if(az.SubnetId)(albBySub[az.SubnetId]=albBySub[az.SubnetId]||[]).push(lb)})});
-
-  // volumes per instance
-  const volByInst={};volumes.forEach(v=>{(v.Attachments||[]).forEach(a=>{if(a.InstanceId)(volByInst[a.InstanceId]=volByInst[a.InstanceId]||[]).push(v)})});
-
-  // volumes by subnet (via ENI InstanceId->SubnetId for volumes whose instance isn't in EC2 data)
-  const knownInstIds=new Set(instances.map(i=>i.InstanceId));
-  const instSubFromEni={};enis.forEach(e=>{if(e.SubnetId&&e.Attachment&&e.Attachment.InstanceId)instSubFromEni[e.Attachment.InstanceId]=e.SubnetId});
-  const volBySub={};volumes.forEach(v=>{
-    const att=(v.Attachments||[])[0];
-    if(att&&att.InstanceId){
-      if(knownInstIds.has(att.InstanceId))return; // rendered as EC2 child
-      const sid=instSubFromEni[att.InstanceId];
-      if(sid)(volBySub[sid]=volBySub[sid]||[]).push(v);
-    }
-  });
-
-  // snapshots per volume
-  const snapByVol={};snapshots.forEach(s=>{if(s.VolumeId)(snapByVol[s.VolumeId]=snapByVol[s.VolumeId]||[]).push(s)});
-
-  // target groups per ALB (by ARN)
-  const tgByAlb={};tgs.forEach(tg=>{(tg.LoadBalancerArns||[]).forEach(arn=>{(tgByAlb[arn]=tgByAlb[arn]||[]).push(tg)})});
-
-  // WAF WebACLs per ALB (by ARN)
-  const wafByAlb={};wafAcls.forEach(acl=>{(acl.ResourceArns||[]).forEach(arn=>{(wafByAlb[arn]=wafByAlb[arn]||[]).push(acl)})});
-
-  // RDS by subnet
-  const rdsBySub={};rdsInstances.forEach(db=>{
-    const sg=db.DBSubnetGroup;if(!sg)return;
-    (sg.Subnets||[]).forEach(s=>{if(s.SubnetIdentifier)(rdsBySub[s.SubnetIdentifier]=rdsBySub[s.SubnetIdentifier]||[]).push(db)});
-  });
-
-  // ECS by subnet
-  const ecsBySub={};ecsServices.forEach(svc=>{
-    const nc=svc.networkConfiguration?.awsvpcConfiguration;if(!nc)return;
-    (nc.subnets||[]).forEach(sid=>{(ecsBySub[sid]=ecsBySub[sid]||[]).push(svc)});
-  });
-
-  // Lambda by subnet
-  const lambdaBySub={};lambdaFns.forEach(fn=>{
-    (fn.VpcConfig?.SubnetIds||[]).forEach(sid=>{(lambdaBySub[sid]=lambdaBySub[sid]||[]).push(fn)});
-  });
-
-  // ElastiCache by VPC
-  const ecacheByVpc={};ecacheClusters.forEach(c=>{if(c.VpcId)(ecacheByVpc[c.VpcId]=ecacheByVpc[c.VpcId]||[]).push(c)});
-
-  // Redshift by VPC
-  const redshiftByVpc={};redshiftClusters.forEach(c=>{if(c.VpcId)(redshiftByVpc[c.VpcId]=redshiftByVpc[c.VpcId]||[]).push(c)});
-
-  // CloudFront origins mapped to ALB ARNs
-  const cfByAlb={};cfDistributions.forEach(d=>{
-    (d.Origins?.Items||[]).forEach(o=>{
-      const matchAlb=albs.find(a=>a.DNSName&&o.DomainName&&o.DomainName.includes(a.DNSName));
-      if(matchAlb)(cfByAlb[matchAlb.LoadBalancerArn]=cfByAlb[matchAlb.LoadBalancerArn]||[]).push(d);
-    });
-  });
-
-  // separate per-VPC vs shared gateways; VPCEs always go to summary only
-  const pvGws={},shGws=[],vpceByVpc={},vpceIds=new Set();
-  [...gwSet.values()].forEach(gw=>{
-    if(gw.type==='VPCE'){(vpceByVpc[gw.vpcId]=vpceByVpc[gw.vpcId]||[]).push(gw);vpceIds.add(gw.id);return}
-    if(isShared(gw.type)){if(!shGws.find(g=>g.id===gw.id))shGws.push(gw)}
-    else(pvGws[gw.vpcId]=pvGws[gw.vpcId]||[]).push(gw);
-  });
+  // Build all lookup maps
+  const _m=_buildLookupMaps(_p);
+  const {subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,iamRoleResources,
+    instBySub,eniBySub,eniByInst,albBySub,volByInst,volBySub,snapByVol,tgByAlb,wafByAlb,
+    rdsBySub,ecsBySub,lambdaBySub,ecacheByVpc,redshiftByVpc,cfByAlb,pvGws,shGws,vpceByVpc,vpceIds}=_m;
 
   // Check layout mode
   const layoutMode=document.getElementById('layoutMode')?.value||'grid';
