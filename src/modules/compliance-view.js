@@ -354,8 +354,7 @@ export function buildComplianceView(opts) {
 // TODO: replace with proper imports when app-core.js is modularized
 if (typeof window !== 'undefined') {
   // === Window bridge — legacy callers require these globals ===
-  window._EFFORT_MAP = EFFORT_MAP;
-  window._complianceRefs = complianceRefs;
+  // _EFFORT_MAP and _complianceRefs removed — already on window via AppModules spread in main.js
   Object.defineProperty(window, '_compDashState', {
     get() { return _compDashState; },
     set(v) { _compDashState = v; },

@@ -647,28 +647,4 @@ Object.defineProperty(window, '_designRegion', {
   set(v) { _designRegion = v; },
   configurable: true
 });
-window._regionAZs = _regionAZs;
-window._awsConstraints = _awsConstraints;
-window._designApplyFns = _designApplyFns;
-window.validateDesignChange = validateDesignChange;
-window.validateDesignState = validateDesignState;
-window._generateCLI = _generateCLI;
-window._generateWarnings = _generateWarnings;
-window.importDesignPlan = importDesignPlan;
-window.detectAZs = detectAZs;
-
-// State sync helpers: inline code mutates the module state via these
-window.getDesignMode = getDesignMode;
-window.setDesignMode = setDesignMode;
-window.getDesignChanges = getDesignChanges;
-window.setDesignChanges = setDesignChanges;
-window.getDesignBaseline = getDesignBaseline;
-window.setDesignBaseline = setDesignBaseline;
-window.getDesignDebounce = getDesignDebounce;
-window.setDesignDebounce = setDesignDebounce;
-window.getLastDesignValidation = getLastDesignValidation;
-window.setLastDesignValidation = setLastDesignValidation;
-window.getSidebarWasCollapsed = getSidebarWasCollapsed;
-window.setSidebarWasCollapsed = setSidebarWasCollapsed;
-window.getDesignRegion = getDesignRegion;
-window.setDesignRegion = setDesignRegion;
+// Window assignments removed — all exports are on window via AppModules spread in main.js
