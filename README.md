@@ -115,7 +115,7 @@ Modular report generator with drag-to-reorder sections, live preview, and standa
 
 ### Browser (no install)
 
-1. Open the [live demo](https://awsmapper.vercel.app/) or `index.html` locally
+1. Open the [live demo](https://awsmapper.schylerryan.com/) or `index.html` locally
 2. The landing dashboard shows all features -- click **Load Demo** or **Import Data** to get started
 3. Click **Render Map** after pasting AWS CLI JSON
 
