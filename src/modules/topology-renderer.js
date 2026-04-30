@@ -1463,9 +1463,9 @@ function _renderMapInner(){
       hlGw(id);
       ndL.selectAll('.gw-node').classed('gw-hl',false);
       gG.classed('gw-hl',true);
-      let h=`<div class="tt-title">${nm||gw.id}</div><div class="tt-sub">${gw.type} | ${gw.id}</div>`;
+      let h=`<div class="tt-title">${esc(nm||gw.id)}</div><div class="tt-sub">${esc(gw.type)} | ${esc(gw.id)}</div>`;
       const natInfo=nats.find(n=>n.NatGatewayId===gw.id);
-      if(natInfo){h+=`<div class="tt-sec"><div class="tt-sh">NAT Gateway</div><div class="tt-r">Subnet: <span class="i">${natInfo.SubnetId||'N/A'}</span></div><div class="tt-r">State: ${natInfo.State||'N/A'}</div></div>`}
+      if(natInfo){h+=`<div class="tt-sec"><div class="tt-sh">NAT Gateway</div><div class="tt-r">Subnet: <span class="i">${esc(natInfo.SubnetId||'N/A')}</span></div><div class="tt-r">State: ${esc(natInfo.State||'N/A')}</div></div>`}
       tt.innerHTML=h;tt.style.display='block';
     }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none';clr()})
     .on('click',function(event){
@@ -1569,7 +1569,7 @@ function _renderMapInner(){
         const vi=vpces.find(x=>x.VpcEndpointId===v.id);
         const svc=vi?.ServiceName||'?';
         const nm=gwNames[v.id];
-        h+='<div class="tt-r"><span class="i">'+(nm||sid(v.id))+'</span> '+svc.split('.').pop()+' ['+vi?.VpcEndpointType+']</div>';
+        h+='<div class="tt-r"><span class="i">'+esc(nm||sid(v.id))+'</span> '+esc(svc.split('.').pop())+' ['+esc(vi?.VpcEndpointType)+']</div>';
       });
       h+='</div>';
       tt.innerHTML=h;tt.style.display='block';
@@ -1615,7 +1615,7 @@ function _renderMapInner(){
         h+='<div class="tt-sec"><div class="tt-sh">Zones</div>';
         pz.forEach(z=>{
           const zid=z.Id.replace('/hostedzone/','');
-          h+='<div class="tt-r"><span class="i">'+z.Name+'</span> '+z.ResourceRecordSetCount+' records ['+zid+']</div>';
+          h+='<div class="tt-r"><span class="i">'+esc(z.Name)+'</span> '+esc(z.ResourceRecordSetCount)+' records ['+esc(zid)+']</div>';
         });
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
@@ -1781,7 +1781,7 @@ function _renderMapInner(){
         h+='<div class="tt-sub">'+esc(z.Name)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">Zone ID</span> '+esc(zid)+'</div>';
-        h+='<div class="tt-r"><span class="i">Records</span> '+z.ResourceRecordSetCount+'</div>';
+        h+='<div class="tt-r"><span class="i">Records</span> '+esc(z.ResourceRecordSetCount)+'</div>';
         h+='<div class="tt-r"><span class="i">Type</span> '+(isPub?'Public':'Private')+'</div>';
         if(!isPub&&z.VPCs&&z.VPCs.length>0){
           h+='<div class="tt-sh" style="margin-top:6px">Associated VPCs</div>';
@@ -1839,7 +1839,7 @@ function _renderMapInner(){
         let h='<div class="tt-title">S3 Bucket</div>';
         h+='<div class="tt-sub">'+esc(bk.Name)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">Created</span> '+(bk.CreationDate||'N/A').split('T')[0]+'</div>';
+        h+='<div class="tt-r"><span class="i">Created</span> '+esc((bk.CreationDate||'N/A').split('T')[0])+'</div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
       }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none'})
@@ -1957,4 +1957,3 @@ function _renderMapInner(){
 document.getElementById('renderBtn').addEventListener('click',function(){
   renderMap(()=>{_autoSaveSession()});
 });
-

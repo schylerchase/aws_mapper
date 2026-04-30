@@ -21,6 +21,14 @@ app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,Vulkan')
 let mainWindow = null;
 let activeScan = null;
 const SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/;
+const MAX_JSON_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_IMPORT_BYTES = 250 * 1024 * 1024;
+const MAX_IMPORT_FILES = 2000;
+
+function isWithinPath(parent, child) {
+  const rel = path.relative(parent, child);
+  return rel === '' || (!!rel && !rel.startsWith('..') && !path.isAbsolute(rel));
+}
 
 // ── Window ────────────────────────────────────────────────────────
 
@@ -181,32 +189,36 @@ ipcMain.handle('file:open-folder', async () => {
   const regions = {};
   const flatFiles = {};
   const profiles = {};
-  const MAX_FILE_SIZE = 100 * 1024 * 1024;
+  let importBytes = 0;
+  let importFiles = 0;
 
-  // Helper: read all JSON files in a directory (async, parallel)
+  async function readJsonFile(filePath, fileName, target) {
+    let stat;
+    try { stat = await fsp.stat(filePath); } catch { return; }
+    if (!stat.isFile() || stat.size > MAX_JSON_FILE_SIZE) return;
+    if (importFiles >= MAX_IMPORT_FILES) return;
+    if (importBytes + stat.size > MAX_IMPORT_BYTES) return;
+
+    const raw = await fsp.readFile(filePath, 'utf8');
+    importFiles++;
+    importBytes += stat.size;
+    try { target[fileName] = JSON.parse(raw); } catch { target[fileName] = raw; }
+  }
+
+  // Helper: read JSON files in a directory with bounded memory usage.
   async function readJsonDir(dirPath) {
     const files = {};
     const ents = await fsp.readdir(dirPath, { withFileTypes: true });
-    const jsonEnts = ents.filter(f => f.isFile() && f.name.endsWith('.json'));
-    await Promise.all(jsonEnts.map(async (f) => {
-      const fp = path.join(dirPath, f.name);
-      try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
-      const raw = await fsp.readFile(fp, 'utf8');
-      try { files[f.name] = JSON.parse(raw); } catch { files[f.name] = raw; }
-    }));
+    for (const f of ents) {
+      if (!f.isFile() || !f.name.endsWith('.json')) continue;
+      await readJsonFile(path.join(dirPath, f.name), f.name, files);
+    }
     return files;
   }
 
-  // Helper: check if path is a directory
-  async function isDir(p) {
-    try { return (await fsp.stat(p)).isDirectory(); } catch { return false; }
-  }
-
-  await Promise.all(entries.map(async (ent) => {
-    const entIsDir = ent.isDirectory() || ent.isSymbolicLink();
-    if (entIsDir) {
+  for (const ent of entries) {
+    if (ent.isDirectory()) {
       const subdir = path.join(dir, ent.name);
-      if (!(await isDir(subdir))) return;
 
       if (regionRe.test(ent.name)) {
         const regionFiles = await readJsonDir(subdir);
@@ -215,30 +227,23 @@ ipcMain.handle('file:open-folder', async () => {
         const profRegions = {};
         const profFlat = {};
         const subs = await fsp.readdir(subdir, { withFileTypes: true });
-        await Promise.all(subs.map(async (sub) => {
-          if ((sub.isDirectory() || sub.isSymbolicLink()) && regionRe.test(sub.name)) {
+        for (const sub of subs) {
+          if (sub.isDirectory() && regionRe.test(sub.name)) {
             const regDir = path.join(subdir, sub.name);
-            if (!(await isDir(regDir))) return;
             const regFiles = await readJsonDir(regDir);
             if (Object.keys(regFiles).length) profRegions[sub.name] = regFiles;
           } else if (sub.isFile() && sub.name.endsWith('.json')) {
-            const fp = path.join(subdir, sub.name);
-            try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
-            const raw = await fsp.readFile(fp, 'utf8');
-            try { profFlat[sub.name] = JSON.parse(raw); } catch { profFlat[sub.name] = raw; }
+            await readJsonFile(path.join(subdir, sub.name), sub.name, profFlat);
           }
-        }));
+        }
         if (Object.keys(profRegions).length || Object.keys(profFlat).length) {
           profiles[ent.name] = { regions: profRegions, files: profFlat };
         }
       }
     } else if (ent.isFile() && ent.name.endsWith('.json')) {
-      const fp = path.join(dir, ent.name);
-      try { if ((await fsp.stat(fp)).size > MAX_FILE_SIZE) return; } catch { return; }
-      const raw = await fsp.readFile(fp, 'utf8');
-      try { flatFiles[ent.name] = JSON.parse(raw); } catch { flatFiles[ent.name] = raw; }
+      await readJsonFile(path.join(dir, ent.name), ent.name, flatFiles);
     }
-  }));
+  }
 
   // Priority: profiles > regions > flat
   if (Object.keys(profiles).length) {
@@ -337,12 +342,25 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
       let files = null;
       const resolvedDir = outDir ? path.resolve(__dirname, outDir) : null;
       try {
-        if (resolvedDir && (resolvedDir.startsWith(__dirname + '/') || resolvedDir.startsWith(os.tmpdir()))) {
+        if (resolvedDir && (isWithinPath(__dirname, resolvedDir) || isWithinPath(os.tmpdir(), resolvedDir))) {
           await fsp.access(resolvedDir);
           files = {};
-          for (const fname of await fsp.readdir(resolvedDir)) {
-            if (fname.endsWith('.json')) {
-              try { files[fname] = await fsp.readFile(path.join(resolvedDir, fname), 'utf8'); } catch (e) { console.warn('aws:scan - failed to read', fname, ':', e.message); }
+          let scanBytes = 0;
+          let scanFiles = 0;
+          for (const ent of await fsp.readdir(resolvedDir, { withFileTypes: true })) {
+            if (!ent.isFile() || !ent.name.endsWith('.json')) continue;
+            if (scanFiles >= MAX_IMPORT_FILES) break;
+            const fp = path.join(resolvedDir, ent.name);
+            let stat;
+            try { stat = await fsp.stat(fp); } catch { continue; }
+            if (!stat.isFile() || stat.size > MAX_JSON_FILE_SIZE) continue;
+            if (scanBytes + stat.size > MAX_IMPORT_BYTES) break;
+            try {
+              files[ent.name] = await fsp.readFile(fp, 'utf8');
+              scanBytes += stat.size;
+              scanFiles++;
+            } catch (e) {
+              console.warn('aws:scan - failed to read', ent.name, ':', e.message);
             }
           }
         }

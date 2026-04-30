@@ -1065,7 +1065,7 @@ function renderLandingZoneMap(ctx){
         h+='<div class="tt-sec"><div class="tt-sh">Zones</div>';
         pz.forEach(z=>{
           const zid=z.Id.replace('/hostedzone/','');
-          h+='<div class="tt-r"><span class="i">'+z.Name+'</span> '+z.ResourceRecordSetCount+' records ['+zid+']</div>';
+          h+='<div class="tt-r"><span class="i">'+esc(z.Name)+'</span> '+esc(z.ResourceRecordSetCount)+' records ['+esc(zid)+']</div>';
         });
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
@@ -1223,7 +1223,7 @@ function renderLandingZoneMap(ctx){
         h+='<div class="tt-sub">'+esc(z.Name)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">Zone ID</span> '+esc(zid)+'</div>';
-        h+='<div class="tt-r"><span class="i">Records</span> '+z.ResourceRecordSetCount+'</div>';
+        h+='<div class="tt-r"><span class="i">Records</span> '+esc(z.ResourceRecordSetCount)+'</div>';
         if(!isPub&&z.VPCs){
           h+='<div class="tt-sh" style="margin-top:4px">Associated VPCs</div>';
           z.VPCs.forEach(v=>{
@@ -1276,7 +1276,7 @@ function renderLandingZoneMap(ctx){
         let h='<div class="tt-title">S3 Bucket</div>';
         h+='<div class="tt-sub">'+esc(bk.Name)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">Created</span> '+(bk.CreationDate||'N/A').split('T')[0]+'</div>';
+        h+='<div class="tt-r"><span class="i">Created</span> '+esc((bk.CreationDate||'N/A').split('T')[0])+'</div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
       }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none'})

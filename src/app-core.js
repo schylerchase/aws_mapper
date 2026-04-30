@@ -3190,13 +3190,15 @@ function routeTgtHtml(tgtId){
   const nm=gwNames[tgtId];
   const label=nm?(nm+' ('+tgtId+')'):(tgtId);
   const gwType=clsGw(tgtId);
-  if(tgtId.startsWith('nat-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="NAT" style="cursor:pointer;color:var(--nat-color)">'+label+'</span>';
-  if(tgtId.startsWith('tgw-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="TGW" style="cursor:pointer;color:var(--tgw-color)">'+label+'</span>';
-  if(tgtId.startsWith('igw-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="IGW" style="cursor:pointer;color:var(--igw-color)">'+label+'</span>';
-  if(tgtId.startsWith('vgw-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="VGW" style="cursor:pointer;color:var(--vgw-color)">'+label+'</span>';
-  if(tgtId.startsWith('vpce-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="VPCE" style="cursor:pointer;color:var(--vpce-color)">'+label+'</span>';
-  if(tgtId.startsWith('pcx-'))return '<span class="p dp-link" data-gwid="'+tgtId+'" data-gwtype="PCX" style="cursor:pointer;color:var(--pcx-color)">'+label+'</span>';
-  return '<span class="p">'+tgtId+'</span>';
+  const safeId=esc(tgtId);
+  const safeLabel=esc(label);
+  if(tgtId.startsWith('nat-'))return '<span class="p dp-link" data-gwid="'+safeId+'" data-gwtype="NAT" style="cursor:pointer;color:var(--nat-color)">'+safeLabel+'</span>';
+  if(tgtId.startsWith('tgw-'))return '<span class="p dp-link" data-gwid="'+safeId+'" data-gwtype="TGW" style="cursor:pointer;color:var(--tgw-color)">'+safeLabel+'</span>';
+  if(tgtId.startsWith('igw-'))return '<span class="p dp-link" data-gwid="'+safeId+'" data-gwtype="IGW" style="cursor:pointer;color:var(--igw-color)">'+safeLabel+'</span>';
+  if(tgtId.startsWith('vgw-'))return '<span class="p dp-link" data-gwid="'+safeId+'" data-gwtype="VGW" style="cursor:pointer;color:var(--vgw-color)">'+safeLabel+'</span>';
+  if(tgtId.startsWith('vpce-'))return '<span class="p dp-link" data-gwid="'+safeId+'" data-gwtype="VPCE" style="cursor:pointer;color:var(--vpce-color)">'+safeLabel+'</span>';
+  if(tgtId.startsWith('pcx-'))return '<span class="p dp-link" data-gwid="'+safeId+'" data-gwtype="PCX" style="cursor:pointer;color:var(--pcx-color)">'+safeLabel+'</span>';
+  return '<span class="p">'+safeId+'</span>';
 }
 function openSubnetPanel(sub,vpcId,lk){
   const dp=document.getElementById('detailPanel');
@@ -3255,22 +3257,22 @@ function openSubnetPanel(sub,vpcId,lk){
       const state=inst.State?.Name||'?';
       const stCls=state==='running'?'running':'stopped';
       eb+='<div class="dp-row">';
-      eb+='<span class="i">'+gn(inst,inst.InstanceId)+'</span> <span class="dp-badge '+stCls+'">'+state+'</span>';
+      eb+='<span class="i">'+gn(inst,inst.InstanceId)+'</span> <span class="dp-badge '+stCls+'">'+esc(state)+'</span>';
       eb+='<div class="dp-props">';
-      eb+='<span class="k">ID</span><span class="v">'+inst.InstanceId+'</span>';
-      eb+='<span class="k">Type</span><span class="v">'+inst.InstanceType+'</span>';
-      if(inst.PrivateIpAddress)eb+='<span class="k">IP</span><span class="v">'+inst.PrivateIpAddress+'</span>';
+      eb+='<span class="k">ID</span><span class="v">'+esc(inst.InstanceId)+'</span>';
+      eb+='<span class="k">Type</span><span class="v">'+esc(inst.InstanceType)+'</span>';
+      if(inst.PrivateIpAddress)eb+='<span class="k">IP</span><span class="v">'+esc(inst.PrivateIpAddress)+'</span>';
       eb+='</div>';
       if(vols.length){
         eb+='<div class="dp-sub">';
         eb+='<div class="dp-sub-title">Storage <span class="dp-sub-count">'+totalGB+'GB &middot; '+vols.length+' vol'+(vols.length>1?'s':'')+'</span></div>';
         vols.forEach(v=>{
           const vSnaps=(lk.snapByVol||{})[v.VolumeId]||[];
-          eb+='<div class="dp-sub-item"><span class="s">'+v.VolumeId+'</span> '+v.Size+'GB '+(v.VolumeType||'')+' '+(v.State||'');
+          eb+='<div class="dp-sub-item"><span class="s">'+esc(v.VolumeId)+'</span> '+esc(v.Size)+'GB '+esc(v.VolumeType||'')+' '+esc(v.State||'');
           if(vSnaps.length){
             eb+=' <span class="k">['+vSnaps.length+' snap'+(vSnaps.length>1?'s':'')+']</span>';
             const latest=vSnaps.sort((a,b)=>(b.StartTime||'').localeCompare(a.StartTime||''))[0];
-            if(latest)eb+='<br><span class="k" style="margin-left:8px">Latest:</span> '+latest.SnapshotId+' '+(latest.StartTime||'').split('T')[0]+' '+(latest.State||'');
+            if(latest)eb+='<br><span class="k" style="margin-left:8px">Latest:</span> '+esc(latest.SnapshotId)+' '+esc((latest.StartTime||'').split('T')[0])+' '+esc(latest.State||'');
           }
           eb+='</div>';
         });
@@ -3281,7 +3283,7 @@ function openSubnetPanel(sub,vpcId,lk){
         eb+='<div class="dp-sub">';
         eb+='<div class="dp-sub-title">ENIs <span class="dp-sub-count">'+instEnis.length+'</span></div>';
         instEnis.forEach(e=>{
-          eb+='<div class="dp-sub-item">'+e.NetworkInterfaceId+' <span style="color:var(--text-muted)">'+(e.PrivateIpAddress||'')+'</span> <span style="color:var(--accent-orange)">'+(e.InterfaceType||'')+'</span></div>';
+          eb+='<div class="dp-sub-item">'+esc(e.NetworkInterfaceId)+' <span style="color:var(--text-muted)">'+esc(e.PrivateIpAddress||'')+'</span> <span style="color:var(--accent-orange)">'+esc(e.InterfaceType||'')+'</span></div>';
         });
         eb+='</div>';
       }
@@ -3294,15 +3296,15 @@ function openSubnetPanel(sub,vpcId,lk){
     let enb='';
     se.forEach(e=>{
       enb+='<div class="dp-row">';
-      enb+='<span class="i">'+e.NetworkInterfaceId+'</span>';
+      enb+='<span class="i">'+esc(e.NetworkInterfaceId)+'</span>';
       enb+='<div class="dp-props">';
-      enb+='<span class="k">Type</span><span class="v">'+(e.InterfaceType||'N/A')+'</span>';
-      enb+='<span class="k">Status</span><span class="v">'+(e.Status||'?')+'</span>';
-      if(e.PrivateIpAddress)enb+='<span class="k">Private IP</span><span class="v">'+e.PrivateIpAddress+'</span>';
-      if(e.Description)enb+='<span class="k">Desc</span><span class="v">'+e.Description+'</span>';
-      if(e.Attachment&&e.Attachment.InstanceId)enb+='<span class="k">Attached to</span><span class="v"><span class="i">'+e.Attachment.InstanceId+'</span></span>';
+      enb+='<span class="k">Type</span><span class="v">'+esc(e.InterfaceType||'N/A')+'</span>';
+      enb+='<span class="k">Status</span><span class="v">'+esc(e.Status||'?')+'</span>';
+      if(e.PrivateIpAddress)enb+='<span class="k">Private IP</span><span class="v">'+esc(e.PrivateIpAddress)+'</span>';
+      if(e.Description)enb+='<span class="k">Desc</span><span class="v">'+esc(e.Description)+'</span>';
+      if(e.Attachment&&e.Attachment.InstanceId)enb+='<span class="k">Attached to</span><span class="v"><span class="i">'+esc(e.Attachment.InstanceId)+'</span></span>';
       const eSgs=(e.Groups||[]);
-      if(eSgs.length)enb+='<span class="k">SGs</span><span class="v">'+eSgs.map(g=>g.GroupName||g.GroupId).join(', ')+'</span>';
+      if(eSgs.length)enb+='<span class="k">SGs</span><span class="v">'+eSgs.map(g=>esc(g.GroupName||g.GroupId)).join(', ')+'</span>';
       enb+='</div>';
       enb+='</div>';
     });
@@ -3313,12 +3315,12 @@ function openSubnetPanel(sub,vpcId,lk){
     let lb='';
     sa.forEach(a=>{
       lb+='<div class="dp-row">';
-      lb+='<span class="i">'+a.LoadBalancerName+'</span>';
+      lb+='<span class="i">'+esc(a.LoadBalancerName)+'</span>';
       lb+='<div class="dp-props">';
-      lb+='<span class="k">Type</span><span class="v">'+a.Type+'</span>';
-      lb+='<span class="k">Scheme</span><span class="v">'+a.Scheme+'</span>';
-      if(a.DNSName)lb+='<span class="k">DNS</span><span class="v">'+a.DNSName+'</span>';
-      if(a.LoadBalancerArn)lb+='<span class="k">ARN</span><span class="v" style="font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale))">'+a.LoadBalancerArn+'</span>';
+      lb+='<span class="k">Type</span><span class="v">'+esc(a.Type)+'</span>';
+      lb+='<span class="k">Scheme</span><span class="v">'+esc(a.Scheme)+'</span>';
+      if(a.DNSName)lb+='<span class="k">DNS</span><span class="v">'+esc(a.DNSName)+'</span>';
+      if(a.LoadBalancerArn)lb+='<span class="k">ARN</span><span class="v" style="font-size:calc(8px * var(--txt-scale) * var(--dp-txt-scale))">'+esc(a.LoadBalancerArn)+'</span>';
       lb+='</div>';
       if(a.LoadBalancerArn){
         const albTgs=(lk.tgByAlb||{})[a.LoadBalancerArn]||[];
@@ -3326,9 +3328,9 @@ function openSubnetPanel(sub,vpcId,lk){
           lb+='<div class="dp-sub">';
           lb+='<div class="dp-sub-title">Target Groups <span class="dp-sub-count">'+albTgs.length+'</span></div>';
           albTgs.forEach(tg=>{
-            lb+='<div class="dp-sub-item"><span class="i">'+(tg.TargetGroupName||tg.TargetGroupArn.split('/')[1]||'')+'</span>';
-            lb+=' <span class="k">'+tg.Protocol+':'+tg.Port+'</span> ['+tg.TargetType+']';
-            lb+=' HC:'+tg.HealthCheckPath;
+            lb+='<div class="dp-sub-item"><span class="i">'+esc(tg.TargetGroupName||tg.TargetGroupArn.split('/')[1]||'')+'</span>';
+            lb+=' <span class="k">'+esc(tg.Protocol)+':'+esc(tg.Port)+'</span> ['+esc(tg.TargetType)+']';
+            lb+=' HC:'+esc(tg.HealthCheckPath);
             const tCount=(tg.Targets||[]).length;
             if(tCount)lb+=' <span class="p">'+tCount+' target'+(tCount>1?'s':'')+'</span>';
             lb+='</div>';
@@ -3340,10 +3342,10 @@ function openSubnetPanel(sub,vpcId,lk){
           lb+='<div class="dp-sub">';
           lb+='<div class="dp-sub-title" style="color:#f59e0b">WAF WebACLs <span class="dp-sub-count">'+albWafs.length+'</span></div>';
           albWafs.forEach(w=>{
-            lb+='<div class="dp-sub-item"><span class="i" style="color:#f59e0b">'+w.Name+'</span>';
-            if(w.Description)lb+=' <span class="k">'+w.Description+'</span>';
+            lb+='<div class="dp-sub-item"><span class="i" style="color:#f59e0b">'+esc(w.Name)+'</span>';
+            if(w.Description)lb+=' <span class="k">'+esc(w.Description)+'</span>';
             const rCount=(w.Rules||[]).length;
-            if(rCount)lb+='<br><span class="k" style="margin-left:8px">Rules:</span> '+(w.Rules||[]).map(r=>r.Name).join(', ');
+            if(rCount)lb+='<br><span class="k" style="margin-left:8px">Rules:</span> '+(w.Rules||[]).map(r=>esc(r.Name)).join(', ');
             lb+='</div>';
           });
           lb+='</div>';
@@ -3353,9 +3355,9 @@ function openSubnetPanel(sub,vpcId,lk){
           lb+='<div class="dp-sub">';
           lb+='<div class="dp-sub-title" style="color:#8b5cf6">CloudFront <span class="dp-sub-count">'+albCfs.length+'</span></div>';
           albCfs.forEach(d=>{
-            lb+='<div class="dp-sub-item"><span class="i" style="color:#8b5cf6">'+d.DomainName+'</span>';
+            lb+='<div class="dp-sub-item"><span class="i" style="color:#8b5cf6">'+esc(d.DomainName)+'</span>';
             const aliases=(d.Aliases?.Items||[]);
-            if(aliases.length)lb+=' ['+aliases.join(', ')+']';
+            if(aliases.length)lb+=' ['+aliases.map(a=>esc(a)).join(', ')+']';
             lb+='</div>';
           });
           lb+='</div>';
@@ -3371,14 +3373,14 @@ function openSubnetPanel(sub,vpcId,lk){
     let rb='';
     sr.forEach(db=>{
       rb+='<div class="dp-row">';
-      rb+='<span class="i" style="color:#3b82f6">'+db.DBInstanceIdentifier+'</span>';
+      rb+='<span class="i" style="color:#3b82f6">'+esc(db.DBInstanceIdentifier)+'</span>';
       if(db.MultiAZ)rb+=' <span class="dp-badge" style="background:rgba(249,115,22,.15);color:var(--accent-orange)">Multi-AZ</span>';
       rb+='<div class="dp-props">';
-      rb+='<span class="k">Engine</span><span class="v">'+db.Engine+'</span>';
-      rb+='<span class="k">Class</span><span class="v">'+db.DBInstanceClass+'</span>';
-      rb+='<span class="k">Status</span><span class="v">'+db.DBInstanceStatus+'</span>';
-      if(db.Endpoint)rb+='<span class="k">Endpoint</span><span class="v">'+db.Endpoint.Address+':'+db.Endpoint.Port+'</span>';
-      rb+='<span class="k">Storage</span><span class="v">'+db.AllocatedStorage+'GB'+(db.StorageEncrypted?' (encrypted)':'')+'</span>';
+      rb+='<span class="k">Engine</span><span class="v">'+esc(db.Engine)+'</span>';
+      rb+='<span class="k">Class</span><span class="v">'+esc(db.DBInstanceClass)+'</span>';
+      rb+='<span class="k">Status</span><span class="v">'+esc(db.DBInstanceStatus)+'</span>';
+      if(db.Endpoint)rb+='<span class="k">Endpoint</span><span class="v">'+esc(db.Endpoint.Address)+':'+esc(db.Endpoint.Port)+'</span>';
+      rb+='<span class="k">Storage</span><span class="v">'+esc(db.AllocatedStorage)+'GB'+(db.StorageEncrypted?' (encrypted)':'')+'</span>';
       rb+='</div>';
       rb+='</div>';
     });
@@ -3390,14 +3392,14 @@ function openSubnetPanel(sub,vpcId,lk){
     let eb='';
     secs.forEach(svc=>{
       eb+='<div class="dp-row">';
-      eb+='<span class="i" style="color:#f97316">'+svc.serviceName+'</span>';
+      eb+='<span class="i" style="color:#f97316">'+esc(svc.serviceName)+'</span>';
       const cluster=(svc.clusterArn||'').split('/').pop();
       eb+='<div class="dp-props">';
-      eb+='<span class="k">Cluster</span><span class="v">'+cluster+'</span>';
-      eb+='<span class="k">Launch</span><span class="v">'+(svc.launchType||'?')+'</span>';
-      eb+='<span class="k">Tasks</span><span class="v">'+svc.runningCount+'/'+svc.desiredCount+' running</span>';
-      if(svc.cpu)eb+='<span class="k">CPU</span><span class="v">'+svc.cpu+'</span>';
-      if(svc.memory)eb+='<span class="k">Mem</span><span class="v">'+svc.memory+'MB</span>';
+      eb+='<span class="k">Cluster</span><span class="v">'+esc(cluster)+'</span>';
+      eb+='<span class="k">Launch</span><span class="v">'+esc(svc.launchType||'?')+'</span>';
+      eb+='<span class="k">Tasks</span><span class="v">'+esc(svc.runningCount)+'/'+esc(svc.desiredCount)+' running</span>';
+      if(svc.cpu)eb+='<span class="k">CPU</span><span class="v">'+esc(svc.cpu)+'</span>';
+      if(svc.memory)eb+='<span class="k">Mem</span><span class="v">'+esc(svc.memory)+'MB</span>';
       eb+='</div>';
       eb+='</div>';
     });
@@ -3409,11 +3411,11 @@ function openSubnetPanel(sub,vpcId,lk){
     let lmb='';
     slm.forEach(fn=>{
       lmb+='<div class="dp-row">';
-      lmb+='<span class="i" style="color:#a855f7">'+fn.FunctionName+'</span>';
+      lmb+='<span class="i" style="color:#a855f7">'+esc(fn.FunctionName)+'</span>';
       lmb+='<div class="dp-props">';
-      lmb+='<span class="k">Runtime</span><span class="v">'+fn.Runtime+'</span>';
-      lmb+='<span class="k">Mem</span><span class="v">'+fn.MemorySize+'MB</span>';
-      lmb+='<span class="k">Timeout</span><span class="v">'+fn.Timeout+'s</span>';
+      lmb+='<span class="k">Runtime</span><span class="v">'+esc(fn.Runtime)+'</span>';
+      lmb+='<span class="k">Mem</span><span class="v">'+esc(fn.MemorySize)+'MB</span>';
+      lmb+='<span class="k">Timeout</span><span class="v">'+esc(fn.Timeout)+'s</span>';
       lmb+='</div>';
       lmb+='</div>';
     });
@@ -3450,9 +3452,9 @@ function openSubnetPanel(sub,vpcId,lk){
       subFindings.sort((a,b)=>(_SEV_ORDER[a.severity]||9)-(_SEV_ORDER[b.severity]||9));
       subFindings.forEach(f=>{
         cfb+='<div class="dp-row" style="border-left:3px solid '+(f.severity==='CRITICAL'?'#ef4444':f.severity==='HIGH'?'#f97316':f.severity==='MEDIUM'?'#eab308':'#3b82f6')+';padding-left:8px">';
-        cfb+='<span class="sev-badge sev-'+f.severity+'" style="font-size:8px;padding:1px 4px">'+f.severity+'</span> ';
-        cfb+='<span style="color:var(--accent-cyan);font-size:10px">'+f.control+(f.ckv?' <span style="opacity:.5">('+f.ckv+')</span>':'')+'</span> ';
-        cfb+='<span style="color:var(--text-muted);font-size:9px">['+f.framework+']</span><br>';
+        cfb+='<span class="sev-badge sev-'+esc(f.severity)+'" style="font-size:8px;padding:1px 4px">'+esc(f.severity)+'</span> ';
+        cfb+='<span style="color:var(--accent-cyan);font-size:10px">'+esc(f.control)+(f.ckv?' <span style="opacity:.5">('+esc(f.ckv)+')</span>':'')+'</span> ';
+        cfb+='<span style="color:var(--text-muted);font-size:9px">['+esc(f.framework)+']</span><br>';
         cfb+='<span style="color:var(--text-secondary);font-size:10px">'+esc(f.message)+'</span><br>';
         cfb+='<span style="color:var(--text-muted);font-size:9px;font-style:italic">'+esc(f.remediation)+'</span>';
         cfb+='</div>';
@@ -5116,7 +5118,7 @@ function renderLandingZoneMap(ctx){
         h+='<div class="tt-sec"><div class="tt-sh">Zones</div>';
         pz.forEach(z=>{
           const zid=z.Id.replace('/hostedzone/','');
-          h+='<div class="tt-r"><span class="i">'+z.Name+'</span> '+z.ResourceRecordSetCount+' records ['+zid+']</div>';
+          h+='<div class="tt-r"><span class="i">'+esc(z.Name)+'</span> '+esc(z.ResourceRecordSetCount)+' records ['+esc(zid)+']</div>';
         });
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
@@ -5274,7 +5276,7 @@ function renderLandingZoneMap(ctx){
         h+='<div class="tt-sub">'+esc(z.Name)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">Zone ID</span> '+esc(zid)+'</div>';
-        h+='<div class="tt-r"><span class="i">Records</span> '+z.ResourceRecordSetCount+'</div>';
+        h+='<div class="tt-r"><span class="i">Records</span> '+esc(z.ResourceRecordSetCount)+'</div>';
         if(!isPub&&z.VPCs){
           h+='<div class="tt-sh" style="margin-top:4px">Associated VPCs</div>';
           z.VPCs.forEach(v=>{
@@ -5327,7 +5329,7 @@ function renderLandingZoneMap(ctx){
         let h='<div class="tt-title">S3 Bucket</div>';
         h+='<div class="tt-sub">'+esc(bk.Name)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">Created</span> '+(bk.CreationDate||'N/A').split('T')[0]+'</div>';
+        h+='<div class="tt-r"><span class="i">Created</span> '+esc((bk.CreationDate||'N/A').split('T')[0])+'</div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
       }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none'})
@@ -7508,7 +7510,7 @@ async function _renderMapInner(){
         h+='<div class="tt-sec"><div class="tt-sh">Zones</div>';
         pz.forEach(z=>{
           const zid=z.Id.replace('/hostedzone/','');
-          h+='<div class="tt-r"><span class="i">'+z.Name+'</span> '+z.ResourceRecordSetCount+' records ['+zid+']</div>';
+          h+='<div class="tt-r"><span class="i">'+esc(z.Name)+'</span> '+esc(z.ResourceRecordSetCount)+' records ['+esc(zid)+']</div>';
         });
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
@@ -7674,7 +7676,7 @@ async function _renderMapInner(){
         h+='<div class="tt-sub">'+esc(z.Name)+'</div>';
         h+='<div class="tt-sec">';
         h+='<div class="tt-r"><span class="i">Zone ID</span> '+esc(zid)+'</div>';
-        h+='<div class="tt-r"><span class="i">Records</span> '+z.ResourceRecordSetCount+'</div>';
+        h+='<div class="tt-r"><span class="i">Records</span> '+esc(z.ResourceRecordSetCount)+'</div>';
         h+='<div class="tt-r"><span class="i">Type</span> '+(isPub?'Public':'Private')+'</div>';
         if(!isPub&&z.VPCs&&z.VPCs.length>0){
           h+='<div class="tt-sh" style="margin-top:6px">Associated VPCs</div>';
@@ -7732,7 +7734,7 @@ async function _renderMapInner(){
         let h='<div class="tt-title">S3 Bucket</div>';
         h+='<div class="tt-sub">'+esc(bk.Name)+'</div>';
         h+='<div class="tt-sec">';
-        h+='<div class="tt-r"><span class="i">Created</span> '+(bk.CreationDate||'N/A').split('T')[0]+'</div>';
+        h+='<div class="tt-r"><span class="i">Created</span> '+esc((bk.CreationDate||'N/A').split('T')[0])+'</div>';
         h+='</div>';
         tt.innerHTML=h;tt.style.display='block';
       }).on('mousemove',function(event){positionTooltip(event,tt)}).on('mouseleave',()=>{tt.style.display='none'})
@@ -8528,18 +8530,23 @@ if(_isElectron){
   const bfBtn=document.getElementById('importFolderBrowser');
   if(_isElectron)bfBtn.style.display='none';
   // Fallback: webkitdirectory input for when showDirectoryPicker is unavailable
-  function _folderFallback(){
-    const inp=document.createElement('input');inp.type='file';
-    inp.setAttribute('webkitdirectory','');inp.setAttribute('directory','');inp.multiple=true;
-    inp.addEventListener('change',()=>{
-      if(!inp.files||!inp.files.length)return;
-      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
-      const regions={},flatFiles={},profiles={};
-      const pending=[];
-      for(const file of inp.files){
-        if(!file.name.endsWith('.json'))continue;
-        const parts=(file.webkitRelativePath||file.name).split('/');
-        pending.push(file.text().then(txt=>{
+	  function _folderFallback(){
+	    const inp=document.createElement('input');inp.type='file';
+	    inp.setAttribute('webkitdirectory','');inp.setAttribute('directory','');inp.multiple=true;
+	    inp.addEventListener('change',()=>{
+	      if(!inp.files||!inp.files.length)return;
+	      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
+	      const regions={},flatFiles={},profiles={};
+	      const pending=[];
+	      let importBytes=0,importFiles=0;
+	      for(const file of inp.files){
+	        if(!file.name.endsWith('.json'))continue;
+	        if(file.size>100*1024*1024)continue;
+	        if(importFiles>=2000)continue;
+	        if(importBytes+file.size>250*1024*1024)continue;
+	        importBytes+=file.size;importFiles++;
+	        const parts=(file.webkitRelativePath||file.name).split('/');
+	        pending.push(file.text().then(txt=>{
           if(parts.length===2){
             // root/file.json — flat
             flatFiles[parts[1]]=txt;
@@ -8579,48 +8586,60 @@ if(_isElectron){
     inp.click();
   }
   bfBtn.addEventListener('click',async()=>{
-    if(!window.showDirectoryPicker){_folderFallback();return}
-    try{
-      const dirHandle=await window.showDirectoryPicker({mode:'read'});
-      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
-      const regions={},flatFiles={},profiles={};
-      for await(const [name,handle] of dirHandle.entries()){
-        if(handle.kind==='directory'){
-          if(regionRe.test(name)){
-            const regionFiles={};
-            for await(const [fname,fhandle] of handle.entries()){
-              if(fhandle.kind==='file'&&fname.endsWith('.json')){
-                const file=await fhandle.getFile();
-                regionFiles[fname]=await file.text();
-              }
-            }
+	    if(!window.showDirectoryPicker){_folderFallback();return}
+	    try{
+	      const dirHandle=await window.showDirectoryPicker({mode:'read'});
+	      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
+	      const regions={},flatFiles={},profiles={};
+	      let importBytes=0,importFiles=0;
+	      async function readBrowserJsonFile(file){
+	        if(file.size>100*1024*1024)return null;
+	        if(importFiles>=2000)return null;
+	        if(importBytes+file.size>250*1024*1024)return null;
+	        importBytes+=file.size;importFiles++;
+	        return await file.text();
+	      }
+	      for await(const [name,handle] of dirHandle.entries()){
+	        if(handle.kind==='directory'){
+	          if(regionRe.test(name)){
+	            const regionFiles={};
+	            for await(const [fname,fhandle] of handle.entries()){
+	              if(fhandle.kind==='file'&&fname.endsWith('.json')){
+	                const file=await fhandle.getFile();
+	                const txt=await readBrowserJsonFile(file);
+	                if(txt!==null)regionFiles[fname]=txt;
+	              }
+	            }
             if(Object.keys(regionFiles).length)regions[name]=regionFiles;
           }else{
             // Potential profile folder
             const profRegions={},profFlat={};
             for await(const [subName,subHandle] of handle.entries()){
               if(subHandle.kind==='directory'&&regionRe.test(subName)){
-                const regFiles={};
-                for await(const [fname,fhandle] of subHandle.entries()){
-                  if(fhandle.kind==='file'&&fname.endsWith('.json')){
-                    const file=await fhandle.getFile();
-                    regFiles[fname]=await file.text();
-                  }
-                }
-                if(Object.keys(regFiles).length)profRegions[subName]=regFiles;
-              }else if(subHandle.kind==='file'&&subName.endsWith('.json')){
-                const file=await subHandle.getFile();
-                profFlat[subName]=await file.text();
-              }
-            }
+	                const regFiles={};
+	                for await(const [fname,fhandle] of subHandle.entries()){
+	                  if(fhandle.kind==='file'&&fname.endsWith('.json')){
+	                    const file=await fhandle.getFile();
+	                    const txt=await readBrowserJsonFile(file);
+	                    if(txt!==null)regFiles[fname]=txt;
+	                  }
+	                }
+	                if(Object.keys(regFiles).length)profRegions[subName]=regFiles;
+	              }else if(subHandle.kind==='file'&&subName.endsWith('.json')){
+	                const file=await subHandle.getFile();
+	                const txt=await readBrowserJsonFile(file);
+	                if(txt!==null)profFlat[subName]=txt;
+	              }
+	            }
             if(Object.keys(profRegions).length||Object.keys(profFlat).length){
               profiles[name]={regions:profRegions,files:profFlat};
             }
           }
-        }else if(handle.kind==='file'&&name.endsWith('.json')){
-          const file=await handle.getFile();
-          flatFiles[name]=await file.text();
-        }
+	        }else if(handle.kind==='file'&&name.endsWith('.json')){
+	          const file=await handle.getFile();
+	          const txt=await readBrowserJsonFile(file);
+	          if(txt!==null)flatFiles[name]=txt;
+	        }
       }
       if(Object.keys(profiles).length){
         importFolder({_structure:'multi-profile',profiles,files:flatFiles});
