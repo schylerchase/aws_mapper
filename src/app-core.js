@@ -296,6 +296,7 @@ var _rlCtx=null; // store context for stat chip clicks
 var _sgById=new Map(); // cached SG lookup by GroupId — populated by renderExecutiveOverview
 var gwNames={}; // gateway name lookup — populated by _renderMapInner, used globally
 let _mapSvg=null,_mapZoom=null,_mapG=null; // global map refs for navigation
+let _mapMoveTimer=null;
 let _showNested=false;
 let _detailLevel=0; // 0=collapsed(VPC+subnet names), 1=normal(resources), 2=expanded(nested children)
 let _dnsRecordsExpanded=false; // DNS zones always show; toggle for individual record rows
@@ -2702,6 +2703,25 @@ function flashNode(selector){
 
 var _zoomDirty=false;
 function _updateZoomLabel(k){if(_zoomDirty)return;_zoomDirty=true;requestAnimationFrame(()=>{document.getElementById('zoomLevel').textContent=Math.round(k*100)+'%';_zoomDirty=false})}
+function _setMapMoving(isMoving){
+  const main=_getMain();
+  if(!main)return;
+  if(isMoving){
+    if(_mapMoveTimer){clearTimeout(_mapMoveTimer);_mapMoveTimer=null}
+    main.classList.add('map-moving');
+    const tt=document.getElementById('tooltip');
+    if(tt)tt.style.display='none';
+    return;
+  }
+  if(_mapMoveTimer)clearTimeout(_mapMoveTimer);
+  _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},120);
+}
+function _createMapZoom(svg,g){
+  return d3.zoom().scaleExtent([.08,5])
+    .on('start',()=>{_setMapMoving(true)})
+    .on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)})
+    .on('end',()=>{_setMapMoving(false)});
+}
 function bindZoomButtons(){
   if(!_mapSvg||!_mapZoom||!_mapG) return;
   const svg=_mapSvg,zB=_mapZoom,g=_mapG;
@@ -4306,7 +4326,7 @@ function renderLandingZoneMap(ctx){
   
   // SVG setup
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)});svg.call(zB);
+  const zB=_createMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
   
@@ -5507,7 +5527,7 @@ function renderExecutiveOverview(ctx){
   const W=_getMain().clientWidth,H=_getMain().clientHeight;
   svg.attr('width',W).attr('height',H);
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)});svg.call(zB);
+  const zB=_createMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
   
@@ -5842,11 +5862,6 @@ async function _renderMapInner(){
   try{
   const _t0=performance.now();
   const svg=d3.select('#mapSvg');svg.selectAll('*').remove();svg.style('display','block');
-  // SVG filter to prevent alpha stacking in route groups
-  const defs=svg.append('defs');
-  defs.append('filter').attr('id','alphaClamp')
-    .append('feComponentTransfer')
-    .append('feFuncA').attr('type','table').attr('tableValues','0 1 1 1');
   document.getElementById('emptyState').style.display='none';
   document.getElementById('landingDash').style.display='none';
 
@@ -6407,7 +6422,7 @@ async function _renderMapInner(){
 
   // SVG
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)});svg.call(zB);
+  const zB=_createMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
 

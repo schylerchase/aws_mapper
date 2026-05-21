@@ -99,6 +99,8 @@
   .btn-demo{background:transparent;color:var(--accent-cyan);border:1px solid var(--accent-cyan);opacity:.7}.btn-demo:hover{opacity:1;background:rgba(6,182,212,.08)}
   .main{flex:1;position:relative;background:var(--bg-primary);overflow:hidden;display:flex;flex-direction:column}
   .main svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;contain:layout style paint;position:relative;z-index:0}
+  .main.map-moving #mapSvg .map-root,.main.map-moving #mapSvg .map-root *{pointer-events:none!important}
+  .main.map-moving .tooltip{display:none!important}
   .grid-bg{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,var(--grid-color) 1px,transparent 0);background-size:24px 24px;pointer-events:none}
   .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
   .empty-state .icon{width:80px;height:80px;border:2px dashed var(--border);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--text-muted);font-size:32px}
@@ -190,7 +192,7 @@
   .gw-label{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));font-weight:600;pointer-events:none}
   .gw-id{font-family:var(--font-ui);font-size:calc(10px * var(--txt-scale));fill:var(--text-muted);pointer-events:none;opacity:.8}
   .gw-name{font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale));fill:var(--text-primary);font-weight:500;pointer-events:none}
-  .route-group{opacity:.35;filter:url(#alphaClamp)}
+  .route-group{opacity:.35}
   .struct-group{opacity:1}
   .route-line{fill:none;stroke-width:1.5;opacity:1;pointer-events:none}
   .route-line.route-structural{stroke-dasharray:6 3}
@@ -199,7 +201,7 @@
   .route-structural{opacity:1}
   .route-trunk.route-structural{stroke-dasharray:6 3}
   .hl-active .route-group,.hl-active .struct-group,.hl-active .route-structural{opacity:.06}
-  .peering-group{opacity:.35;filter:url(#alphaClamp)}
+  .peering-group{opacity:.35}
   .peering-line{fill:none;stroke-width:2;opacity:1;stroke-dasharray:9 9;pointer-events:none}
   .peering-line.peering-hl{stroke-width:4;opacity:1}
   .peering-label-g{opacity:1;pointer-events:none}

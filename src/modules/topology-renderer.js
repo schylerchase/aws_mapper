@@ -4,6 +4,37 @@
 // dependencies (d3, _rlCtx, _designMode, etc.) instead of reading globals
 
 let _zoomRafPending = false;
+let _mapMoveTimer = null;
+
+function _setMapMoving(isMoving){
+  const main=document.querySelector('.main');
+  if(!main)return;
+  if(isMoving){
+    if(_mapMoveTimer){clearTimeout(_mapMoveTimer);_mapMoveTimer=null}
+    main.classList.add('map-moving');
+    const tt=document.getElementById('tooltip');
+    if(tt)tt.style.display='none';
+    return;
+  }
+  if(_mapMoveTimer)clearTimeout(_mapMoveTimer);
+  _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},120);
+}
+
+function _updateZoomLabel(k){
+  if(_zoomRafPending)return;
+  _zoomRafPending=true;
+  requestAnimationFrame(()=>{
+    _zoomRafPending=false;
+    document.getElementById('zoomLevel').textContent=Math.round(k*100)+'%';
+  });
+}
+
+function _createMapZoom(svg,g){
+  return d3.zoom().scaleExtent([.08,5])
+    .on('start',()=>{_setMapMoving(true)})
+    .on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)})
+    .on('end',()=>{_setMapMoving(false)});
+}
 
 function renderMap(cb){
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
@@ -138,10 +169,6 @@ function _buildLookupMaps(d){
 function _renderMapInner(){
   try{
   const svg=d3.select('#mapSvg');svg.selectAll('*').remove();svg.style('display','block');
-  const defs=svg.append('defs');
-  defs.append('filter').attr('id','alphaClamp')
-    .append('feComponentTransfer')
-    .append('feFuncA').attr('type','table').attr('tableValues','0 1 1 1');
   document.getElementById('emptyState').style.display='none';
   document.getElementById('landingDash').style.display='none';
 
@@ -488,7 +515,7 @@ function _renderMapInner(){
 
   // SVG
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);if(!_zoomRafPending){_zoomRafPending=true;requestAnimationFrame(()=>{_zoomRafPending=false;document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'})}});svg.call(zB);
+  const zB=_createMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
 

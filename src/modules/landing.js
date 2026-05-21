@@ -2,6 +2,39 @@
 // Handles landing zone maps and executive overview
 // Extracted from index.html for modularization
 
+let _landingZoomRafPending = false;
+let _landingMapMoveTimer = null;
+
+function _setLandingMapMoving(isMoving){
+  const main=document.querySelector('.main');
+  if(!main)return;
+  if(isMoving){
+    if(_landingMapMoveTimer){clearTimeout(_landingMapMoveTimer);_landingMapMoveTimer=null}
+    main.classList.add('map-moving');
+    const tt=document.getElementById('tooltip');
+    if(tt)tt.style.display='none';
+    return;
+  }
+  if(_landingMapMoveTimer)clearTimeout(_landingMapMoveTimer);
+  _landingMapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_landingMapMoveTimer=null},120);
+}
+
+function _updateLandingZoomLabel(k){
+  if(_landingZoomRafPending)return;
+  _landingZoomRafPending=true;
+  requestAnimationFrame(()=>{
+    _landingZoomRafPending=false;
+    document.getElementById('zoomLevel').textContent=Math.round(k*100)+'%';
+  });
+}
+
+function _createLandingMapZoom(svg,g){
+  return d3.zoom().scaleExtent([.08,5])
+    .on('start',()=>{_setLandingMapMoving(true)})
+    .on('zoom',e=>{g.attr('transform',e.transform);_updateLandingZoomLabel(e.transform.k)})
+    .on('end',()=>{_setLandingMapMoving(false)});
+}
+
 function renderLandingZoneMap(ctx){
   const {vpcs,subnets,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,
     subByVpc,pubSubs,subRT,gwSet,subNacl,sgByVpc,instBySub,eniBySub,albBySub,volByInst,volBySub,pvGws,shGws,vpceByVpc,vpceIds,gwNames,
@@ -177,7 +210,7 @@ function renderLandingZoneMap(ctx){
   
   // SVG setup
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'});svg.call(zB);
+  const zB=_createLandingMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
   
@@ -1395,7 +1428,7 @@ function renderExecutiveOverview(ctx){
   const W=document.querySelector('.main').clientWidth,H=document.querySelector('.main').clientHeight;
   svg.attr('width',W).attr('height',H);
   const g=svg.append('g').attr('class','map-root');
-  const zB=d3.zoom().scaleExtent([.08,5]).on('zoom',e=>{g.attr('transform',e.transform);document.getElementById('zoomLevel').textContent=Math.round(e.transform.k*100)+'%'});svg.call(zB);
+  const zB=_createLandingMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
   bindZoomButtons();
   
