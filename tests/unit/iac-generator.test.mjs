@@ -6,7 +6,8 @@ globalThis.window = globalThis;
 globalThis.document = { getElementById: () => null, querySelectorAll: () => [], querySelector: () => null };
 
 const {
-  _tfName, _tfRef, detectCircularSGs, _writeTags, _writeSGRule,
+  _tfName, _tfRef, _hclString, _hclMapKey, detectCircularSGs, _writeTags, _writeSGRule,
+  generateTerraform,
   setTfIdMap
 } = await import('../../src/modules/iac-generator.js');
 
@@ -41,6 +42,17 @@ describe('_tfRef', () => {
   it('returns quoted literal for unknown ID', () => {
     setTfIdMap({});
     assert.equal(_tfRef('sg-unknown', 'id'), '"sg-unknown"');
+  });
+});
+
+describe('HCL escaping helpers', () => {
+  it('escapes quoted, slashed, and multiline values as single HCL string literals', () => {
+    assert.equal(_hclString('prod "blue"\\next\nline'), '"prod \\"blue\\"\\\\next\\nline"');
+  });
+
+  it('quotes map keys that are not HCL identifiers', () => {
+    assert.equal(_hclMapKey('aws:tag-name'), '"aws:tag-name"');
+    assert.equal(_hclMapKey('Name'), 'Name');
   });
 });
 
@@ -91,10 +103,12 @@ describe('_writeTags', () => {
   });
   it('escapes special chars in tag values', () => {
     const lines = [];
-    _writeTags(lines, { Tags: [{ Key: 'Desc', Value: 'has "quotes" and \\backslash' }] });
+    _writeTags(lines, { Tags: [{ Key: 'Desc', Value: 'has "quotes" and \\backslash\nline' }] });
     const output = lines.join('\n');
     assert.ok(output.includes('\\"quotes\\"'));
     assert.ok(output.includes('\\\\backslash'));
+    assert.ok(output.includes('\\nline'));
+    assert.ok(!output.includes('backslash\nline'));
   });
   it('quotes non-identifier tag keys', () => {
     const lines = [];
@@ -149,5 +163,72 @@ describe('_writeSGRule', () => {
     });
     const output = lines.join('\n');
     assert.ok(output.includes('aws_security_group.ref.id'));
+  });
+
+  it('escapes multiline descriptions as HCL string literals', () => {
+    const lines = [];
+    _writeSGRule(lines, {
+      IpProtocol: 'tcp', FromPort: 443, ToPort: 443,
+      IpRanges: [{ CidrIp: '10.0.0.0/8', Description: 'allow "app"\nnext' }],
+      Ipv6Ranges: [], UserIdGroupPairs: []
+    });
+    const output = lines.join('\n');
+    assert.ok(output.includes('description = "allow \\"app\\"\\nnext"'));
+    assert.ok(!output.includes('allow "app"\nnext'));
+  });
+});
+
+describe('generateTerraform HCL escaping', () => {
+  it('keeps AWS-controlled names, tags, and descriptions from breaking HCL', () => {
+    const result = generateTerraform({
+      vpcs: [{
+        VpcId: 'vpc-1',
+        CidrBlock: '10.0.0.0/16',
+        Tags: [{ Key: 'Name', Value: 'prod "blue"\nnext' }]
+      }],
+      subnets: [{
+        SubnetId: 'subnet-1',
+        VpcId: 'vpc-1',
+        CidrBlock: '10.0.1.0/24',
+        AvailabilityZone: 'us-east-1a'
+      }],
+      sgs: [{
+        GroupId: 'sg-1',
+        VpcId: 'vpc-1',
+        GroupName: 'web "sg"',
+        Description: 'line1\nline2 "quoted"',
+        IpPermissions: [{
+          IpProtocol: 'tcp',
+          FromPort: 443,
+          ToPort: 443,
+          IpRanges: [{ CidrIp: '10.0.0.0/16', Description: 'allow "app"\nnext' }],
+          Ipv6Ranges: [],
+          UserIdGroupPairs: []
+        }],
+        IpPermissionsEgress: []
+      }],
+      rts: [],
+      nacls: [],
+      igws: [],
+      nats: [],
+      vpces: [],
+      instances: [],
+      rdsInstances: [],
+      lambdaFns: [],
+      ecsServices: [],
+      ecacheClusters: [],
+      redshiftClusters: [],
+      albs: [],
+      volumes: [],
+      s3bk: [],
+      peerings: [],
+      cfDistributions: []
+    }, { mode: 'create', includeVars: false });
+
+    assert.ok(result.code.includes('description = "line1\\nline2 \\"quoted\\""'));
+    assert.ok(result.code.includes('description = "allow \\"app\\"\\nnext"'));
+    assert.ok(result.code.includes('Name = "prod \\"blue\\"\\nnext"'));
+    assert.ok(!result.code.includes('description = "line1\nline2'));
+    assert.ok(!result.code.includes('allow "app"\nnext'));
   });
 });

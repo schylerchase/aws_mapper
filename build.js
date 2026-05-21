@@ -13,6 +13,14 @@ const watch = process.argv.includes('--watch');
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 const VERSION = pkg.version;
 
+// Telemetry build constants. Dormant by default; flip TELEMETRY_ENABLED=true
+// (and set TELEMETRY_ENDPOINT) when ready to ship analytics. See
+// .telemetry/integration.md for the full rollout checklist, including the
+// required CSP connect-src widening in index.html.
+const TELEMETRY_ENABLED  = process.env.TELEMETRY_ENABLED === 'true' ? 'true' : 'false';
+const TELEMETRY_ENDPOINT = process.env.TELEMETRY_ENDPOINT || '';
+const BUILD_CHANNEL      = process.env.BUILD_CHANNEL || (isProd ? 'browser_vercel' : 'dev');
+
 const buildConfig = {
   entryPoints: ['src/main.js'],
   bundle: true,
@@ -24,7 +32,11 @@ const buildConfig = {
   target: 'es2020',
   platform: 'browser',
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    'process.env.NODE_ENV':    JSON.stringify(process.env.NODE_ENV || 'development'),
+    '__TELEMETRY_ENABLED__':   JSON.stringify(TELEMETRY_ENABLED),
+    '__TELEMETRY_ENDPOINT__':  JSON.stringify(TELEMETRY_ENDPOINT),
+    '__APP_VERSION__':         JSON.stringify(VERSION),
+    '__BUILD_CHANNEL__':       JSON.stringify(BUILD_CHANNEL),
   },
   logLevel: 'info'
 };

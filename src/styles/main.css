@@ -193,15 +193,17 @@
   .route-group{opacity:.35;filter:url(#alphaClamp)}
   .struct-group{opacity:1}
   .route-line{fill:none;stroke-width:1.5;opacity:1;pointer-events:none}
-  .route-line.route-structural{stroke-dasharray:6 3;animation:dashStruct 1s linear infinite}
+  .route-line.route-structural{stroke-dasharray:6 3}
   .route-trunk{fill:none;stroke-width:1.5;opacity:1;pointer-events:none}
-  .route-trunk.animated{stroke-dasharray:6 3;animation:dashStruct 1s linear infinite}
+  .route-trunk.animated{stroke-dasharray:6 3}
   .route-structural{opacity:1}
-  .route-trunk.route-structural{stroke-dasharray:6 3;animation:dashStruct 1s linear infinite}
+  .route-trunk.route-structural{stroke-dasharray:6 3}
   .hl-active .route-group,.hl-active .struct-group,.hl-active .route-structural{opacity:.06}
   .peering-group{opacity:.35;filter:url(#alphaClamp)}
-  .peering-line{fill:none;stroke-width:2;opacity:1;stroke-dasharray:9 9;animation:dashFlow 1.2s linear infinite}
-  .peering-label-g{opacity:1}
+  .peering-line{fill:none;stroke-width:2;opacity:1;stroke-dasharray:9 9;pointer-events:none}
+  .peering-line.peering-hl{stroke-width:4;opacity:1}
+  .peering-label-g{opacity:1;pointer-events:none}
+  .peering-label-g.peering-hl rect{stroke-width:1.2}
   .hl-active .peering-group{opacity:.03}
   .hl-active .vpce-summary,.hl-active .dns-summary,.hl-active .gw-node,.hl-active .lz-gw-node,.hl-active .lz-tgw-node{opacity:.15}
   .hl-active .peering-label-g,.hl-active .internet-node{opacity:.08}
@@ -213,6 +215,7 @@
   .hl-locked-indicator:hover{background:rgba(17,24,39,1);border-color:#fff}
   .hl-active .route-label-g:not(.visible),.hl-active .region-boundary,.hl-active .dns-section,.hl-active .s3-section,.hl-active .cf-section,.hl-active .legend{opacity:.08}
   .route-hitarea{fill:none;stroke:transparent;stroke-width:16;cursor:pointer;pointer-events:stroke !important}
+  .peering-hitarea{fill:none;stroke:transparent;stroke-width:18;cursor:pointer;pointer-events:stroke !important}
   .dp-nav-btn{display:inline-block;font-family:var(--font-ui);font-size:8px;color:var(--accent-blue);cursor:pointer;margin-left:6px;padding:1px 5px;border:1px solid rgba(59,130,246,.3);border-radius:3px;background:rgba(59,130,246,.08);transition:background .15s}
   .dp-nav-btn:hover{background:rgba(59,130,246,.2)}
   .route-label-g{display:none;pointer-events:none}.route-label-g.visible{display:block}
@@ -221,7 +224,7 @@
   @keyframes dashFlow{from{stroke-dashoffset:0}to{stroke-dashoffset:-18}}
   @keyframes dashFlowIn{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
   @keyframes dashStruct{from{stroke-dashoffset:0}to{stroke-dashoffset:18}}
-  .animated{animation:dashStruct 1s linear infinite}
+  .animated{stroke-dasharray:6 3}
   .export-bar{position:absolute;top:12px;right:12px;display:none;gap:4px;z-index:10;flex-direction:column;align-items:flex-end}
   .eb-panel{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px var(--shadow-color);max-width:260px}
   .eb-row{display:flex;align-items:center;gap:6px}

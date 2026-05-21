@@ -499,6 +499,7 @@ function _renderMapInner(){
   const allLb=[];
   const olL=g.append('g').attr('class','highlight-overlay');
   const labelL=g.append('g').attr('class','label-layer'); // Labels on top of everything
+  const tt=document.getElementById('tooltip');
 
   // Highlight lock state for click-to-toggle
   let _hlLocked=false, _hlKey=null, _hlType=null;
@@ -814,6 +815,7 @@ function _renderMapInner(){
     olL.selectAll('*').remove();routeG.style('opacity',null);structG.style('opacity',null);allLb.forEach(l=>l.g.classed('visible',false));g.classed('hl-active',false);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
     ndL.selectAll('.internet-node').style('opacity',null);
+    lnL.selectAll('.peering-line,.peering-label-g').classed('peering-hl',false);
     ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
   }
   function forceClr(){
@@ -821,6 +823,7 @@ function _renderMapInner(){
     olL.selectAll('*').remove();routeG.style('opacity',null);structG.style('opacity',null);allLb.forEach(l=>l.g.classed('visible',false));g.classed('hl-active',false);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
     ndL.selectAll('.internet-node').style('opacity',null);
+    lnL.selectAll('.peering-line,.peering-label-g').classed('peering-hl',false);
     ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
   }
   // Expose gateway highlight globally for panel link navigation
@@ -833,7 +836,7 @@ function _renderMapInner(){
   if(window._hlUnlockHandler)document.removeEventListener('hl-unlock',window._hlUnlockHandler);
   window._hlUnlockHandler=forceClr;document.addEventListener('hl-unlock',forceClr);
   svg.on('click',function(event){
-    if(!event.target.closest('.gw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.res-node')&&!event.target.closest('.route-hitarea')&&!event.target.closest('.internet-node')){
+    if(!event.target.closest('.gw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.res-node')&&!event.target.closest('.route-hitarea')&&!event.target.closest('.peering-hitarea')&&!event.target.closest('.internet-node')){
       forceClr();
       if(_spotlightActive) _closeSpotlight();
     }
@@ -888,6 +891,42 @@ function _renderMapInner(){
   
   const globalMinY = Math.min(...vL.map(v => v.y));
   const laneSpacing = 28;
+  function _peeringVpcText(info){
+    if(!info||!info.VpcId)return 'N/A';
+    const v=vpcs.find(vpc=>vpc.VpcId===info.VpcId);
+    const name=v?gn(v,info.VpcId):info.VpcId;
+    return name+' ('+(info.CidrBlock||'CIDR N/A')+')';
+  }
+  function _peeringTooltipHtml(pcx){
+    const id=pcx.VpcPeeringConnectionId||'PCX';
+    const req=pcx.RequesterVpcInfo||{},acc=pcx.AccepterVpcInfo||{};
+    let h='<div class="tt-title">'+esc(gn(pcx,id))+'</div><div class="tt-sub">VPC Peering | '+esc(id)+'</div>';
+    h+='<div class="tt-sec"><div class="tt-sh">Connection</div>';
+    h+='<div class="tt-r">Requester: <span class="i">'+esc(_peeringVpcText(req))+'</span></div>';
+    h+='<div class="tt-r">Accepter: <span class="i">'+esc(_peeringVpcText(acc))+'</span></div>';
+    h+='<div class="tt-r">Status: <span class="a">'+esc((pcx.Status&&pcx.Status.Code)||'active')+'</span></div></div>';
+    return h;
+  }
+  function _setPeeringHover(refs,pcx,on){
+    refs.forEach(r=>{r.line.classed('peering-hl',on);if(r.label)r.label.classed('peering-hl',on)});
+    [pcx.RequesterVpcInfo&&pcx.RequesterVpcInfo.VpcId,pcx.AccepterVpcInfo&&pcx.AccepterVpcInfo.VpcId].forEach(vid=>{
+      if(!vid)return;
+      ndL.selectAll('.vpc-group[data-vpc-id="'+vid+'"]').select('rect').style('stroke-width',on?3:null).style('filter',on?'drop-shadow(0 0 8px rgba(251,146,60,.75))':null);
+    });
+  }
+  function _addPeeringHitarea(d,refs,pcx){
+    const id=pcx.VpcPeeringConnectionId||'PCX';
+    lnL.append('path').attr('class','peering-hitarea').attr('d',d)
+      .on('mouseenter',function(event){if(_hlLocked)return;_setPeeringHover(refs,pcx,true);tt.innerHTML=_peeringTooltipHtml(pcx);tt.style.display='block';positionTooltip(event,tt)})
+      .on('mousemove',function(event){positionTooltip(event,tt)})
+      .on('mouseleave',function(){if(_hlLocked&&_hlKey===id&&_hlType==='pcx')return;_setPeeringHover(refs,pcx,false);tt.style.display='none'})
+      .on('click',function(event){
+        event.stopPropagation();
+        if(_hlLocked&&_hlKey===id&&_hlType==='pcx'){tt.style.display='none';forceClr();return}
+        forceClr();_setPeeringHover(refs,pcx,true);_hlLocked=true;_hlKey=id;_hlType='pcx';showLockInd(true);_lastRlType=null;_navStack=[];
+        openGatewayPanel(id,'PCX',{gwNames,igws,nats,vpns,vpces,peerings,rts,subnets,subRT,pubSubs,vpcs,tgwAttachments});
+      });
+  }
 
   activePeerings.forEach((p, idx) => {
     const { pcx, leftVpc, rightVpc } = p;
@@ -908,8 +947,8 @@ function _renderMapInner(){
     // Complete path: down from left VPC, across, down to right VPC
     const d = `M${leftExitX},${leftVpcTopY} L${leftExitX},${y} L${rightExitX},${y} L${rightExitX},${rightVpcTopY}`;
     
-    peeringG.append('path')
-      .attr('class', 'peering-line animated')
+    const pl=peeringG.append('path')
+      .attr('class', 'peering-line')
       .attr('d', d)
       .attr('stroke', 'var(--pcx-color)');
     
@@ -925,6 +964,7 @@ function _renderMapInner(){
       .attr('x', midX).attr('y', y + 4)
       .attr('text-anchor', 'middle').attr('font-family','Segoe UI,system-ui,sans-serif')
       .style('font-size','calc(9px * var(--txt-scale,1))').attr('fill', '#fb923c').text(pn);
+    _addPeeringHitarea(d,[{line:pl,label:pg}],pcx);
   });
 
   // VPN marker
@@ -1297,7 +1337,6 @@ function _renderMapInner(){
   });
 
   // VPC boxes
-  const tt=document.getElementById('tooltip');
   vL.forEach(vl=>{
     const vG=ndL.append('g').attr('class','vpc-group').attr('data-vpc-id',vl.vpc.VpcId);
     vG.append('rect').attr('x',vl.x).attr('y',vl.y).attr('width',vl.w).attr('height',vl.h).attr('fill','rgba(59,130,246,.03)').attr('stroke','var(--vpc-stroke)').attr('stroke-width',1.5);
@@ -1950,7 +1989,8 @@ function _renderMapInner(){
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
-  setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  if(typeof _fitMapWhenReady==='function')_fitMapWhenReady();
+  else setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
   }catch(e){console.error('renderMap error:',e);showToast('Render error — see console',4000);document.getElementById('loadingOverlay').style.display='none'}
 }
 

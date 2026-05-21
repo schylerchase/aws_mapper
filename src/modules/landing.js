@@ -1375,7 +1375,8 @@ function renderLandingZoneMap(ctx){
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
-  setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  if(typeof _fitMapWhenReady==='function')_fitMapWhenReady();
+  else setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
 // EXECUTIVE OVERVIEW
@@ -1693,7 +1694,8 @@ function renderExecutiveOverview(ctx){
   leg.classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
-  setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  if(typeof _fitMapWhenReady==='function')_fitMapWhenReady();
+  else setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
 }
 
 let _renderMapTimer=null;

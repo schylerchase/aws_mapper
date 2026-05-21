@@ -24,6 +24,25 @@ test.describe('App Load & Demo Data', () => {
     expect(vpcCount).toBeGreaterThan(0);
   });
 
+  test('Explore Demo paints the map without expand or collapse', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await page.locator('#landingDemo').click();
+    await page.locator('#landingDash').waitFor({ state: 'hidden', timeout: 15000 });
+    await page.waitForFunction(() => {
+      const svg = document.getElementById('mapSvg');
+      const root = svg && svg.querySelector('.map-root');
+      const firstVpc = svg && svg.querySelector('.vpc-group');
+      if (!svg || !root || !firstVpc) return false;
+      const svgBox = svg.getBoundingClientRect();
+      const vpcBox = firstVpc.getBoundingClientRect();
+      const transform = root.getAttribute('transform') || '';
+      const hasFiniteTransform = !/NaN|Infinity/.test(transform);
+      const inViewport = vpcBox.right > svgBox.left && vpcBox.left < svgBox.right && vpcBox.bottom > svgBox.top && vpcBox.top < svgBox.bottom;
+      return hasFiniteTransform && svgBox.width > 0 && svgBox.height > 0 && vpcBox.width > 0 && vpcBox.height > 0 && inViewport;
+    }, null, { timeout: 15000 });
+  });
+
   test('SVG contains subnet nodes inside VPCs', async ({ page }) => {
     await loadDemo(page);
     const subCount = await countElements(page, '.subnet-node');
@@ -40,6 +59,20 @@ test.describe('App Load & Demo Data', () => {
     // Overflow buttons exist in DOM and are clickable via JS
     const overflowExists = await page.evaluate(() => !!document.getElementById('budrBtn'));
     expect(overflowExists).toBe(true);
+  });
+
+  test('peering lines expose hover hit areas', async ({ page }) => {
+    await loadDemo(page);
+    const hitareas = page.locator('.peering-hitarea');
+    await expect(hitareas.first()).toBeAttached({ timeout: 10000 });
+    const tooltipShown = await page.evaluate(() => {
+      const hitarea = document.querySelector('.peering-hitarea');
+      if (!hitarea) return false;
+      hitarea.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, clientX: 520, clientY: 320 }));
+      const tooltip = document.getElementById('tooltip');
+      return tooltip && tooltip.style.display === 'block' && tooltip.textContent.includes('VPC Peering');
+    });
+    expect(tooltipShown).toBe(true);
   });
 
   test('VPC groups render with distinct bounding boxes', async ({ page }) => {

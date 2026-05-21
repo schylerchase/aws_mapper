@@ -3,10 +3,16 @@
 // Extracted from flow-analyzer.js
 
 export function ipToNum(ip) {
-  if (!ip) return null;
-  const p = ip.split('.');
+  if (typeof ip !== 'string') return null;
+  const p = ip.trim().split('.');
   if (p.length !== 4) return null;
-  return ((parseInt(p[0]) << 24) | (parseInt(p[1]) << 16) | (parseInt(p[2]) << 8) | parseInt(p[3])) >>> 0;
+  const octets = p.map(function (part) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const n = Number(part);
+    return n >= 0 && n <= 255 ? n : null;
+  });
+  if (octets.some(function (n) { return n === null; })) return null;
+  return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
 }
 
 export function ipFromCidr(cidr) {
@@ -19,10 +25,13 @@ export function cidrContains(cidr, ip) {
   if (cidr === '0.0.0.0/0') return true;
   const parts = cidr.split('/');
   if (parts.length !== 2) return false;
-  const mask = parseInt(parts[1], 10);
+  if (!/^\d{1,2}$/.test(parts[1])) return false;
+  const mask = Number(parts[1]);
+  if (mask < 0 || mask > 32) return false;
   const cidrNum = ipToNum(parts[0]);
   const ipNum = ipToNum(ip);
   if (cidrNum === null || ipNum === null) return false;
+  if (mask === 0) return true;
   const shift = 32 - mask;
   return (cidrNum >>> shift) === (ipNum >>> shift);
 }

@@ -2,6 +2,18 @@
 // Electron detection
 const _isElectron=!!(typeof window!=='undefined'&&window.electronAPI);
 var _mainEl=null;function _getMain(){if(!_mainEl)_mainEl=document.querySelector('.main');return _mainEl}
+const _MAX_JSON_FILE_SIZE=100*1024*1024;
+const _MAX_IMPORT_BYTES=250*1024*1024;
+const _MAX_IMPORT_FILES=2000;
+const _MAX_PROJECT_FILE_SIZE=_MAX_JSON_FILE_SIZE;
+const _MAX_REPORT_FILE_SIZE=_MAX_JSON_FILE_SIZE;
+const _MAX_RULES_FILE_SIZE=5*1024*1024;
+function _formatBytes(bytes){return Math.round(bytes/1024/1024)+' MB'}
+function _fileTooLarge(file,maxBytes,label){
+  if(!file||file.size<=maxBytes)return false;
+  _showToast((label||file.name)+' too large (max '+_formatBytes(maxBytes)+')','warn');
+  return true;
+}
 
 // Preferences: _prefs, loadPrefs, savePrefs provided by bundle (src/modules/prefs.js)
 var _complianceFindings=window._complianceFindings||[];
@@ -1624,6 +1636,15 @@ function importDesignPlan(json){
 }
 
 // === IAC POLICY EXPORT ===
+function _codeLine(s){
+  return String(s==null?'':s).replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function _codeString(s){
+  return JSON.stringify(String(s==null?'':s));
+}
+function _shellArg(s){
+  return "'"+String(s==null?'':s).replace(/'/g,"'\\''")+"'";
+}
 function generateAWSConfigRules(findings){
   return findings.map(f=>{
     const rule={ConfigRuleName:('custom-'+f.control+'-'+f.resource).toLowerCase().replace(/[^a-z0-9-]/g,'-').substring(0,64),Description:f.message,Source:{Owner:'CUSTOM_LAMBDA',SourceIdentifier:'arn:aws:lambda:REGION:ACCOUNT:function:compliance-check'},InputParameters:JSON.stringify({control:f.control,severity:f.severity,resource:f.resource})};
@@ -1641,7 +1662,10 @@ function generateOPARego(findings){
     if(f.control==='CIS 5.2')rego='deny[msg] {\n  sg := input.resource.aws_security_group[name]\n  rule := sg.ingress[_]\n  rule.from_port <= 22\n  rule.to_port >= 22\n  rule.cidr_blocks[_] == "0.0.0.0/0"\n  msg := sprintf("SG %s allows SSH from 0.0.0.0/0 (CIS 5.2)", [name])\n}';
     else if(f.control==='CIS 5.3')rego='deny[msg] {\n  sg := input.resource.aws_security_group[name]\n  rule := sg.ingress[_]\n  rule.from_port <= 3389\n  rule.to_port >= 3389\n  rule.cidr_blocks[_] == "0.0.0.0/0"\n  msg := sprintf("SG %s allows RDP from 0.0.0.0/0 (CIS 5.3)", [name])\n}';
     else if(f.control==='NET-2')rego='deny[msg] {\n  sg := input.resource.aws_security_group[name]\n  rule := sg.ingress[_]\n  rule.protocol == "-1"\n  rule.cidr_blocks[_] == "0.0.0.0/0"\n  msg := sprintf("SG %s allows ALL traffic from 0.0.0.0/0", [name])\n}';
-    else rego='# '+f.control+': '+f.message+'\ndeny[msg] {\n  # TODO: Implement check for '+f.control+'\n  msg := "'+f.control+': '+f.message.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"\n}';
+    else {
+      const control=_codeLine(f.control), message=_codeLine(f.message);
+      rego='# '+control+': '+message+'\ndeny[msg] {\n  # TODO: Implement check for '+control+'\n  msg := '+_codeString(control+': '+message)+'\n}';
+    }
     rules.set(key,rego);
   });
   return'package aws_compliance\n\nimport input\n\n'+Array.from(rules.values()).join('\n\n')+'\n';
@@ -1650,46 +1674,57 @@ function generateCheckovCheck(findings){
   const checks=new Map();
   findings.forEach(f=>{
     const key=f.control;if(checks.has(key))return;
-    checks.set(key,`# ${f.control}: ${f.message}\n# Severity: ${f.severity}\n# Remediation: ${f.remediation}\nfrom checkov.common.models.enums import CheckResult, CheckCategories\nfrom checkov.terraform.checks.resource.base_resource_check import BaseResourceCheck\n\nclass ${f.control.replace(/[^a-zA-Z0-9]/g,'')}Check(BaseResourceCheck):\n    def __init__(self):\n        name = "${f.message}"\n        id = "CUSTOM_${f.control.replace(/[^a-zA-Z0-9]/g,'_')}"\n        supported_resources = ["aws_security_group"]\n        categories = [CheckCategories.NETWORKING]\n        super().__init__(name=name, id=id, categories=categories, supported_resources=supported_resources)\n\n    def scan_resource_conf(self, conf):\n        # TODO: Implement check logic\n        return CheckResult.PASSED\n`);
+    const control=_codeLine(f.control), message=_codeLine(f.message), severity=_codeLine(f.severity), remediation=_codeLine(f.remediation);
+    const className=(control||'Custom').replace(/[^a-zA-Z0-9]/g,'')||'Custom';
+    checks.set(key,`# ${control}: ${message}\n# Severity: ${severity}\n# Remediation: ${remediation}\nfrom checkov.common.models.enums import CheckResult, CheckCategories\nfrom checkov.terraform.checks.resource.base_resource_check import BaseResourceCheck\n\nclass ${className}Check(BaseResourceCheck):\n    def __init__(self):\n        name = ${_codeString(message)}\n        id = ${_codeString('CUSTOM_'+control.replace(/[^a-zA-Z0-9]/g,'_'))}\n        supported_resources = ["aws_security_group"]\n        categories = [CheckCategories.NETWORKING]\n        super().__init__(name=name, id=id, categories=categories, supported_resources=supported_resources)\n\n    def scan_resource_conf(self, conf):\n        # TODO: Implement check logic\n        return CheckResult.PASSED\n`);
   });
   return Array.from(checks.values()).join('\n\n');
 }
 function generateRemediationCLI(findings){
-  const region=(_rlCtx&&_rlCtx._accounts&&_rlCtx._accounts[0])?'--region '+(_rlCtx._accounts[0].region||'us-east-1'):'--region ${AWS_REGION}';
+  const selectedRegion=(_rlCtx&&_rlCtx._accounts&&_rlCtx._accounts[0])?(_rlCtx._accounts[0].region||'us-east-1'):null;
+  const region=selectedRegion?'--region '+_shellArg(_codeLine(selectedRegion)):'--region "${AWS_REGION:-us-east-1}"';
   const lines=['#!/bin/bash','# AWS Compliance Remediation Script','# Generated: '+new Date().toISOString().slice(0,19).replace('T',' '),'# REVIEW EACH COMMAND BEFORE RUNNING — some are destructive','','set -euo pipefail',''];
   const seen=new Set();
   const cliMap={
-    'CIS 5.2':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+f.resource+' --protocol tcp --port 22 --cidr 0.0.0.0/0',
-    'CIS 5.3':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+f.resource+' --protocol tcp --port 3389 --cidr 0.0.0.0/0',
-    'CIS 5.4':f=>'# '+f.message+' — Remove all rules from default SG\n# List current rules first:\naws ec2 describe-security-groups '+region+' --group-ids '+f.resource+' --query "SecurityGroups[0].IpPermissions"',
-    'NET-2':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+f.resource+' --protocol -1 --cidr 0.0.0.0/0',
-    'ARCH-D1':f=>'# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+f.resource+' --no-publicly-accessible --apply-immediately',
-    'ARCH-D2':f=>'# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+f.resource+' --multi-az --apply-immediately',
-    'ARCH-D3':f=>'# '+f.message+' — Requires snapshot + restore for existing\n# Step 1: Create snapshot\naws rds create-db-snapshot '+region+' --db-instance-identifier '+f.resource+' --db-snapshot-identifier '+f.resource+'-encrypt-snap\n# Step 2: Copy with encryption\n# aws rds copy-db-snapshot --source-db-snapshot-identifier '+f.resource+'-encrypt-snap --target-db-snapshot-identifier '+f.resource+'-encrypted --kms-key-id alias/aws/rds',
+    'CIS 5.2':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+_shellArg(f.resource)+' --protocol tcp --port 22 --cidr 0.0.0.0/0',
+    'CIS 5.3':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+_shellArg(f.resource)+' --protocol tcp --port 3389 --cidr 0.0.0.0/0',
+    'CIS 5.4':f=>'# '+f.message+' — Remove all rules from default SG\n# List current rules first:\naws ec2 describe-security-groups '+region+' --group-ids '+_shellArg(f.resource)+' --query "SecurityGroups[0].IpPermissions"',
+    'NET-2':f=>'# '+f.message+'\naws ec2 revoke-security-group-ingress '+region+' --group-id '+_shellArg(f.resource)+' --protocol -1 --cidr 0.0.0.0/0',
+    'ARCH-D1':f=>'# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+_shellArg(f.resource)+' --no-publicly-accessible --apply-immediately',
+    'ARCH-D2':f=>'# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+_shellArg(f.resource)+' --multi-az --apply-immediately',
+    'ARCH-D3':f=>'# '+f.message+' — Requires snapshot + restore for existing\n# Step 1: Create snapshot\naws rds create-db-snapshot '+region+' --db-instance-identifier '+_shellArg(f.resource)+' --db-snapshot-identifier '+_shellArg(f.resource)+'-encrypt-snap\n# Step 2: Copy with encryption\n# aws rds copy-db-snapshot --source-db-snapshot-identifier '+_shellArg(f.resource)+'-encrypt-snap --target-db-snapshot-identifier '+_shellArg(f.resource)+'-encrypted --kms-key-id alias/aws/rds',
     'ARCH-C2':f=>'# '+f.message+'\n# Enable default EBS encryption for the account:\naws ec2 enable-ebs-encryption-by-default '+region,
-    'ARCH-S1':f=>'# '+f.message+'\naws s3api put-bucket-encryption '+region+' --bucket '+f.resource+' --server-side-encryption-configuration \'{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}\'',
-    'ARCH-D5':f=>'# '+f.message+' — Requires snapshot migration\n# aws redshift create-cluster-snapshot --cluster-identifier '+f.resource+' --snapshot-identifier '+f.resource+'-encrypt-snap',
-    'ARCH-D7':f=>'# '+f.message+'\naws redshift modify-cluster '+region+' --cluster-identifier '+f.resource+' --no-publicly-accessible',
-    'ARCH-E2':f=>'# '+f.message+'\n# Update CloudFront distribution viewer protocol policy:\n# aws cloudfront get-distribution-config --id '+f.resource+' > cf-config.json\n# Edit DefaultCacheBehavior.ViewerProtocolPolicy to "redirect-to-https"\n# aws cloudfront update-distribution --id '+f.resource+' --distribution-config file://cf-config.json --if-match ETAG',
-    'WAF-3':f=>'# '+f.message+'\n# Associate ALB with a WebACL:\n# aws wafv2 associate-web-acl --web-acl-arn arn:aws:wafv2:REGION:ACCOUNT:regional/webacl/NAME/ID --resource-arn '+f.resource,
-    'WAF-4':f=>'# '+f.message+'\n# Update WebACL default action to BLOCK:\n# aws wafv2 update-web-acl --name '+f.resourceName+' --scope REGIONAL --default-action Block={} --lock-token TOKEN',
-    'SOC2-CC7.2':f=>'# '+f.message+'\naws ec2 create-flow-logs '+region+' --resource-type VPC --resource-ids '+f.resource+' --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name /vpc/flow-logs/'+f.resource+' --deliver-logs-permission-arn arn:aws:iam::role/flow-logs-role',
-    'PCI-10.2.1':f=>'# '+f.message+'\naws ec2 create-flow-logs '+region+' --resource-type VPC --resource-ids '+f.resource+' --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name /vpc/flow-logs/'+f.resource+' --deliver-logs-permission-arn arn:aws:iam::role/flow-logs-role',
+    'ARCH-S1':f=>'# '+f.message+'\naws s3api put-bucket-encryption '+region+' --bucket '+_shellArg(f.resource)+' --server-side-encryption-configuration \'{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}\'',
+    'ARCH-D5':f=>'# '+f.message+' — Requires snapshot migration\n# aws redshift create-cluster-snapshot --cluster-identifier '+_shellArg(f.resource)+' --snapshot-identifier '+_shellArg(f.resource)+'-encrypt-snap',
+    'ARCH-D7':f=>'# '+f.message+'\naws redshift modify-cluster '+region+' --cluster-identifier '+_shellArg(f.resource)+' --no-publicly-accessible',
+    'ARCH-E2':f=>'# '+f.message+'\n# Update CloudFront distribution viewer protocol policy:\n# aws cloudfront get-distribution-config --id '+_shellArg(f.resource)+' > cf-config.json\n# Edit DefaultCacheBehavior.ViewerProtocolPolicy to "redirect-to-https"\n# aws cloudfront update-distribution --id '+_shellArg(f.resource)+' --distribution-config file://cf-config.json --if-match ETAG',
+    'WAF-3':f=>'# '+f.message+'\n# Associate ALB with a WebACL:\n# aws wafv2 associate-web-acl --web-acl-arn arn:aws:wafv2:REGION:ACCOUNT:regional/webacl/NAME/ID --resource-arn '+_shellArg(f.resource),
+    'WAF-4':f=>'# '+f.message+'\n# Update WebACL default action to BLOCK:\n# aws wafv2 update-web-acl --name '+_shellArg(f.resourceName)+' --scope REGIONAL --default-action Block={} --lock-token TOKEN',
+    'SOC2-CC7.2':f=>'# '+f.message+'\naws ec2 create-flow-logs '+region+' --resource-type VPC --resource-ids '+_shellArg(f.resource)+' --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name '+_shellArg('/vpc/flow-logs/'+f.resource)+' --deliver-logs-permission-arn arn:aws:iam::role/flow-logs-role',
+    'PCI-10.2.1':f=>'# '+f.message+'\naws ec2 create-flow-logs '+region+' --resource-type VPC --resource-ids '+_shellArg(f.resource)+' --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name '+_shellArg('/vpc/flow-logs/'+f.resource)+' --deliver-logs-permission-arn arn:aws:iam::role/flow-logs-role',
     'PCI-3.4.1':f=>{
       if(f.resource.startsWith('vol-'))return '# '+f.message+'\n# Enable default EBS encryption:\naws ec2 enable-ebs-encryption-by-default '+region;
       if(f.resource.includes('rds')||f.message.includes('RDS'))return '# '+f.message+'\n# Requires snapshot + restore with encryption for existing RDS';
-      return '# '+f.message+'\naws s3api put-bucket-encryption '+region+' --bucket '+f.resource+' --server-side-encryption-configuration \'{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}\'';
+      return '# '+f.message+'\naws s3api put-bucket-encryption '+region+' --bucket '+_shellArg(f.resource)+' --server-side-encryption-configuration \'{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}\'';
     },
     'PCI-11.3.1':f=>{
-      if(f.message.includes('Redshift'))return '# '+f.message+'\naws redshift modify-cluster '+region+' --cluster-identifier '+f.resource+' --no-publicly-accessible';
-      return '# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+f.resource+' --no-publicly-accessible --apply-immediately';
+      if(f.message.includes('Redshift'))return '# '+f.message+'\naws redshift modify-cluster '+region+' --cluster-identifier '+_shellArg(f.resource)+' --no-publicly-accessible';
+      return '# '+f.message+'\naws rds modify-db-instance '+region+' --db-instance-identifier '+_shellArg(f.resource)+' --no-publicly-accessible --apply-immediately';
     },
     'PCI-4.2.1':f=>'# '+f.message+'\n# Add HTTPS listener to ALB:\n# aws elbv2 create-listener --load-balancer-arn ARN --protocol HTTPS --port 443 --certificates CertificateArn=arn:aws:acm:REGION:ACCOUNT:certificate/ID --default-actions Type=forward,TargetGroupArn=TG_ARN',
-    'IAM-9':f=>'# '+f.message+'\n# Rotate access key for user '+f.resource+':\naws iam create-access-key --user-name '+f.resource+'\n# Then deactivate old key:\n# aws iam update-access-key --user-name '+f.resource+' --access-key-id OLD_KEY_ID --status Inactive',
-    'IAM-11':f=>'# '+f.message+'\n# Enable virtual MFA for user '+f.resource+':\n# aws iam create-virtual-mfa-device --virtual-mfa-device-name '+f.resource+'-mfa --outfile /tmp/qr-'+f.resource+'.png --bootstrap-method QRCodePNG',
-    'ARCH-G2':f=>'# '+f.message+'\n# Create S3 Gateway Endpoint (free):\naws ec2 create-vpc-endpoint '+region+' --vpc-id '+f.resource+' --service-name com.amazonaws.${AWS_REGION:-us-east-1}.s3 --vpc-endpoint-type Gateway',
+    'IAM-9':f=>'# '+f.message+'\n# Rotate access key for user '+_shellArg(f.resource)+':\naws iam create-access-key --user-name '+_shellArg(f.resource)+'\n# Then deactivate old key:\n# aws iam update-access-key --user-name '+_shellArg(f.resource)+' --access-key-id OLD_KEY_ID --status Inactive',
+    'IAM-11':f=>'# '+f.message+'\n# Enable virtual MFA for user '+_shellArg(f.resource)+':\n# aws iam create-virtual-mfa-device --virtual-mfa-device-name '+_shellArg(f.resource+'-mfa')+' --outfile '+_shellArg('/tmp/qr-'+f.resource+'.png')+' --bootstrap-method QRCodePNG',
+    'ARCH-G2':f=>'# '+f.message+'\n# Create S3 Gateway Endpoint (free):\naws ec2 create-vpc-endpoint '+region+' --vpc-id '+_shellArg(f.resource)+' --service-name com.amazonaws.${AWS_REGION:-us-east-1}.s3 --vpc-endpoint-type Gateway',
   };
-  findings.filter(f=>!_isMuted(f)).forEach(f=>{
+  findings.filter(f=>!_isMuted(f)).forEach(raw=>{
+    const f=Object.assign({},raw,{
+      control:_codeLine(raw.control),
+      severity:_codeLine(raw.severity),
+      message:_codeLine(raw.message),
+      remediation:_codeLine(raw.remediation),
+      resource:_codeLine(raw.resource),
+      resourceName:_codeLine(raw.resourceName)
+    });
     const key=f.control+'|'+f.resource;
     if(seen.has(key))return;seen.add(key);
     const gen=cliMap[f.control];
@@ -1697,7 +1732,7 @@ function generateRemediationCLI(findings){
       const cmd=typeof gen==='function'?gen(f):gen;
       lines.push(cmd,'');
     } else {
-      lines.push('# ['+f.severity+'] '+f.control+(f.ckv?' ('+f.ckv+')':'')+': '+f.message+' ('+f.resource+')','# Remediation: '+f.remediation,'');
+      lines.push('# ['+f.severity+'] '+f.control+(f.ckv?' ('+f.ckv+')':'')+': '+f.message+' ('+_shellArg(f.resource)+')','# Remediation: '+f.remediation,'');
     }
   });
   lines.push('echo "Remediation script complete. Review output for errors."');
@@ -2670,14 +2705,35 @@ function bindZoomButtons(){
   d3.select('#zoomIn').on('click',()=>svg.transition().duration(300).call(zB.scaleBy,1.4));
   d3.select('#zoomOut').on('click',()=>svg.transition().duration(300).call(zB.scaleBy,.7));
   d3.select('#zoomFit').on('click',()=>{
-    const b=g.node().getBBox();if(!b.width)return;
+    let b;
+    try{b=g.node().getBBox()}catch(e){return}
+    if(!b.width||!b.height)return;
     const W=_getMain().clientWidth;
     const H=_getMain().clientHeight;
+    if(!W||!H)return;
     const pad=_isMobile()?.82:.92;
     const s=Math.max(0.25,pad/Math.max(b.width/W,b.height/H));
     svg.transition().duration(500).call(zB.transform,
       d3.zoomIdentity.translate(W/2-s*(b.x+b.width/2),H/2-s*(b.y+b.height/2)).scale(s));
   });
+}
+function _fitMapWhenReady(attempts){
+  if(!_mapSvg||!_mapZoom||!_mapG)return;
+  let n=0;
+  const max=attempts||12;
+  const tryFit=function(){
+    n++;
+    const main=_getMain();
+    const W=main&&main.clientWidth,H=main&&main.clientHeight;
+    let b=null;
+    try{b=_mapG.node().getBBox()}catch(e){}
+    if(W&&H&&b&&b.width&&b.height){
+      requestAnimationFrame(()=>d3.select('#zoomFit').dispatch('click'));
+      return;
+    }
+    if(n<max)requestAnimationFrame(()=>setTimeout(tryFit,n<3?0:50));
+  };
+  requestAnimationFrame(()=>requestAnimationFrame(tryFit));
 }
 
 function positionTooltip(event,tt){
@@ -5428,7 +5484,7 @@ function renderLandingZoneMap(ctx){
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   _autoExpandExportBar();
-  setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  _fitMapWhenReady();
 }
 
 // EXECUTIVE OVERVIEW
@@ -5748,7 +5804,7 @@ function renderExecutiveOverview(ctx){
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   _autoExpandExportBar();
-  setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  _fitMapWhenReady();
 }
 
 var _renderMapTimer=null;
@@ -6674,6 +6730,7 @@ async function _renderMapInner(){
     olL.selectAll('*').remove();routeG.style('opacity',null);structG.style('opacity',null);allLb.forEach(l=>l.g.classed('visible',false));g.classed('hl-active',false);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
     ndL.selectAll('.internet-node').style('opacity',null);
+    lnL.selectAll('.peering-line,.peering-label-g').classed('peering-hl',false);
     ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
   }
   function forceClr(){
@@ -6681,6 +6738,7 @@ async function _renderMapInner(){
     olL.selectAll('*').remove();routeG.style('opacity',null);structG.style('opacity',null);allLb.forEach(l=>l.g.classed('visible',false));g.classed('hl-active',false);
     ndL.selectAll('.gw-node').classed('gw-hl',false);
     ndL.selectAll('.internet-node').style('opacity',null);
+    lnL.selectAll('.peering-line,.peering-label-g').classed('peering-hl',false);
     ndL.selectAll('.vpc-group').each(function(){d3.select(this).select('rect').style('stroke-width',null).style('filter',null);});
   }
   // Expose gateway highlight globally for panel link navigation
@@ -6693,7 +6751,7 @@ async function _renderMapInner(){
   if(window._hlUnlockHandler)document.removeEventListener('hl-unlock',window._hlUnlockHandler);
   window._hlUnlockHandler=forceClr;document.addEventListener('hl-unlock',forceClr);
   svg.on('click',function(event){
-    if(!event.target.closest('.gw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.res-node')&&!event.target.closest('.route-hitarea')&&!event.target.closest('.internet-node')){
+    if(!event.target.closest('.gw-node')&&!event.target.closest('.subnet-node')&&!event.target.closest('.res-node')&&!event.target.closest('.route-hitarea')&&!event.target.closest('.peering-hitarea')&&!event.target.closest('.internet-node')){
       forceClr();
       if(_spotlightActive) _closeSpotlight();
     }
@@ -6754,6 +6812,42 @@ async function _renderMapInner(){
   const globalMaxBottom = Math.max(...vL.map(v => v.y + v.h));
   const laneSpacing = 28;
   const stubLen = 15;
+  function _peeringVpcText(info){
+    if(!info||!info.VpcId)return 'N/A';
+    const v=vpcs.find(vpc=>vpc.VpcId===info.VpcId);
+    const name=v?gn(v,info.VpcId):info.VpcId;
+    return name+' ('+(info.CidrBlock||'CIDR N/A')+')';
+  }
+  function _peeringTooltipHtml(pcx){
+    const id=pcx.VpcPeeringConnectionId||'PCX';
+    const req=pcx.RequesterVpcInfo||{},acc=pcx.AccepterVpcInfo||{};
+    let h='<div class="tt-title">'+esc(gn(pcx,id))+'</div><div class="tt-sub">VPC Peering | '+esc(id)+'</div>';
+    h+='<div class="tt-sec"><div class="tt-sh">Connection</div>';
+    h+='<div class="tt-r">Requester: <span class="i">'+esc(_peeringVpcText(req))+'</span></div>';
+    h+='<div class="tt-r">Accepter: <span class="i">'+esc(_peeringVpcText(acc))+'</span></div>';
+    h+='<div class="tt-r">Status: <span class="a">'+esc((pcx.Status&&pcx.Status.Code)||'active')+'</span></div></div>';
+    return h;
+  }
+  function _setPeeringHover(refs,pcx,on){
+    refs.forEach(r=>{r.line.classed('peering-hl',on);if(r.label)r.label.classed('peering-hl',on)});
+    [pcx.RequesterVpcInfo&&pcx.RequesterVpcInfo.VpcId,pcx.AccepterVpcInfo&&pcx.AccepterVpcInfo.VpcId].forEach(vid=>{
+      if(!vid)return;
+      ndL.selectAll('.vpc-group[data-vpc-id="'+vid+'"]').select('rect').style('stroke-width',on?3:null).style('filter',on?'drop-shadow(0 0 8px rgba(251,146,60,.75))':null);
+    });
+  }
+  function _addPeeringHitarea(d,refs,pcx){
+    const id=pcx.VpcPeeringConnectionId||'PCX';
+    lnL.append('path').attr('class','peering-hitarea').attr('d',d)
+      .on('mouseenter',function(event){if(_hlLocked)return;const ttEl=document.getElementById('tooltip');_setPeeringHover(refs,pcx,true);ttEl.innerHTML=_peeringTooltipHtml(pcx);ttEl.style.display='block';positionTooltip(event,ttEl)})
+      .on('mousemove',function(event){positionTooltip(event,document.getElementById('tooltip'))})
+      .on('mouseleave',function(){if(_hlLocked&&_hlKey===id&&_hlType==='pcx')return;_setPeeringHover(refs,pcx,false);document.getElementById('tooltip').style.display='none'})
+      .on('click',function(event){
+        event.stopPropagation();
+        if(_hlLocked&&_hlKey===id&&_hlType==='pcx'){document.getElementById('tooltip').style.display='none';forceClr();return}
+        forceClr();_setPeeringHover(refs,pcx,true);_hlLocked=true;_hlKey=id;_hlType='pcx';showLockInd(true);_lastRlType=null;_navStack=[];
+        openGatewayPanel(id,'PCX',{gwNames,igws,nats,vpns,vpces,peerings,rts,subnets,subRT,pubSubs,vpcs,tgwAttachments});
+      });
+  }
   const peerStagger = 20;
 
   // Per-VPC exit counters for above (inner) and below (outer) stubs
@@ -6772,8 +6866,8 @@ async function _renderMapInner(){
     const fwdY = globalMinY - 40 - i * laneSpacing;
     const fwdD = `M${fwdLeftX},${leftVpc.y} L${fwdLeftX},${fwdY} L${fwdRightX},${fwdY} L${fwdRightX},${rightVpc.y}`;
 
-    peeringG.append('path')
-      .attr('class', 'peering-line animated')
+    const fwdLine=peeringG.append('path')
+      .attr('class', 'peering-line')
       .attr('d', fwdD)
       .attr('stroke', 'var(--pcx-color)');
 
@@ -6798,8 +6892,8 @@ async function _renderMapInner(){
     const invY = globalMaxBottom + 40 + i * laneSpacing;
     const invD = `M${invLeftX},${leftVpc.y + leftVpc.h} L${invLeftX},${invY} L${invRightX},${invY} L${invRightX},${rightVpc.y + rightVpc.h}`;
 
-    peeringG.append('path')
-      .attr('class', 'peering-line animated')
+    const invLine=peeringG.append('path')
+      .attr('class', 'peering-line')
       .attr('d', invD)
       .attr('stroke', 'var(--pcx-color)');
 
@@ -6814,6 +6908,9 @@ async function _renderMapInner(){
       .attr('x', invMidX).attr('y', invY + 4)
       .attr('text-anchor', 'middle').attr('font-family', 'Segoe UI,system-ui,sans-serif')
       .style('font-size', 'calc(9px * var(--txt-scale,1))').attr('fill', '#fb923c').text(pn);
+    const refs=[{line:fwdLine,label:fwdLg},{line:invLine,label:invLg}];
+    _addPeeringHitarea(fwdD,refs,pcx);
+    _addPeeringHitarea(invD,refs,pcx);
   });
 
   // VPN marker
@@ -7848,7 +7945,7 @@ async function _renderMapInner(){
   document.getElementById('exportBar').style.display='flex';
   document.getElementById('bottomToolbar').style.display='flex';
   _autoExpandExportBar();
-  setTimeout(()=>d3.select('#zoomFit').dispatch('click'),100);
+  _fitMapWhenReady();
   // Pre-build inventory data asynchronously so it's ready when the tab is opened
   _buildInventoryData();
   }catch(e){console.error('renderMap error:',e);_showToast('Render error: '+e.message);document.getElementById('loadingOverlay').style.display='none'}
@@ -7921,6 +8018,7 @@ function _loadProjectData(project){
   });
 }
 function loadProject(file){
+  if(_fileTooLarge(file,_MAX_PROJECT_FILE_SIZE,'Project file'))return;
   const reader=new FileReader();
   reader.onload=function(e){
     try{_loadProjectData(JSON.parse(e.target.result))}catch(ex){_showToast('Failed to load: '+ex.message)}
@@ -7930,7 +8028,7 @@ function _showToast(msg,type){showToast(msg,type)}
 document.getElementById('saveProjectBtn').addEventListener('click',saveProject);
 document.getElementById('loadProjectBtn').addEventListener('click',()=>{
   if(_isElectron){
-    window.electronAPI.openFile().then(c=>{if(c){try{_loadProjectData(JSON.parse(c))}catch(ex){_showToast('Failed to load: '+ex.message)}}}).catch(e=>console.error('Open failed:',e));
+    window.electronAPI.openFile().then(c=>{if(c){try{_loadProjectData(JSON.parse(c))}catch(ex){_showToast('Failed to load: '+ex.message)}}}).catch(e=>{_showToast('Open failed: '+e.message);console.error('Open failed:',e)});
   } else {document.getElementById('loadProjectInput').click()}
 });
 document.getElementById('loadProjectInput').addEventListener('change',function(){if(this.files[0])loadProject(this.files[0]);this.value=''});
@@ -7941,6 +8039,7 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){
 // === Report Import ===
 function importReport(file){
   if(!file.name.match(/\.html?$/i)){_showToast('Please select an HTML report file (.html)');return}
+  if(_fileTooLarge(file,_MAX_REPORT_FILE_SIZE,'Report file'))return;
   _showToast('Loading report: '+file.name+'...');
   var reader=new FileReader();
   reader.onload=function(e){
@@ -8541,9 +8640,9 @@ if(_isElectron){
 	      let importBytes=0,importFiles=0;
 	      for(const file of inp.files){
 	        if(!file.name.endsWith('.json'))continue;
-	        if(file.size>100*1024*1024)continue;
-	        if(importFiles>=2000)continue;
-	        if(importBytes+file.size>250*1024*1024)continue;
+		        if(file.size>_MAX_JSON_FILE_SIZE)continue;
+		        if(importFiles>=_MAX_IMPORT_FILES)continue;
+		        if(importBytes+file.size>_MAX_IMPORT_BYTES)continue;
 	        importBytes+=file.size;importFiles++;
 	        const parts=(file.webkitRelativePath||file.name).split('/');
 	        pending.push(file.text().then(txt=>{
@@ -8593,9 +8692,9 @@ if(_isElectron){
 	      const regions={},flatFiles={},profiles={};
 	      let importBytes=0,importFiles=0;
 	      async function readBrowserJsonFile(file){
-	        if(file.size>100*1024*1024)return null;
-	        if(importFiles>=2000)return null;
-	        if(importBytes+file.size>250*1024*1024)return null;
+		        if(file.size>_MAX_JSON_FILE_SIZE)return null;
+		        if(importFiles>=_MAX_IMPORT_FILES)return null;
+		        if(importBytes+file.size>_MAX_IMPORT_BYTES)return null;
 	        importBytes+=file.size;importFiles++;
 	        return await file.text();
 	      }
@@ -9941,6 +10040,7 @@ function removeAccountContext(index){
 }
 
 function _yld(){return new Promise(function(r){setTimeout(r,0)})}
+function _idle(fn){(typeof requestIdleCallback==='function'?requestIdleCallback:function(cb){setTimeout(()=>cb(),16)})(fn)}
 
 async function mergeContexts(contexts){
   const visible=contexts.filter(c=>c.visible);
@@ -10109,7 +10209,7 @@ async function _remergeAndRender(){
       _iamData=parseIAMData(mergedIAM);
       // Defer textarea fill — compliance engine uses _iamData directly
       const _iamTA=document.getElementById('in_iam');
-      if(_iamTA)requestIdleCallback(()=>{_iamTA.value=JSON.stringify(mergedIAM);_iamTA.className='ji valid'});
+      if(_iamTA)_idle(()=>{_iamTA.value=JSON.stringify(mergedIAM);_iamTA.className='ji valid'});
     }
     // PERF: Set prebuilt context so _renderMapInner skips textarea parsing
     _prebuiltCtx=_mergedCtx;
@@ -15337,6 +15437,15 @@ document.getElementById('diffFileInput').addEventListener('change',async functio
   var files=[].slice.call(this.files);
   if(!files.length) return;
   this.value='';
+  if(files.length>_MAX_IMPORT_FILES){
+    _showToast('Too many files selected (max '+_MAX_IMPORT_FILES+')','warn');
+    return;
+  }
+  var importBytes=files.reduce(function(sum,f){return sum+f.size},0);
+  if(files.some(function(f){return f.size>_MAX_JSON_FILE_SIZE})||importBytes>_MAX_IMPORT_BYTES){
+    _showToast('Diff import is too large (max '+_formatBytes(_MAX_IMPORT_BYTES)+')','warn');
+    return;
+  }
   // Single .awsmap file — use directly
   if(files.length===1&&/\.awsmap$/i.test(files[0].name)){
     try{
@@ -16891,11 +17000,12 @@ function _openRulesEditor(){
     downloadBlob(new Blob([json],{type:'application/json'}),'classification-rules.json');
     _showToast('Rules exported');
   });
-  document.getElementById('govRulesImport').addEventListener('click',function(){
-    var inp=document.createElement('input');inp.type='file';inp.accept='.json';
-    inp.addEventListener('change',function(){
-      if(!this.files[0]) return;
-      var reader=new FileReader();
+	  document.getElementById('govRulesImport').addEventListener('click',function(){
+	    var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+	    inp.addEventListener('change',function(){
+	      if(!this.files[0]) return;
+	      if(_fileTooLarge(this.files[0],_MAX_RULES_FILE_SIZE,'Rules file')) return;
+	      var reader=new FileReader();
       reader.onload=function(e){
         try{
           var imported=JSON.parse(e.target.result);
@@ -18337,13 +18447,21 @@ document.getElementById('dlPowershell').addEventListener('click',function(){
   _showToast('PowerShell script downloaded — run: ./export-aws-data.ps1');
 });
 document.getElementById('fileInput').addEventListener('change',async function(){
-  const files=[...this.files];
+  let files=[...this.files];
   if(!files.length)return;
   const status=document.getElementById('uploadStatus');
   status.style.display='block';
+  let skipped=[];
+  if(files.length>_MAX_IMPORT_FILES){
+    skipped.push('only first '+_MAX_IMPORT_FILES+' files read');
+    files=files.slice(0,_MAX_IMPORT_FILES);
+  }
   status.textContent=`Reading ${files.length} file(s)...`;
-  let matched=0,skipped=[];
+  let matched=0,importBytes=0;
   for(const f of files){
+    if(f.size>_MAX_JSON_FILE_SIZE){skipped.push(f.name+' (too large)');continue}
+    if(importBytes+f.size>_MAX_IMPORT_BYTES){skipped.push(f.name+' (import limit exceeded)');continue}
+    importBytes+=f.size;
     let text;
     try{text=await f.text();JSON.parse(text)}catch(e){skipped.push(f.name+' (invalid JSON)');continue}
     const inputId=matchFile(f.name, text);
@@ -18671,7 +18789,7 @@ function generateIacPreview(){
   let html='';
 
   if(result.warnings&&result.warnings.length){
-    html+='<div class="iac-warn">'+result.warnings.map(w=>'&#9888; '+w).join('<br>')+'</div>';
+    html+='<div class="iac-warn">'+result.warnings.map(w=>'&#9888; '+esc(w)).join('<br>')+'</div>';
   }
 
   if(result.stats){

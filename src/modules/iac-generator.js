@@ -29,13 +29,26 @@ export function _tfName(resource, prefix) {
   return sanitizeName(raw);
 }
 
+export function _hclString(s) {
+  return JSON.stringify(String(s == null ? '' : s));
+}
+
+export function _hclMapKey(s) {
+  const key = String(s == null ? '' : s);
+  return key.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/) ? key : _hclString(key);
+}
+
+export function _hclComment(s) {
+  return String(s == null ? '' : s).replace(/[\r\n]+/g, ' ').trim();
+}
+
 /**
  * Build a Terraform reference string for a given resource ID.
  * Returns the mapped TF resource ref if known, otherwise a quoted literal.
  */
 export function _tfRef(id, attr) {
   if (_tfIdMap[id]) return _tfIdMap[id] + '.' + attr;
-  return '"' + id + '"';
+  return _hclString(id);
 }
 
 /**
@@ -76,8 +89,7 @@ export function _writeTags(lines, resource) {
   lines.push('');
   lines.push('  tags = {');
   tags.forEach(t => {
-    const k = t.Key.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/) ? t.Key : ('"' + t.Key + '"');
-    lines.push('    ' + k + ' = "' + ((t.Value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')) + '"');
+    lines.push('    ' + _hclMapKey(t.Key) + ' = ' + _hclString(t.Value || ''));
   });
   lines.push('  }');
 }
@@ -87,7 +99,7 @@ export function _writeSGRule(lines, rule) {
   const fromPort = rule.FromPort != null ? rule.FromPort : 0;
   const toPort = rule.ToPort != null ? rule.ToPort : 0;
   const proto = rule.IpProtocol || '-1';
-  lines.push('    protocol    = "' + proto + '"');
+  lines.push('    protocol    = ' + _hclString(proto));
   lines.push('    from_port   = ' + fromPort);
   lines.push('    to_port     = ' + toPort);
   const cidrs = (rule.IpRanges || []).map(r => r.CidrIp).filter(Boolean);
@@ -97,7 +109,7 @@ export function _writeSGRule(lines, rule) {
   if (v6cidrs.length) lines.push('    ipv6_cidr_blocks = ' + JSON.stringify(v6cidrs));
   if (sgRefs.length) lines.push('    security_groups = [' + sgRefs.map(s => _tfRef(s, 'id')).join(', ') + ']');
   const desc = (rule.IpRanges || []).find(r => r.Description);
-  if (desc) lines.push('    description = "' + (desc.Description || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
+  if (desc) lines.push('    description = ' + _hclString(desc.Description || ''));
 }
 
 // --- HCL SG rule writer (flat/standalone) ---
@@ -105,7 +117,7 @@ export function _writeSGRuleFlat(lines, rule) {
   const fromPort = rule.FromPort != null ? rule.FromPort : 0;
   const toPort = rule.ToPort != null ? rule.ToPort : 0;
   const proto = rule.IpProtocol || '-1';
-  lines.push('  protocol         = "' + proto + '"');
+  lines.push('  protocol         = ' + _hclString(proto));
   lines.push('  from_port        = ' + fromPort);
   lines.push('  to_port          = ' + toPort);
   const cidrs = (rule.IpRanges || []).map(r => r.CidrIp).filter(Boolean);
@@ -216,13 +228,13 @@ export function generateTerraform(ctx, opts) {
 
   vars.forEach(v => {
     lines.push('variable "' + v.name + '" {');
-    lines.push('  description = "' + v.desc + '"');
+    lines.push('  description = ' + _hclString(v.desc));
     lines.push('  type        = ' + v.type);
     if (v.def !== null && v.def !== undefined) {
       if (Array.isArray(v.def)) {
         lines.push('  default     = ' + JSON.stringify(v.def));
       } else {
-        lines.push('  default     = "' + v.def + '"');
+        lines.push('  default     = ' + _hclString(v.def));
       }
     }
     lines.push('}');
@@ -240,12 +252,12 @@ export function generateTerraform(ctx, opts) {
     const resName = 'aws_vpc.' + name;
     _tfIdMap[vpc.VpcId] = resName;
     if (mode === 'import') imports.push({ to: resName, id: vpc.VpcId });
-    lines.push('# VPC: ' + (vpc.Tags && vpc.Tags.find(t => t.Key === 'Name') ? vpc.Tags.find(t => t.Key === 'Name').Value : vpc.VpcId));
+    lines.push('# VPC: ' + _hclComment(vpc.Tags && vpc.Tags.find(t => t.Key === 'Name') ? vpc.Tags.find(t => t.Key === 'Name').Value : vpc.VpcId));
     lines.push('resource "aws_vpc" "' + name + '" {');
-    lines.push('  cidr_block           = "' + vpc.CidrBlock + '"');
+    lines.push('  cidr_block           = ' + _hclString(vpc.CidrBlock));
     lines.push('  enable_dns_support   = ' + (vpc.EnableDnsSupport !== false ? 'true' : 'false'));
     lines.push('  enable_dns_hostnames = ' + (vpc.EnableDnsHostnames === true ? 'true' : 'false'));
-    if (vpc.InstanceTenancy && vpc.InstanceTenancy !== 'default') lines.push('  instance_tenancy     = "' + vpc.InstanceTenancy + '"');
+    if (vpc.InstanceTenancy && vpc.InstanceTenancy !== 'default') lines.push('  instance_tenancy     = ' + _hclString(vpc.InstanceTenancy));
     _writeTags(lines, vpc);
     lines.push('}');
     lines.push('');
@@ -273,8 +285,8 @@ export function generateTerraform(ctx, opts) {
     if (mode === 'import') imports.push({ to: resName, id: sub.SubnetId });
     lines.push('resource "aws_subnet" "' + name + '" {');
     lines.push('  vpc_id            = ' + _tfRef(sub.VpcId, 'id'));
-    lines.push('  cidr_block        = "' + sub.CidrBlock + '"');
-    if (sub.AvailabilityZone) lines.push('  availability_zone = "' + sub.AvailabilityZone + '"');
+    lines.push('  cidr_block        = ' + _hclString(sub.CidrBlock));
+    if (sub.AvailabilityZone) lines.push('  availability_zone = ' + _hclString(sub.AvailabilityZone));
     if (sub.MapPublicIpOnLaunch) lines.push('  map_public_ip_on_launch = true');
     _writeTags(lines, sub);
     lines.push('}');
@@ -294,11 +306,11 @@ export function generateTerraform(ctx, opts) {
       if (route.GatewayId === 'local') return;
       lines.push('');
       lines.push('  route {');
-      if (route.DestinationCidrBlock) lines.push('    cidr_block = "' + route.DestinationCidrBlock + '"');
+      if (route.DestinationCidrBlock) lines.push('    cidr_block = ' + _hclString(route.DestinationCidrBlock));
       if (route.GatewayId && route.GatewayId !== 'local') lines.push('    gateway_id = ' + _tfRef(route.GatewayId, 'id'));
       if (route.NatGatewayId) lines.push('    nat_gateway_id = ' + _tfRef(route.NatGatewayId, 'id'));
       if (route.VpcPeeringConnectionId) lines.push('    vpc_peering_connection_id = ' + _tfRef(route.VpcPeeringConnectionId, 'id'));
-      if (route.TransitGatewayId) lines.push('    transit_gateway_id = "' + route.TransitGatewayId + '"');
+      if (route.TransitGatewayId) lines.push('    transit_gateway_id = ' + _hclString(route.TransitGatewayId));
       if (route.VpcEndpointId) lines.push('    vpc_endpoint_id = ' + _tfRef(route.VpcEndpointId, 'id'));
       lines.push('  }');
     });
@@ -327,8 +339,8 @@ export function generateTerraform(ctx, opts) {
     lines.push('resource "aws_nat_gateway" "' + name + '" {');
     if (nat.SubnetId) lines.push('  subnet_id     = ' + _tfRef(nat.SubnetId, 'id'));
     const eip = (nat.NatGatewayAddresses || [])[0];
-    if (eip && eip.AllocationId) lines.push('  allocation_id = "' + eip.AllocationId + '" # EIP allocation');
-    lines.push('  connectivity_type = "' + (nat.ConnectivityType || 'public') + '"');
+    if (eip && eip.AllocationId) lines.push('  allocation_id = ' + _hclString(eip.AllocationId) + ' # EIP allocation');
+    lines.push('  connectivity_type = ' + _hclString(nat.ConnectivityType || 'public'));
     _writeTags(lines, nat);
     lines.push('}');
     lines.push('');
@@ -343,8 +355,8 @@ export function generateTerraform(ctx, opts) {
     const isCyclic = cyclicSgIds.has(sg.GroupId);
     if (isCyclic) lines.push('# Circular SG reference detected - rules split into separate resources');
     lines.push('resource "aws_security_group" "' + name + '" {');
-    lines.push('  name        = "' + (sg.GroupName || name) + '"');
-    lines.push('  description = "' + (sg.Description || 'Managed by Terraform') + '"');
+    lines.push('  name        = ' + _hclString(sg.GroupName || name));
+    lines.push('  description = ' + _hclString(sg.Description || 'Managed by Terraform'));
     if (sg.VpcId) lines.push('  vpc_id      = ' + _tfRef(sg.VpcId, 'id'));
     if (!isCyclic) {
       (sg.IpPermissions || []).forEach(rule => {
@@ -400,9 +412,9 @@ export function generateTerraform(ctx, opts) {
       lines.push('');
       lines.push('  ' + dir + ' {');
       lines.push('    rule_no    = ' + entry.RuleNumber);
-      lines.push('    protocol   = "' + entry.Protocol + '"');
-      lines.push('    action     = "' + (entry.RuleAction || 'allow') + '"');
-      if (entry.CidrBlock) lines.push('    cidr_block = "' + entry.CidrBlock + '"');
+      lines.push('    protocol   = ' + _hclString(entry.Protocol));
+      lines.push('    action     = ' + _hclString(entry.RuleAction || 'allow'));
+      if (entry.CidrBlock) lines.push('    cidr_block = ' + _hclString(entry.CidrBlock));
       if (entry.PortRange) {
         lines.push('    from_port  = ' + (entry.PortRange.From || 0));
         lines.push('    to_port    = ' + (entry.PortRange.To || 0));
@@ -422,8 +434,8 @@ export function generateTerraform(ctx, opts) {
     if (mode === 'import') imports.push({ to: resName, id: vpce.VpcEndpointId });
     lines.push('resource "aws_vpc_endpoint" "' + name + '" {');
     if (vpce.VpcId) lines.push('  vpc_id            = ' + _tfRef(vpce.VpcId, 'id'));
-    if (vpce.ServiceName) lines.push('  service_name      = "' + vpce.ServiceName + '"');
-    if (vpce.VpcEndpointType) lines.push('  vpc_endpoint_type = "' + vpce.VpcEndpointType + '"');
+    if (vpce.ServiceName) lines.push('  service_name      = ' + _hclString(vpce.ServiceName));
+    if (vpce.VpcEndpointType) lines.push('  vpc_endpoint_type = ' + _hclString(vpce.VpcEndpointType));
     if (vpce.VpcEndpointType === 'Interface' && vpce.SubnetIds && vpce.SubnetIds.length) {
       lines.push('  subnet_ids        = [' + vpce.SubnetIds.map(s => _tfRef(s, 'id')).join(', ') + ']');
     }
@@ -442,17 +454,17 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[inst.InstanceId] = resName;
     if (mode === 'import') imports.push({ to: resName, id: inst.InstanceId });
     lines.push('resource "aws_instance" "' + name + '" {');
-    if (inst.ImageId) lines.push('  ami           = "' + inst.ImageId + '" # WARNING: AMI is region-specific');
-    if (inst.InstanceType) lines.push('  instance_type = "' + inst.InstanceType + '"');
+    if (inst.ImageId) lines.push('  ami           = ' + _hclString(inst.ImageId) + ' # WARNING: AMI is region-specific');
+    if (inst.InstanceType) lines.push('  instance_type = ' + _hclString(inst.InstanceType));
     if (inst.SubnetId) lines.push('  subnet_id     = ' + _tfRef(inst.SubnetId, 'id'));
-    if (inst.KeyName) lines.push('  key_name      = "' + inst.KeyName + '" # Must exist in target account');
+    if (inst.KeyName) lines.push('  key_name      = ' + _hclString(inst.KeyName) + ' # Must exist in target account');
     const sgIds = (inst.SecurityGroups || inst.NetworkInterfaces && inst.NetworkInterfaces[0] && inst.NetworkInterfaces[0].Groups || []).map(g => g.GroupId).filter(Boolean);
     if (sgIds.length) lines.push('  vpc_security_group_ids = [' + sgIds.map(s => _tfRef(s, 'id')).join(', ') + ']');
     if (inst.IamInstanceProfile && inst.IamInstanceProfile.Arn) {
-      lines.push('  iam_instance_profile = "' + inst.IamInstanceProfile.Arn.split('/').pop() + '" # IAM profile must exist');
+      lines.push('  iam_instance_profile = ' + _hclString(inst.IamInstanceProfile.Arn.split('/').pop()) + ' # IAM profile must exist');
     }
     if (inst.Placement && inst.Placement.Tenancy && inst.Placement.Tenancy !== 'default') {
-      lines.push('  tenancy = "' + inst.Placement.Tenancy + '"');
+      lines.push('  tenancy = ' + _hclString(inst.Placement.Tenancy));
     }
     _writeTags(lines, inst);
     lines.push('}');
@@ -466,9 +478,9 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[vol.VolumeId] = resName;
     if (mode === 'import') imports.push({ to: resName, id: vol.VolumeId });
     lines.push('resource "aws_ebs_volume" "' + name + '" {');
-    if (vol.AvailabilityZone) lines.push('  availability_zone = "' + vol.AvailabilityZone + '"');
+    if (vol.AvailabilityZone) lines.push('  availability_zone = ' + _hclString(vol.AvailabilityZone));
     if (vol.Size) lines.push('  size              = ' + vol.Size);
-    if (vol.VolumeType) lines.push('  type              = "' + vol.VolumeType + '"');
+    if (vol.VolumeType) lines.push('  type              = ' + _hclString(vol.VolumeType));
     if (vol.Iops && (vol.VolumeType === 'io1' || vol.VolumeType === 'io2' || vol.VolumeType === 'gp3')) lines.push('  iops              = ' + vol.Iops);
     if (vol.Encrypted) lines.push('  encrypted         = true');
     _writeTags(lines, vol);
@@ -485,8 +497,8 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[alb.LoadBalancerArn] = resName;
     if (mode === 'import') imports.push({ to: resName, id: alb.LoadBalancerArn });
     lines.push('resource "' + resType + '" "' + name + '" {');
-    if (alb.LoadBalancerName) lines.push('  name               = "' + alb.LoadBalancerName + '"');
-    lines.push('  load_balancer_type = "' + type + '"');
+    if (alb.LoadBalancerName) lines.push('  name               = ' + _hclString(alb.LoadBalancerName));
+    lines.push('  load_balancer_type = ' + _hclString(type));
     lines.push('  internal           = ' + (alb.Scheme === 'internal' ? 'true' : 'false'));
     const albSubs = (alb.AvailabilityZones || []).map(az => az.SubnetId).filter(Boolean);
     if (albSubs.length) lines.push('  subnets            = [' + albSubs.map(s => _tfRef(s, 'id')).join(', ') + ']');
@@ -504,16 +516,16 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[rds.DBInstanceIdentifier] = resName;
     if (mode === 'import') imports.push({ to: resName, id: rds.DBInstanceIdentifier });
     lines.push('resource "aws_db_instance" "' + name + '" {');
-    if (rds.DBInstanceIdentifier) lines.push('  identifier     = "' + rds.DBInstanceIdentifier + '"');
-    if (rds.Engine) lines.push('  engine         = "' + rds.Engine + '"');
-    if (rds.EngineVersion) lines.push('  engine_version = "' + rds.EngineVersion + '"');
-    if (rds.DBInstanceClass) lines.push('  instance_class = "' + rds.DBInstanceClass + '"');
+    if (rds.DBInstanceIdentifier) lines.push('  identifier     = ' + _hclString(rds.DBInstanceIdentifier));
+    if (rds.Engine) lines.push('  engine         = ' + _hclString(rds.Engine));
+    if (rds.EngineVersion) lines.push('  engine_version = ' + _hclString(rds.EngineVersion));
+    if (rds.DBInstanceClass) lines.push('  instance_class = ' + _hclString(rds.DBInstanceClass));
     if (rds.AllocatedStorage) lines.push('  allocated_storage = ' + rds.AllocatedStorage);
-    if (rds.StorageType) lines.push('  storage_type   = "' + rds.StorageType + '"');
+    if (rds.StorageType) lines.push('  storage_type   = ' + _hclString(rds.StorageType));
     if (rds.MultiAZ) lines.push('  multi_az       = true');
     if (rds.StorageEncrypted) lines.push('  storage_encrypted = true');
     if (rds.DBSubnetGroup && rds.DBSubnetGroup.DBSubnetGroupName) {
-      lines.push('  db_subnet_group_name = "' + rds.DBSubnetGroup.DBSubnetGroupName + '"');
+      lines.push('  db_subnet_group_name = ' + _hclString(rds.DBSubnetGroup.DBSubnetGroupName));
     }
     const rdsSgs = (rds.VpcSecurityGroups || []).map(s => s.VpcSecurityGroupId).filter(Boolean);
     if (rdsSgs.length) lines.push('  vpc_security_group_ids = [' + rdsSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
@@ -531,12 +543,12 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[ec.CacheClusterId] = resName;
     if (mode === 'import') imports.push({ to: resName, id: ec.CacheClusterId });
     lines.push('resource "aws_elasticache_cluster" "' + name + '" {');
-    if (ec.CacheClusterId) lines.push('  cluster_id      = "' + ec.CacheClusterId + '"');
-    if (ec.Engine) lines.push('  engine          = "' + ec.Engine + '"');
-    if (ec.CacheNodeType) lines.push('  node_type       = "' + ec.CacheNodeType + '"');
+    if (ec.CacheClusterId) lines.push('  cluster_id      = ' + _hclString(ec.CacheClusterId));
+    if (ec.Engine) lines.push('  engine          = ' + _hclString(ec.Engine));
+    if (ec.CacheNodeType) lines.push('  node_type       = ' + _hclString(ec.CacheNodeType));
     if (ec.NumCacheNodes) lines.push('  num_cache_nodes = ' + ec.NumCacheNodes);
-    if (ec.EngineVersion) lines.push('  engine_version  = "' + ec.EngineVersion + '"');
-    if (ec.CacheSubnetGroupName) lines.push('  subnet_group_name = "' + ec.CacheSubnetGroupName + '"');
+    if (ec.EngineVersion) lines.push('  engine_version  = ' + _hclString(ec.EngineVersion));
+    if (ec.CacheSubnetGroupName) lines.push('  subnet_group_name = ' + _hclString(ec.CacheSubnetGroupName));
     const ecSgs = (ec.SecurityGroups || []).map(s => s.SecurityGroupId).filter(Boolean);
     if (ecSgs.length) lines.push('  security_group_ids = [' + ecSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
     lines.push('}');
@@ -550,14 +562,14 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[rs.ClusterIdentifier] = resName;
     if (mode === 'import') imports.push({ to: resName, id: rs.ClusterIdentifier });
     lines.push('resource "aws_redshift_cluster" "' + name + '" {');
-    if (rs.ClusterIdentifier) lines.push('  cluster_identifier  = "' + rs.ClusterIdentifier + '"');
-    if (rs.NodeType) lines.push('  node_type           = "' + rs.NodeType + '"');
+    if (rs.ClusterIdentifier) lines.push('  cluster_identifier  = ' + _hclString(rs.ClusterIdentifier));
+    if (rs.NodeType) lines.push('  node_type           = ' + _hclString(rs.NodeType));
     if (rs.NumberOfNodes > 1) lines.push('  number_of_nodes     = ' + rs.NumberOfNodes);
-    lines.push('  cluster_type        = "' + (rs.NumberOfNodes > 1 ? 'multi-node' : 'single-node') + '"');
-    if (rs.DBName) lines.push('  database_name       = "' + rs.DBName + '"');
+    lines.push('  cluster_type        = ' + _hclString(rs.NumberOfNodes > 1 ? 'multi-node' : 'single-node'));
+    if (rs.DBName) lines.push('  database_name       = ' + _hclString(rs.DBName));
     lines.push('  master_username     = "admin" # PLACEHOLDER');
     lines.push('  master_password     = "CHANGE_ME" # PLACEHOLDER');
-    if (rs.ClusterSubnetGroupName) lines.push('  cluster_subnet_group_name = "' + rs.ClusterSubnetGroupName + '"');
+    if (rs.ClusterSubnetGroupName) lines.push('  cluster_subnet_group_name = ' + _hclString(rs.ClusterSubnetGroupName));
     const rsSgs = (rs.VpcSecurityGroups || []).map(s => s.VpcSecurityGroupId).filter(Boolean);
     if (rsSgs.length) lines.push('  vpc_security_group_ids = [' + rsSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
     lines.push('  skip_final_snapshot = true');
@@ -572,9 +584,9 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[fn.FunctionName] = resName;
     if (mode === 'import') imports.push({ to: resName, id: fn.FunctionName });
     lines.push('resource "aws_lambda_function" "' + name + '" {');
-    if (fn.FunctionName) lines.push('  function_name = "' + fn.FunctionName + '"');
-    if (fn.Runtime) lines.push('  runtime       = "' + fn.Runtime + '"');
-    if (fn.Handler) lines.push('  handler       = "' + fn.Handler + '"');
+    if (fn.FunctionName) lines.push('  function_name = ' + _hclString(fn.FunctionName));
+    if (fn.Runtime) lines.push('  runtime       = ' + _hclString(fn.Runtime));
+    if (fn.Handler) lines.push('  handler       = ' + _hclString(fn.Handler));
     if (fn.MemorySize) lines.push('  memory_size   = ' + fn.MemorySize);
     if (fn.Timeout) lines.push('  timeout       = ' + fn.Timeout);
     lines.push('  role          = "arn:aws:iam::role/PLACEHOLDER" # Set actual IAM role ARN');
@@ -594,15 +606,15 @@ export function generateTerraform(ctx, opts) {
   // --- ECS Services ---
   ecsServices.forEach(svc => {
     const name = sanitizeName(svc.serviceName || 'ecs');
-    lines.push('# ECS Service: ' + svc.serviceName);
+    lines.push('# ECS Service: ' + _hclComment(svc.serviceName));
     lines.push('# NOTE: ECS services require cluster and task definition resources');
     lines.push('# which are not captured in network-level data. Skeleton below.');
     lines.push('resource "aws_ecs_service" "' + name + '" {');
-    if (svc.serviceName) lines.push('  name            = "' + svc.serviceName + '"');
+    if (svc.serviceName) lines.push('  name            = ' + _hclString(svc.serviceName));
     lines.push('  cluster         = "PLACEHOLDER" # Set actual cluster ARN');
     lines.push('  task_definition = "PLACEHOLDER" # Set actual task definition');
     if (svc.desiredCount) lines.push('  desired_count   = ' + svc.desiredCount);
-    if (svc.launchType) lines.push('  launch_type     = "' + svc.launchType + '"');
+    if (svc.launchType) lines.push('  launch_type     = ' + _hclString(svc.launchType));
     const nc = (svc.networkConfiguration || {}).awsvpcConfiguration;
     if (nc) {
       lines.push('');
@@ -623,7 +635,7 @@ export function generateTerraform(ctx, opts) {
     _tfIdMap[bk.Name] = resName;
     if (mode === 'import') imports.push({ to: resName, id: bk.Name });
     lines.push('resource "aws_s3_bucket" "' + name + '" {');
-    if (bk.Name) lines.push('  bucket = "' + bk.Name + '"');
+    if (bk.Name) lines.push('  bucket = ' + _hclString(bk.Name));
     lines.push('}');
     lines.push('');
   });
@@ -638,8 +650,8 @@ export function generateTerraform(ctx, opts) {
     const req = peer.RequesterVpcInfo, acc = peer.AccepterVpcInfo;
     if (req && req.VpcId) lines.push('  vpc_id      = ' + _tfRef(req.VpcId, 'id'));
     if (acc && acc.VpcId) lines.push('  peer_vpc_id = ' + _tfRef(acc.VpcId, 'id'));
-    if (acc && acc.OwnerId) lines.push('  peer_owner_id = "' + acc.OwnerId + '"');
-    if (acc && acc.Region) lines.push('  peer_region   = "' + acc.Region + '"');
+    if (acc && acc.OwnerId) lines.push('  peer_owner_id = ' + _hclString(acc.OwnerId));
+    if (acc && acc.Region) lines.push('  peer_region   = ' + _hclString(acc.Region));
     lines.push('  auto_accept = false # Set to true for same-account peering');
     lines.push('}');
     lines.push('');
@@ -648,12 +660,12 @@ export function generateTerraform(ctx, opts) {
   // --- CloudFront ---
   cfDistributions.forEach(cf => {
     const name = sanitizeName(cf.Id || 'cf');
-    lines.push('# CloudFront Distribution: ' + (cf.DomainName || cf.Id));
+    lines.push('# CloudFront Distribution: ' + _hclComment(cf.DomainName || cf.Id));
     lines.push('# NOTE: CloudFront has many configuration options not captured here.');
     lines.push('# This is a skeleton. Review and customize before applying.');
     lines.push('resource "aws_cloudfront_distribution" "' + name + '" {');
     lines.push('  enabled = ' + (cf.Enabled !== false ? 'true' : 'false'));
-    if (cf.Comment) lines.push('  comment = "' + cf.Comment.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
+    if (cf.Comment) lines.push('  comment = ' + _hclString(cf.Comment));
     lines.push('');
     lines.push('  origin {');
     lines.push('    domain_name = "PLACEHOLDER.s3.amazonaws.com"');
@@ -690,7 +702,7 @@ export function generateTerraform(ctx, opts) {
     imports.forEach(imp => {
       lines.push('import {');
       lines.push('  to = ' + imp.to);
-      lines.push('  id = "' + imp.id + '"');
+      lines.push('  id = ' + _hclString(imp.id));
       lines.push('}');
       lines.push('');
     });

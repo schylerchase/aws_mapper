@@ -10,6 +10,11 @@ describe('ipToNum', () => {
   it('converts 0.0.0.0', () => assert.equal(ipToNum('0.0.0.0'), 0));
   it('returns null for null', () => assert.equal(ipToNum(null), null));
   it('returns null for invalid', () => assert.equal(ipToNum('abc'), null));
+  it('returns null for malformed octets', () => {
+    assert.equal(ipToNum('999.1.2.3'), null);
+    assert.equal(ipToNum('1abc.2.3.4'), null);
+    assert.equal(ipToNum('1.2.3.-1'), null);
+  });
 });
 
 describe('ipFromCidr', () => {
@@ -22,6 +27,12 @@ describe('cidrContains', () => {
   it('10.0.0.0/24 contains 10.0.0.5', () => assert.equal(cidrContains('10.0.0.0/24', '10.0.0.5'), true));
   it('10.0.0.0/24 does not contain 10.0.1.5', () => assert.equal(cidrContains('10.0.0.0/24', '10.0.1.5'), false));
   it('returns false for null inputs', () => assert.equal(cidrContains(null, '10.0.0.1'), false));
+  it('returns false for malformed CIDR or IP input', () => {
+    assert.equal(cidrContains('999.1.2.0/24', '231.1.2.5'), false);
+    assert.equal(cidrContains('10.0.0.0/33', '10.0.0.5'), false);
+    assert.equal(cidrContains('10.0.0.0/not-a-mask', '10.0.0.5'), false);
+    assert.equal(cidrContains('10.0.0.0/24', '1abc.2.3.4'), false);
+  });
 });
 
 describe('protoMatch', () => {
