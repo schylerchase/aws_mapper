@@ -2,6 +2,9 @@
 // Electron detection
 const _isElectron=!!(typeof window!=='undefined'&&window.electronAPI);
 var _mainEl=null;function _getMain(){if(!_mainEl)_mainEl=document.querySelector('.main');return _mainEl}
+if(typeof window!=='undefined'&&typeof window.structuredClone!=='function'){
+  window.structuredClone=function(value){return value==null?value:JSON.parse(JSON.stringify(value))};
+}
 const _MAX_JSON_FILE_SIZE=100*1024*1024;
 const _MAX_IMPORT_BYTES=250*1024*1024;
 const _MAX_IMPORT_FILES=2000;
@@ -8628,10 +8631,13 @@ if(_isElectron){
 {
   const bfBtn=document.getElementById('importFolderBrowser');
   if(_isElectron)bfBtn.style.display='none';
-  // Fallback: webkitdirectory input for when showDirectoryPicker is unavailable
+  // Fallback: directory upload when available; plain multi-file JSON picker otherwise.
 	  function _folderFallback(){
 	    const inp=document.createElement('input');inp.type='file';
-	    inp.setAttribute('webkitdirectory','');inp.setAttribute('directory','');inp.multiple=true;
+	    inp.accept='.json';inp.multiple=true;
+	    const supportsDirectoryUpload=('webkitdirectory' in inp)||('directory' in inp);
+	    if(supportsDirectoryUpload){inp.setAttribute('webkitdirectory','');inp.setAttribute('directory','')}
+	    else _showToast('Folder picker unavailable here. Select the exported JSON files instead.','warn');
 	    inp.addEventListener('change',()=>{
 	      if(!inp.files||!inp.files.length)return;
 	      const regionRe=/^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
@@ -8646,7 +8652,10 @@ if(_isElectron){
 	        importBytes+=file.size;importFiles++;
 	        const parts=(file.webkitRelativePath||file.name).split('/');
 	        pending.push(file.text().then(txt=>{
-          if(parts.length===2){
+          if(parts.length===1){
+            // Safari/older browsers without directory selection: import selected files flat.
+            flatFiles[file.name]=txt;
+          }else if(parts.length===2){
             // root/file.json — flat
             flatFiles[parts[1]]=txt;
           }else if(parts.length===3){

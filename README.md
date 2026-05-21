@@ -149,6 +149,36 @@ Two export scripts are included for extracting data from your AWS accounts:
 .\export-aws-data.ps1 -Profiles prod,staging,dev -AllRegions
 ```
 
+Create a separate AWS CLI profile first if you do not want the exporter to use
+your currently logged-in/default account:
+
+```powershell
+aws configure --profile my-profile
+```
+
+For AWS SSO accounts:
+
+```powershell
+aws configure sso --profile my-profile
+aws sso login --profile my-profile
+```
+
+Create one profile per account, then run the exporter with `-Profile my-profile`
+or `-Profiles prod,staging,dev`.
+
+If the profile has no default region, use `-AllRegions`, pass a region with
+`-Region us-east-1`, or set one:
+
+```powershell
+aws configure set region us-east-1 --profile my-profile
+```
+
+The profile must also have read-only inventory permissions in the target
+account. If the export shows `UnauthorizedOperation`, `AccessDenied`, or
+`AccessDeniedException`, the profile is logged in but the selected AWS role or
+SSO permission set cannot read the account. Use a role with `ReadOnlyAccess` or
+equivalent `Describe*`, `List*`, and `Get*` permissions.
+
 The `-AllRegions` flag exports all active regions into subfolders. The PowerShell `-Profiles` flag exports multiple AWS profiles into profile subfolders, each with region subfolders when combined with `-AllRegions`. The mapper auto-detects all folder structures on import.
 
 ---

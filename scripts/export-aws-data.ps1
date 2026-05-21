@@ -6,10 +6,19 @@
     Exports all AWS CLI data needed for the web-based mapper tool.
     Outputs individual JSON files into a timestamped directory.
     Supports multi-region sweep and parallel execution.
-.PARAMETER Profile
-    AWS CLI profile name (optional, uses default if omitted)
+.PARAMETER AwsProfile
+    AWS CLI profile name (optional, uses default if omitted). -Profile is a
+    supported alias. To create one:
+      aws configure --profile my-profile
+    Or for AWS SSO:
+      aws configure sso --profile my-profile
+      aws sso login --profile my-profile
+    Then run this script with:
+      ./export-aws-data.ps1 -Profile my-profile -AllRegions
 .PARAMETER Region
-    AWS region (optional, uses CLI default if omitted)
+    AWS region (optional, uses CLI default if omitted). Required for
+    single-region export unless the profile or environment already has a
+    default region. Use -AllRegions to export every enabled region.
 .PARAMETER OutputDir
     Output directory (optional, creates timestamped dir)
 .PARAMETER AllRegions
@@ -26,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Alias("p")][string]$Profile,
+    [Alias("p","Profile")][string]$AwsProfile,
     [Alias("r")][string]$Region,
     [Alias("o")][string]$OutputDir,
     [switch]$AllRegions,
@@ -36,13 +45,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Prevent PowerShell's automatic $PROFILE from being mistaken for user input
-if (-not $PSBoundParameters.ContainsKey('Profile')) {
-    $Profile = $null
-}
-
 # ─── Validation ────────────────────────────────────────────────
-if ($Profile -and $Profile -notmatch '^[a-zA-Z0-9_-]+$') {
+if ($AwsProfile -and $AwsProfile -notmatch '^[a-zA-Z0-9_-]+$') {
     Write-Error "Invalid profile name. Use only letters, numbers, hyphens, underscores."
     exit 1
 }
@@ -62,8 +66,8 @@ if ($Profiles) {
         }
     }
 }
-if ($Profile -and $profileList.Count -eq 0) {
-    $profileList = @($Profile)
+if ($AwsProfile -and $profileList.Count -eq 0) {
+    $profileList = @($AwsProfile)
 }
 
 # Check AWS CLI
@@ -72,13 +76,179 @@ if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+function Resolve-AwsRegion {
+    param(
+        [string]$ProfileName,
+        [string]$RequestedRegion,
+        [switch]$AllowFallback
+    )
+
+    if ($RequestedRegion) { return $RequestedRegion }
+    if ($env:AWS_REGION -and $env:AWS_REGION -match '^[a-zA-Z0-9-]+$') { return $env:AWS_REGION }
+    if ($env:AWS_DEFAULT_REGION -and $env:AWS_DEFAULT_REGION -match '^[a-zA-Z0-9-]+$') { return $env:AWS_DEFAULT_REGION }
+
+    $configArgs = @("configure", "get", "region")
+    if ($ProfileName) { $configArgs += @("--profile", $ProfileName) }
+    try {
+        $configured = (& aws @configArgs 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -eq 0 -and $configured -match '^[a-zA-Z0-9-]+$') {
+            return $configured
+        }
+    } catch {}
+
+    if ($AllowFallback) { return "us-east-1" }
+    return $null
+}
+
+function Get-RegionDiscoveryFlags {
+    param([string]$ProfileName)
+
+    $discoveryRegion = Resolve-AwsRegion -ProfileName $ProfileName -RequestedRegion $Region -AllowFallback
+    $flags = @()
+    if ($ProfileName) { $flags += @("--profile", $ProfileName) }
+    $flags += @("--region", $discoveryRegion)
+    return $flags
+}
+
+function Write-RegionRequiredMessage {
+    param([string]$ProfileName)
+
+    $label = if ($ProfileName) { $ProfileName } else { "default" }
+    Write-Host ""
+    Write-Host "  No AWS region is configured for profile '$label'." -ForegroundColor Red
+    Write-Host "  Use one of these:" -ForegroundColor Yellow
+    if ($ProfileName) {
+        Write-Host "    .\export-aws-data.ps1 -Profile $ProfileName -AllRegions"
+        Write-Host "    .\export-aws-data.ps1 -Profile $ProfileName -Region us-east-1"
+        Write-Host "    aws configure set region us-east-1 --profile $ProfileName"
+    } else {
+        Write-Host "    .\export-aws-data.ps1 -AllRegions"
+        Write-Host "    .\export-aws-data.ps1 -Region us-east-1"
+        Write-Host "    aws configure set region us-east-1"
+    }
+    Write-Host ""
+}
+
+function Format-AwsCliMessage {
+    param(
+        [object]$Value,
+        [int]$MaxLength = 160
+    )
+
+    $message = ($Value | Out-String).Trim() -replace '\s+', ' '
+    if (-not $message) { return "Unknown AWS CLI error" }
+    if ($message.Length -gt $MaxLength) { return $message.Substring(0, $MaxLength) }
+    return $message
+}
+
+function Test-AwsAccessDeniedMessage {
+    param([string]$Message)
+
+    return ($Message -match '(UnauthorizedOperation|AccessDenied|AccessDeniedException|AuthorizationError|not authorized|is not authorized)')
+}
+
+function ConvertTo-IamActionName {
+    param([string[]]$Cmd)
+
+    if (-not $Cmd -or $Cmd.Count -lt 2) { return $null }
+    $service = $Cmd[0]
+    $operation = $Cmd[1]
+
+    $serviceMap = @{
+        "accessanalyzer" = "access-analyzer"
+        "configservice" = "config"
+        "elbv2"         = "elasticloadbalancing"
+        "s3api"         = "s3"
+    }
+    if ($serviceMap.ContainsKey($service)) { $service = $serviceMap[$service] }
+
+    if ($service -eq "apigateway") { return "apigateway:GET" }
+    if ($service -eq "s3" -and $operation -eq "list-buckets") { return "s3:ListAllMyBuckets" }
+    if ($service -eq "wafv2" -and $operation -eq "list-web-acls") { return "wafv2:ListWebACLs" }
+
+    $action = ($operation -split '-' | ForEach-Object {
+        if (-not $_) { return }
+        $_.Substring(0, 1).ToUpperInvariant() + $_.Substring(1)
+    }) -join ''
+
+    return "${service}:${action}"
+}
+
+function New-AwsCliFailure {
+    param(
+        [string]$Label,
+        [object]$Value,
+        [string]$Action
+    )
+
+    $rawMessage = Format-AwsCliMessage -Value $Value -MaxLength 1000
+    if (Test-AwsAccessDeniedMessage -Message $rawMessage) {
+        $detail = if ($Action) {
+            "access denied - missing $Action"
+        } else {
+            "access denied - missing required read permission"
+        }
+    } else {
+        $detail = Format-AwsCliMessage -Value $Value -MaxLength 220
+    }
+
+    return @{
+        Label     = $Label
+        Status    = "ERROR"
+        Detail    = $detail
+        RawDetail = $rawMessage
+    }
+}
+
+function Test-AwsInventoryAccess {
+    param(
+        [string[]]$Flags,
+        [string]$RegionName,
+        [string]$ProfileName,
+        [string]$OutPath
+    )
+
+    Write-Host "  Preflight EC2 read access..." -NoNewline
+    $raw = & aws @Flags ec2 describe-vpcs --max-results 5 --output json 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host " OK" -ForegroundColor Green
+        return $true
+    }
+
+    $message = Format-AwsCliMessage -Value $raw -MaxLength 1000
+    $label = if ($ProfileName) { $ProfileName } else { "default" }
+    $detail = if (Test-AwsAccessDeniedMessage -Message $message) {
+        "access denied - missing ec2:DescribeVpcs"
+    } else {
+        Format-AwsCliMessage -Value $raw -MaxLength 220
+    }
+    Write-Host " FAIL" -ForegroundColor Red
+    Write-Host "    $detail" -ForegroundColor Red
+    Write-Host "    Profile '$label' is logged in, but cannot read EC2 inventory in $RegionName." -ForegroundColor Yellow
+    Write-Host "    Choose an AWS SSO role/permission set with ReadOnlyAccess or equivalent Describe/List/Get permissions." -ForegroundColor Yellow
+
+    if ($OutPath) {
+        New-Item -ItemType Directory -Path $OutPath -Force | Out-Null
+        @(
+            [pscustomobject]@{
+                label     = "Preflight EC2 read access"
+                status    = "ERROR"
+                detail    = $detail
+                rawDetail = $message
+            }
+        ) | ConvertTo-Json -Depth 3 |
+            Out-File -FilePath (Join-Path $OutPath "_export-log.json") -Encoding utf8
+    }
+    return $false
+}
+
 # ─── Common flags ──────────────────────────────────────────────
 $awsFlags = @()
-if ($Profile) { $awsFlags += @("--profile", $Profile) }
+if ($AwsProfile) { $awsFlags += @("--profile", $AwsProfile) }
 
 function Get-BaseFlags([string]$reg) {
     $flags = @()
-    if ($Profile) { $flags += @("--profile", $Profile) }
+    if ($AwsProfile) { $flags += @("--profile", $AwsProfile) }
     if ($reg) { $flags += @("--region", $reg) }
     return $flags
 }
@@ -87,10 +257,16 @@ function Test-RegionHasResources([string[]]$Flags) {
     # Quick check: count non-default VPCs. Skip region if only default VPC or none.
     try {
         $raw = & aws @Flags ec2 describe-vpcs --query 'Vpcs[?IsDefault==`false`].VpcId' --output json 2>&1
-        if ($LASTEXITCODE -ne 0) { return $false }
+        if ($LASTEXITCODE -ne 0) {
+            $script:LastRegionProbeError = Format-AwsCliMessage -Value $raw -MaxLength 1000
+            return $null
+        }
         $vpcs = $raw | ConvertFrom-Json
         return ($vpcs.Count -gt 0)
-    } catch { return $false }
+    } catch {
+        $script:LastRegionProbeError = Format-AwsCliMessage -Value $_.Exception.Message -MaxLength 1000
+        return $null
+    }
 }
 
 # ─── Export definitions ────────────────────────────────────────
@@ -152,6 +328,10 @@ $exports = @(
     @{ Label="SQS Queues";            File="sqs-queues.json";            Cmd=@("sqs","list-queues") }
 )
 
+foreach ($export in $exports) {
+    $export["Action"] = ConvertTo-IamActionName -Cmd $export.Cmd
+}
+
 # ─── Single-export runner ──────────────────────────────────────
 function Invoke-AwsExport {
     param(
@@ -179,15 +359,10 @@ function Invoke-AwsExport {
             $size = (Get-Item $filePath).Length
             return @{ Label=$Label; Status="OK"; Detail="${size} bytes" }
         } else {
-            $msg = ($result | Out-String).Trim()
-            if ($msg.Length -gt 60) { $msg = $msg.Substring(0, 60) }
-            return @{ Label=$Label; Status="ERROR"; Detail=$msg }
+            return New-AwsCliFailure -Label $Label -Value $result -Action (ConvertTo-IamActionName -Cmd $Cmd)
         }
     } catch {
-        $errMsg = if ($_.Exception.Message) {
-            $_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length))
-        } else { "Unknown error" }
-        return @{ Label=$Label; Status="ERROR"; Detail=$errMsg }
+        return New-AwsCliFailure -Label $Label -Value $_.Exception.Message -Action (ConvertTo-IamActionName -Cmd $Cmd)
     }
 }
 
@@ -346,6 +521,10 @@ function Export-Region {
     $flags = Get-BaseFlags $RegionName
     New-Item -ItemType Directory -Path $OutPath -Force | Out-Null
 
+    if (-not (Test-AwsInventoryAccess -Flags $flags -RegionName $RegionName -ProfileName $AwsProfile -OutPath $OutPath)) {
+        return
+    }
+
     # Run all standard exports in parallel
     $results = $exports | ForEach-Object -ThrottleLimit $Parallel -Parallel {
         $localFlags = $using:flags
@@ -369,15 +548,18 @@ function Export-Region {
                     @{ Label=$_.Label; Status="EMPTY"; Detail="no data" }
                 }
             } else {
-                $msg = ($result | Out-String).Trim()
-                if ($msg.Length -gt 60) { $msg = $msg.Substring(0, 60) }
-                @{ Label=$_.Label; Status="ERROR"; Detail=$msg }
+                $rawMessage = ($result | Out-String).Trim() -replace '\s+', ' '
+                if (-not $rawMessage) { $rawMessage = "Unknown AWS CLI error" }
+                $detail = if ($rawMessage -match '(UnauthorizedOperation|AccessDenied|AccessDeniedException|AuthorizationError|not authorized|is not authorized)') {
+                    if ($_.Action) { "access denied - missing $($_.Action)" } else { "access denied - missing required read permission" }
+                } else {
+                    if ($rawMessage.Length -gt 220) { $rawMessage.Substring(0, 220) } else { $rawMessage }
+                }
+                @{ Label=$_.Label; Status="ERROR"; Detail=$detail; RawDetail=$rawMessage }
             }
         } catch {
-            $errMsg = if ($_.Exception.Message) {
-                $_.Exception.Message.Substring(0, [Math]::Min(60, $_.Exception.Message.Length))
-            } else { "Unknown error" }
-            @{ Label=$_.Label; Status="ERROR"; Detail=$errMsg }
+            $rawMessage = if ($_.Exception.Message) { $_.Exception.Message } else { "Unknown error" }
+            @{ Label=$_.Label; Status="ERROR"; Detail=$rawMessage; RawDetail=$rawMessage }
         }
     }
 
@@ -405,6 +587,7 @@ function Export-Region {
     $logEntries = @($results | ForEach-Object {
         $entry = @{ label = $_.Label; status = $_.Status }
         if ($_.Detail) { $entry.detail = $_.Detail }
+        if ($_.RawDetail) { $entry.rawDetail = $_.RawDetail }
         if ($_.Status -eq "OK" -and $_.Detail -match '(\d+) bytes') {
             $entry.bytes = [int]$Matches[1]
         }
@@ -444,7 +627,7 @@ if ($Profiles) {
     $profIdx = 0
     foreach ($prof in $profileList) {
         $profIdx++
-        $Profile = $prof
+        $AwsProfile = $prof
         $awsFlags = @("--profile", $prof)
         $profDir = Join-Path $OutputDir $prof
 
@@ -452,7 +635,8 @@ if ($Profiles) {
         Write-Host "  ╔═ Profile $profIdx/$($profileList.Count): $prof ═══════════════════════" -ForegroundColor Magenta
 
         if ($AllRegions) {
-            $regRaw = & aws @awsFlags ec2 describe-regions --query 'Regions[].RegionName' --output json 2>&1
+            $regionFlags = Get-RegionDiscoveryFlags -ProfileName $prof
+            $regRaw = & aws @regionFlags ec2 describe-regions --query 'Regions[].RegionName' --output json 2>&1
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "  ║ Failed to list regions for profile '$prof': $regRaw" -ForegroundColor Red
                 Write-Host "  ╚═ Skipped" -ForegroundColor Red
@@ -466,7 +650,14 @@ if ($Profiles) {
             foreach ($reg in $regions) {
                 $regionIdx++
                 $regFlags = Get-BaseFlags $reg
-                if (-not (Test-RegionHasResources $regFlags)) {
+                $hasResources = Test-RegionHasResources $regFlags
+                if ($null -eq $hasResources) {
+                    $regDir = Join-Path $profDir $reg
+                    Test-AwsInventoryAccess -Flags $regFlags -RegionName $reg -ProfileName $prof -OutPath $regDir | Out-Null
+                    Write-Host "  ║ Stopping profile '$prof': EC2 Describe permissions are required for inventory export." -ForegroundColor Red
+                    break
+                }
+                if (-not $hasResources) {
                     $skipped++
                     Write-Host "  ║   Region $regionIdx/$($regions.Count): $reg — no resources, skipping" -ForegroundColor DarkGray
                     continue
@@ -480,7 +671,13 @@ if ($Profiles) {
             }
             if ($skipped) { Write-Host "  ║ Skipped $skipped empty regions" -ForegroundColor DarkGray }
         } else {
-            Export-Region -RegionName $Region -OutPath $profDir -Parallel $MaxParallel
+            $exportRegion = Resolve-AwsRegion -ProfileName $prof -RequestedRegion $Region
+            if (-not $exportRegion) {
+                Write-RegionRequiredMessage -ProfileName $prof
+                Write-Host "  ╚═ Profile '$prof' skipped: no region" -ForegroundColor Red
+                continue
+            }
+            Export-Region -RegionName $exportRegion -OutPath $profDir -Parallel $MaxParallel
         }
 
         $profFiles = (Get-ChildItem -Path $profDir -Filter "*.json" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count
@@ -489,10 +686,11 @@ if ($Profiles) {
 } elseif ($AllRegions) {
     # Discover enabled regions
     Write-Host "  Mode    : All Regions (parallel x$MaxParallel)" -ForegroundColor Cyan
-    Write-Host "  Profile : $($Profile ? $Profile : 'default')"
+    Write-Host "  Profile : $($AwsProfile ? $AwsProfile : 'default')"
     Write-Host ""
 
-    $regRaw = & aws @awsFlags ec2 describe-regions --query 'Regions[].RegionName' --output json 2>&1
+    $regionFlags = Get-RegionDiscoveryFlags -ProfileName $AwsProfile
+    $regRaw = & aws @regionFlags ec2 describe-regions --query 'Regions[].RegionName' --output json 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to list regions: $regRaw"
         exit 1
@@ -501,7 +699,7 @@ if ($Profiles) {
 
     if (-not $OutputDir) {
         $ts = Get-Date -Format "yyyyMMdd-HHmmss"
-        $label = if ($Profile) { $Profile } else { "default" }
+        $label = if ($AwsProfile) { $AwsProfile } else { "default" }
         $OutputDir = "./aws-export-${label}-allregions-${ts}"
     }
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
@@ -515,7 +713,14 @@ if ($Profiles) {
     foreach ($reg in $regions) {
         $regionIdx++
         $regFlags = Get-BaseFlags $reg
-        if (-not (Test-RegionHasResources $regFlags)) {
+        $hasResources = Test-RegionHasResources $regFlags
+        if ($null -eq $hasResources) {
+            $regDir = Join-Path $OutputDir $reg
+            Test-AwsInventoryAccess -Flags $regFlags -RegionName $reg -ProfileName $AwsProfile -OutPath $regDir | Out-Null
+            Write-Host "  Stopping all-region export: EC2 Describe permissions are required for inventory export." -ForegroundColor Red
+            break
+        }
+        if (-not $hasResources) {
             $skipped++
             Write-Host "    Region $regionIdx/$($regions.Count): $reg — no resources, skipping" -ForegroundColor DarkGray
             continue
@@ -530,34 +735,88 @@ if ($Profiles) {
     if ($skipped) { Write-Host "  Skipped $skipped empty regions" -ForegroundColor DarkGray }
 } else {
     # Single region
-    $displayRegion = if ($Region) { $Region } else { "default" }
-    Write-Host "  Profile : $($Profile ? $Profile : 'default')"
+    $exportRegion = Resolve-AwsRegion -ProfileName $AwsProfile -RequestedRegion $Region
+    if (-not $exportRegion) {
+        Write-RegionRequiredMessage -ProfileName $AwsProfile
+        exit 1
+    }
+    $displayRegion = $exportRegion
+    Write-Host "  Profile : $($AwsProfile ? $AwsProfile : 'default')"
     Write-Host "  Region  : $displayRegion"
     Write-Host "  Parallel: $MaxParallel concurrent calls"
 
     if (-not $OutputDir) {
         $ts = Get-Date -Format "yyyyMMdd-HHmmss"
-        $label = if ($Profile) { $Profile } else { "default" }
+        $label = if ($AwsProfile) { $AwsProfile } else { "default" }
         $OutputDir = "./aws-export-${label}-${ts}"
     }
 
     Write-Host "  Output  : $OutputDir"
     Write-Host ""
 
-    Export-Region -RegionName $Region -OutPath $OutputDir -Parallel $MaxParallel
+    Export-Region -RegionName $exportRegion -OutPath $OutputDir -Parallel $MaxParallel
+}
+
+function Get-ExportSummary {
+    param([string]$RootPath)
+
+    $jsonFiles = @(Get-ChildItem -Path $RootPath -Filter "*.json" -Recurse -ErrorAction SilentlyContinue)
+    $dataFiles = @($jsonFiles | Where-Object { $_.Name -ne "_export-log.json" })
+    $logs = @($jsonFiles | Where-Object { $_.Name -eq "_export-log.json" })
+    $okCount = 0
+    $errorCount = 0
+    $emptyCount = 0
+
+    foreach ($log in $logs) {
+        try {
+            $entries = @(Get-Content -LiteralPath $log.FullName -Raw | ConvertFrom-Json)
+            foreach ($entry in $entries) {
+                switch ($entry.status) {
+                    "OK" { $okCount++ }
+                    "ERROR" { $errorCount++ }
+                    "EMPTY" { $emptyCount++ }
+                }
+            }
+        } catch {}
+    }
+
+    [pscustomobject]@{
+        JsonFiles   = $jsonFiles
+        DataFiles   = $dataFiles
+        Logs        = $logs
+        OkCount     = $okCount
+        ErrorCount  = $errorCount
+        EmptyCount  = $emptyCount
+    }
 }
 
 # ─── Summary ───────────────────────────────────────────────────
 Write-Host ""
-$allFiles = Get-ChildItem -Path $OutputDir -Filter "*.json" -Recurse -ErrorAction SilentlyContinue
-$fileCount = ($allFiles | Measure-Object).Count
-$totalBytes = ($allFiles | Measure-Object -Property Length -Sum).Sum
+$summary = Get-ExportSummary -RootPath $OutputDir
+$fileCount = ($summary.DataFiles | Measure-Object).Count
+$totalBytes = ($summary.DataFiles | Measure-Object -Property Length -Sum).Sum
 $totalSize = if ($totalBytes -gt 1MB) { "{0:N1} MB" -f ($totalBytes / 1MB) }
              elseif ($totalBytes -gt 1KB) { "{0:N0} KB" -f ($totalBytes / 1KB) }
              else { "$totalBytes bytes" }
 
 Write-Host "  ═══════════════════════════════════════════════════════" -ForegroundColor Magenta
-Write-Host "  Done! $fileCount files exported ($totalSize)" -ForegroundColor Green
+if ($summary.ErrorCount -gt 0 -and $summary.OkCount -eq 0) {
+    Write-Host "  Export failed: no importable AWS data files were written." -ForegroundColor Red
+    Write-Host "  $($summary.ErrorCount) AWS inventory call(s) were denied or failed." -ForegroundColor Red
+    Write-Host "  The selected profile is logged in, but its AWS role needs read-only inventory permissions." -ForegroundColor Yellow
+    Write-Host "  Ask for ReadOnlyAccess or equivalent Describe/List/Get permissions, then rerun the export." -ForegroundColor Yellow
+    Write-Host "  Output: $OutputDir" -ForegroundColor Yellow
+    Write-Host "  ═══════════════════════════════════════════════════════" -ForegroundColor Magenta
+    Write-Host ""
+    exit 2
+}
+
+if ($summary.ErrorCount -gt 0) {
+    Write-Host "  Done with warnings: $fileCount data files exported ($totalSize)" -ForegroundColor Yellow
+    Write-Host "  $($summary.ErrorCount) AWS inventory call(s) were denied or failed." -ForegroundColor Yellow
+} else {
+    Write-Host "  Done! $fileCount data files exported ($totalSize)" -ForegroundColor Green
+}
 Write-Host "  Output: $OutputDir" -ForegroundColor Green
 Write-Host ""
 Write-Host "  To use: drag the folder onto the mapper's"
