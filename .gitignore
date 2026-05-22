@@ -7,6 +7,7 @@ out/
 *.AppImage
 *.deb
 *.snap
+*.meta.json
 .DS_Store
 aws-export-*/
 docs/
