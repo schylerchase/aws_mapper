@@ -11,16 +11,18 @@ const LANDING_MAP_MOTION_SETTLE_MS = 320;
 
 function _setLandingMapMoving(isMoving){
   const main=document.querySelector('.main');
+  const svg=document.getElementById('mapSvg');
   if(!main)return;
   if(isMoving){
     if(_landingMapMoveTimer){clearTimeout(_landingMapMoveTimer);_landingMapMoveTimer=null}
     main.classList.add('map-moving');
+    if(svg)svg.classList.add('map-moving');
     const tt=document.getElementById('tooltip');
     if(tt)tt.style.display='none';
     return;
   }
   if(_landingMapMoveTimer)clearTimeout(_landingMapMoveTimer);
-  _landingMapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_landingMapMoveTimer=null},LANDING_MAP_MOTION_SETTLE_MS);
+  _landingMapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');if(svg)svg.classList.remove('map-moving');_landingMapMoveTimer=null},LANDING_MAP_MOTION_SETTLE_MS);
 }
 
 function _updateLandingZoomLabel(k){
@@ -33,6 +35,30 @@ function _updateLandingZoomLabel(k){
   });
 }
 
+function _useLandingCssMapTransform(){
+  return document.documentElement&&document.documentElement.classList.contains('safari-browser');
+}
+
+function _setLandingMapTransform(g,transform,commit){
+  const node=g&&g.node?g.node():null;
+  if(!node||!transform)return;
+  if(_useLandingCssMapTransform()&&!commit){
+    node.style.transformOrigin='0 0';
+    node.style.webkitTransformOrigin='0 0';
+    node.style.transformBox='view-box';
+    const css='translate('+transform.x+'px,'+transform.y+'px) scale('+transform.k+')';
+    node.style.transform=css;
+    node.style.webkitTransform=css;
+    return;
+  }
+  node.style.transform='';
+  node.style.webkitTransform='';
+  node.style.transformOrigin='';
+  node.style.webkitTransformOrigin='';
+  node.style.transformBox='';
+  g.attr('transform',transform);
+}
+
 function _applyLandingZoomTransform(g,transform){
   _landingZoomTransformPending=transform;
   if(_landingZoomTransformRaf)return;
@@ -40,7 +66,7 @@ function _applyLandingZoomTransform(g,transform){
     _landingZoomTransformRaf=0;
     const next=_landingZoomTransformPending;
     _landingZoomTransformPending=null;
-    if(next)g.attr('transform',next);
+    _setLandingMapTransform(g,next,false);
   });
 }
 
@@ -50,7 +76,7 @@ function _flushLandingZoomTransform(g,transform){
     _landingZoomTransformRaf=0;
   }
   _landingZoomTransformPending=null;
-  if(transform)g.attr('transform',transform);
+  _setLandingMapTransform(g,transform,true);
 }
 
 function _createLandingMapZoom(svg,g){

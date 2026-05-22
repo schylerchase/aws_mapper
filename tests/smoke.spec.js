@@ -102,11 +102,14 @@ test.describe('App Load & Demo Data', () => {
     const state = await page.evaluate(() => {
       const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
       const main = document.querySelector('.main');
-      if (!line || !main) return null;
+      const svg = document.getElementById('mapSvg');
+      if (!line || !main || !svg) return null;
       const before = getComputedStyle(line).animationName;
       main.classList.add('map-moving');
+      svg.classList.add('map-moving');
       const moving = getComputedStyle(line).animationPlayState;
       main.classList.remove('map-moving');
+      svg.classList.remove('map-moving');
       const after = getComputedStyle(line).animationName;
       return { before, moving, after };
     });
@@ -114,6 +117,33 @@ test.describe('App Load & Demo Data', () => {
     expect(state.before).not.toBe('none');
     expect(state.moving).toBe('paused');
     expect(state.after).toBe(state.before);
+  });
+
+  test('Safari zoom uses live CSS transform without stopping idle dash flow', async ({ page }) => {
+    await loadDemo(page);
+    const state = await page.evaluate(async () => {
+      document.documentElement.classList.add('safari-browser');
+      const root = document.querySelector('#mapSvg .map-root');
+      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
+      if (!root || !line) return null;
+      const beforeAttr = root.getAttribute('transform') || '';
+      document.getElementById('zoomIn').click();
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      const duringStyle = root.style.transform || root.style.webkitTransform || '';
+      const duringAttr = root.getAttribute('transform') || '';
+      const playState = getComputedStyle(line).animationPlayState;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const afterStyle = root.style.transform || root.style.webkitTransform || '';
+      const afterAttr = root.getAttribute('transform') || '';
+      document.documentElement.classList.remove('safari-browser');
+      return { beforeAttr, duringStyle, duringAttr, playState, afterStyle, afterAttr };
+    });
+    expect(state).not.toBeNull();
+    expect(state.duringStyle).toContain('translate');
+    expect(state.duringAttr).toBe(state.beforeAttr);
+    expect(state.playState).not.toBe('paused');
+    expect(state.afterStyle).toBe('');
+    expect(state.afterAttr).not.toBe(state.beforeAttr);
   });
 
   test('toolbar dock buttons are visible', async ({ page }) => {

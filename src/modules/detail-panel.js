@@ -66,10 +66,10 @@ function _openResourceSpotlight(rid){
   const tc=typeColors[info.type]||'#22d3ee';
   // Header
   let h='<div class="spotlight-header">';
-  h+='<button class="spotlight-close" onclick="_closeSpotlight()">&times;</button>';
+  h+='<button class="spotlight-close" data-spotlight-close="1">&times;</button>';
   h+='<span class="sl-type-badge" style="background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44">'+_escHtml(info.type)+'</span>';
   h+='<h3>'+_escHtml(info.name)+'</h3>';
-  h+='<span class="sl-id" title="Click to copy" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_escHtml(rid)+'\')">'+_escHtml(rid)+'</span>';
+  h+='<span class="sl-id" title="Click to copy" data-spotlight-copy="'+_escHtml(rid)+'">'+_escHtml(rid)+'</span>';
   h+='</div>';
   // Body
   h+='<div class="spotlight-body">';
@@ -131,6 +131,10 @@ function _openResourceSpotlight(rid){
   card.innerHTML=h;
   document.body.appendChild(card);
   // Wire events
+  const closeBtn=card.querySelector('[data-spotlight-close]');
+  if(closeBtn) closeBtn.addEventListener('click',function(e){e.stopPropagation();_closeSpotlight()});
+  const copyBtn=card.querySelector('[data-spotlight-copy]');
+  if(copyBtn) copyBtn.addEventListener('click',function(e){e.stopPropagation();if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(this.dataset.spotlightCopy||this.textContent.trim())});
   card.querySelectorAll('[data-spotlight-rid]').forEach(function(el){
     el.addEventListener('click',function(){
       const nrid=this.dataset.spotlightRid;
@@ -315,14 +319,14 @@ function _openDetailForSearch(type,id){
       h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Subnets</span><span><span class="dp-sec-count">'+subs.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body">';
       subs.forEach(s=>{
         const sn=gn(s,s.SubnetId);const isPub=_rlCtx.pubSubs&&_rlCtx.pubSubs.has(s.SubnetId);
-        h+='<div style="padding:4px 0;cursor:pointer;color:var(--accent-cyan);font-size:calc(11px * var(--dp-txt-scale,1))" onclick="_openDetailForSearch(\'Subnet\',\''+esc(s.SubnetId)+'\');_zoomToElement(\''+esc(s.SubnetId)+'\')">'+_escHtml(sn)+' <span style="color:var(--text-muted);font-size:9px">'+(isPub?'PUB':'PRV')+' '+esc(s.CidrBlock||'')+'</span></div>';
+        h+='<div class="dp-link" style="padding:4px 0;cursor:pointer;color:var(--accent-cyan);font-size:calc(11px * var(--dp-txt-scale,1))" data-detail-type="Subnet" data-detail-id="'+esc(s.SubnetId)+'" data-zoom-id="'+esc(s.SubnetId)+'">'+_escHtml(sn)+' <span style="color:var(--text-muted);font-size:9px">'+(isPub?'PUB':'PRV')+' '+esc(s.CidrBlock||'')+'</span></div>';
       });
       h+='</div></div>';
     }
     if(gws.length){
       h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Gateways</span><span><span class="dp-sec-count">'+gws.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body">';
       gws.forEach(g=>{
-        h+='<div style="padding:4px 0;cursor:pointer;color:'+gcv(g.type)+';font-size:calc(11px * var(--dp-txt-scale,1))" onclick="_openDetailForSearch(\''+g.type+'\',\''+esc(g.id)+'\')">'+g.type+': '+_escHtml(g.name)+'</div>';
+        h+='<div class="dp-link" style="padding:4px 0;cursor:pointer;color:'+gcv(g.type)+';font-size:calc(11px * var(--dp-txt-scale,1))" data-detail-type="'+esc(g.type)+'" data-detail-id="'+esc(g.id)+'">'+_escHtml(g.type)+': '+_escHtml(g.name)+'</div>';
       });
       h+='</div></div>';
     }
@@ -341,8 +345,8 @@ function _openDetailForSearch(type,id){
     h+='<tr><td>AZ</td><td>'+esc(inst.Placement&&inst.Placement.AvailabilityZone||'—')+'</td></tr>';
     h+='<tr><td>Private IP</td><td>'+esc(inst.PrivateIpAddress||'—')+'</td></tr>';
     h+='<tr><td>Public IP</td><td>'+esc(inst.PublicIpAddress||'—')+'</td></tr>';
-    h+='<tr><td>Subnet</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'Subnet\',\''+esc(inst.SubnetId)+'\');_zoomToElement(\''+esc(inst.SubnetId)+'\')">'+esc(inst.SubnetId||'—')+'</span></td></tr>';
-    h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(inst.VpcId)+'\')">'+esc(inst.VpcId||'—')+'</span></td></tr>';
+    h+='<tr><td>Subnet</td><td><span class="dp-link" style="cursor:pointer;color:var(--accent-cyan)" data-detail-type="Subnet" data-detail-id="'+esc(inst.SubnetId||'')+'" data-zoom-id="'+esc(inst.SubnetId||'')+'">'+esc(inst.SubnetId||'—')+'</span></td></tr>';
+    h+='<tr><td>VPC</td><td><span class="dp-link" style="cursor:pointer;color:var(--accent-cyan)" data-detail-type="VPC" data-detail-id="'+esc(inst.VpcId||'')+'">'+esc(inst.VpcId||'—')+'</span></td></tr>';
     h+='<tr><td>AMI</td><td>'+esc(inst.ImageId||'—')+'</td></tr>';
     h+='<tr><td>Key</td><td>'+esc(inst.KeyName||'—')+'</td></tr>';
     h+='</table></div></div>';
@@ -350,7 +354,7 @@ function _openDetailForSearch(type,id){
     if(sgsArr.length){
       h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Security Groups</span><span><span class="dp-sec-count">'+sgsArr.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body">';
       sgsArr.forEach(s=>{
-        h+='<div style="padding:4px 0;cursor:pointer;color:var(--accent-cyan);font-size:calc(11px * var(--dp-txt-scale,1))" onclick="_openDetailForSearch(\'SG\',\''+esc(s.GroupId)+'\')">'+esc(s.GroupName||s.GroupId)+' <span style="color:var(--text-muted);font-size:9px">'+esc(s.GroupId)+'</span></div>';
+        h+='<div class="dp-link" style="padding:4px 0;cursor:pointer;color:var(--accent-cyan);font-size:calc(11px * var(--dp-txt-scale,1))" data-detail-type="SG" data-detail-id="'+esc(s.GroupId)+'">'+esc(s.GroupName||s.GroupId)+' <span style="color:var(--text-muted);font-size:9px">'+esc(s.GroupId)+'</span></div>';
       });
       h+='</div></div>';
     }
@@ -386,8 +390,8 @@ function _openDetailForSearch(type,id){
     h+='<tr><td>Last Modified</td><td>'+esc(fn.LastModified||'—')+'</td></tr>';
     const vpcCfg=fn.VpcConfig;
     if(vpcCfg&&vpcCfg.VpcId){
-      h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(vpcCfg.VpcId)+'\')">'+esc(vpcCfg.VpcId)+'</span></td></tr>';
-      h+='<tr><td>Subnets</td><td>'+(vpcCfg.SubnetIds||[]).map(s=>'<span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'Subnet\',\''+esc(s)+'\');_zoomToElement(\''+esc(s)+'\')">'+esc(s)+'</span>').join(', ')+'</td></tr>';
+      h+='<tr><td>VPC</td><td><span class="dp-link" style="cursor:pointer;color:var(--accent-cyan)" data-detail-type="VPC" data-detail-id="'+esc(vpcCfg.VpcId||'')+'">'+esc(vpcCfg.VpcId)+'</span></td></tr>';
+      h+='<tr><td>Subnets</td><td>'+(vpcCfg.SubnetIds||[]).map(s=>'<span class="dp-link" style="cursor:pointer;color:var(--accent-cyan)" data-detail-type="Subnet" data-detail-id="'+esc(s)+'" data-zoom-id="'+esc(s)+'">'+esc(s)+'</span>').join(', ')+'</td></tr>';
     }
     h+='</table></div></div>';
   } else if(type==='SG'){
@@ -397,7 +401,7 @@ function _openDetailForSearch(type,id){
     dpSub.innerHTML='<span class="copyable" data-copy="'+esc(id)+'">'+esc(id)+'</span> &middot; '+esc(sg.VpcId||'');
     h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Overview</span><span class="dp-sec-arr">&#9660;</span></div><div class="dp-sec-body">';
     h+='<table class="dp-kv"><tr><td>Description</td><td>'+esc(sg.Description||'—')+'</td></tr>';
-    h+='<tr><td>VPC</td><td><span style="cursor:pointer;color:var(--accent-cyan)" onclick="_openDetailForSearch(\'VPC\',\''+esc(sg.VpcId)+'\')">'+esc(sg.VpcId||'—')+'</span></td></tr></table></div></div>';
+    h+='<tr><td>VPC</td><td><span class="dp-link" style="cursor:pointer;color:var(--accent-cyan)" data-detail-type="VPC" data-detail-id="'+esc(sg.VpcId||'')+'">'+esc(sg.VpcId||'—')+'</span></td></tr></table></div></div>';
     const inRules=sg.IpPermissions||[];const outRules=sg.IpPermissionsEgress||[];
     if(inRules.length){
       h+='<div class="dp-section"><div class="dp-sec-hdr" onclick="this.classList.toggle(\'collapsed\');this.nextElementSibling.classList.toggle(\'hidden\')"><span class="dp-sec-title">Inbound Rules</span><span><span class="dp-sec-count">'+inRules.length+'</span><span class="dp-sec-arr">&#9660;</span></span></div><div class="dp-sec-body"><table class="dp-tbl"><tr><th>Proto</th><th>Port</th><th>Source</th></tr>';
@@ -426,6 +430,15 @@ function _openDetailForSearch(type,id){
     return; // Unknown type, no panel
   }
   dpBody.innerHTML=h;
+  dpBody.querySelectorAll('[data-detail-type][data-detail-id]').forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      const nextId=this.dataset.detailId;
+      if(!nextId) return;
+      if(this.dataset.zoomId) _zoomToElement(this.dataset.zoomId);
+      _openDetailForSearch(this.dataset.detailType,nextId);
+    });
+  });
   dp.classList.add('open');
   _wireDpBackButton();
   applyDpScale();

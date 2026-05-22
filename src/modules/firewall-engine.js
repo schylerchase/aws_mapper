@@ -1233,7 +1233,7 @@ function _renderFirewallTab(){
   const sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
   let vpcOpts='<option value="all">All VPCs</option>';
   (_rlCtx.vpcs||[]).forEach(function(v){
-    vpcOpts+='<option value="'+esc(v.VpcId)+'">'+esc(gn(v,v.VpcId))+'</option>';
+    vpcOpts+='<option value="'+esc(v.VpcId)+'">'+gn(v,v.VpcId)+'</option>';
   });
   const sortOpts=[{k:'type',l:'Sort: Type'},{k:'name',l:'Sort: Name'},{k:'severity',l:'Sort: Severity'},{k:'rules',l:'Sort: Rules'}];
   let sortHtml='';sortOpts.forEach(function(o){sortHtml+='<option value="'+o.k+'"'+(_fwDashState.sort===o.k?' selected':'')+'>'+o.l+'</option>'});

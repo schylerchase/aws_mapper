@@ -24,6 +24,14 @@ const SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/;
 const MAX_JSON_FILE_SIZE = 100 * 1024 * 1024;
 const MAX_IMPORT_BYTES = 250 * 1024 * 1024;
 const MAX_IMPORT_FILES = 2000;
+const ALLOWED_EXTERNAL_HOSTS = new Set([
+  'aws.amazon.com',
+  'docs.aws.amazon.com',
+  'github.com',
+  'vercel.com',
+  'awsmapper.schylerryan.com',
+  'schylerryan.com'
+]);
 
 function isWithinPath(parent, child) {
   const rel = path.relative(parent, child);
@@ -283,6 +291,17 @@ function safeSend(sender, channel, data) {
   if (sender && !sender.isDestroyed()) sender.send(channel, data);
 }
 
+function isAllowedExternalUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    return ALLOWED_EXTERNAL_HOSTS.has(host) || [...ALLOWED_EXTERNAL_HOSTS].some((allowed) => host.endsWith('.' + allowed));
+  } catch {
+    return false;
+  }
+}
+
 ipcMain.handle('aws:scan', async (event, { profile, region }) => {
   // Kill any existing scan before starting a new one
   if (activeScan) {
@@ -528,7 +547,8 @@ app.on('web-contents-created', (event, contents) => {
     if (!url.startsWith(appOrigin)) ev.preventDefault();
   });
   contents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
+    if (isAllowedExternalUrl(url)) shell.openExternal(url);
+    else console.warn('Blocked external navigation:', url);
     return { action: 'deny' };
   });
 });

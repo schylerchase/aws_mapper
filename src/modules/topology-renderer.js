@@ -14,27 +14,31 @@ const MAP_RENDER_SETTLE_MS = 520;
 
 function _setMapMoving(isMoving){
   const main=document.querySelector('.main');
+  const svg=document.getElementById('mapSvg');
   if(!main)return;
   if(isMoving){
     if(_mapMoveTimer){clearTimeout(_mapMoveTimer);_mapMoveTimer=null}
     main.classList.add('map-moving');
+    if(svg)svg.classList.add('map-moving');
     const tt=document.getElementById('tooltip');
     if(tt)tt.style.display='none';
     return;
   }
   if(_mapMoveTimer)clearTimeout(_mapMoveTimer);
-  _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},MAP_MOTION_SETTLE_MS);
+  _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');if(svg)svg.classList.remove('map-moving');_mapMoveTimer=null},MAP_MOTION_SETTLE_MS);
 }
 function _setMapRendering(isRendering){
   const main=document.querySelector('.main');
+  const svg=document.getElementById('mapSvg');
   if(!main)return;
   if(isRendering){
     if(_mapRenderTimer){clearTimeout(_mapRenderTimer);_mapRenderTimer=null}
     main.classList.add('map-rendering');
+    if(svg)svg.classList.add('map-rendering');
     return;
   }
   if(_mapRenderTimer)clearTimeout(_mapRenderTimer);
-  _mapRenderTimer=setTimeout(()=>{main.classList.remove('map-rendering');_mapRenderTimer=null},MAP_RENDER_SETTLE_MS);
+  _mapRenderTimer=setTimeout(()=>{main.classList.remove('map-rendering');if(svg)svg.classList.remove('map-rendering');_mapRenderTimer=null},MAP_RENDER_SETTLE_MS);
 }
 
 function _updateZoomLabel(k){
@@ -47,6 +51,30 @@ function _updateZoomLabel(k){
   });
 }
 
+function _useCssMapTransform(){
+  return document.documentElement&&document.documentElement.classList.contains('safari-browser');
+}
+
+function _setMapTransform(g,transform,commit){
+  const node=g&&g.node?g.node():null;
+  if(!node||!transform)return;
+  if(_useCssMapTransform()&&!commit){
+    node.style.transformOrigin='0 0';
+    node.style.webkitTransformOrigin='0 0';
+    node.style.transformBox='view-box';
+    const css='translate('+transform.x+'px,'+transform.y+'px) scale('+transform.k+')';
+    node.style.transform=css;
+    node.style.webkitTransform=css;
+    return;
+  }
+  node.style.transform='';
+  node.style.webkitTransform='';
+  node.style.transformOrigin='';
+  node.style.webkitTransformOrigin='';
+  node.style.transformBox='';
+  g.attr('transform',transform);
+}
+
 function _applyZoomTransform(g,transform){
   _zoomTransformPending=transform;
   if(_zoomTransformRaf)return;
@@ -54,7 +82,7 @@ function _applyZoomTransform(g,transform){
     _zoomTransformRaf=0;
     const next=_zoomTransformPending;
     _zoomTransformPending=null;
-    if(next)g.attr('transform',next);
+    _setMapTransform(g,next,false);
   });
 }
 
@@ -64,7 +92,7 @@ function _flushZoomTransform(g,transform){
     _zoomTransformRaf=0;
   }
   _zoomTransformPending=null;
-  if(transform)g.attr('transform',transform);
+  _setMapTransform(g,transform,true);
 }
 
 function _createMapZoom(svg,g){
@@ -970,7 +998,7 @@ function _renderMapInner(){
   function _peeringTooltipHtml(pcx){
     const id=pcx.VpcPeeringConnectionId||'PCX';
     const req=pcx.RequesterVpcInfo||{},acc=pcx.AccepterVpcInfo||{};
-    let h='<div class="tt-title">'+esc(gn(pcx,id))+'</div><div class="tt-sub">VPC Peering | '+esc(id)+'</div>';
+    let h='<div class="tt-title">'+gn(pcx,id)+'</div><div class="tt-sub">VPC Peering | '+esc(id)+'</div>';
     h+='<div class="tt-sec"><div class="tt-sh">Connection</div>';
     h+='<div class="tt-r">Requester: <span class="i">'+esc(_peeringVpcText(req))+'</span></div>';
     h+='<div class="tt-r">Accepter: <span class="i">'+esc(_peeringVpcText(acc))+'</span></div>';

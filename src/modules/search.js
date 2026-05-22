@@ -85,9 +85,40 @@ document.getElementById('searchInput').addEventListener('input',function(){
   // Notes are dynamic — search them live (typically small set)
   _getAllNotes().forEach(function(n){if(matches.length>=30)return;if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))matches.push({type:'Note',name:(n.text||'').slice(0,50),id:n.resourceId,extra:n.category||'',acct:''})});
   const isMA=_rlCtx._multiAccount;
-  let h='';matches.forEach(m=>{const acctBadge=isMA&&m.acct&&m.acct!=='default'?'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+( getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap">'+esc(m.acct)+'</span>':'';h+='<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px" onclick="closeSearch();_zoomToElement(\''+esc(m.id)+'\');_openDetailForSearch(\''+esc(m.type)+'\',\''+esc(m.id)+'\')"><span style="font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px">'+m.type+'</span><span style="flex:1;font-size:12px;color:var(--text-primary)">'+esc(m.name)+'</span>'+acctBadge+'<span style="font-size:10px;color:var(--text-muted)">'+esc(m.extra)+'</span></div>'});
-  if(!matches.length)h='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">No results</div>';
-  res.innerHTML=h;
+  const frag=document.createDocumentFragment();
+  matches.forEach(m=>{
+    const row=document.createElement('div');
+    row.style.cssText='padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px';
+    row.addEventListener('click',function(){closeSearch();_zoomToElement(m.id);_openDetailForSearch(m.type,m.id)});
+    const typeSpan=document.createElement('span');
+    typeSpan.style.cssText='font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px';
+    typeSpan.textContent=m.type;
+    row.appendChild(typeSpan);
+    const nameSpan=document.createElement('span');
+    nameSpan.style.cssText='flex:1;font-size:12px;color:var(--text-primary)';
+    nameSpan.textContent=m.name;
+    row.appendChild(nameSpan);
+    if(isMA&&m.acct&&m.acct!=='default'){
+      const acctBadge=document.createElement('span');
+      acctBadge.style.cssText='font-size:8px;padding:1px 5px;border-radius:3px;background:'+(getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap';
+      acctBadge.textContent=m.acct;
+      row.appendChild(acctBadge);
+    }
+    const extraSpan=document.createElement('span');
+    extraSpan.style.cssText='font-size:10px;color:var(--text-muted)';
+    extraSpan.textContent=m.extra;
+    row.appendChild(extraSpan);
+    frag.appendChild(row);
+  });
+  if(!matches.length){
+    const empty=document.createElement('div');
+    empty.style.cssText='padding:20px;text-align:center;color:var(--text-muted);font-size:12px';
+    empty.textContent='No results';
+    frag.appendChild(empty);
+  }
+  res.textContent='';
+  res.appendChild(frag);
+  },150);
 });
 function _zoomToElement(id){
   if(!_mapSvg||!_mapZoom||!_mapG)return;
@@ -210,10 +241,10 @@ function _openResourceSpotlight(rid){
   const tc=typeColors[info.type]||'#22d3ee';
   // Header
   let h='<div class="spotlight-header">';
-  h+='<button class="spotlight-close" onclick="_closeSpotlight()">&times;</button>';
+  h+='<button class="spotlight-close" data-spotlight-close="1">&times;</button>';
   h+='<span class="sl-type-badge" style="background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44">'+_escHtml(info.type)+'</span>';
   h+='<h3>'+_escHtml(info.name)+'</h3>';
-  h+='<span class="sl-id" title="Click to copy" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_escHtml(rid)+'\')">'+_escHtml(rid)+'</span>';
+  h+='<span class="sl-id" title="Click to copy" data-spotlight-copy="'+_escHtml(rid)+'">'+_escHtml(rid)+'</span>';
   h+='</div>';
   // Body
   h+='<div class="spotlight-body">';
@@ -275,6 +306,10 @@ function _openResourceSpotlight(rid){
   card.innerHTML=h;
   document.body.appendChild(card);
   // Wire events
+  const closeBtn=card.querySelector('[data-spotlight-close]');
+  if(closeBtn) closeBtn.addEventListener('click',function(e){e.stopPropagation();_closeSpotlight()});
+  const copyBtn=card.querySelector('[data-spotlight-copy]');
+  if(copyBtn) copyBtn.addEventListener('click',function(e){e.stopPropagation();if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(this.dataset.spotlightCopy||this.textContent.trim())});
   card.querySelectorAll('[data-spotlight-rid]').forEach(function(el){
     el.addEventListener('click',function(){
       const nrid=this.dataset.spotlightRid;

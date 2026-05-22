@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self' 'unsafe-inline'; script-src-elem 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://vitals.vercel-insights.com">
 <title>AWS Network Topology Map</title>
 <script>
 /* Theme init — runs before CSS to avoid flash */
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   </div>
 </div>
 <!-- #endregion HTML MAIN CONTENT -->
-<script defer src="dist/app-core.js?v=0c1fb3b7"></script>
+<script defer src="dist/app-core.js?v=f80c34a4"></script>
 <script defer src="dist/edge-tests.js?v=dev" onerror="/* dev-only, ignored in prod */"></script>
 <script>
 /* Load web analytics after the interface has had a chance to settle. */
