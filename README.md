@@ -149,10 +149,17 @@ Two export scripts are included for extracting data from your AWS accounts:
 .\export-aws-data.ps1 -Profiles prod,staging,dev -AllRegions
 ```
 
+Interactive profile onboarding:
+
+```powershell
+.\scripts\onboard-aws-profile.ps1
+.\scripts\onboard-aws-profile.ps1 -Profile my-profile -Region us-east-1 -Mfa
+```
+
 Optional permission preflight:
 
 ```powershell
-.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -Region us-east-1
+.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -Region us-east-1 -Quick
 .\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -AllRegions -OutputPath .\aws-permission-report.json
 ```
 
@@ -171,7 +178,8 @@ aws sso login --profile my-profile
 ```
 
 Create one profile per account, then run the exporter with `-Profile my-profile`
-or `-Profiles prod,staging,dev`.
+or `-Profiles prod,staging,dev`. If MFA is required, use the MFA session profile
+created by `onboard-aws-profile.ps1` instead of the base long-term profile.
 
 If the profile has no default region, use `-AllRegions`, pass a region with
 `-Region us-east-1`, or set one:

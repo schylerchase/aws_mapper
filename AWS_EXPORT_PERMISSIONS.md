@@ -12,16 +12,25 @@ or are account/region scoped.
 
 ## Permission Preflight
 
+Use the interactive profile helper if you need to create a profile or refresh an
+MFA session profile:
+
+```powershell
+.\scripts\onboard-aws-profile.ps1
+.\scripts\onboard-aws-profile.ps1 -Profile my-profile -Region us-east-1 -Mfa
+```
+
 Use the standalone permission checker before running a full export:
 
 ```powershell
-.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -Region us-east-1
+.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -Region us-east-1 -Quick
 .\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -AllRegions -OutputPath .\aws-permission-report.json
 ```
 
 The checker prints each mapper action as `OK`, `MISSING`, `UNTESTED`, or
-`ERROR`. The existing `export-aws-data.ps1` preflight and `_export-log.json`
-checks are still kept in the exporter itself.
+`ERROR`. `-Quick` tests the high-signal parent permissions first; omit it for
+the slower exhaustive sweep. The existing `export-aws-data.ps1` preflight and
+`_export-log.json` checks are still kept in the exporter itself.
 
 ## Full Exporter Action List
 

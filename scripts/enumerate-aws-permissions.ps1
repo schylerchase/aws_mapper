@@ -11,6 +11,9 @@
     .\scripts\enumerate-aws-permissions.ps1 -Profile prod -Region us-east-1
 
 .EXAMPLE
+    .\scripts\enumerate-aws-permissions.ps1 -Profile prod -Region us-east-1 -Quick
+
+.EXAMPLE
     .\scripts\enumerate-aws-permissions.ps1 -Profile prod -AllRegions -OutputPath .\aws-permission-report.json
 #>
 
@@ -27,6 +30,10 @@ param(
     [string]$OutputPath,
 
     [switch]$Strict,
+
+    [switch]$Quick,
+
+    [switch]$SkipDependentChecks,
 
     [switch]$ListActions
 )
@@ -97,6 +104,29 @@ $DependentActions = @(
     "route53:ListResourceRecordSets"
 )
 
+$QuickGlobalActions = @(
+    "iam:GetAccountAuthorizationDetails",
+    "route53:ListHostedZones",
+    "s3:ListAllMyBuckets"
+)
+
+$QuickRegionalActions = @(
+    "ec2:DescribeInstances",
+    "ec2:DescribeVpcs",
+    "ecs:ListClusters",
+    "elasticloadbalancing:DescribeLoadBalancers",
+    "guardduty:ListDetectors",
+    "kms:ListKeys",
+    "lambda:ListFunctions",
+    "rds:DescribeDBInstances"
+)
+
+if ($Quick) {
+    $GlobalChecks = @($GlobalChecks | Where-Object { $QuickGlobalActions -contains $_.Action })
+    $RegionalChecks = @($RegionalChecks | Where-Object { $QuickRegionalActions -contains $_.Action })
+    $SkipDependentChecks = $true
+}
+
 function Format-AwsCliMessage {
     param(
         [object]$Value,
@@ -143,7 +173,7 @@ function Get-AwsFlags {
     $flags = @()
     if ($AwsProfile) { $flags += @("--profile", $AwsProfile) }
     if (-not $Global -and $RegionName) { $flags += @("--region", $RegionName) }
-    $flags += @("--output", "json")
+    $flags += @("--output", "json", "--no-cli-pager", "--no-paginate")
     return $flags
 }
 
@@ -349,12 +379,13 @@ function Invoke-GuardDutyDependentChecks {
 }
 
 function Get-RequiredActions {
-    @(
+    $actions = @(
         $GlobalChecks.Action
         "ec2:DescribeRegions"
         $RegionalChecks.Action
-        $DependentActions
-    ) | Sort-Object -Unique
+    )
+    if (-not $SkipDependentChecks) { $actions += $DependentActions }
+    $actions | Sort-Object -Unique
 }
 
 if ($ListActions) {
@@ -378,6 +409,9 @@ Write-Host ""
 Write-Host "AWS Network Mapper permission preflight" -ForegroundColor Cyan
 Write-Host "  Profile: $profileLabel"
 Write-Host "  Region : $(if ($AllRegions) { 'all enabled regions' } else { $resolvedRegion })"
+if ($Quick) { Write-Host "  Mode   : quick parent-permission check" }
+elseif ($SkipDependentChecks) { Write-Host "  Mode   : direct checks only, dependent probes skipped" }
+else { Write-Host "  Mode   : full check" }
 Write-Host ""
 
 $globalFlags = Get-AwsFlags -Global
@@ -418,9 +452,11 @@ foreach ($check in $GlobalChecks) {
     Write-CheckResult -Result $result
 }
 
-$route53Result = Invoke-Route53RecordSetCheck -GlobalFlags $globalFlags
-$results += $route53Result
-Write-CheckResult -Result $route53Result
+if (-not $SkipDependentChecks) {
+    $route53Result = Invoke-Route53RecordSetCheck -GlobalFlags $globalFlags
+    $results += $route53Result
+    Write-CheckResult -Result $route53Result
+}
 
 foreach ($reg in $regions) {
     Write-Host ""
@@ -432,17 +468,19 @@ foreach ($reg in $regions) {
         Write-CheckResult -Result $result
     }
 
-    foreach ($result in (Invoke-EcsDependentChecks -Flags $flags -RegionName $reg)) {
-        $results += $result
-        Write-CheckResult -Result $result
-    }
-    foreach ($result in (Invoke-KmsDependentChecks -Flags $flags -RegionName $reg)) {
-        $results += $result
-        Write-CheckResult -Result $result
-    }
-    foreach ($result in (Invoke-GuardDutyDependentChecks -Flags $flags -RegionName $reg)) {
-        $results += $result
-        Write-CheckResult -Result $result
+    if (-not $SkipDependentChecks) {
+        foreach ($result in (Invoke-EcsDependentChecks -Flags $flags -RegionName $reg)) {
+            $results += $result
+            Write-CheckResult -Result $result
+        }
+        foreach ($result in (Invoke-KmsDependentChecks -Flags $flags -RegionName $reg)) {
+            $results += $result
+            Write-CheckResult -Result $result
+        }
+        foreach ($result in (Invoke-GuardDutyDependentChecks -Flags $flags -RegionName $reg)) {
+            $results += $result
+            Write-CheckResult -Result $result
+        }
     }
 }
 
