@@ -62,6 +62,26 @@ test.describe('App Load & Demo Data', () => {
     await expect(page.locator('#zoomLevel')).toContainText('%');
   });
 
+  test('zoom controls pause expensive SVG animation while easing', async ({ page }) => {
+    await loadDemo(page);
+    const state = await page.evaluate(async () => {
+      const main = document.querySelector('.main');
+      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
+      const before = document.querySelector('#mapSvg .map-root')?.getAttribute('transform') || '';
+      document.getElementById('zoomIn').click();
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      return {
+        moving: main?.classList.contains('map-moving'),
+        playState: line ? getComputedStyle(line).animationPlayState : null,
+        changed: (document.querySelector('#mapSvg .map-root')?.getAttribute('transform') || '') !== before
+      };
+    });
+    expect(state.moving).toBe(true);
+    expect(state.playState).toBe('paused');
+    expect(state.changed).toBe(true);
+    await page.waitForFunction(() => !document.querySelector('.main')?.classList.contains('map-moving'), null, { timeout: 5000 });
+  });
+
   test('route lines keep animated dash flow', async ({ page }) => {
     await loadDemo(page);
     const animatedLines = await page.evaluate(() => {
@@ -220,8 +240,24 @@ test.describe('App Load & Demo Data', () => {
     await loadDemo(page);
     const delta = await page.evaluate(() => window._mapWheelDelta({ deltaY: -2, deltaMode: 0, ctrlKey: true }));
     const capped = await page.evaluate(() => window._mapWheelDelta({ deltaY: -100, deltaMode: 0, ctrlKey: true }));
-    expect(delta).toBeGreaterThan(0.035);
-    expect(capped).toBeCloseTo(0.32, 2);
+    expect(delta).toBeGreaterThan(0.065);
+    expect(capped).toBeCloseTo(0.42, 2);
+  });
+
+  test('detail level redraw pauses SVG animation during rebuild', async ({ page }) => {
+    await loadDemo(page);
+    const state = await page.evaluate(() => {
+      const main = document.querySelector('.main');
+      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
+      document.getElementById('btnExpand').click();
+      return {
+        moving: main?.classList.contains('map-moving'),
+        playState: line ? getComputedStyle(line).animationPlayState : null
+      };
+    });
+    expect(state.moving).toBe(true);
+    expect(state.playState).toBe('paused');
+    await page.waitForFunction(() => !document.querySelector('.main')?.classList.contains('map-moving'), null, { timeout: 10000 });
   });
 
   test('sidebar data detector avoids reparsing textarea JSON', async ({ page }) => {

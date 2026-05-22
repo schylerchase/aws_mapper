@@ -2765,8 +2765,8 @@ function _scheduleAutoRenderSnapshot(){
   },1200);
 }
 
-var _MAP_MOTION_SETTLE_MS=180,_MAP_WHEEL_DELTA_LIMIT=.32,_MAP_WHEEL_CTRL_SENSITIVITY=10,_MAP_WHEEL_MOUSE_SENSITIVITY=1.15,_MAP_GESTURE_SCALE_POWER=1.45,_SAFARI_GESTURE_WHEEL_SUPPRESS_MS=220;
-var _zoomDirty=false,_zoomLabelK=1,_zoomTransformRaf=0,_zoomTransformPending=null;
+var _MAP_MOTION_SETTLE_MS=180,_MAP_ZOOM_MIN=.08,_MAP_ZOOM_MAX=10,_MAP_FIT_ZOOM_MAX=4,_MAP_WHEEL_DELTA_LIMIT=.42,_MAP_WHEEL_CTRL_SENSITIVITY=18,_MAP_WHEEL_MOUSE_SENSITIVITY=1.15,_MAP_GESTURE_SCALE_POWER=2.15,_SAFARI_GESTURE_WHEEL_SUPPRESS_MS=220,_MAP_BUTTON_ZOOM_DURATION=180,_MAP_FIT_ZOOM_DURATION=240;
+var _zoomDirty=false,_zoomLabelK=1,_zoomTransformRaf=0,_zoomTransformPending=null,_mapZoomAnimRaf=0;
 function _updateZoomLabel(k){_zoomLabelK=k;if(_zoomDirty)return;_zoomDirty=true;requestAnimationFrame(()=>{document.getElementById('zoomLevel').textContent=Math.round(_zoomLabelK*100)+'%';_zoomDirty=false})}
 function _setMapMoving(isMoving){
   const main=_getMain();
@@ -2804,6 +2804,10 @@ function _suppressSafariGestureWheel(ms){
   _safariGestureSuppressWheelUntil=Math.max(_safariGestureSuppressWheelUntil,_mapNow()+(ms||_SAFARI_GESTURE_WHEEL_SUPPRESS_MS));
 }
 function _isSafariGestureWheelSuppressed(){return !!_safariGestureStart||_mapNow()<_safariGestureSuppressWheelUntil}
+function _getZoomTransform(node){
+  if(d3.zoomTransform)return d3.zoomTransform(node);
+  return node&&node.__zoom?node.__zoom:d3.zoomIdentity;
+}
 function _mapGestureTarget(event){
   const svgNode=_mapSvg&&_mapSvg.node?_mapSvg.node():null;
   if(!svgNode)return false;
@@ -2838,7 +2842,7 @@ function _bindSafariGestureZoom(){
     event.preventDefault();
     _suppressSafariGestureWheel();
     const svgNode=_mapSvg.node();
-    _safariGestureStart={transform:d3.zoomTransform(svgNode),point:_svgClientPoint(svgNode,event)};
+    _safariGestureStart={transform:_getZoomTransform(svgNode),point:_svgClientPoint(svgNode,event)};
     _safariGestureLast=_safariGestureStart.transform;
     _setMapMoving(true);
   },{passive:false});
@@ -2850,7 +2854,7 @@ function _bindSafariGestureZoom(){
     const start=_safariGestureStart.transform;
     const point=_safariGestureStart.point;
     const scale=_mapGestureScale(event.scale);
-    const k=Math.max(.08,Math.min(5,start.k*scale));
+    const k=_clamp(start.k*scale,_MAP_ZOOM_MIN,_MAP_ZOOM_MAX);
     const ratio=start.k?k/start.k:1;
     const next=d3.zoomIdentity
       .translate(point.x-(point.x-start.x)*ratio,point.y-(point.y-start.y)*ratio)
@@ -2874,6 +2878,8 @@ if(typeof window!=='undefined'){
   window._mapGestureScale=_mapGestureScale;
   window._bindSafariGestureZoom=_bindSafariGestureZoom;
   window._isSafariGestureWheelSuppressed=_isSafariGestureWheelSuppressed;
+  window._mapZoomBy=_mapZoomBy;
+  window._mapZoomToFit=_mapZoomToFit;
 }
 function _applyZoomTransform(g,transform){
   _zoomTransformPending=transform;
@@ -2893,8 +2899,79 @@ function _flushZoomTransform(g,transform){
   _zoomTransformPending=null;
   if(transform)g.attr('transform',transform);
 }
+function _cancelMapZoomAnimation(){
+  if(_mapZoomAnimRaf){
+    cancelAnimationFrame(_mapZoomAnimRaf);
+    _mapZoomAnimRaf=0;
+  }
+  if(_mapSvg&&_mapSvg.interrupt)_mapSvg.interrupt();
+}
+function _setZoomState(svg,g,transform){
+  const node=svg&&svg.node?svg.node():null;
+  if(node)node.__zoom=transform;
+  _flushZoomTransform(g,transform);
+  _updateZoomLabel(transform.k);
+}
+function _zoomTransformAroundPoint(transform,point,scaleFactor){
+  const startK=transform.k||1;
+  const k=_clamp(startK*scaleFactor,_MAP_ZOOM_MIN,_MAP_ZOOM_MAX);
+  const ratio=startK?k/startK:1;
+  return d3.zoomIdentity
+    .translate(point.x-(point.x-transform.x)*ratio,point.y-(point.y-transform.y)*ratio)
+    .scale(k);
+}
+function _animateMapZoomTo(target,duration){
+  if(!_mapSvg||!_mapG)return;
+  const svg=_mapSvg,g=_mapG,node=svg.node();
+  if(!node)return;
+  _cancelMapZoomAnimation();
+  const start=_getZoomTransform(node);
+  const ms=Math.max(0,duration||0);
+  if(!ms){
+    _setZoomState(svg,g,target);
+    return;
+  }
+  const t0=_mapNow();
+  _setMapMoving(true);
+  const ease=d3.easeCubicOut||function(t){return 1-Math.pow(1-t,3)};
+  const step=function(){
+    const t=_clamp((_mapNow()-t0)/ms,0,1);
+    const e=ease(t);
+    const next=d3.zoomIdentity
+      .translate(start.x+(target.x-start.x)*e,start.y+(target.y-start.y)*e)
+      .scale(start.k+(target.k-start.k)*e);
+    _setZoomState(svg,g,next);
+    if(t<1)_mapZoomAnimRaf=requestAnimationFrame(step);
+    else{
+      _mapZoomAnimRaf=0;
+      _setZoomState(svg,g,target);
+      _setMapMoving(false);
+    }
+  };
+  _mapZoomAnimRaf=requestAnimationFrame(step);
+}
+function _mapZoomBy(scaleFactor,duration){
+  if(!_mapSvg||!_mapG)return;
+  const main=_getMain(),node=_mapSvg.node();
+  if(!main||!node)return;
+  const point={x:main.clientWidth/2,y:main.clientHeight/2};
+  const target=_zoomTransformAroundPoint(_getZoomTransform(node),point,scaleFactor);
+  _animateMapZoomTo(target,duration||_MAP_BUTTON_ZOOM_DURATION);
+}
+function _mapZoomToFit(duration){
+  if(!_mapSvg||!_mapG)return;
+  const b=_getMapContentBounds(_mapG);
+  if(!b||!b.width||!b.height)return;
+  const main=_getMain();
+  const W=main&&main.clientWidth,H=main&&main.clientHeight;
+  if(!W||!H)return;
+  const pad=_isMobile()?.82:.92;
+  const s=_clamp(pad/Math.max(b.width/W,b.height/H),0.25,_MAP_FIT_ZOOM_MAX);
+  const target=d3.zoomIdentity.translate(W/2-s*(b.x+b.width/2),H/2-s*(b.y+b.height/2)).scale(s);
+  _animateMapZoomTo(target,duration==null?_MAP_FIT_ZOOM_DURATION:duration);
+}
 function _createMapZoom(svg,g){
-  return d3.zoom().scaleExtent([.08,5])
+  return d3.zoom().scaleExtent([_MAP_ZOOM_MIN,_MAP_ZOOM_MAX])
     .wheelDelta(_mapWheelDelta)
     .on('start',()=>{_setMapMoving(true)})
     .on('zoom',e=>{_applyZoomTransform(g,e.transform);_updateZoomLabel(e.transform.k)})
@@ -2902,21 +2979,9 @@ function _createMapZoom(svg,g){
 }
 function bindZoomButtons(){
   if(!_mapSvg||!_mapZoom||!_mapG) return;
-  const svg=_mapSvg,zB=_mapZoom,g=_mapG;
-  d3.select('#zoomIn').on('click',()=>svg.transition().duration(300).call(zB.scaleBy,1.4));
-  d3.select('#zoomOut').on('click',()=>svg.transition().duration(300).call(zB.scaleBy,.7));
-  d3.select('#zoomFit').on('click',()=>{
-    const b=_getMapContentBounds(g);
-    if(!b)return;
-    if(!b.width||!b.height)return;
-    const W=_getMain().clientWidth;
-    const H=_getMain().clientHeight;
-    if(!W||!H)return;
-    const pad=_isMobile()?.82:.92;
-    const s=Math.max(0.25,pad/Math.max(b.width/W,b.height/H));
-    svg.transition().duration(500).call(zB.transform,
-      d3.zoomIdentity.translate(W/2-s*(b.x+b.width/2),H/2-s*(b.y+b.height/2)).scale(s));
-  });
+  d3.select('#zoomIn').on('click',()=>_mapZoomBy(1.6));
+  d3.select('#zoomOut').on('click',()=>_mapZoomBy(.625));
+  d3.select('#zoomFit').on('click',()=>_mapZoomToFit());
 }
 function _fitMapWhenReady(attempts){
   if(!_mapSvg||!_mapZoom||!_mapG)return;
@@ -2928,7 +2993,7 @@ function _fitMapWhenReady(attempts){
     const W=main&&main.clientWidth,H=main&&main.clientHeight;
     const b=_getMapContentBounds(_mapG);
     if(W&&H&&b&&b.width&&b.height){
-      requestAnimationFrame(()=>d3.select('#zoomFit').dispatch('click'));
+      requestAnimationFrame(()=>_mapZoomToFit());
       return;
     }
     if(n<max)requestAnimationFrame(()=>setTimeout(tryFit,n<3?0:50));
@@ -6027,13 +6092,23 @@ function invalidateParseCache(){_parseCache={}}
 function renderMap(cb){
   _importedReportData=null;
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
+  _cancelMapZoomAnimation();
+  _setMapMoving(true);
   // In merge mode, always use the prebuilt merged context (avoid textarea re-parse divergence)
   if(_multiViewMode&&_mergedCtx&&!_prebuiltCtx)_prebuiltCtx=_mergedCtx;
   const overlay=document.getElementById('loadingOverlay');
   overlay.style.display='flex';
   _renderMapTimer=setTimeout(()=>{
     _renderMapTimer=null;
-    requestAnimationFrame(()=>{setTimeout(async()=>{await _renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()},0)});
+    requestAnimationFrame(()=>{setTimeout(async()=>{
+      try{
+        await _renderMapInner();
+      }finally{
+        overlay.style.display='none';
+        _setMapMoving(false);
+        if(typeof cb==='function')cb();
+      }
+    },0)});
   },50);
 }
 function _yieldMain(){return new Promise(function(r){setTimeout(r,0)})}
