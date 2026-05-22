@@ -186,7 +186,7 @@
   @media(prefers-reduced-motion:reduce){.landing-card{animation:none;opacity:1}}
   .landing-footer{margin-top:32px;text-align:center;font-family:var(--font-ui);font-size:9px;color:var(--text-muted);opacity:.5}
   .landing-footer a{color:var(--accent-cyan);text-decoration:none}
-  .stats-bar{position:absolute;bottom:68px;left:50%;transform:translateX(-50%);display:none;gap:4px;flex-wrap:wrap;justify-content:center;z-index:7;padding:5px 6px;background:var(--bg-secondary);border:1px solid var(--hover-bg-strong);border-radius:10px;box-shadow:0 4px 16px var(--shadow-color)}
+.stats-bar{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);display:none;gap:8px 10px;flex-wrap:wrap;justify-content:center;z-index:7;padding:8px 10px;background:var(--bg-secondary);border:1px solid var(--hover-bg-strong);border-radius:10px;box-shadow:0 4px 16px var(--shadow-color)}
   .stat-group{display:inline-flex;gap:3px;align-items:center;padding:2px 5px;background:rgba(255,255,255,.03);border-radius:6px}
   .stat-group:empty{display:none}
   .main:has(.detail-panel.open) .export-bar{right:432px}

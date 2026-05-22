@@ -177,7 +177,8 @@ The profile must also have read-only inventory permissions in the target
 account. If the export shows `UnauthorizedOperation`, `AccessDenied`, or
 `AccessDeniedException`, the profile is logged in but the selected AWS role or
 SSO permission set cannot read the account. Use a role with `ReadOnlyAccess` or
-equivalent `Describe*`, `List*`, and `Get*` permissions.
+equivalent `Describe*`, `List*`, and `Get*` permissions. See
+[AWS Export Permissions](AWS_EXPORT_PERMISSIONS.md) for the exact action list.
 
 The `-AllRegions` flag exports all active regions into subfolders. The PowerShell `-Profiles` flag exports multiple AWS profiles into profile subfolders, each with region subfolders when combined with `-AllRegions`. The mapper auto-detects all folder structures on import.
 
