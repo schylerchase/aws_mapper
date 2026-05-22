@@ -1032,7 +1032,7 @@ function _buildStatsBar(chipDefs){
     const active=chipDefs.filter(s=>labels.includes(s.l)&&s.v>0);
     if(!active.length)return;
     const g=document.createElement('div');g.className='stat-group';
-    active.forEach(s=>{const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;const b=document.createElement('b');b.textContent=s.v;c.appendChild(b);c.appendChild(document.createTextNode(s.l));c.addEventListener('click',()=>openResourceList(s.l));g.appendChild(c)});
+    active.forEach(s=>{const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;const b=document.createElement('b');b.textContent=s.v;c.appendChild(b);c.appendChild(document.createTextNode(s.l));c.addEventListener('click',()=>_runAfterInteractionPaint(()=>openResourceList(s.l)));g.appendChild(c)});
     sb.appendChild(g);
   });
   const hg=document.createElement('div');hg.className='stat-group stat-group-health';sb.appendChild(hg);return hg;
@@ -1044,7 +1044,7 @@ function addComplianceChip(sb2,findings){
   const crit=counts.CRITICAL||0;const high=counts.HIGH||0;
   c.className='compliance-chip '+(crit>0?'critical':high>0?'warn':'clean');
   c.innerHTML=`<b>${findings.length}</b> Compliance`;
-  c.addEventListener('click',()=>renderCompliancePanel(findings));
+  c.addEventListener('click',()=>_runAfterInteractionPaint(()=>renderCompliancePanel(findings)));
   sb2.appendChild(c);
 }
 function _addBUDRChip(sb2){
@@ -1055,7 +1055,7 @@ function _addBUDRChip(sb2){
   c.className='compliance-chip '+cls;
   c.innerHTML='<b>'+_budrAssessments.length+'</b> BUDR';
   c.title=counts.protected+' protected, '+counts.partial+' partial, '+counts.at_risk+' at risk';
-  c.addEventListener('click',openBUDRDash);
+  c.addEventListener('click',()=>_runAfterInteractionPaint(openBUDRDash));
   sb2.appendChild(c);
 }
 
@@ -2765,8 +2765,11 @@ function _scheduleAutoRenderSnapshot(){
   },1200);
 }
 
-var _MAP_MOTION_SETTLE_MS=180,_MAP_ZOOM_MIN=.08,_MAP_ZOOM_MAX=10,_MAP_FIT_ZOOM_MAX=4,_MAP_WHEEL_DELTA_LIMIT=.42,_MAP_WHEEL_CTRL_SENSITIVITY=18,_MAP_WHEEL_MOUSE_SENSITIVITY=1.15,_MAP_GESTURE_SCALE_POWER=2.15,_SAFARI_GESTURE_WHEEL_SUPPRESS_MS=220,_MAP_BUTTON_ZOOM_DURATION=180,_MAP_FIT_ZOOM_DURATION=240;
-var _zoomDirty=false,_zoomLabelK=1,_zoomTransformRaf=0,_zoomTransformPending=null,_mapZoomAnimRaf=0;
+var _MAP_MOTION_SETTLE_MS=320,_MAP_RENDER_SETTLE_MS=520,_MAP_ZOOM_MIN=.08,_MAP_ZOOM_MAX=10,_MAP_FIT_ZOOM_MAX=4,_MAP_WHEEL_DELTA_LIMIT=.42,_MAP_WHEEL_CTRL_SENSITIVITY=18,_MAP_WHEEL_MOUSE_SENSITIVITY=1.15,_MAP_GESTURE_SCALE_POWER=2.15,_SAFARI_GESTURE_WHEEL_SUPPRESS_MS=220,_MAP_BUTTON_ZOOM_DURATION=180,_MAP_FIT_ZOOM_DURATION=240;
+var _zoomDirty=false,_zoomLabelK=1,_zoomTransformRaf=0,_zoomTransformPending=null,_mapZoomAnimRaf=0,_mapRenderTimer=null;
+function _afterInteractionPaint(fn){
+  requestAnimationFrame(()=>{setTimeout(fn,0)});
+}
 function _updateZoomLabel(k){_zoomLabelK=k;if(_zoomDirty)return;_zoomDirty=true;requestAnimationFrame(()=>{document.getElementById('zoomLevel').textContent=Math.round(_zoomLabelK*100)+'%';_zoomDirty=false})}
 function _setMapMoving(isMoving){
   const main=_getMain();
@@ -2780,6 +2783,23 @@ function _setMapMoving(isMoving){
   }
   if(_mapMoveTimer)clearTimeout(_mapMoveTimer);
   _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},_MAP_MOTION_SETTLE_MS);
+}
+function _setMapRendering(isRendering){
+  const main=_getMain();
+  if(!main)return;
+  if(isRendering){
+    if(_mapRenderTimer){clearTimeout(_mapRenderTimer);_mapRenderTimer=null}
+    main.classList.add('map-rendering');
+    return;
+  }
+  if(_mapRenderTimer)clearTimeout(_mapRenderTimer);
+  _mapRenderTimer=setTimeout(()=>{main.classList.remove('map-rendering');_mapRenderTimer=null},_MAP_RENDER_SETTLE_MS);
+}
+function _runAfterInteractionPaint(fn){
+  _setMapMoving(true);
+  _afterInteractionPaint(function(){
+    try{fn()}finally{_setMapMoving(false)}
+  });
 }
 function _clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function _mapWheelDelta(event){
@@ -5737,7 +5757,7 @@ function renderLandingZoneMap(ctx){
   const _hg=_buildStatsBar([{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}]);
   // Compliance chip (landing zone)
   try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(_hg,findings);_addBUDRChip(_hg)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='compliance-chip clean';ic.style.cssText='border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.12);color:#60a5fa';const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode(' IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='compliance-chip clean';ic.style.cssText='border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.12);color:#60a5fa';const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode(' IAM'));ic.addEventListener('click',()=>_runAfterInteractionPaint(()=>openResourceList('IAM')));_hg.appendChild(ic)}}
   {const sb=document.getElementById('statsBar');if(sb.querySelectorAll('.stat-chip,.compliance-chip').length===0)sb.style.display='none'}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
@@ -6094,6 +6114,7 @@ function renderMap(cb){
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
   _cancelMapZoomAnimation();
   _setMapMoving(true);
+  _setMapRendering(true);
   // In merge mode, always use the prebuilt merged context (avoid textarea re-parse divergence)
   if(_multiViewMode&&_mergedCtx&&!_prebuiltCtx)_prebuiltCtx=_mergedCtx;
   const overlay=document.getElementById('loadingOverlay');
@@ -6106,6 +6127,7 @@ function renderMap(cb){
       }finally{
         overlay.style.display='none';
         _setMapMoving(false);
+        _setMapRendering(false);
         if(typeof cb==='function')cb();
       }
     },0)});
@@ -8177,7 +8199,7 @@ async function _renderMapInner(){
   const _hg=_buildStatsBar([{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}]);
   // Compliance chip (grid layout)
   try{const findings=_runComplianceWithCache(_rlCtx);if(findings.length)addComplianceChip(_hg,findings);_addBUDRChip(_hg)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='compliance-chip clean';ic.style.cssText='border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.12);color:#60a5fa';const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode(' IAM'));ic.addEventListener('click',()=>openResourceList('IAM'));_hg.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='compliance-chip clean';ic.style.cssText='border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.12);color:#60a5fa';const ib=document.createElement('b');ib.textContent=_ic;ic.appendChild(ib);ic.appendChild(document.createTextNode(' IAM'));ic.addEventListener('click',()=>_runAfterInteractionPaint(()=>openResourceList('IAM')));_hg.appendChild(ic)}}
   {const sb=document.getElementById('statsBar');if(sb.querySelectorAll('.stat-chip,.compliance-chip').length===0)sb.style.display='none'}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges failed:',ne)}
@@ -18776,10 +18798,15 @@ document.getElementById('fileInput').addEventListener('change',async function(){
   status.textContent=msg;
   status.style.color=skipped.length?'var(--accent-orange)':'var(--accent-green)';
   this.value='';
-  if(matched>0){_iamData=null;_parseCache={};renderMap()}
+  if(matched>0){_iamData=null;_parseCache={};_setMapRendering(true);_afterInteractionPaint(()=>renderMap())}
 });
 document.getElementById('clearBtn').addEventListener('click',()=>{document.querySelectorAll('.ji').forEach(el=>{el.value='';el.className='ji'});var _svg=d3.select('#mapSvg');_svg.interrupt();_svg.on('.zoom',null);_svg.selectAll('*').remove();_svg.style('display','none');_mapSvg=null;_mapZoom=null;_mapG=null;document.getElementById('emptyState').style.display='none';document.getElementById('landingDash').style.display='flex';document.getElementById('statsBar').style.display='none';document.getElementById('legend').style.display='none';document.getElementById('bottomToolbar').style.display='none';_rlCtx=null;document.getElementById('detailPanel').classList.remove('open');_closeAllDashboardsExcept(null);document.getElementById('uploadStatus').style.display='none';/* Reset account label */var al=document.getElementById('accountLabel');if(al)al.value='';/* Reset multi-account merge state */if(_multiViewMode)exitMultiView();_loadedContexts=[];_mergedCtx=null;_prebuiltCtx=null;_parseCache={};_iamData=null;_iamReviewData=[];_inventoryData=[];demo=null;/* Reset compliance caches */_complianceDataFP='';_complianceCachedFindings=null;_budrCachedFindings=null;_budrCachedAssessments=null;_classificationData=[];_budrFindings=[];_budrAssessments=[];_complianceFindings=[];_appRegistry=[];_appAutoDiscovered=false;/* Reset analysis caches */_flowAnalysisCache=null;_faDashRows=null;_depGraph=null;_diffBaseline=null;_diffResults=null;_diffFlatRows=null;_snapshots=[];_iacOutput='';_tfIdMap={};if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();document.getElementById('mergeBanner').style.display='none';var mainEl=_getMain();if(mainEl)mainEl.classList.remove('merge-active');_renderAccountPanel();/* Reset sidebar to CTA mode */_showSidebarCta()});
-document.getElementById('landingDemo').addEventListener('click',function(){document.getElementById('loadDemo').click()});
+document.getElementById('landingDemo').addEventListener('click',function(){
+  document.getElementById('landingDash').style.display='none';
+  document.getElementById('loadingOverlay').style.display='flex';
+  _setMapRendering(true);
+  _afterInteractionPaint(function(){document.getElementById('loadDemo').click()});
+});
 document.getElementById('landingImport').addEventListener('click',function(){document.getElementById('fileInput').click()});
 document.getElementById('landingImportReport').addEventListener('click',function(){document.getElementById('importReportInput').click()});
 document.getElementById('loadDemo').addEventListener('click',()=>{
@@ -19302,7 +19329,10 @@ document.getElementById('ctaLoadReport').addEventListener('click',function(){
 
 // Demo link — delegates to existing demo handler
 document.getElementById('ctaDemo').addEventListener('click',function(){
-  document.getElementById('loadDemo').click();
+  document.getElementById('landingDash').style.display='none';
+  document.getElementById('loadingOverlay').style.display='flex';
+  _setMapRendering(true);
+  _afterInteractionPaint(function(){document.getElementById('loadDemo').click()});
 });
 
 // Settings gear toggle
@@ -19471,7 +19501,12 @@ document.addEventListener('click',function(e){
   var btn=e.target.closest('[data-dash-empty-action]');
   if(!btn)return;
   var action=btn.getAttribute('data-dash-empty-action');
-  if(action==='reports'){document.getElementById('loadDemo').click();return}
+  if(action==='reports'){
+    document.getElementById('loadingOverlay').style.display='flex';
+    _setMapRendering(true);
+    _afterInteractionPaint(function(){document.getElementById('loadDemo').click()});
+    return;
+  }
   // For all others, focus the sidebar for data import
   var sidebar=document.querySelector('.sidebar');
   if(sidebar&&sidebar.classList.contains('collapsed')){

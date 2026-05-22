@@ -97,9 +97,9 @@
   .btn-primary{background:var(--accent-blue);color:#fff}.btn-primary:hover{background:#2563eb}
   .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--border);color:var(--text-primary)}
   .btn-demo{background:transparent;color:var(--accent-cyan);border:1px solid var(--accent-cyan);opacity:.7}.btn-demo:hover{opacity:1;background:rgba(6,182,212,.08)}
-  .main{flex:1;position:relative;background:var(--bg-primary);overflow:hidden;display:flex;flex-direction:column}
-  .main svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;contain:layout style paint;position:relative;z-index:0}
-  .main.map-moving .tooltip{display:none!important}
+  .main{flex:1;position:relative;background:var(--bg-primary);overflow:hidden;display:flex;flex-direction:column;contain:layout paint}
+  .main svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;contain:layout style paint;position:relative;z-index:0;isolation:isolate}
+  .main.map-moving .tooltip,.main.map-rendering .tooltip{display:none!important}
   .main.map-moving #mapSvg .animated,
   .main.map-moving #mapSvg .route-line.route-structural,
   .main.map-moving #mapSvg .route-trunk.animated,
@@ -109,14 +109,64 @@
   .main.map-moving #mapSvg .flow-ingress-drop,
   .main.map-moving #mapSvg .flow-egress-igw,
   .main.map-moving #mapSvg .flow-egress-nat,
-  .main.map-moving #mapSvg .flow-egress-tgw{animation-play-state:paused!important}
+  .main.map-moving #mapSvg .flow-egress-tgw,
+  .main.map-rendering #mapSvg .animated,
+  .main.map-rendering #mapSvg .route-line.route-structural,
+  .main.map-rendering #mapSvg .route-trunk.animated,
+  .main.map-rendering #mapSvg .route-trunk.route-structural,
+  .main.map-rendering #mapSvg .peering-line,
+  .main.map-rendering #mapSvg .fa-hl-ingress,
+  .main.map-rendering #mapSvg .flow-ingress-drop,
+  .main.map-rendering #mapSvg .flow-egress-igw,
+  .main.map-rendering #mapSvg .flow-egress-nat,
+  .main.map-rendering #mapSvg .flow-egress-tgw{animation-play-state:paused!important}
   .main.map-moving #mapSvg .vpc-group rect,
   .main.map-moving #mapSvg .subnet-node rect,
   .main.map-moving #mapSvg .res-node rect,
   .main.map-moving #mapSvg .internet-node circle,
   .main.map-moving #mapSvg .gw-node,
   .main.map-moving #mapSvg .lz-gw-node,
-  .main.map-moving #mapSvg .lz-tgw-node{filter:none!important}
+  .main.map-moving #mapSvg .lz-tgw-node,
+  .main.map-rendering #mapSvg .vpc-group rect,
+  .main.map-rendering #mapSvg .subnet-node rect,
+  .main.map-rendering #mapSvg .res-node rect,
+  .main.map-rendering #mapSvg .internet-node circle,
+  .main.map-rendering #mapSvg .gw-node,
+  .main.map-rendering #mapSvg .lz-gw-node,
+  .main.map-rendering #mapSvg .lz-tgw-node{filter:none!important}
+  html.safari-browser #mapSvg .animated,
+  html.safari-browser #mapSvg .route-line.route-structural,
+  html.safari-browser #mapSvg .route-trunk.animated,
+  html.safari-browser #mapSvg .route-trunk.route-structural,
+  html.safari-browser #mapSvg .peering-line{animation-timing-function:steps(24,end)!important;animation-duration:1.6s!important}
+  html.safari-browser .main.map-moving #mapSvg .animated,
+  html.safari-browser .main.map-moving #mapSvg .route-line.route-structural,
+  html.safari-browser .main.map-moving #mapSvg .route-trunk.animated,
+  html.safari-browser .main.map-moving #mapSvg .route-trunk.route-structural,
+  html.safari-browser .main.map-moving #mapSvg .peering-line,
+  html.safari-browser .main.map-moving #mapSvg .fa-hl-ingress,
+  html.safari-browser .main.map-moving #mapSvg .flow-ingress-backbone,
+  html.safari-browser .main.map-moving #mapSvg .flow-ingress-drop,
+  html.safari-browser .main.map-moving #mapSvg .flow-ingress-arrow,
+  html.safari-browser .main.map-moving #mapSvg .flow-egress-arrow,
+  html.safari-browser .main.map-moving #mapSvg .flow-egress-backbone,
+  html.safari-browser .main.map-moving #mapSvg .flow-egress-igw,
+  html.safari-browser .main.map-moving #mapSvg .flow-egress-nat,
+  html.safari-browser .main.map-moving #mapSvg .flow-egress-tgw,
+  html.safari-browser .main.map-rendering #mapSvg .animated,
+  html.safari-browser .main.map-rendering #mapSvg .route-line.route-structural,
+  html.safari-browser .main.map-rendering #mapSvg .route-trunk.animated,
+  html.safari-browser .main.map-rendering #mapSvg .route-trunk.route-structural,
+  html.safari-browser .main.map-rendering #mapSvg .peering-line,
+  html.safari-browser .main.map-rendering #mapSvg .fa-hl-ingress,
+  html.safari-browser .main.map-rendering #mapSvg .flow-ingress-backbone,
+  html.safari-browser .main.map-rendering #mapSvg .flow-ingress-drop,
+  html.safari-browser .main.map-rendering #mapSvg .flow-ingress-arrow,
+  html.safari-browser .main.map-rendering #mapSvg .flow-egress-arrow,
+  html.safari-browser .main.map-rendering #mapSvg .flow-egress-backbone,
+  html.safari-browser .main.map-rendering #mapSvg .flow-egress-igw,
+  html.safari-browser .main.map-rendering #mapSvg .flow-egress-nat,
+  html.safari-browser .main.map-rendering #mapSvg .flow-egress-tgw{animation:none!important;stroke-dasharray:none!important}
   .grid-bg{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,var(--grid-color) 1px,transparent 0);background-size:24px 24px;pointer-events:none}
   .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
   .empty-state .icon{width:80px;height:80px;border:2px dashed var(--border);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--text-muted);font-size:32px}

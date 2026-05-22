@@ -8,7 +8,9 @@ let _zoomLabelK = 1;
 let _zoomTransformRaf = 0;
 let _zoomTransformPending = null;
 let _mapMoveTimer = null;
-const MAP_MOTION_SETTLE_MS = 180;
+let _mapRenderTimer = null;
+const MAP_MOTION_SETTLE_MS = 320;
+const MAP_RENDER_SETTLE_MS = 520;
 
 function _setMapMoving(isMoving){
   const main=document.querySelector('.main');
@@ -22,6 +24,17 @@ function _setMapMoving(isMoving){
   }
   if(_mapMoveTimer)clearTimeout(_mapMoveTimer);
   _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},MAP_MOTION_SETTLE_MS);
+}
+function _setMapRendering(isRendering){
+  const main=document.querySelector('.main');
+  if(!main)return;
+  if(isRendering){
+    if(_mapRenderTimer){clearTimeout(_mapRenderTimer);_mapRenderTimer=null}
+    main.classList.add('map-rendering');
+    return;
+  }
+  if(_mapRenderTimer)clearTimeout(_mapRenderTimer);
+  _mapRenderTimer=setTimeout(()=>{main.classList.remove('map-rendering');_mapRenderTimer=null},MAP_RENDER_SETTLE_MS);
 }
 
 function _updateZoomLabel(k){
@@ -65,11 +78,13 @@ function _createMapZoom(svg,g){
 
 function renderMap(cb){
   if(_renderMapTimer){clearTimeout(_renderMapTimer);_renderMapTimer=null}
+  _setMapMoving(true);
+  _setMapRendering(true);
   const overlay=document.getElementById('loadingOverlay');
   overlay.style.display='flex';
   _renderMapTimer=setTimeout(()=>{
     _renderMapTimer=null;
-    requestAnimationFrame(()=>{setTimeout(()=>{_renderMapInner();overlay.style.display='none';if(typeof cb==='function')cb()},0)});
+    requestAnimationFrame(()=>{setTimeout(()=>{try{_renderMapInner()}finally{overlay.style.display='none';_setMapMoving(false);_setMapRendering(false);if(typeof cb==='function')cb()}},0)});
   },50);
 }
 // --- Sub-function: parse all 18 cached textarea inputs ---
@@ -2001,11 +2016,11 @@ function _renderMapInner(){
   _rlCtx={vpcs,subnets,pubSubs,rts,sgs,nacls,enis,igws,nats,vpces,instances,albs,tgs,peerings,vpns,volumes,snapshots,s3bk,zones,wafAcls,wafByAlb,tgByAlb,cfByAlb,rdsInstances,ecsServices,lambdaFns,ecacheClusters,redshiftClusters,cfDistributions,instBySub,albBySub,eniBySub,rdsBySub,ecsBySub,lambdaBySub,subRT,subNacl,sgByVpc,volByInst,snapByVol,ecacheByVpc,redshiftByVpc,tgwAttachments,recsByZone:recsByZoneMap,_multiAccount,_accounts,_regions,_multiRegion,iamRoleResources};
   const sb2=document.getElementById('statsBar');sb2.innerHTML='';sb2.style.display='flex';
   [{l:'VPCs',v:vpcs.length},{l:'Subnets',v:subnets.length},{l:'Public',v:pubSubs.size},{l:'Private',v:subnets.length-pubSubs.size},{l:'Gateways',v:gwSet.size},{l:'RTs',v:rts.length},{l:'NACLs',v:nacls.length},{l:'SGs',v:sgs.length},{l:'EC2',v:instances.length},{l:'ENIs',v:enis.length},{l:'ALBs',v:albs.length},{l:'TGs',v:tgs.length},{l:'RDS',v:rdsInstances.length},{l:'ECS',v:ecsServices.length},{l:'Lambda',v:lambdaFns.length},{l:'Cache',v:ecacheClusters.length},{l:'Redshift',v:redshiftClusters.length},{l:'Peering',v:peerings.length},{l:'VPNs',v:vpns.length},{l:'Endpoints',v:vpces.length},{l:'Volumes',v:volumes.length},{l:'Snapshots',v:snapshots.length},{l:'S3',v:s3bk.length},{l:'R53',v:zones.length},{l:'WAF',v:wafAcls.length},{l:'CF',v:cfDistributions.length}].forEach(s=>{
-    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>openResourceList(s.l));sb2.appendChild(c)}
+    if(s.v>0){const c=document.createElement('div');c.className='stat-chip';c.dataset.type=s.l;c.innerHTML=`<b>${s.v}</b>${s.l}`;c.addEventListener('click',()=>{_setMapMoving(true);requestAnimationFrame(()=>setTimeout(()=>{try{openResourceList(s.l)}finally{_setMapMoving(false)}},0))});sb2.appendChild(c)}
   });
   // Compliance chip (grid layout)
   try{const findings=runComplianceChecks(_rlCtx);if(findings.length)addComplianceChip(sb2,findings);_addBUDRChip(sb2)}catch(ce){console.warn('Compliance check error:',ce)}
-  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>openResourceList('IAM'));sb2.appendChild(ic)}}
+  if(_iamData){const _ic=(_iamData.roles?.length||0)+(_iamData.users?.length||0);if(_ic>0){const ic=document.createElement('div');ic.className='stat-chip';ic.classList.add('accent-amber');ic.innerHTML='<b>'+_ic+'</b> IAM';ic.addEventListener('click',()=>{_setMapMoving(true);requestAnimationFrame(()=>setTimeout(()=>{try{openResourceList('IAM')}finally{_setMapMoving(false)}},0))});sb2.appendChild(ic)}}
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges error:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
