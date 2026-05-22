@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script defer src="libs/d3.custom.min.js"></script>
 <script defer src="libs/jszip.min.js"></script>
-<script defer src="dist/app.bundle.js?v=162d2d5d"></script>
+<script defer src="dist/app.bundle.js?v=f5a94ab9"></script>
 <script defer src="dist/core.bundle.js?v=ade5151c"></script>
 </head>
 <body>
@@ -600,7 +600,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <script defer src="dist/app-core.js?v=60679a76"></script>
 <script defer src="dist/edge-tests.js?v=dev" onerror="/* dev-only, ignored in prod */"></script>
 <script>
-/* Load observability after the interface has had a chance to settle. */
+/* Load web analytics after the interface has had a chance to settle. */
 (function(){
   function loadScript(src){
     var s=document.createElement('script');
@@ -608,13 +608,17 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
     s.src=src;
     document.head.appendChild(s);
   }
-  function loadVercelTelemetry(){
+  function isHostedVercelPage(){
+    var host=location.hostname||'';
+    return host==='awsmapper.schylerryan.com'||host.endsWith('.awsmapper.schylerryan.com')||host.endsWith('.vercel.app');
+  }
+  function loadVercelAnalytics(){
+    if(!isHostedVercelPage())return;
     if(document.documentElement.classList.contains('safari-browser'))return;
     loadScript('/_vercel/insights/script.js');
-    loadScript('/_vercel/speed-insights/script.js');
   }
   window.addEventListener('load',function(){
-    var run=function(){setTimeout(loadVercelTelemetry,6000)};
+    var run=function(){setTimeout(loadVercelAnalytics,6000)};
     if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:7000});
     else setTimeout(run,7000);
   },{once:true});

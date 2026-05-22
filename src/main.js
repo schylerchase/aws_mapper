@@ -2,6 +2,8 @@
 // Imports all modules and initializes the application
 // This file is bundled by esbuild into dist/app.bundle.js
 
+import { injectSpeedInsights } from '@vercel/speed-insights';
+
 // Core utilities
 import { SEV_ORDER, FW_LABELS, EOL_RUNTIMES, EFFORT_LABELS, EFFORT_TIME, PRIORITY_META, TIER_META, PRIORITY_ORDER, PRIORITY_KEYS, MUTE_KEY, NOTES_KEY, SNAP_KEY, SAVE_KEY, MAX_SNAPSHOTS, SAVE_INTERVAL, NOTE_CATEGORIES } from './modules/constants.js';
 import { safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv } from './modules/utils.js';
@@ -89,6 +91,30 @@ import * as ReportHtml from './modules/report-html.js';
 
 // NOTE: Diff and report code lives in app-core.js (DOM-coupled).
 // Pure diff logic extracted to src/exports/diff-logic.js (bundled into core.bundle.js).
+function isHostedVercelPage() {
+  var host = window.location.hostname || '';
+  return host === 'awsmapper.schylerryan.com' || host.endsWith('.awsmapper.schylerryan.com') || host.endsWith('.vercel.app');
+}
+
+function scheduleAfterInitialRender(fn) {
+  var run = function() { setTimeout(fn, 6000); };
+  window.addEventListener('load', function() {
+    if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 7000 });
+    else setTimeout(run, 7000);
+  }, { once: true });
+}
+
+function enableSpeedInsights() {
+  if (!isHostedVercelPage()) return;
+  scheduleAfterInitialRender(function() {
+    injectSpeedInsights({
+      framework: 'vanilla',
+      scriptSrc: '/_vercel/speed-insights/script.js'
+    });
+  });
+}
+
+enableSpeedInsights();
 
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
@@ -139,6 +165,7 @@ window.AppModules = {
   // Dependency graph
   buildDependencyGraph, getBlastRadius, getResType, getResName,
   clearBlastRadius, resetDepGraph, isBlastActive,
+  _clearBlastRadius: clearBlastRadius,
 
   // IAM engine
   _stmtArr, _safePolicyParse,
