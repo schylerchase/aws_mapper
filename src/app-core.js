@@ -2765,7 +2765,7 @@ function _scheduleAutoRenderSnapshot(){
   },1200);
 }
 
-var _MAP_MOTION_SETTLE_MS=180,_MAP_WHEEL_DELTA_LIMIT=.32,_MAP_WHEEL_CTRL_SENSITIVITY=10,_MAP_WHEEL_MOUSE_SENSITIVITY=1.15,_MAP_GESTURE_SCALE_POWER=1.45;
+var _MAP_MOTION_SETTLE_MS=180,_MAP_WHEEL_DELTA_LIMIT=.32,_MAP_WHEEL_CTRL_SENSITIVITY=10,_MAP_WHEEL_MOUSE_SENSITIVITY=1.15,_MAP_GESTURE_SCALE_POWER=1.45,_SAFARI_GESTURE_WHEEL_SUPPRESS_MS=220;
 var _zoomDirty=false,_zoomLabelK=1,_zoomTransformRaf=0,_zoomTransformPending=null;
 function _updateZoomLabel(k){_zoomLabelK=k;if(_zoomDirty)return;_zoomDirty=true;requestAnimationFrame(()=>{document.getElementById('zoomLevel').textContent=Math.round(_zoomLabelK*100)+'%';_zoomDirty=false})}
 function _setMapMoving(isMoving){
@@ -2783,6 +2783,7 @@ function _setMapMoving(isMoving){
 }
 function _clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function _mapWheelDelta(event){
+  if(event.ctrlKey&&_isSafariGestureWheelSuppressed())return 0;
   const modeScale=event.deltaMode===1?.05:(event.deltaMode===2?1:.002);
   const inputScale=event.ctrlKey?_MAP_WHEEL_CTRL_SENSITIVITY:_MAP_WHEEL_MOUSE_SENSITIVITY;
   return _clamp(-event.deltaY*modeScale*inputScale,-_MAP_WHEEL_DELTA_LIMIT,_MAP_WHEEL_DELTA_LIMIT);
@@ -2797,7 +2798,12 @@ function _svgClientPoint(svgNode,event){
   const y=Number.isFinite(event.clientY)?event.clientY-rect.top:rect.height/2;
   return {x,y};
 }
-var _safariGestureStart=null,_safariGestureLast=null,_safariGestureBound=false;
+var _safariGestureStart=null,_safariGestureLast=null,_safariGestureBound=false,_safariGestureSuppressWheelUntil=0;
+function _mapNow(){return window.performance&&performance.now?performance.now():Date.now()}
+function _suppressSafariGestureWheel(ms){
+  _safariGestureSuppressWheelUntil=Math.max(_safariGestureSuppressWheelUntil,_mapNow()+(ms||_SAFARI_GESTURE_WHEEL_SUPPRESS_MS));
+}
+function _isSafariGestureWheelSuppressed(){return !!_safariGestureStart||_mapNow()<_safariGestureSuppressWheelUntil}
 function _mapGestureTarget(event){
   const svgNode=_mapSvg&&_mapSvg.node?_mapSvg.node():null;
   if(!svgNode)return false;
@@ -2820,9 +2826,17 @@ function _bindSafariGestureZoom(){
   const main=_getMain();
   if(!main)return;
   _safariGestureBound=true;
+  main.addEventListener('wheel',function(event){
+    if(!_mapSvg||!_mapGestureTarget(event))return;
+    if(!_isSafariGestureWheelSuppressed())return;
+    event.preventDefault();
+    if(event.stopImmediatePropagation)event.stopImmediatePropagation();
+    else event.stopPropagation();
+  },{capture:true,passive:false});
   main.addEventListener('gesturestart',function(event){
     if(!_mapZoom||!_mapSvg||!_mapGestureTarget(event))return;
     event.preventDefault();
+    _suppressSafariGestureWheel();
     const svgNode=_mapSvg.node();
     _safariGestureStart={transform:d3.zoomTransform(svgNode),point:_svgClientPoint(svgNode,event)};
     _safariGestureLast=_safariGestureStart.transform;
@@ -2831,6 +2845,7 @@ function _bindSafariGestureZoom(){
   main.addEventListener('gesturechange',function(event){
     if(!_safariGestureStart||!_mapZoom||!_mapSvg)return;
     event.preventDefault();
+    _suppressSafariGestureWheel();
     const svgNode=_mapSvg.node();
     const start=_safariGestureStart.transform;
     const point=_safariGestureStart.point;
@@ -2847,6 +2862,7 @@ function _bindSafariGestureZoom(){
   },{passive:false});
   main.addEventListener('gestureend',function(event){
     if(_safariGestureStart)event.preventDefault();
+    _suppressSafariGestureWheel();
     if(_safariGestureLast&&_mapG)_flushZoomTransform(_mapG,_safariGestureLast);
     _safariGestureStart=null;
     _safariGestureLast=null;
@@ -2857,6 +2873,7 @@ if(typeof window!=='undefined'){
   window._mapWheelDelta=_mapWheelDelta;
   window._mapGestureScale=_mapGestureScale;
   window._bindSafariGestureZoom=_bindSafariGestureZoom;
+  window._isSafariGestureWheelSuppressed=_isSafariGestureWheelSuppressed;
 }
 function _applyZoomTransform(g,transform){
   _zoomTransformPending=transform;

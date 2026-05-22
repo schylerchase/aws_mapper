@@ -173,6 +173,49 @@ test.describe('App Load & Demo Data', () => {
     expect(gestureScale).toBeGreaterThan(1.35);
   });
 
+  test('Safari gesture suppresses duplicate pinch wheel events', async ({ page }) => {
+    await loadDemo(page);
+    const result = await page.evaluate(async () => {
+      const svg = document.getElementById('mapSvg');
+      const rect = svg.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const fireGesture = (type, scale) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperties(event, {
+          clientX: { value: cx },
+          clientY: { value: cy },
+          scale: { value: scale }
+        });
+        svg.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+      fireGesture('gesturestart', 1);
+      fireGesture('gesturechange', 1.2);
+      const suppressedDuringGesture = window._isSafariGestureWheelSuppressed();
+      const deltaDuringGesture = window._mapWheelDelta({ deltaY: -180, deltaMode: 0, ctrlKey: true });
+      const wheel = new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        clientX: cx,
+        clientY: cy,
+        ctrlKey: true,
+        deltaY: -180,
+        deltaMode: 0
+      });
+      svg.dispatchEvent(wheel);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      fireGesture('gestureend', 1.2);
+      await new Promise((resolve) => setTimeout(resolve, 260));
+      const deltaAfterGesture = window._mapWheelDelta({ deltaY: -2, deltaMode: 0, ctrlKey: true });
+      return { suppressedDuringGesture, deltaDuringGesture, deltaAfterGesture, wheelPrevented: wheel.defaultPrevented };
+    });
+    expect(result.suppressedDuringGesture).toBe(true);
+    expect(result.deltaDuringGesture).toBe(0);
+    expect(result.wheelPrevented).toBe(true);
+    expect(result.deltaAfterGesture).toBeGreaterThan(0);
+  });
+
   test('trackpad pinch wheel delta is sensitive but capped', async ({ page }) => {
     await loadDemo(page);
     const delta = await page.evaluate(() => window._mapWheelDelta({ deltaY: -2, deltaMode: 0, ctrlKey: true }));
