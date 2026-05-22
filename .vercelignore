@@ -16,6 +16,7 @@ dist/win-arm64-unpacked/
 dist/app.bundle.js.map
 
 # Dev/test files
+AGENTS.md
 *.bak*
 *.backup
 test-results/
