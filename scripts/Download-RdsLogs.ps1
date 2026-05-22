@@ -197,6 +197,25 @@ function Invoke-AwsJson {
     return ($json | ConvertFrom-Json)
 }
 
+function Resolve-AwsAccountId {
+    $identityCliArguments = New-AwsCliArguments -CliArguments @(
+        "sts",
+        "get-caller-identity",
+        "--query",
+        "Account",
+        "--output",
+        "text"
+    )
+
+    $accountId = Invoke-AwsText -AllowFailure -CliArguments $identityCliArguments
+
+    if ($accountId -match "^\d{12}$") {
+        return $accountId
+    }
+
+    return ""
+}
+
 function ConvertTo-SafeFileName {
     param(
         [Parameter(Mandatory)]
@@ -356,10 +375,26 @@ function Resolve-RdsDbInstanceIdentifier {
 $resolvedDbInstance = Resolve-RdsDbInstanceIdentifier
 $ResolvedDbInstanceIdentifier = $resolvedDbInstance.Identifier
 $ResolvedRegion = $resolvedDbInstance.Region
+$ResolvedAwsAccountId = Resolve-AwsAccountId
 
 if (-not $OutDir) {
+    $accountFolder = if ($ResolvedAwsAccountId) {
+        "account-$ResolvedAwsAccountId"
+    } else {
+        "account-unknown"
+    }
+
+    if ($ResolvedAwsProfile) {
+        $accountFolder = "$accountFolder`_profile-$ResolvedAwsProfile"
+    }
+
+    $safeAccountFolder = ConvertTo-SafeFileName -LogName $accountFolder
+    $safeRegionFolder = ConvertTo-SafeFileName -LogName $ResolvedRegion
     $safeDbFolder = ConvertTo-SafeFileName -LogName $ResolvedDbInstanceIdentifier
-    $OutDir = Join-Path (Join-Path $PSScriptRoot "rds-logs") $safeDbFolder
+    $OutDir = Join-Path $PSScriptRoot "rds-logs"
+    $OutDir = Join-Path $OutDir $safeAccountFolder
+    $OutDir = Join-Path $OutDir $safeRegionFolder
+    $OutDir = Join-Path $OutDir $safeDbFolder
 }
 
 function Get-RdsLogFileList {
@@ -615,6 +650,7 @@ function Save-RdsLogFilesParallel {
 
 Write-Host ""
 Write-Host "Using AWS profile: $ResolvedAwsProfile"
+Write-Host "Using AWS account: $($ResolvedAwsAccountId ? $ResolvedAwsAccountId : 'unknown')"
 Write-Host "Using AWS region:  $ResolvedRegion"
 Write-Host "Using RDS DB:      $ResolvedDbInstanceIdentifier"
 Write-Host "Output folder:     $OutDir"
