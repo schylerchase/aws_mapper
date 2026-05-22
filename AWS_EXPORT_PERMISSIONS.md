@@ -17,8 +17,12 @@ MFA session profile:
 
 ```powershell
 .\scripts\onboard-aws-profile.ps1
-.\scripts\onboard-aws-profile.ps1 -Profile my-profile -Region us-east-1 -Mfa
+.\scripts\onboard-aws-profile.ps1 -Profile my-profile-mfa -SourceProfile my-profile -Region us-east-1 -Mfa
 ```
+
+For MFA onboarding, `-Profile` is the profile you use for mapper commands.
+`-SourceProfile` is only the long-term credential source used to mint the
+temporary session token.
 
 Use the standalone permission checker before running a full export:
 

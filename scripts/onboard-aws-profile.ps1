@@ -3,23 +3,26 @@
     Interactive AWS CLI profile onboarding for AWS Network Mapper.
 
 .DESCRIPTION
-    Creates or updates an AWS CLI profile for long-term IAM user credentials,
-    optionally prompts for MFA, and writes temporary STS session credentials to a
-    separate session profile. Local CLI username/password login is not supported
-    by AWS; this script expects access keys already available or entered during
+    Creates or updates an AWS CLI profile for long-term IAM user credentials.
+    When MFA is enabled, -Profile is the usable MFA session profile and
+    -SourceProfile is the long-term credential profile used to request temporary
+    STS credentials. Local CLI username/password login is not supported by AWS;
+    this script expects access keys already available or entered during
     onboarding.
 
 .EXAMPLE
     .\scripts\onboard-aws-profile.ps1
 
 .EXAMPLE
-    .\scripts\onboard-aws-profile.ps1 -Profile prod -Region us-east-1 -Mfa
+    .\scripts\onboard-aws-profile.ps1 -Profile prod-mfa -SourceProfile prod -Region us-east-1 -Mfa
 #>
 
 [CmdletBinding()]
 param(
     [Alias("p", "Profile")]
     [string]$ProfileName,
+
+    [string]$SourceProfile,
 
     [Alias("r")]
     [string]$Region,
@@ -34,6 +37,7 @@ param(
 
     [string]$MfaArn,
 
+    # Legacy explicit target. Prefer naming the MFA target with -Profile.
     [string]$SessionProfile,
 
     [ValidateRange(900, 129600)]
@@ -180,6 +184,15 @@ function Write-NextCommands {
     Write-Host "  .\scripts\export-aws-data.ps1 -Profile $ActiveProfile -Region $RegionName"
 }
 
+function Get-DefaultSourceProfile {
+    param([string]$TargetProfile)
+
+    if ($TargetProfile -match '^(?<base>.+?)([-_.]?mfa)$' -and $Matches.base) {
+        return $Matches.base
+    }
+    return "$TargetProfile-source"
+}
+
 if ($Mfa -and $NoMfa) {
     throw "Use either -Mfa or -NoMfa, not both."
 }
@@ -193,50 +206,10 @@ Write-Host "AWS Network Mapper profile onboarding" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not $ProfileName) {
-    $ProfileName = Read-RequiredValue -Prompt "Base profile name" -DefaultValue ""
+    $ProfileName = Read-RequiredValue -Prompt "Profile name to use for mapper commands" -DefaultValue ""
 }
 if ($ProfileName -notmatch '^[a-zA-Z0-9_.-]+$') {
     throw "Profile names should only use letters, numbers, dots, underscores, and dashes."
-}
-
-$existingAccessKey = Get-AwsProfileValue -Profile $ProfileName -Key "aws_access_key_id"
-if (-not $UseExistingCredentials) {
-    $useExisting = $false
-    if ($existingAccessKey) {
-        Write-Host "Profile '$ProfileName' already has an access key configured: $existingAccessKey" -ForegroundColor Yellow
-        $useExisting = Read-YesNo -Prompt "Use the existing credentials for this base profile?" -Default $true
-    }
-
-    if (-not $useExisting) {
-        Write-Host ""
-        Write-Host "Enter long-term IAM access key credentials for the base profile." -ForegroundColor Cyan
-        $accessKeyId = Read-RequiredValue -Prompt "AWS access key ID" -DefaultValue ""
-        $secretSecure = Read-Host "AWS secret access key" -AsSecureString
-        $secretAccessKey = ConvertFrom-SecureStringPlainText -SecureValue $secretSecure
-        if ([string]::IsNullOrWhiteSpace($secretAccessKey)) { throw "AWS secret access key is required." }
-
-        Set-AwsProfileValue -Profile $ProfileName -Key "aws_access_key_id" -Value $accessKeyId
-        Set-AwsProfileValue -Profile $ProfileName -Key "aws_secret_access_key" -Value $secretAccessKey
-    }
-}
-
-if (-not $Region) {
-    $configuredRegion = Get-AwsProfileValue -Profile $ProfileName -Key "region"
-    $Region = Read-RequiredValue -Prompt "Default region" -DefaultValue $(if ($configuredRegion) { $configuredRegion } else { "us-east-1" })
-}
-Set-AwsProfileValue -Profile $ProfileName -Key "region" -Value $Region
-Set-AwsProfileValue -Profile $ProfileName -Key "output" -Value $Output
-
-$baseIdentity = Get-CallerIdentity -Profile $ProfileName
-if ($baseIdentity.Ok) {
-    Write-Host ""
-    Write-Host "Base profile authenticated as:" -ForegroundColor Green
-    Write-Host "  $($baseIdentity.Identity.Arn)"
-} else {
-    Write-Host ""
-    Write-Host "Base profile could not call sts:GetCallerIdentity yet:" -ForegroundColor Yellow
-    Write-Host "  $($baseIdentity.Error)" -ForegroundColor Yellow
-    Write-Host "Continuing, because some accounts require an MFA session before inventory calls." -ForegroundColor Yellow
 }
 
 $useMfa = if ($Mfa) {
@@ -247,16 +220,80 @@ $useMfa = if ($Mfa) {
     Read-YesNo -Prompt "Does this profile require MFA for CLI/API access?" -Default $true
 }
 
+$activeProfile = $ProfileName
+$credentialProfile = $ProfileName
+
 if ($useMfa) {
-    if (-not $SessionProfile) {
-        $SessionProfile = Read-RequiredValue -Prompt "MFA session profile to create/update" -DefaultValue "$ProfileName-mfa"
-    }
-    if ($SessionProfile -notmatch '^[a-zA-Z0-9_.-]+$') {
-        throw "Session profile names should only use letters, numbers, dots, underscores, and dashes."
+    if ($SessionProfile) {
+        if (-not $SourceProfile) { $SourceProfile = $ProfileName }
+        $activeProfile = $SessionProfile
+    } else {
+        if (-not $SourceProfile) {
+            $SourceProfile = Read-RequiredValue -Prompt "Long-term credential source profile" -DefaultValue (Get-DefaultSourceProfile -TargetProfile $ProfileName)
+        }
+        $activeProfile = $ProfileName
     }
 
+    if ($SourceProfile -notmatch '^[a-zA-Z0-9_.-]+$') {
+        throw "Source profile names should only use letters, numbers, dots, underscores, and dashes."
+    }
+    if ($activeProfile -notmatch '^[a-zA-Z0-9_.-]+$') {
+        throw "MFA profile names should only use letters, numbers, dots, underscores, and dashes."
+    }
+    if ($SourceProfile -eq $activeProfile) {
+        throw "The MFA profile and long-term source profile must be different so temporary credentials do not overwrite long-term keys."
+    }
+
+    $credentialProfile = $SourceProfile
+    Write-Host ""
+    Write-Host "MFA profile model:" -ForegroundColor Cyan
+    Write-Host "  Use this profile for mapper commands : $activeProfile"
+    Write-Host "  Long-term credential source profile  : $credentialProfile"
+}
+
+$existingAccessKey = Get-AwsProfileValue -Profile $credentialProfile -Key "aws_access_key_id"
+if (-not $UseExistingCredentials) {
+    $useExisting = $false
+    if ($existingAccessKey) {
+        Write-Host "Profile '$credentialProfile' already has an access key configured: $existingAccessKey" -ForegroundColor Yellow
+        $useExisting = Read-YesNo -Prompt "Use the existing credentials for this long-term credential profile?" -Default $true
+    }
+
+    if (-not $useExisting) {
+        Write-Host ""
+        Write-Host "Enter long-term IAM access key credentials for '$credentialProfile'." -ForegroundColor Cyan
+        $accessKeyId = Read-RequiredValue -Prompt "AWS access key ID" -DefaultValue ""
+        $secretSecure = Read-Host "AWS secret access key" -AsSecureString
+        $secretAccessKey = ConvertFrom-SecureStringPlainText -SecureValue $secretSecure
+        if ([string]::IsNullOrWhiteSpace($secretAccessKey)) { throw "AWS secret access key is required." }
+
+        Set-AwsProfileValue -Profile $credentialProfile -Key "aws_access_key_id" -Value $accessKeyId
+        Set-AwsProfileValue -Profile $credentialProfile -Key "aws_secret_access_key" -Value $secretAccessKey
+    }
+}
+
+if (-not $Region) {
+    $configuredRegion = Get-AwsProfileValue -Profile $credentialProfile -Key "region"
+    $Region = Read-RequiredValue -Prompt "Default region" -DefaultValue $(if ($configuredRegion) { $configuredRegion } else { "us-east-1" })
+}
+Set-AwsProfileValue -Profile $credentialProfile -Key "region" -Value $Region
+Set-AwsProfileValue -Profile $credentialProfile -Key "output" -Value $Output
+
+$baseIdentity = Get-CallerIdentity -Profile $credentialProfile
+if ($baseIdentity.Ok) {
+    Write-Host ""
+    Write-Host "Long-term credential profile authenticated as:" -ForegroundColor Green
+    Write-Host "  $($baseIdentity.Identity.Arn)"
+} else {
+    Write-Host ""
+    Write-Host "Long-term credential profile could not call sts:GetCallerIdentity yet:" -ForegroundColor Yellow
+    Write-Host "  $($baseIdentity.Error)" -ForegroundColor Yellow
+    Write-Host "Continuing, because some accounts require an MFA session before inventory calls." -ForegroundColor Yellow
+}
+
+if ($useMfa) {
     if (-not $MfaArn) {
-        $candidateMfaArn = Find-MfaArn -Profile $ProfileName -Identity $baseIdentity.Identity
+        $candidateMfaArn = Find-MfaArn -Profile $credentialProfile -Identity $baseIdentity.Identity
         $MfaArn = Read-RequiredValue -Prompt "MFA device ARN" -DefaultValue $candidateMfaArn
     }
 
@@ -266,7 +303,7 @@ if ($useMfa) {
 
     $sessionResult = Invoke-AwsCli -Arguments @(
         "sts", "get-session-token",
-        "--profile", $ProfileName,
+        "--profile", $credentialProfile,
         "--serial-number", $MfaArn,
         "--token-code", $mfaCode,
         "--duration-seconds", [string]$DurationSeconds,
@@ -277,27 +314,25 @@ if ($useMfa) {
     }
 
     $session = ($sessionResult.Raw | Out-String) | ConvertFrom-Json
-    Set-AwsProfileValue -Profile $SessionProfile -Key "aws_access_key_id" -Value $session.Credentials.AccessKeyId
-    Set-AwsProfileValue -Profile $SessionProfile -Key "aws_secret_access_key" -Value $session.Credentials.SecretAccessKey
-    Set-AwsProfileValue -Profile $SessionProfile -Key "aws_session_token" -Value $session.Credentials.SessionToken
-    Set-AwsProfileValue -Profile $SessionProfile -Key "region" -Value $Region
-    Set-AwsProfileValue -Profile $SessionProfile -Key "output" -Value $Output
+    Set-AwsProfileValue -Profile $activeProfile -Key "aws_access_key_id" -Value $session.Credentials.AccessKeyId
+    Set-AwsProfileValue -Profile $activeProfile -Key "aws_secret_access_key" -Value $session.Credentials.SecretAccessKey
+    Set-AwsProfileValue -Profile $activeProfile -Key "aws_session_token" -Value $session.Credentials.SessionToken
+    Set-AwsProfileValue -Profile $activeProfile -Key "region" -Value $Region
+    Set-AwsProfileValue -Profile $activeProfile -Key "output" -Value $Output
 
-    $sessionIdentity = Get-CallerIdentity -Profile $SessionProfile
+    $sessionIdentity = Get-CallerIdentity -Profile $activeProfile
     if (-not $sessionIdentity.Ok) {
         throw "Session profile was written, but sts:GetCallerIdentity failed: $($sessionIdentity.Error)"
     }
 
     Write-Host ""
-    Write-Host "MFA session profile ready: $SessionProfile" -ForegroundColor Green
+    Write-Host "MFA session profile ready: $activeProfile" -ForegroundColor Green
+    Write-Host "  Source : $credentialProfile" -ForegroundColor Green
     Write-Host "  Expires: $($session.Credentials.Expiration)" -ForegroundColor Green
     Write-Host "  ARN    : $($sessionIdentity.Identity.Arn)" -ForegroundColor Green
-
-    $activeProfile = $SessionProfile
 } else {
     Write-Host ""
-    Write-Host "Profile ready: $ProfileName" -ForegroundColor Green
-    $activeProfile = $ProfileName
+    Write-Host "Profile ready: $activeProfile" -ForegroundColor Green
 }
 
 if ($RunPermissionCheck -or (Read-YesNo -Prompt "Run the quick mapper permission check now?" -Default $true)) {

@@ -153,7 +153,7 @@ Interactive profile onboarding:
 
 ```powershell
 .\scripts\onboard-aws-profile.ps1
-.\scripts\onboard-aws-profile.ps1 -Profile my-profile -Region us-east-1 -Mfa
+.\scripts\onboard-aws-profile.ps1 -Profile my-profile-mfa -SourceProfile my-profile -Region us-east-1 -Mfa
 ```
 
 Optional permission preflight:
@@ -178,8 +178,10 @@ aws sso login --profile my-profile
 ```
 
 Create one profile per account, then run the exporter with `-Profile my-profile`
-or `-Profiles prod,staging,dev`. If MFA is required, use the MFA session profile
-created by `onboard-aws-profile.ps1` instead of the base long-term profile.
+or `-Profiles prod,staging,dev`. If MFA is required, name the usable profile
+accordingly, such as `my-profile-mfa`; `onboard-aws-profile.ps1` keeps any
+long-term keys in `-SourceProfile` and writes temporary MFA session credentials
+to `-Profile`.
 
 If the profile has no default region, use `-AllRegions`, pass a region with
 `-Region us-east-1`, or set one:
