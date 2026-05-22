@@ -18,6 +18,9 @@ param(
     [ValidateRange(1, 64)]
     [int]$MaxParallel = 6,
 
+    [ValidateRange(1, 10)]
+    [int]$MaxRetries = 3,
+
     [switch]$All,
 
     [switch]$ListOnly
@@ -25,6 +28,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 function Invoke-AwsText {
     param(
@@ -224,6 +230,35 @@ function ConvertTo-SafeFileName {
 
     $invalidChars = [Regex]::Escape((-join [IO.Path]::GetInvalidFileNameChars()))
     return ($LogName -replace "[$invalidChars]", "_").Replace("/", "_").Replace("\", "_")
+}
+
+function ConvertFrom-AwsLogFileDataJson {
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$AwsOutput,
+
+        [Parameter(Mandatory)]
+        [string]$LogName
+    )
+
+    $jsonText = ($AwsOutput | Out-String).Trim()
+
+    if (-not $jsonText) {
+        return ""
+    }
+
+    try {
+        $logText = $jsonText | ConvertFrom-Json
+    }
+    catch {
+        throw "AWS CLI returned invalid JSON for '$LogName': $($_.Exception.Message)"
+    }
+
+    if ($null -eq $logText) {
+        return ""
+    }
+
+    return [string]$logText
 }
 
 function Format-RdsLastWritten {
@@ -519,19 +554,25 @@ function Save-RdsLogFile {
         "--starting-token",
         "0",
         "--output",
-        "text",
+        "json",
         "--query",
         "LogFileData"
     )
 
-    $logFileData = & aws @downloadCliArguments
+    $logFileDataJson = & aws @downloadCliArguments 2>&1
 
     if ($LASTEXITCODE -ne 0) {
-        throw "AWS CLI failed: aws $($downloadCliArguments -join ' ')"
+        $rawMessage = ($logFileDataJson | Out-String).Trim() -replace "\s+", " "
+        throw "AWS CLI failed: aws $($downloadCliArguments -join ' ') :: $rawMessage"
+    }
+
+    $logText = ConvertFrom-AwsLogFileDataJson -AwsOutput $logFileDataJson -LogName $Name
+    if ($logText.Length -gt 0 -and -not $logText.EndsWith([Environment]::NewLine)) {
+        $logText += [Environment]::NewLine
     }
 
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText($targetPath, (($logFileData -join [Environment]::NewLine) + [Environment]::NewLine), $utf8NoBom)
+    [System.IO.File]::WriteAllText($targetPath, $logText, $utf8NoBom)
 
     $file = Get-Item -LiteralPath $targetPath
 
@@ -540,6 +581,7 @@ function Save-RdsLogFile {
         Path = $file.FullName
         Bytes = $file.Length
         Method = "aws-cli-paginated"
+        Attempts = 1
     }
 }
 
@@ -561,9 +603,12 @@ function Save-RdsLogFilesParallel {
     $results = $downloadQueue | ForEach-Object -ThrottleLimit $MaxParallel -Parallel {
         $name = [string]$_.Name
         $index = [int]$_.Index
+        $attempt = 0
 
         try {
             $localOutDir = $using:OutDir
+            $env:PYTHONIOENCODING = "utf-8"
+            $env:PYTHONUTF8 = "1"
             New-Item -ItemType Directory -Path $localOutDir -Force | Out-Null
 
             $invalidChars = [Regex]::Escape((-join [IO.Path]::GetInvalidFileNameChars()))
@@ -588,7 +633,7 @@ function Save-RdsLogFilesParallel {
                 "--starting-token",
                 "0",
                 "--output",
-                "text",
+                "json",
                 "--query",
                 "LogFileData"
             )
@@ -601,19 +646,49 @@ function Save-RdsLogFilesParallel {
                 $downloadCliArguments += @("--region", $using:ResolvedRegion)
             }
 
-            $logFileData = & aws @downloadCliArguments 2>&1
+            $maxAttempts = 1 + $using:MaxRetries
+            $logText = $null
 
-            if ($LASTEXITCODE -ne 0) {
-                $rawMessage = ($logFileData | Out-String).Trim() -replace "\s+", " "
+            while ($attempt -lt $maxAttempts) {
+                $attempt++
+                $logFileDataJson = & aws @downloadCliArguments 2>&1
+
+                if ($LASTEXITCODE -eq 0) {
+                    $jsonText = ($logFileDataJson | Out-String).Trim()
+                    if ($jsonText) {
+                        try {
+                            $logText = [string]($jsonText | ConvertFrom-Json)
+                        }
+                        catch {
+                            throw "AWS CLI returned invalid JSON for '$name': $($_.Exception.Message)"
+                        }
+                    } else {
+                        $logText = ""
+                    }
+
+                    break
+                }
+
+                $rawMessage = ($logFileDataJson | Out-String).Trim() -replace "\s+", " "
                 if (-not $rawMessage) {
                     $rawMessage = "No AWS CLI error output was returned."
                 }
 
-                throw "AWS CLI failed: aws $($downloadCliArguments -join ' ') :: $rawMessage"
+                $isRetryable = $rawMessage -match "(Throttl|TooManyRequests|Rate exceeded|RequestLimitExceeded|connection|timeout|temporarily unavailable|reset by peer)"
+                if ($isRetryable -and $attempt -lt $maxAttempts) {
+                    $delaySeconds = [Math]::Min(30, [Math]::Pow(2, $attempt) + (Get-Random -Minimum 0 -Maximum 3))
+                    Start-Sleep -Seconds $delaySeconds
+                    continue
+                }
+
+                throw "AWS CLI failed after $attempt attempt(s): aws $($downloadCliArguments -join ' ') :: $rawMessage"
             }
 
-            $logText = $logFileData -join [Environment]::NewLine
-            if ($logText.Length -gt 0) {
+            if ($null -eq $logText) {
+                throw "AWS CLI returned no log data for '$name'."
+            }
+
+            if ($logText.Length -gt 0 -and -not $logText.EndsWith([Environment]::NewLine)) {
                 $logText += [Environment]::NewLine
             }
 
@@ -630,6 +705,7 @@ function Save-RdsLogFilesParallel {
                 Bytes = $file.Length
                 Method = "aws-cli-paginated"
                 Error = ""
+                Attempts = $attempt
             }
         }
         catch {
@@ -641,11 +717,63 @@ function Save-RdsLogFilesParallel {
                 Bytes = 0
                 Method = "aws-cli-paginated"
                 Error = $_.Exception.Message
+                Attempts = if ($attempt) { $attempt } else { 0 }
             }
         }
     }
 
     return @($results | Sort-Object Index)
+}
+
+function Write-DownloadFailureReport {
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$Results
+    )
+
+    $failedDownloads = @($Results | Where-Object { $_.PSObject.Properties["Status"] -and $_.Status -eq "ERROR" })
+
+    if ($failedDownloads.Count -eq 0) {
+        return $null
+    }
+
+    New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+
+    $csvPath = Join-Path $OutDir "_download-errors.csv"
+    $txtPath = Join-Path $OutDir "_download-errors.txt"
+
+    $failedDownloads |
+        Select-Object LogFileName, Attempts, Error |
+        Export-Csv -LiteralPath $csvPath -NoTypeInformation -Encoding utf8
+
+    $reportLines = @(
+        "RDS log download failures",
+        "Generated: $(Get-Date -Format o)",
+        "Profile: $ResolvedAwsProfile",
+        "Account: $($ResolvedAwsAccountId ? $ResolvedAwsAccountId : 'unknown')",
+        "Region: $ResolvedRegion",
+        "DB: $ResolvedDbInstanceIdentifier",
+        "Failed: $($failedDownloads.Count)",
+        "",
+        "Rerun a single failed log with:",
+        ".\Download-RdsLogs.ps1 -Profile $ResolvedAwsProfile -Region $ResolvedRegion -DbInstanceIdentifier $ResolvedDbInstanceIdentifier -LogFileName '<log-file-name>' -MaxParallel 1",
+        ""
+    )
+
+    foreach ($failure in $failedDownloads) {
+        $reportLines += "[$($failure.LogFileName)]"
+        $reportLines += "Attempts: $($failure.Attempts)"
+        $reportLines += "Error: $($failure.Error)"
+        $reportLines += ""
+    }
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllLines($txtPath, $reportLines, $utf8NoBom)
+
+    [pscustomobject]@{
+        CsvPath = $csvPath
+        TxtPath = $txtPath
+    }
 }
 
 Write-Host ""
@@ -655,6 +783,7 @@ Write-Host "Using AWS region:  $ResolvedRegion"
 Write-Host "Using RDS DB:      $ResolvedDbInstanceIdentifier"
 Write-Host "Output folder:     $OutDir"
 Write-Host "Parallel workers:  $MaxParallel"
+Write-Host "Retry attempts:    $MaxRetries"
 
 $availableLogs = @(Get-RdsLogFileList)
 
@@ -684,13 +813,21 @@ if ($MaxParallel -le 1 -or $targetLogFileNames.Count -eq 1) {
 $failedResults = @($results | Where-Object { $_.PSObject.Properties["Status"] -and $_.Status -eq "ERROR" })
 
 if ($failedResults.Count -gt 0) {
+    $failureReport = Write-DownloadFailureReport -Results $results
+
     $results |
-        Select-Object LogFileName, Status, Error |
+        Select-Object LogFileName, Status, Attempts, Error |
         Format-Table -AutoSize
 
-    throw "$($failedResults.Count) RDS log download(s) failed."
+    if ($failureReport) {
+        Write-Host ""
+        Write-Host "Failure report CSV: $($failureReport.CsvPath)" -ForegroundColor Yellow
+        Write-Host "Failure report TXT: $($failureReport.TxtPath)" -ForegroundColor Yellow
+    }
+
+    throw "$($failedResults.Count) RDS log download(s) failed. Successful files were kept in '$OutDir'."
 }
 
 $results |
-    Select-Object LogFileName, Path, Bytes, Method |
+    Select-Object LogFileName, Path, Bytes, Method, Attempts |
     Format-Table -AutoSize
