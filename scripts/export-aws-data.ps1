@@ -226,6 +226,7 @@ function Test-AwsInventoryAccess {
     Write-Host "    $detail" -ForegroundColor Red
     Write-Host "    Profile '$label' is logged in, but cannot read EC2 inventory in $RegionName." -ForegroundColor Yellow
     Write-Host "    Choose an AWS SSO role/permission set with ReadOnlyAccess or equivalent Describe/List/Get permissions." -ForegroundColor Yellow
+    Write-Host "    Run .\scripts\enumerate-aws-permissions.ps1 to test the full mapper permission set." -ForegroundColor Yellow
 
     if ($OutPath) {
         New-Item -ItemType Directory -Path $OutPath -Force | Out-Null

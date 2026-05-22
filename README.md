@@ -149,6 +149,13 @@ Two export scripts are included for extracting data from your AWS accounts:
 .\export-aws-data.ps1 -Profiles prod,staging,dev -AllRegions
 ```
 
+Optional permission preflight:
+
+```powershell
+.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -Region us-east-1
+.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -AllRegions -OutputPath .\aws-permission-report.json
+```
+
 Create a separate AWS CLI profile first if you do not want the exporter to use
 your currently logged-in/default account:
 

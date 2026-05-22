@@ -10,6 +10,19 @@ If you need a narrower custom policy, start with the actions below. All actions
 can use `Resource: "*"` because these AWS inventory/list APIs either require it
 or are account/region scoped.
 
+## Permission Preflight
+
+Use the standalone permission checker before running a full export:
+
+```powershell
+.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -Region us-east-1
+.\scripts\enumerate-aws-permissions.ps1 -Profile my-profile -AllRegions -OutputPath .\aws-permission-report.json
+```
+
+The checker prints each mapper action as `OK`, `MISSING`, `UNTESTED`, or
+`ERROR`. The existing `export-aws-data.ps1` preflight and `_export-log.json`
+checks are still kept in the exporter itself.
+
 ## Full Exporter Action List
 
 ```json
