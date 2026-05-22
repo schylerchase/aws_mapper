@@ -11,5 +11,9 @@ out/
 aws-export-*/
 docs/
 delete-me/
-.vercel
+AGENTS.md
+CLAUDE.md
+.vercel/
+.claude/
+.planning/
 test-results/

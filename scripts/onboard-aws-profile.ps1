@@ -106,24 +106,24 @@ function Invoke-AwsCli {
 
 function Set-AwsProfileValue {
     param(
-        [string]$Profile,
+        [string]$TargetProfile,
         [string]$Key,
         [string]$Value
     )
 
-    $result = Invoke-AwsCli -Arguments @("configure", "set", $Key, $Value, "--profile", $Profile)
+    $result = Invoke-AwsCli -Arguments @("configure", "set", $Key, $Value, "--profile", $TargetProfile)
     if ($result.ExitCode -ne 0) {
-        throw "Failed to set $Key for profile '$Profile': $($result.Text)"
+        throw "Failed to set $Key for profile '$TargetProfile': $($result.Text)"
     }
 }
 
 function Get-AwsProfileValue {
     param(
-        [string]$Profile,
+        [string]$TargetProfile,
         [string]$Key
     )
 
-    $result = Invoke-AwsCli -Arguments @("configure", "get", $Key, "--profile", $Profile)
+    $result = Invoke-AwsCli -Arguments @("configure", "get", $Key, "--profile", $TargetProfile)
     if ($result.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($result.Text)) {
         return $result.Text.Trim()
     }
@@ -131,11 +131,11 @@ function Get-AwsProfileValue {
 }
 
 function Get-CallerIdentity {
-    param([string]$Profile)
+    param([string]$TargetProfile)
 
-    $args = @("sts", "get-caller-identity", "--profile", $Profile, "--output", "json")
-    if ($Region) { $args += @("--region", $Region) }
-    $result = Invoke-AwsCli -Arguments $args
+    $stsArgs = @("sts", "get-caller-identity", "--profile", $TargetProfile, "--output", "json")
+    if ($Region) { $stsArgs += @("--region", $Region) }
+    $result = Invoke-AwsCli -Arguments $stsArgs
     if ($result.ExitCode -ne 0) {
         return [pscustomobject]@{ Ok = $false; Error = $result.Text; Identity = $null }
     }
@@ -149,13 +149,13 @@ function Get-CallerIdentity {
 
 function Find-MfaArn {
     param(
-        [string]$Profile,
+        [string]$TargetProfile,
         [object]$Identity
     )
 
     $listResult = Invoke-AwsCli -Arguments @(
         "iam", "list-mfa-devices",
-        "--profile", $Profile,
+        "--profile", $TargetProfile,
         "--query", "MFADevices[0].SerialNumber",
         "--output", "text"
     )
@@ -251,7 +251,7 @@ if ($useMfa) {
     Write-Host "  Long-term credential source profile  : $credentialProfile"
 }
 
-$existingAccessKey = Get-AwsProfileValue -Profile $credentialProfile -Key "aws_access_key_id"
+$existingAccessKey = Get-AwsProfileValue -TargetProfile $credentialProfile -Key "aws_access_key_id"
 if (-not $UseExistingCredentials) {
     $useExisting = $false
     if ($existingAccessKey) {
@@ -267,19 +267,19 @@ if (-not $UseExistingCredentials) {
         $secretAccessKey = ConvertFrom-SecureStringPlainText -SecureValue $secretSecure
         if ([string]::IsNullOrWhiteSpace($secretAccessKey)) { throw "AWS secret access key is required." }
 
-        Set-AwsProfileValue -Profile $credentialProfile -Key "aws_access_key_id" -Value $accessKeyId
-        Set-AwsProfileValue -Profile $credentialProfile -Key "aws_secret_access_key" -Value $secretAccessKey
+        Set-AwsProfileValue -TargetProfile $credentialProfile -Key "aws_access_key_id" -Value $accessKeyId
+        Set-AwsProfileValue -TargetProfile $credentialProfile -Key "aws_secret_access_key" -Value $secretAccessKey
     }
 }
 
 if (-not $Region) {
-    $configuredRegion = Get-AwsProfileValue -Profile $credentialProfile -Key "region"
+    $configuredRegion = Get-AwsProfileValue -TargetProfile $credentialProfile -Key "region"
     $Region = Read-RequiredValue -Prompt "Default region" -DefaultValue $(if ($configuredRegion) { $configuredRegion } else { "us-east-1" })
 }
-Set-AwsProfileValue -Profile $credentialProfile -Key "region" -Value $Region
-Set-AwsProfileValue -Profile $credentialProfile -Key "output" -Value $Output
+Set-AwsProfileValue -TargetProfile $credentialProfile -Key "region" -Value $Region
+Set-AwsProfileValue -TargetProfile $credentialProfile -Key "output" -Value $Output
 
-$baseIdentity = Get-CallerIdentity -Profile $credentialProfile
+$baseIdentity = Get-CallerIdentity -TargetProfile $credentialProfile
 if ($baseIdentity.Ok) {
     Write-Host ""
     Write-Host "Long-term credential profile authenticated as:" -ForegroundColor Green
@@ -293,7 +293,7 @@ if ($baseIdentity.Ok) {
 
 if ($useMfa) {
     if (-not $MfaArn) {
-        $candidateMfaArn = Find-MfaArn -Profile $credentialProfile -Identity $baseIdentity.Identity
+        $candidateMfaArn = Find-MfaArn -TargetProfile $credentialProfile -Identity $baseIdentity.Identity
         $MfaArn = Read-RequiredValue -Prompt "MFA device ARN" -DefaultValue $candidateMfaArn
     }
 
@@ -314,13 +314,13 @@ if ($useMfa) {
     }
 
     $session = ($sessionResult.Raw | Out-String) | ConvertFrom-Json
-    Set-AwsProfileValue -Profile $activeProfile -Key "aws_access_key_id" -Value $session.Credentials.AccessKeyId
-    Set-AwsProfileValue -Profile $activeProfile -Key "aws_secret_access_key" -Value $session.Credentials.SecretAccessKey
-    Set-AwsProfileValue -Profile $activeProfile -Key "aws_session_token" -Value $session.Credentials.SessionToken
-    Set-AwsProfileValue -Profile $activeProfile -Key "region" -Value $Region
-    Set-AwsProfileValue -Profile $activeProfile -Key "output" -Value $Output
+    Set-AwsProfileValue -TargetProfile $activeProfile -Key "aws_access_key_id" -Value $session.Credentials.AccessKeyId
+    Set-AwsProfileValue -TargetProfile $activeProfile -Key "aws_secret_access_key" -Value $session.Credentials.SecretAccessKey
+    Set-AwsProfileValue -TargetProfile $activeProfile -Key "aws_session_token" -Value $session.Credentials.SessionToken
+    Set-AwsProfileValue -TargetProfile $activeProfile -Key "region" -Value $Region
+    Set-AwsProfileValue -TargetProfile $activeProfile -Key "output" -Value $Output
 
-    $sessionIdentity = Get-CallerIdentity -Profile $activeProfile
+    $sessionIdentity = Get-CallerIdentity -TargetProfile $activeProfile
     if (-not $sessionIdentity.Ok) {
         throw "Session profile was written, but sts:GetCallerIdentity failed: $($sessionIdentity.Error)"
     }

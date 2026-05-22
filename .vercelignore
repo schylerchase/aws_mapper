@@ -17,12 +17,15 @@ dist/app.bundle.js.map
 
 # Dev/test files
 AGENTS.md
+CLAUDE.md
 *.bak*
 *.backup
 test-results/
 tests/
 __pycache__/
 .claude/
+.planning/
+.vercel/
 *.spec.js
 playwright.config.js
 delete-me/
