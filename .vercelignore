@@ -11,6 +11,7 @@ dist/*.AppImage
 dist/*.deb
 dist/*.yml
 dist/mac-arm64/
+dist/win-unpacked/
 dist/win-arm64-unpacked/
 dist/app.bundle.js.map
 

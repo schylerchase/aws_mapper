@@ -97,7 +97,7 @@ function _zoomToElement(id){
     const sg=(_rlCtx.sgs||[]).find(function(s){return s.GroupId===id});
     if(sg&&sg.VpcId) el=_mapG.node().querySelector('[data-vpc-id="'+sg.VpcId+'"]');
   }
-  if(!el)return;const bb=el.getBBox();const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
+  if(!el)return;const bb=typeof _measureSvgNodeFast==='function'?_measureSvgNodeFast(el):el.getBBox();if(!bb)return;const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
   const svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
   const scale=Math.min(svgW/(bb.width+200),svgH/(bb.height+200),2.5);
   _mapSvg.transition().duration(750).call(_mapZoom.transform,d3.zoomIdentity.translate(svgW/2-cx*scale,svgH/2-cy*scale).scale(scale));
@@ -173,7 +173,8 @@ function _openResourceSpotlight(rid){
   // Find the SVG element
   const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
   if(!el)return;
-  const bb=el.getBBox();
+  const bb=typeof _measureSvgNodeFast==='function'?_measureSvgNodeFast(el):el.getBBox();
+  if(!bb)return;
   const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
   const svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
   // Animated zoom - tighter zoom than normal

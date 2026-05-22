@@ -4,7 +4,11 @@
 // dependencies (d3, _rlCtx, _designMode, etc.) instead of reading globals
 
 let _zoomRafPending = false;
+let _zoomLabelK = 1;
+let _zoomTransformRaf = 0;
+let _zoomTransformPending = null;
 let _mapMoveTimer = null;
+const MAP_MOTION_SETTLE_MS = 180;
 
 function _setMapMoving(isMoving){
   const main=document.querySelector('.main');
@@ -17,23 +21,46 @@ function _setMapMoving(isMoving){
     return;
   }
   if(_mapMoveTimer)clearTimeout(_mapMoveTimer);
-  _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},120);
+  _mapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_mapMoveTimer=null},MAP_MOTION_SETTLE_MS);
 }
 
 function _updateZoomLabel(k){
+  _zoomLabelK=k;
   if(_zoomRafPending)return;
   _zoomRafPending=true;
   requestAnimationFrame(()=>{
     _zoomRafPending=false;
-    document.getElementById('zoomLevel').textContent=Math.round(k*100)+'%';
+    document.getElementById('zoomLevel').textContent=Math.round(_zoomLabelK*100)+'%';
   });
 }
 
+function _applyZoomTransform(g,transform){
+  _zoomTransformPending=transform;
+  if(_zoomTransformRaf)return;
+  _zoomTransformRaf=requestAnimationFrame(()=>{
+    _zoomTransformRaf=0;
+    const next=_zoomTransformPending;
+    _zoomTransformPending=null;
+    if(next)g.attr('transform',next);
+  });
+}
+
+function _flushZoomTransform(g,transform){
+  if(_zoomTransformRaf){
+    cancelAnimationFrame(_zoomTransformRaf);
+    _zoomTransformRaf=0;
+  }
+  _zoomTransformPending=null;
+  if(transform)g.attr('transform',transform);
+}
+
 function _createMapZoom(svg,g){
-  return d3.zoom().scaleExtent([.08,5])
+  const zoom=d3.zoom().scaleExtent([.08,5]);
+  if(typeof window!=='undefined'&&typeof window._mapWheelDelta==='function')zoom.wheelDelta(window._mapWheelDelta);
+  return zoom
     .on('start',()=>{_setMapMoving(true)})
-    .on('zoom',e=>{g.attr('transform',e.transform);_updateZoomLabel(e.transform.k)})
-    .on('end',()=>{_setMapMoving(false)});
+    .on('zoom',e=>{_applyZoomTransform(g,e.transform);_updateZoomLabel(e.transform.k)})
+    .on('end',e=>{_flushZoomTransform(g,e.transform);_setMapMoving(false)});
 }
 
 function renderMap(cb){
@@ -517,6 +544,7 @@ function _renderMapInner(){
   const g=svg.append('g').attr('class','map-root');
   const zB=_createMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
+  if(typeof window!=='undefined'&&typeof window._bindSafariGestureZoom==='function')window._bindSafariGestureZoom();
   bindZoomButtons();
 
   const lnL=g.append('g').attr('class','lines-layer'); // Routes first (bottom)
@@ -1981,7 +2009,7 @@ function _renderMapInner(){
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges error:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
-  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot error:',se)}
+  try{if(typeof _scheduleAutoRenderSnapshot==='function')_scheduleAutoRenderSnapshot();else if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot error:',se)}
   // Design validation chip (when in design mode)
   if(_designMode&&_lastDesignValidation){
     const sv=_lastDesignValidation;
@@ -2012,6 +2040,13 @@ function _renderMapInner(){
   }
   // Diff overlay (grid layout)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay error:',de)}
+  if(typeof _setMapContentBounds==='function'){
+    const contentLeft=Math.min(allVpcLeft-160,iX-80,0);
+    const contentTop=Math.min(allVpcTop-180,iY-80,0);
+    const contentRight=Math.max(allVpcRight+180,allVpcLeft+Math.max(320,allVpcRight-60)+160);
+    const contentBottom=Math.max(sectionBottomY,allVpcBottom,routingBottomY)+180;
+    _setMapContentBounds({x:contentLeft,y:contentTop,width:contentRight-contentLeft,height:contentBottom-contentTop});
+  }
   document.getElementById('legend').style.display='flex';
   if(_isMobile())document.getElementById('legend').classList.add('collapsed');
   document.getElementById('exportBar').style.display='flex';

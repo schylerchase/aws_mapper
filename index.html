@@ -12,6 +12,8 @@
   var saved=localStorage.getItem('theme');
   var theme=saved||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');
   if(theme==='light') document.documentElement.setAttribute('data-theme','light');
+  var ua=navigator.userAgent||'';
+  if(/Safari/i.test(ua)&&!/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua)) document.documentElement.classList.add('safari-browser');
 })();
 function toggleTheme(){
   var isLight=document.documentElement.getAttribute('data-theme')==='light';
@@ -31,11 +33,12 @@ function _initThemeBtn(){
 document.addEventListener('DOMContentLoaded',_initThemeBtn);
 </script>
 <!-- CSS first so browser discovers it before scripts -->
+<link rel="preload" as="image" href="logo.png">
 <link rel="stylesheet" href="src/styles/main.css?v=4">
 <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
 <script defer src="libs/d3.custom.min.js"></script>
 <script defer src="libs/jszip.min.js"></script>
-<script defer src="dist/app.bundle.js?v=fb00363c"></script>
+<script defer src="dist/app.bundle.js?v=162d2d5d"></script>
 <script defer src="dist/core.bundle.js?v=ade5151c"></script>
 </head>
 <body>
@@ -44,7 +47,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
 <div class="sidebar" role="complementary" aria-label="Data input sidebar">
   <div class="sidebar-header">
     <div class="brand-row">
-      <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
+      <div class="brand-icon"><img src="logo.png" alt="Logo" width="28" height="28" decoding="async" style="width:28px;height:28px;object-fit:contain"></div>
       <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.8.7</span></h1><p>Infrastructure topology & compliance</p></div>
     </div>
     <div class="sidebar-hdr-actions">
@@ -108,7 +111,7 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   <div class="empty-state" id="emptyState" style="display:none"><div class="icon">&#9700;</div><h2 id="emptyTitle">No data loaded</h2><p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p><button class="design-btn" id="emptyDesignBtn" style="display:none;margin-top:12px;padding:8px 20px;font-size:11px">Create VPC from Scratch</button></div>
 <div class="landing" id="landingDash">
   <div class="landing-hero">
-    <div class="landing-icon"><img src="logo.png" alt="Logo" style="width:48px;height:48px;object-fit:contain"></div>
+    <div class="landing-icon"><img src="logo.png" alt="Logo" width="48" height="48" decoding="async" style="width:48px;height:48px;object-fit:contain"></div>
     <h1>AWS Network Mapper</h1>
     <div class="tagline">Visualize, audit &amp; design your AWS infrastructure</div>
   </div>
@@ -594,9 +597,28 @@ document.addEventListener('DOMContentLoaded',_initThemeBtn);
   </div>
 </div>
 <!-- #endregion HTML MAIN CONTENT -->
-<script defer src="dist/app-core.js?v=75915cca"></script>
+<script defer src="dist/app-core.js?v=6c8e0627"></script>
 <script defer src="dist/edge-tests.js?v=dev" onerror="/* dev-only, ignored in prod */"></script>
-<script defer src="/_vercel/insights/script.js"></script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
+<script>
+/* Load observability after the interface has had a chance to settle. */
+(function(){
+  function loadScript(src){
+    var s=document.createElement('script');
+    s.defer=true;
+    s.src=src;
+    document.head.appendChild(s);
+  }
+  function loadVercelTelemetry(){
+    if(document.documentElement.classList.contains('safari-browser'))return;
+    loadScript('/_vercel/insights/script.js');
+    loadScript('/_vercel/speed-insights/script.js');
+  }
+  window.addEventListener('load',function(){
+    var run=function(){setTimeout(loadVercelTelemetry,6000)};
+    if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:7000});
+    else setTimeout(run,7000);
+  },{once:true});
+})();
+</script>
 </body>
 </html>

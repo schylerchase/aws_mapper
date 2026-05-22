@@ -29,7 +29,8 @@ function _openResourceSpotlight(rid){
   // Find the SVG element
   const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
   if(!el)return;
-  const bb=el.getBBox();
+  const bb=typeof _measureSvgNodeFast==='function'?_measureSvgNodeFast(el):el.getBBox();
+  if(!bb)return;
   const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;
   const svgW=_mapSvg.node().clientWidth,svgH=_mapSvg.node().clientHeight;
   // Animated zoom - tighter zoom than normal

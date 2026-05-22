@@ -3,7 +3,11 @@
 // Extracted from index.html for modularization
 
 let _landingZoomRafPending = false;
+let _landingZoomLabelK = 1;
+let _landingZoomTransformRaf = 0;
+let _landingZoomTransformPending = null;
 let _landingMapMoveTimer = null;
+const LANDING_MAP_MOTION_SETTLE_MS = 180;
 
 function _setLandingMapMoving(isMoving){
   const main=document.querySelector('.main');
@@ -16,23 +20,46 @@ function _setLandingMapMoving(isMoving){
     return;
   }
   if(_landingMapMoveTimer)clearTimeout(_landingMapMoveTimer);
-  _landingMapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_landingMapMoveTimer=null},120);
+  _landingMapMoveTimer=setTimeout(()=>{main.classList.remove('map-moving');_landingMapMoveTimer=null},LANDING_MAP_MOTION_SETTLE_MS);
 }
 
 function _updateLandingZoomLabel(k){
+  _landingZoomLabelK=k;
   if(_landingZoomRafPending)return;
   _landingZoomRafPending=true;
   requestAnimationFrame(()=>{
     _landingZoomRafPending=false;
-    document.getElementById('zoomLevel').textContent=Math.round(k*100)+'%';
+    document.getElementById('zoomLevel').textContent=Math.round(_landingZoomLabelK*100)+'%';
   });
 }
 
+function _applyLandingZoomTransform(g,transform){
+  _landingZoomTransformPending=transform;
+  if(_landingZoomTransformRaf)return;
+  _landingZoomTransformRaf=requestAnimationFrame(()=>{
+    _landingZoomTransformRaf=0;
+    const next=_landingZoomTransformPending;
+    _landingZoomTransformPending=null;
+    if(next)g.attr('transform',next);
+  });
+}
+
+function _flushLandingZoomTransform(g,transform){
+  if(_landingZoomTransformRaf){
+    cancelAnimationFrame(_landingZoomTransformRaf);
+    _landingZoomTransformRaf=0;
+  }
+  _landingZoomTransformPending=null;
+  if(transform)g.attr('transform',transform);
+}
+
 function _createLandingMapZoom(svg,g){
-  return d3.zoom().scaleExtent([.08,5])
+  const zoom=d3.zoom().scaleExtent([.08,5]);
+  if(typeof window!=='undefined'&&typeof window._mapWheelDelta==='function')zoom.wheelDelta(window._mapWheelDelta);
+  return zoom
     .on('start',()=>{_setLandingMapMoving(true)})
-    .on('zoom',e=>{g.attr('transform',e.transform);_updateLandingZoomLabel(e.transform.k)})
-    .on('end',()=>{_setLandingMapMoving(false)});
+    .on('zoom',e=>{_applyLandingZoomTransform(g,e.transform);_updateLandingZoomLabel(e.transform.k)})
+    .on('end',e=>{_flushLandingZoomTransform(g,e.transform);_setLandingMapMoving(false)});
 }
 
 function renderLandingZoneMap(ctx){
@@ -212,6 +239,7 @@ function renderLandingZoneMap(ctx){
   const g=svg.append('g').attr('class','map-root');
   const zB=_createLandingMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
+  if(typeof window!=='undefined'&&typeof window._bindSafariGestureZoom==='function')window._bindSafariGestureZoom();
   bindZoomButtons();
   
   const ndL=g.append('g').attr('class','nodes-layer');
@@ -1401,7 +1429,7 @@ function renderLandingZoneMap(ctx){
   _depGraph=null;
   try{_renderNoteBadges()}catch(ne){console.warn('Note badges error:',ne)}
   try{_renderComplianceBadges()}catch(cbe){console.warn('Compliance badge error:',cbe)}
-  try{if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot error:',se)}
+  try{if(typeof _scheduleAutoRenderSnapshot==='function')_scheduleAutoRenderSnapshot();else if(Date.now()-_lastAutoSnap>120000){takeSnapshot('Render',true);_lastAutoSnap=Date.now()}}catch(se){console.warn('Auto-snapshot error:',se)}
   // Diff overlay (landing zone)
   try{if(_diffMode)setTimeout(_applyDiffOverlay,150)}catch(de){console.warn('Diff overlay error:',de)}
   document.getElementById('legend').style.display='flex';
@@ -1430,6 +1458,7 @@ function renderExecutiveOverview(ctx){
   const g=svg.append('g').attr('class','map-root');
   const zB=_createLandingMapZoom(svg,g);svg.call(zB);
   _mapSvg=svg;_mapZoom=zB;_mapG=g;
+  if(typeof window!=='undefined'&&typeof window._bindSafariGestureZoom==='function')window._bindSafariGestureZoom();
   bindZoomButtons();
   
   const tt=document.getElementById('tooltip');

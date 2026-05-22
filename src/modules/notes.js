@@ -163,7 +163,8 @@ function _renderNoteBadges(){
     if(rid.startsWith('canvas:'))return;
     const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
     if(!el)return;
-    const bb=el.getBBox();
+    const bb=typeof _measureSvgNodeFast==='function'?_measureSvgNodeFast(el):el.getBBox();
+    if(!bb)return;
     const topCat=notes.reduce((best,n)=>{const pri={incident:0,warning:1,todo:2,status:3,owner:4,info:5};return(pri[n.category]||5)<(pri[best]||5)?n.category:best},notes[0].category);
     const badge=nodesLayer.append('g').attr('class','note-badge cat-'+topCat).attr('transform','translate('+(bb.x+bb.width-4)+','+(bb.y+4)+')').style('cursor','pointer');
     badge.append('circle').attr('r',6);
@@ -185,6 +186,12 @@ function _buildComplianceLookup(){
     if((sevOrder[f.severity]||9)<(sevOrder[lookup[rid].worst]||9))lookup[rid].worst=f.severity;
   });
   return lookup;
+}
+function _compBadgeTransform(el,bb){
+  if(el&&el.classList&&el.classList.contains('res-node')){
+    return 'translate('+(bb.x-4)+','+(bb.y-4)+')';
+  }
+  return 'translate('+(bb.x+8)+','+(bb.y+4)+')';
 }
 function _renderComplianceBadges(){
   if(!_mapG)return;
@@ -216,9 +223,10 @@ function _renderComplianceBadges(){
   Object.entries(lookup).forEach(([rid,data])=>{
     const el=_mapG.node().querySelector('[data-vpc-id="'+rid+'"],[data-subnet-id="'+rid+'"],[data-gwid="'+rid+'"],[data-id="'+rid+'"]');
     if(!el)return;
-    const bb=el.getBBox();
-    // Offset from note badges — place on opposite corner (top-left)
-    const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform','translate('+(bb.x+8)+','+(bb.y+4)+')').style('cursor','pointer');
+    const bb=typeof _measureSvgNodeFast==='function'?_measureSvgNodeFast(el):el.getBBox();
+    if(!bb)return;
+    // Resource cards keep the type strip readable by pinning the badge just outside the top corner.
+    const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform',_compBadgeTransform(el,bb)).style('cursor','pointer');
     badge.node()._compRid=rid;
     badge.append('circle').attr('r',7);
     badge.append('text').attr('text-anchor','middle').attr('dy','2').text(data.count>9?'9+':data.count);
@@ -240,8 +248,9 @@ function _renderComplianceBadges(){
     }
     const el=_mapG.node().querySelector('[data-vpc-id="'+vpcId+'"]');
     if(!el)return;
-    const bb=el.getBBox();
-    const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform','translate('+(bb.x+8)+','+(bb.y+4)+')').style('cursor','pointer');
+    const bb=typeof _measureSvgNodeFast==='function'?_measureSvgNodeFast(el):el.getBBox();
+    if(!bb)return;
+    const badge=nodesLayer.append('g').attr('class','comp-badge sev-'+data.worst).attr('transform',_compBadgeTransform(el,bb)).style('cursor','pointer');
     badge.node()._compRid=vpcId;
     badge.append('circle').attr('r',7);
     badge.append('text').attr('text-anchor','middle').attr('dy','2').text(data.count>9?'9+':data.count);
