@@ -181,6 +181,32 @@ test.describe('App Load & Demo Data', () => {
     expect(capped).toBeCloseTo(0.32, 2);
   });
 
+  test('sidebar data detector avoids reparsing textarea JSON', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
+    await page.goto(BASE, { waitUntil: 'load' });
+    const result = await page.evaluate(async () => {
+      const originalParse = JSON.parse;
+      let parseCalls = 0;
+      JSON.parse = function(...args) {
+        parseCalls += 1;
+        return originalParse.apply(this, args);
+      };
+      const input = document.getElementById('in_vpcs');
+      input.value = '{"Vpcs":[{"VpcId":"vpc-test"}]}';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 650));
+      JSON.parse = originalParse;
+      return {
+        parseCalls,
+        ctaDisplay: document.getElementById('sidebarCta').style.display,
+        bodyDisplay: document.getElementById('sidebarBody').style.display
+      };
+    });
+    expect(result.parseCalls).toBe(0);
+    expect(result.ctaDisplay).toBe('none');
+    expect(result.bodyDisplay).toBe('');
+  });
+
   test('resource compliance badges stay clear of service labels', async ({ page }) => {
     await loadDemo(page);
     await page.evaluate(() => {

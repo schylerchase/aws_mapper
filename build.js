@@ -78,8 +78,8 @@ async function buildCore() {
   if (isProd) {
     const result = await esbuild.transform(src, { minify: true, target: 'es2020' });
     fs.writeFileSync('dist/app-core.js', result.code);
-    // Production: remove dev-only edge tests (script tag fails silently via onerror)
-    try { fs.unlinkSync('dist/edge-tests.js'); } catch(e) {}
+    // Production: keep a noop placeholder so the dev-only script tag does not 404.
+    fs.writeFileSync('dist/edge-tests.js', '/* production noop */\n');
   } else {
     fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
     // Dev: copy edge case tests for console debugging

@@ -19230,35 +19230,20 @@ document.getElementById('ctaDemo').addEventListener('click',function(){
 // --- Data summary after folder import ---
 // Hook into importFolder to show summary
 var _origImportFolder=typeof importFolder==='function'?importFolder:null;
+function _sidebarHasLoadedData(){
+  var els=document.querySelectorAll('.ji');
+  for(var i=0;i<els.length;i++){if((els[i].value||'').trim())return true}
+  return false;
+}
+function _showSidebarEditIfLoaded(){
+  var cta=document.getElementById('sidebarCta');
+  if(cta&&cta.style.display==='none')return;
+  if(_sidebarHasLoadedData())_showSidebarEdit();
+}
 function _wrapImportForSummary(result){
-  // After import completes, count resources and show summary
+  // After import completes, reveal the raw-data editor without reparsing every textarea.
   if(!result)return;
-  setTimeout(function(){
-    var counts={vpcs:0,subnets:0,ec2:0,rds:0,lambda:0,albs:0};
-    var regions=[];
-    document.querySelectorAll('.ji').forEach(function(el){
-      if(!el.value.trim())return;
-      try{
-        var d=JSON.parse(el.value);
-        if(el.id==='in_vpcs'&&d.Vpcs)counts.vpcs+=d.Vpcs.length;
-        if(el.id==='in_subnets'&&d.Subnets){
-          counts.subnets+=d.Subnets.length;
-          d.Subnets.forEach(function(s){
-            if(s.AvailabilityZone){var r=s.AvailabilityZone.replace(/[a-z]$/,'');if(regions.indexOf(r)<0)regions.push(r)}
-          });
-        }
-        if(el.id==='in_ec2'){
-          var insts=d.Reservations?d.Reservations.flatMap(function(r){return r.Instances||[]}):[];
-          counts.ec2+=insts.length;
-        }
-        if(el.id==='in_rds'&&d.DBInstances)counts.rds+=d.DBInstances.length;
-        if(el.id==='in_lambda'&&d.Functions)counts.lambda+=d.Functions.length;
-        if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
-      }catch(e){}
-    });
-    var hasData=counts.vpcs||counts.subnets||counts.ec2;
-    if(hasData)_showSidebarEdit();
-  },200);
+  setTimeout(_showSidebarEditIfLoaded,200);
 }
 
 // --- Toolbar Overflow Menu ---
@@ -19466,62 +19451,31 @@ function _showOnboardStep(step){
 
 // --- Sidebar mode: switch from CTA to edit when textareas get data ---
 // When data is loaded via file upload or demo, auto-switch sidebar mode
+var _sidebarObserverTimer=null;
+function _armSidebarObserver(){
+  var body=document.getElementById('sidebarBody');
+  if(!body)return;
+  _sidebarObserver.disconnect();
+  _sidebarObserver.observe(body,{childList:true,subtree:true});
+}
 var _sidebarObserver=new MutationObserver(function(){
-  var hasData=false;
-  document.querySelectorAll('.ji').forEach(function(el){if(el.value.trim())hasData=true});
-  if(hasData&&document.getElementById('sidebarCta').style.display!=='none'){
-    // Count resources for summary
-    var counts={vpcs:0,subnets:0,ec2:0,rds:0,lambda:0,albs:0};
-    var regions=[];
-    document.querySelectorAll('.ji').forEach(function(el){
-      if(!el.value.trim())return;
-      try{
-        var d=JSON.parse(el.value);
-        if(el.id==='in_vpcs'&&d.Vpcs)counts.vpcs+=d.Vpcs.length;
-        if(el.id==='in_subnets'&&d.Subnets){
-          counts.subnets+=d.Subnets.length;
-          d.Subnets.forEach(function(s){if(s.AvailabilityZone){var r=s.AvailabilityZone.replace(/[a-z]$/,'');if(regions.indexOf(r)<0)regions.push(r)}});
-        }
-        if(el.id==='in_ec2'){var insts=d.Reservations?d.Reservations.flatMap(function(r){return r.Instances||[]}):[];counts.ec2+=insts.length}
-        if(el.id==='in_rds'&&d.DBInstances)counts.rds+=d.DBInstances.length;
-        if(el.id==='in_lambda'&&d.Functions)counts.lambda+=d.Functions.length;
-        if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
-      }catch(e){}
-    });
-    if(counts.vpcs||counts.subnets)_showSidebarEdit();
-  }
+  if(_sidebarObserverTimer)clearTimeout(_sidebarObserverTimer);
+  _sidebarObserverTimer=setTimeout(function(){
+    _sidebarObserverTimer=null;
+    _showSidebarEditIfLoaded();
+  },300);
 });
 // Observe textarea value changes via input events (MutationObserver won't catch value changes)
 document.querySelectorAll('.ji').forEach(function(el){
   el.addEventListener('change',function(){
     // Debounced check — after file upload or programmatic value set
-    setTimeout(function(){_sidebarObserver.disconnect();_sidebarObserver.observe(document.getElementById('sidebarBody'),{childList:true,subtree:true})},300);
+    setTimeout(function(){_showSidebarEditIfLoaded();_armSidebarObserver()},300);
   });
 });
 
 // Hook file input to detect data load and show summary
 document.getElementById('fileInput').addEventListener('change',function(){
-  setTimeout(function(){
-    var hasData=false;
-    document.querySelectorAll('.ji').forEach(function(el){if(el.value.trim())hasData=true});
-    if(hasData){
-      var counts={vpcs:0,subnets:0,ec2:0,rds:0,lambda:0,albs:0};
-      var regions=[];
-      document.querySelectorAll('.ji').forEach(function(el){
-        if(!el.value.trim())return;
-        try{
-          var d=JSON.parse(el.value);
-          if(el.id==='in_vpcs'&&d.Vpcs)counts.vpcs+=d.Vpcs.length;
-          if(el.id==='in_subnets'&&d.Subnets){counts.subnets+=d.Subnets.length;d.Subnets.forEach(function(s){if(s.AvailabilityZone){var r=s.AvailabilityZone.replace(/[a-z]$/,'');if(regions.indexOf(r)<0)regions.push(r)}})}
-          if(el.id==='in_ec2'){var insts=d.Reservations?d.Reservations.flatMap(function(r){return r.Instances||[]}):[];counts.ec2+=insts.length}
-          if(el.id==='in_rds'&&d.DBInstances)counts.rds+=d.DBInstances.length;
-          if(el.id==='in_lambda'&&d.Functions)counts.lambda+=d.Functions.length;
-          if(el.id==='in_albs'&&d.LoadBalancers)counts.albs+=d.LoadBalancers.length;
-        }catch(e){}
-      });
-      if(counts.vpcs||counts.subnets)_showSidebarEdit();
-    }
-  },500);
+  setTimeout(_showSidebarEditIfLoaded,500);
 });
 
 // Edge case tests & demo generators extracted to src/dev/edge-tests.js (dev-only)
