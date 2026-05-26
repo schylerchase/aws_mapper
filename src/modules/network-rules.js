@@ -11,7 +11,12 @@ export function ipToNum(ip) {
     const n = Number(part);
     return n >= 0 && n <= 255 ? n : null;
   });
-  if (octets.some(function (n) { return n === null; })) return null;
+  if (
+    octets.some(function (n) {
+      return n === null;
+    })
+  )
+    return null;
   return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
 }
 
@@ -33,7 +38,7 @@ export function cidrContains(cidr, ip) {
   if (cidrNum === null || ipNum === null) return false;
   if (mask === 0) return true;
   const shift = 32 - mask;
-  return (cidrNum >>> shift) === (ipNum >>> shift);
+  return cidrNum >>> shift === ipNum >>> shift;
 }
 
 export function protoMatch(ruleProto, queryProto) {
@@ -80,23 +85,37 @@ export function evaluateRouteTable(rt, destCidr) {
     }
   });
   if (!bestMatch) return { target: 'blackhole', type: 'blackhole', detail: 'No matching route' };
-  if (bestMatch.State === 'blackhole') return { target: 'blackhole', type: 'blackhole', detail: 'Route is blackholed' };
-  if (bestMatch.GatewayId && bestMatch.GatewayId.startsWith('igw-')) return { target: bestMatch.GatewayId, type: 'igw' };
+  if (bestMatch.State === 'blackhole')
+    return { target: 'blackhole', type: 'blackhole', detail: 'Route is blackholed' };
+  if (bestMatch.GatewayId && bestMatch.GatewayId.startsWith('igw-'))
+    return { target: bestMatch.GatewayId, type: 'igw' };
   if (bestMatch.NatGatewayId) return { target: bestMatch.NatGatewayId, type: 'nat' };
-  if (bestMatch.VpcPeeringConnectionId) return { target: bestMatch.VpcPeeringConnectionId, type: 'pcx' };
+  if (bestMatch.VpcPeeringConnectionId)
+    return { target: bestMatch.VpcPeeringConnectionId, type: 'pcx' };
   if (bestMatch.TransitGatewayId) return { target: bestMatch.TransitGatewayId, type: 'tgw' };
   if (bestMatch.GatewayId === 'local') return { target: 'local', type: 'local' };
   if (bestMatch.VpcEndpointId) return { target: bestMatch.VpcEndpointId, type: 'vpce' };
-  if (bestMatch.GatewayId && bestMatch.GatewayId.startsWith('vgw-')) return { target: bestMatch.GatewayId, type: 'vgw' };
+  if (bestMatch.GatewayId && bestMatch.GatewayId.startsWith('vgw-'))
+    return { target: bestMatch.GatewayId, type: 'vgw' };
   return { target: 'local', type: 'local' };
 }
 
 export function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) {
-  if (!nacl || !nacl.Entries) return { action: 'allow', rule: 'Default allow (no NACL)', ruleNum: '-' };
+  if (!nacl || !nacl.Entries)
+    return { action: 'allow', rule: 'Default allow (no NACL)', ruleNum: '-' };
   const entries = (nacl.Entries || [])
-    .filter(function (e) { return e.Egress === (direction === 'outbound'); })
-    .sort(function (a, b) { return a.RuleNumber - b.RuleNumber; });
-  if (entries.length === 0 && opts && opts.assumeAllow) return { action: 'allow', rule: 'No ' + direction + ' rules defined (assumed allow)', ruleNum: '-' };
+    .filter(function (e) {
+      return e.Egress === (direction === 'outbound');
+    })
+    .sort(function (a, b) {
+      return a.RuleNumber - b.RuleNumber;
+    });
+  if (entries.length === 0 && opts && opts.assumeAllow)
+    return {
+      action: 'allow',
+      rule: 'No ' + direction + ' rules defined (assumed allow)',
+      ruleNum: '-'
+    };
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     if (e.RuleNumber === 32767) continue;
@@ -115,19 +134,38 @@ export function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) 
     if (!cidrOk) continue;
     const act = e.RuleAction === 'allow' ? 'allow' : 'deny';
     const cidrLabel = e.CidrBlock || e.Ipv6CidrBlock || '';
-    return { action: act, rule: 'Rule #' + e.RuleNumber + ' ' + act.toUpperCase() + ' ' + protoName(e.Protocol) + ' port ' + (e.PortRange ? e.PortRange.From + '-' + e.PortRange.To : 'all') + ' from ' + cidrLabel, ruleNum: e.RuleNumber };
+    return {
+      action: act,
+      rule:
+        'Rule #' +
+        e.RuleNumber +
+        ' ' +
+        act.toUpperCase() +
+        ' ' +
+        protoName(e.Protocol) +
+        ' port ' +
+        (e.PortRange ? e.PortRange.From + '-' + e.PortRange.To : 'all') +
+        ' from ' +
+        cidrLabel,
+      ruleNum: e.RuleNumber
+    };
   }
   return { action: 'deny', rule: 'Default deny (no matching rule)', ruleNum: '*' };
 }
 
 export function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts) {
-  if (!sgs || sgs.length === 0) return { action: (opts && opts.assumeAllow) ? 'allow' : 'deny', rule: 'No security groups attached', matchedSg: null };
+  if (!sgs || sgs.length === 0)
+    return {
+      action: opts && opts.assumeAllow ? 'allow' : 'deny',
+      rule: 'No security groups attached',
+      matchedSg: null
+    };
   const srcIp = ipFromCidr(sourceCidr);
   const srcSgIds = opts && opts.sourceSgIds;
   const srcSgSet = srcSgIds ? new Set(srcSgIds) : null;
   for (let si = 0; si < sgs.length; si++) {
     const sg = sgs[si];
-    const rules = direction === 'inbound' ? (sg.IpPermissions || []) : (sg.IpPermissionsEgress || []);
+    const rules = direction === 'inbound' ? sg.IpPermissions || [] : sg.IpPermissionsEgress || [];
     for (let ri = 0; ri < rules.length; ri++) {
       const r = rules[ri];
       if (!protoMatch(String(r.IpProtocol), protocol)) continue;
@@ -150,15 +188,27 @@ export function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts) {
       if (!cidrOk && (r.UserIdGroupPairs || []).length > 0) {
         const pairs = r.UserIdGroupPairs || [];
         for (let pi = 0; pi < pairs.length && !cidrOk; pi++) {
-          if (srcSgSet) { if (pairs[pi].GroupId && srcSgSet.has(pairs[pi].GroupId)) cidrOk = true; }
-          else { if (pairs[pi].GroupId) cidrOk = true; }
+          if (srcSgSet) {
+            if (pairs[pi].GroupId && srcSgSet.has(pairs[pi].GroupId)) cidrOk = true;
+          } else {
+            if (pairs[pi].GroupId) cidrOk = true;
+          }
         }
       }
       if (cidrOk) {
-        const desc = sg.GroupName + ': ' + protoName(String(r.IpProtocol)) + ' port ' + (r.FromPort !== -1 && r.FromPort !== undefined ? r.FromPort + '-' + r.ToPort : 'all');
+        const desc =
+          sg.GroupName +
+          ': ' +
+          protoName(String(r.IpProtocol)) +
+          ' port ' +
+          (r.FromPort !== -1 && r.FromPort !== undefined ? r.FromPort + '-' + r.ToPort : 'all');
         return { action: 'allow', rule: desc, matchedSg: sg.GroupId || sg.GroupName };
       }
     }
   }
-  return { action: 'deny', rule: 'No matching SG rule for ' + protocol + '/' + port, matchedSg: null };
+  return {
+    action: 'deny',
+    rule: 'No matching SG rule for ' + protocol + '/' + port,
+    matchedSg: null
+  };
 }

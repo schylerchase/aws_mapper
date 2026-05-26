@@ -26,6 +26,8 @@
     "test:headed": "npx playwright test --headed",
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:all": "npm run test:unit && npx playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "version:bump": "node scripts/bump-version.js"
   },
   "build": {
@@ -86,6 +88,7 @@
     "electron-builder": "^26.7.0",
     "esbuild": "^0.27.3",
     "picomatch": "^4.0.4",
+    "prettier": "^3.6.2",
     "serve": "^14.2.5"
   },
   "dependencies": {

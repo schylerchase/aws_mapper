@@ -28,13 +28,31 @@ export function toIn(px) {
 
 // === Gateway type styles (legend + cross-VPC lines) ===
 export const gwStyles = {
-  'IGW':  { color: '#059669', pattern: 1, label: 'Internet Gateway', fill: '#ECFDF5', border: '#059669' },
-  'NAT':  { color: '#D97706', pattern: 2, label: 'NAT Gateway',      fill: '#FFFBEB', border: '#D97706' },
-  'TGW':  { color: '#2563EB', pattern: 1, label: 'Transit Gateway',  fill: '#EFF6FF', border: '#2563EB' },
-  'VGW':  { color: '#7C3AED', pattern: 4, label: 'Virtual Private GW', fill: '#F5F3FF', border: '#7C3AED' },
-  'PCX':  { color: '#EA580C', pattern: 2, label: 'VPC Peering',      fill: '#FFF7ED', border: '#EA580C' },
-  'VPCE': { color: '#0891B2', pattern: 3, label: 'VPC Endpoint',     fill: '#ECFEFF', border: '#0891B2' },
-  'GW':   { color: '#6B7280', pattern: 1, label: 'Gateway',          fill: '#F9FAFB', border: '#6B7280' }
+  IGW: {
+    color: '#059669',
+    pattern: 1,
+    label: 'Internet Gateway',
+    fill: '#ECFDF5',
+    border: '#059669'
+  },
+  NAT: { color: '#D97706', pattern: 2, label: 'NAT Gateway', fill: '#FFFBEB', border: '#D97706' },
+  TGW: {
+    color: '#2563EB',
+    pattern: 1,
+    label: 'Transit Gateway',
+    fill: '#EFF6FF',
+    border: '#2563EB'
+  },
+  VGW: {
+    color: '#7C3AED',
+    pattern: 4,
+    label: 'Virtual Private GW',
+    fill: '#F5F3FF',
+    border: '#7C3AED'
+  },
+  PCX: { color: '#EA580C', pattern: 2, label: 'VPC Peering', fill: '#FFF7ED', border: '#EA580C' },
+  VPCE: { color: '#0891B2', pattern: 3, label: 'VPC Endpoint', fill: '#ECFEFF', border: '#0891B2' },
+  GW: { color: '#6B7280', pattern: 1, label: 'Gateway', fill: '#F9FAFB', border: '#6B7280' }
 };
 
 // === Module State ===
@@ -53,16 +71,24 @@ export function resetShapeState() {
 }
 
 /** Get current shapes array */
-export function getShapes() { return shapes; }
+export function getShapes() {
+  return shapes;
+}
 
 /** Get current polyEdges array */
-export function getPolyEdges() { return polyEdges; }
+export function getPolyEdges() {
+  return polyEdges;
+}
 
 /** Get current idMap */
-export function getIdMap() { return idMap; }
+export function getIdMap() {
+  return idMap;
+}
 
 /** Set an entry in the idMap */
-export function setIdMapEntry(key, value) { idMap[key] = value; }
+export function setIdMapEntry(key, value) {
+  idMap[key] = value;
+}
 
 // === Pure Logic ===
 
@@ -108,7 +134,16 @@ export function sanitizeName(s) {
 export function addRect(x, y, w, h, fill, stroke, strokeW, text, opts = {}) {
   const id = shapeId++;
   shapes.push({
-    id, type: 'rect', x, y, w, h, fill, stroke, strokeW, text,
+    id,
+    type: 'rect',
+    x,
+    y,
+    w,
+    h,
+    fill,
+    stroke,
+    strokeW,
+    text,
     dashed: opts.dashed || false,
     fontSize: opts.fontSize || 11,
     fontColor: opts.fontColor || '#1F2937',
@@ -127,7 +162,9 @@ export function addRect(x, y, w, h, fill, stroke, strokeW, text, opts = {}) {
  */
 export function addPolyEdge(waypoints, color, width, linePattern, label) {
   polyEdges.push({
-    waypoints, color, width,
+    waypoints,
+    color,
+    width,
     linePattern: linePattern || 1,
     label: label || '',
     id: shapeId++
@@ -156,13 +193,13 @@ export function buildSubText(s, ctx) {
   if (parts.length) lines.push(parts.join(' | '));
   const rt = subRT[s.SubnetId];
   if (rt) {
-    const nonLocal = (rt.Routes || []).filter(r => {
+    const nonLocal = (rt.Routes || []).filter((r) => {
       const t = r.GatewayId || r.NatGatewayId || r.TransitGatewayId || r.VpcPeeringConnectionId;
       return t && t !== 'local';
     });
     if (nonLocal.length) {
       lines.push('Routes:');
-      nonLocal.forEach(r => {
+      nonLocal.forEach((r) => {
         const dest = r.DestinationCidrBlock || r.DestinationPrefixListId || '?';
         const tgt = r.GatewayId || r.NatGatewayId || r.TransitGatewayId || r.VpcPeeringConnectionId;
         lines.push('  ' + dest + ' -> ' + clsGw(tgt || '') + ' ' + sid(tgt));
@@ -186,66 +223,141 @@ export function buildShape(s, pgH) {
   const lp = s.linePattern || 1;
   const dashXml = s.dashed
     ? '<Cell N="LinePattern" V="2"/>'
-    : (lp !== 1 ? '<Cell N="LinePattern" V="' + lp + '"/>' : '');
+    : lp !== 1
+      ? '<Cell N="LinePattern" V="' + lp + '"/>'
+      : '';
   const sw = toIn(s.strokeW || 1);
   const fs = (s.fontSize || 11) / 72;
 
-  const geom = '<Section N="Geometry" IX="0">'
-    + '<Cell N="NoFill" V="0"/><Cell N="NoLine" V="0"/>'
-    + '<Row T="MoveTo" IX="1"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>'
-    + '<Row T="LineTo" IX="2"><Cell N="X" V="' + wi + '"/><Cell N="Y" V="0"/></Row>'
-    + '<Row T="LineTo" IX="3"><Cell N="X" V="' + wi + '"/><Cell N="Y" V="' + hi + '"/></Row>'
-    + '<Row T="LineTo" IX="4"><Cell N="X" V="0"/><Cell N="Y" V="' + hi + '"/></Row>'
-    + '<Row T="LineTo" IX="5"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>'
-    + '</Section>';
+  const geom =
+    '<Section N="Geometry" IX="0">' +
+    '<Cell N="NoFill" V="0"/><Cell N="NoLine" V="0"/>' +
+    '<Row T="MoveTo" IX="1"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>' +
+    '<Row T="LineTo" IX="2"><Cell N="X" V="' +
+    wi +
+    '"/><Cell N="Y" V="0"/></Row>' +
+    '<Row T="LineTo" IX="3"><Cell N="X" V="' +
+    wi +
+    '"/><Cell N="Y" V="' +
+    hi +
+    '"/></Row>' +
+    '<Row T="LineTo" IX="4"><Cell N="X" V="0"/><Cell N="Y" V="' +
+    hi +
+    '"/></Row>' +
+    '<Row T="LineTo" IX="5"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>' +
+    '</Section>';
 
   const vAlign = s.topAlign ? 0 : 1;
   const hAlign = s.hAlign === 'center' ? 1 : 0;
 
-  const propsXml = s.props && s.props.length
-    ? '<Section N="Property">' + s.props.map((p, i) =>
-        '<Row N="Row_' + i + '"><Cell N="Label" V="' + xmlEsc(p.label) + '"/>'
-        + '<Cell N="Value" V="' + xmlEsc(p.val) + '"/>'
-        + '<Cell N="Type" V="0"/></Row>'
-      ).join('') + '</Section>'
-    : '';
+  const propsXml =
+    s.props && s.props.length
+      ? '<Section N="Property">' +
+        s.props
+          .map(
+            (p, i) =>
+              '<Row N="Row_' +
+              i +
+              '"><Cell N="Label" V="' +
+              xmlEsc(p.label) +
+              '"/>' +
+              '<Cell N="Value" V="' +
+              xmlEsc(p.val) +
+              '"/>' +
+              '<Cell N="Type" V="0"/></Row>'
+          )
+          .join('') +
+        '</Section>'
+      : '';
 
-  return '<Shape ID="' + s.id + '" NameU="Shape' + s.id + '" Type="Shape" UniqueID="' + uid() + '">'
-    + '<Cell N="PinX" V="' + cx + '"/>'
-    + '<Cell N="PinY" V="' + cy + '"/>'
-    + '<Cell N="Width" V="' + wi + '"/>'
-    + '<Cell N="Height" V="' + hi + '"/>'
-    + '<Cell N="LocPinX" V="' + (wi / 2) + '"/>'
-    + '<Cell N="LocPinY" V="' + (hi / 2) + '"/>'
-    + '<Cell N="TxtWidth" V="' + wi + '"/>'
-    + '<Cell N="TxtHeight" V="' + hi + '"/>'
-    + '<Cell N="TxtPinX" V="' + (wi / 2) + '"/>'
-    + '<Cell N="TxtPinY" V="' + (hi / 2) + '"/>'
-    + '<Cell N="TxtLocPinX" V="' + (wi / 2) + '"/>'
-    + '<Cell N="TxtLocPinY" V="' + (hi / 2) + '"/>'
-    + '<Cell N="FillForegnd" V="' + s.fill + '"/>'
-    + '<Cell N="FillBkgnd" V="' + s.fill + '"/>'
-    + '<Cell N="LineColor" V="' + s.stroke + '"/>'
-    + '<Cell N="LineWeight" V="' + sw + '"/>'
-    + '<Cell N="VerticalAlign" V="' + vAlign + '"/>'
-    + '<Cell N="HorzAlign" V="' + hAlign + '"/>'
-    + '<Cell N="TopMargin" V="0.06"/>'
-    + '<Cell N="BottomMargin" V="0.06"/>'
-    + '<Cell N="LeftMargin" V="0.1"/>'
-    + '<Cell N="RightMargin" V="0.1"/>'
-    + dashXml
-    + '<Section N="Character" IX="0">'
-    + '<Row IX="0">'
-    + '<Cell N="Font" V="Calibri"/>'
-    + '<Cell N="Color" V="' + (s.fontColor || '#000000') + '"/>'
-    + '<Cell N="Size" V="' + fs + '"/>'
-    + '<Cell N="Style" V="' + (s.bold ? 1 : 0) + '"/>'
-    + '</Row>'
-    + '</Section>'
-    + geom
-    + propsXml
-    + '<Text>' + xmlEsc(s.text) + '</Text>'
-    + '</Shape>';
+  return (
+    '<Shape ID="' +
+    s.id +
+    '" NameU="Shape' +
+    s.id +
+    '" Type="Shape" UniqueID="' +
+    uid() +
+    '">' +
+    '<Cell N="PinX" V="' +
+    cx +
+    '"/>' +
+    '<Cell N="PinY" V="' +
+    cy +
+    '"/>' +
+    '<Cell N="Width" V="' +
+    wi +
+    '"/>' +
+    '<Cell N="Height" V="' +
+    hi +
+    '"/>' +
+    '<Cell N="LocPinX" V="' +
+    wi / 2 +
+    '"/>' +
+    '<Cell N="LocPinY" V="' +
+    hi / 2 +
+    '"/>' +
+    '<Cell N="TxtWidth" V="' +
+    wi +
+    '"/>' +
+    '<Cell N="TxtHeight" V="' +
+    hi +
+    '"/>' +
+    '<Cell N="TxtPinX" V="' +
+    wi / 2 +
+    '"/>' +
+    '<Cell N="TxtPinY" V="' +
+    hi / 2 +
+    '"/>' +
+    '<Cell N="TxtLocPinX" V="' +
+    wi / 2 +
+    '"/>' +
+    '<Cell N="TxtLocPinY" V="' +
+    hi / 2 +
+    '"/>' +
+    '<Cell N="FillForegnd" V="' +
+    s.fill +
+    '"/>' +
+    '<Cell N="FillBkgnd" V="' +
+    s.fill +
+    '"/>' +
+    '<Cell N="LineColor" V="' +
+    s.stroke +
+    '"/>' +
+    '<Cell N="LineWeight" V="' +
+    sw +
+    '"/>' +
+    '<Cell N="VerticalAlign" V="' +
+    vAlign +
+    '"/>' +
+    '<Cell N="HorzAlign" V="' +
+    hAlign +
+    '"/>' +
+    '<Cell N="TopMargin" V="0.06"/>' +
+    '<Cell N="BottomMargin" V="0.06"/>' +
+    '<Cell N="LeftMargin" V="0.1"/>' +
+    '<Cell N="RightMargin" V="0.1"/>' +
+    dashXml +
+    '<Section N="Character" IX="0">' +
+    '<Row IX="0">' +
+    '<Cell N="Font" V="Calibri"/>' +
+    '<Cell N="Color" V="' +
+    (s.fontColor || '#000000') +
+    '"/>' +
+    '<Cell N="Size" V="' +
+    fs +
+    '"/>' +
+    '<Cell N="Style" V="' +
+    (s.bold ? 1 : 0) +
+    '"/>' +
+    '</Row>' +
+    '</Section>' +
+    geom +
+    propsXml +
+    '<Text>' +
+    xmlEsc(s.text) +
+    '</Text>' +
+    '</Shape>'
+  );
 }
 
 /**
@@ -255,33 +367,63 @@ export function buildShape(s, pgH) {
  * @returns {string} Visio XML fragment
  */
 export function buildPolyConnector(e, pgH) {
-  const pts = e.waypoints.map(wp => ({ x: toIn(wp.x), y: pgH - toIn(wp.y) }));
+  const pts = e.waypoints.map((wp) => ({ x: toIn(wp.x), y: pgH - toIn(wp.y) }));
   if (pts.length < 2) return '';
   const p1 = pts[0];
   const pN = pts[pts.length - 1];
   const sw = toIn(e.width || 1);
   const cid = e.id;
-  let geomRows = '<Row T="MoveTo" IX="1"><Cell N="X" V="' + p1.x + '"/><Cell N="Y" V="' + p1.y + '"/></Row>';
+  let geomRows =
+    '<Row T="MoveTo" IX="1"><Cell N="X" V="' + p1.x + '"/><Cell N="Y" V="' + p1.y + '"/></Row>';
   for (let i = 1; i < pts.length; i++) {
-    geomRows += '<Row T="LineTo" IX="' + (i + 1) + '"><Cell N="X" V="' + pts[i].x + '"/><Cell N="Y" V="' + pts[i].y + '"/></Row>';
+    geomRows +=
+      '<Row T="LineTo" IX="' +
+      (i + 1) +
+      '"><Cell N="X" V="' +
+      pts[i].x +
+      '"/><Cell N="Y" V="' +
+      pts[i].y +
+      '"/></Row>';
   }
-  return '<Shape ID="' + cid + '" NameU="Conn.' + cid + '" Type="Shape" UniqueID="' + uid() + '">'
-    + '<Cell N="ObjType" V="2"/>'
-    + '<Cell N="BeginX" V="' + p1.x + '"/>'
-    + '<Cell N="BeginY" V="' + p1.y + '"/>'
-    + '<Cell N="EndX" V="' + pN.x + '"/>'
-    + '<Cell N="EndY" V="' + pN.y + '"/>'
-    + '<Cell N="LineColor" V="' + (e.color || '#6B7280') + '"/>'
-    + '<Cell N="LineWeight" V="' + sw + '"/>'
-    + '<Cell N="LinePattern" V="' + (e.linePattern || 1) + '"/>'
-    + '<Cell N="BeginArrow" V="0"/>'
-    + '<Cell N="EndArrow" V="5"/>'
-    + '<Cell N="EndArrowSize" V="2"/>'
-    + '<Section N="Geometry" IX="0">'
-    + '<Cell N="NoFill" V="1"/><Cell N="NoLine" V="0"/>'
-    + geomRows
-    + '</Section>'
-    + '</Shape>';
+  return (
+    '<Shape ID="' +
+    cid +
+    '" NameU="Conn.' +
+    cid +
+    '" Type="Shape" UniqueID="' +
+    uid() +
+    '">' +
+    '<Cell N="ObjType" V="2"/>' +
+    '<Cell N="BeginX" V="' +
+    p1.x +
+    '"/>' +
+    '<Cell N="BeginY" V="' +
+    p1.y +
+    '"/>' +
+    '<Cell N="EndX" V="' +
+    pN.x +
+    '"/>' +
+    '<Cell N="EndY" V="' +
+    pN.y +
+    '"/>' +
+    '<Cell N="LineColor" V="' +
+    (e.color || '#6B7280') +
+    '"/>' +
+    '<Cell N="LineWeight" V="' +
+    sw +
+    '"/>' +
+    '<Cell N="LinePattern" V="' +
+    (e.linePattern || 1) +
+    '"/>' +
+    '<Cell N="BeginArrow" V="0"/>' +
+    '<Cell N="EndArrow" V="5"/>' +
+    '<Cell N="EndArrowSize" V="2"/>' +
+    '<Section N="Geometry" IX="0">' +
+    '<Cell N="NoFill" V="1"/><Cell N="NoLine" V="0"/>' +
+    geomRows +
+    '</Section>' +
+    '</Shape>'
+  );
 }
 
 /**
@@ -292,60 +434,77 @@ export function buildPolyConnector(e, pgH) {
  */
 export function buildVsdxXml(pgW, pgH) {
   let shapesStr = '';
-  shapes.forEach(s => { shapesStr += buildShape(s, pgH); });
-  polyEdges.forEach(e => { shapesStr += buildPolyConnector(e, pgH); });
+  shapes.forEach((s) => {
+    shapesStr += buildShape(s, pgH);
+  });
+  polyEdges.forEach((e) => {
+    shapesStr += buildPolyConnector(e, pgH);
+  });
 
-  const page1 = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<PageContents xmlns="http://schemas.microsoft.com/office/visio/2012/main"'
-    + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-    + '<Shapes>' + shapesStr + '</Shapes>'
-    + '</PageContents>';
+  const page1 =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<PageContents xmlns="http://schemas.microsoft.com/office/visio/2012/main"' +
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<Shapes>' +
+    shapesStr +
+    '</Shapes>' +
+    '</PageContents>';
 
-  const pagesXml = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<Pages xmlns="http://schemas.microsoft.com/office/visio/2012/main"'
-    + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-    + '<Page ID="0" Name="AWS Network Map" NameU="AWS Network Map">'
-    + '<PageSheet>'
-    + '<Cell N="PageWidth" V="' + pgW + '"/>'
-    + '<Cell N="PageHeight" V="' + pgH + '"/>'
-    + '<Cell N="PrintPageOrientation" V="2"/>'
-    + '</PageSheet>'
-    + '<Rel r:id="rId1"/>'
-    + '</Page>'
-    + '</Pages>';
+  const pagesXml =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<Pages xmlns="http://schemas.microsoft.com/office/visio/2012/main"' +
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<Page ID="0" Name="AWS Network Map" NameU="AWS Network Map">' +
+    '<PageSheet>' +
+    '<Cell N="PageWidth" V="' +
+    pgW +
+    '"/>' +
+    '<Cell N="PageHeight" V="' +
+    pgH +
+    '"/>' +
+    '<Cell N="PrintPageOrientation" V="2"/>' +
+    '</PageSheet>' +
+    '<Rel r:id="rId1"/>' +
+    '</Page>' +
+    '</Pages>';
 
-  const docXml = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<VisioDocument xmlns="http://schemas.microsoft.com/office/visio/2012/main"'
-    + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-    + '<DocumentProperties>'
-    + '<Creator>AWS Network Map Tool</Creator>'
-    + '<Description>AWS Network Infrastructure Diagram</Description>'
-    + '</DocumentProperties>'
-    + '</VisioDocument>';
+  const docXml =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<VisioDocument xmlns="http://schemas.microsoft.com/office/visio/2012/main"' +
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<DocumentProperties>' +
+    '<Creator>AWS Network Map Tool</Creator>' +
+    '<Description>AWS Network Infrastructure Diagram</Description>' +
+    '</DocumentProperties>' +
+    '</VisioDocument>';
 
-  const contentTypes = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    + '<Default Extension="xml" ContentType="application/xml"/>'
-    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-    + '<Override PartName="/visio/document.xml" ContentType="application/vnd.ms-visio.drawing.main+xml"/>'
-    + '<Override PartName="/visio/pages/pages.xml" ContentType="application/vnd.ms-visio.pages+xml"/>'
-    + '<Override PartName="/visio/pages/page1.xml" ContentType="application/vnd.ms-visio.page+xml"/>'
-    + '</Types>';
+  const contentTypes =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Override PartName="/visio/document.xml" ContentType="application/vnd.ms-visio.drawing.main+xml"/>' +
+    '<Override PartName="/visio/pages/pages.xml" ContentType="application/vnd.ms-visio.pages+xml"/>' +
+    '<Override PartName="/visio/pages/page1.xml" ContentType="application/vnd.ms-visio.page+xml"/>' +
+    '</Types>';
 
-  const topRels = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    + '<Relationship Id="rId1" Type="http://schemas.microsoft.com/visio/2010/relationships/document" Target="visio/document.xml"/>'
-    + '</Relationships>';
+  const topRels =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.microsoft.com/visio/2010/relationships/document" Target="visio/document.xml"/>' +
+    '</Relationships>';
 
-  const docRels = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    + '<Relationship Id="rId1" Type="http://schemas.microsoft.com/visio/2010/relationships/pages" Target="pages/pages.xml"/>'
-    + '</Relationships>';
+  const docRels =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.microsoft.com/visio/2010/relationships/pages" Target="pages/pages.xml"/>' +
+    '</Relationships>';
 
-  const pagesRels = '<?xml version="1.0" encoding="utf-8"?>'
-    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    + '<Relationship Id="rId1" Type="http://schemas.microsoft.com/visio/2010/relationships/page" Target="page1.xml"/>'
-    + '</Relationships>';
+  const pagesRels =
+    '<?xml version="1.0" encoding="utf-8"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.microsoft.com/visio/2010/relationships/page" Target="page1.xml"/>' +
+    '</Relationships>';
 
   return { page1, pagesXml, docXml, contentTypes, topRels, docRels, pagesRels };
 }
@@ -368,7 +527,12 @@ export function resolveColor(cssVar) {
   document.body.removeChild(el);
   const m = c.match(/(\d+)/g);
   if (!m) return '#888888';
-  const hex = '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('');
+  const hex =
+    '#' +
+    m
+      .slice(0, 3)
+      .map((x) => (+x).toString(16).padStart(2, '0'))
+      .join('');
   _colorCache.set(cssVar, hex);
   return hex;
 }
@@ -389,16 +553,22 @@ export function downloadBlob(blob, name) {
       { name: 'All Files', extensions: ['*'] }
     ];
     if (blob.type && blob.type.startsWith('text')) {
-      blob.text().then(text => {
-        window.electronAPI.exportFile(text, name, filters)
-          .then(p => { if (p) showToast('Exported: ' + p.split('/').pop()); })
-          .catch(e => console.error('Export failed:', e));
+      blob.text().then((text) => {
+        window.electronAPI
+          .exportFile(text, name, filters)
+          .then((p) => {
+            if (p) showToast('Exported: ' + p.split('/').pop());
+          })
+          .catch((e) => console.error('Export failed:', e));
       });
     } else {
-      blob.arrayBuffer().then(ab => {
-        window.electronAPI.exportFile(new Uint8Array(ab), name, filters)
-          .then(p => { if (p) showToast('Exported: ' + p.split('/').pop()); })
-          .catch(e => console.error('Export failed:', e));
+      blob.arrayBuffer().then((ab) => {
+        window.electronAPI
+          .exportFile(new Uint8Array(ab), name, filters)
+          .then((p) => {
+            if (p) showToast('Exported: ' + p.split('/').pop());
+          })
+          .catch((e) => console.error('Export failed:', e));
       });
     }
     return;
@@ -412,7 +582,9 @@ export function downloadBlob(blob, name) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(function () { URL.revokeObjectURL(objUrl); }, 1000);
+  setTimeout(function () {
+    URL.revokeObjectURL(objUrl);
+  }, 1000);
 }
 
 /**
@@ -423,7 +595,7 @@ export function downloadBlob(blob, name) {
  */
 export function computeSubnetHeights(subnets, ctx) {
   const heights = {};
-  subnets.forEach(s => {
+  subnets.forEach((s) => {
     const bt = buildSubText(s, ctx);
     heights[s.SubnetId] = Math.max(SUB_H_MIN, bt.lineCount * LINE_H + 30);
   });
@@ -441,7 +613,7 @@ export function computeSubnetHeights(subnets, ctx) {
 export function computePageDimensions(totalWidth, busStartY, busLaneIdx, busLaneH) {
   let pgWpx = totalWidth + 200;
   let pgHpx = busStartY + (busLaneIdx + 2) * busLaneH + 300;
-  shapes.forEach(s => {
+  shapes.forEach((s) => {
     pgWpx = Math.max(pgWpx, s.x + s.w + 120);
     pgHpx = Math.max(pgHpx, s.y + s.h + 120);
   });
@@ -461,15 +633,39 @@ if (typeof window !== 'undefined') {
   let _vsdxCache = null;
   Object.defineProperty(window, '_vsdx', {
     get() {
-      if (!_vsdxCache) _vsdxCache = {
-        resetShapeState, getShapes, getPolyEdges, getIdMap, setIdMapEntry,
-        xmlEsc, uid, addRect, addPolyEdge, buildSubText, buildShape,
-        buildPolyConnector, buildVsdxXml, computeSubnetHeights,
-        computePageDimensions, gwStyles,
-        PX, SUB_W, SUB_H_MIN, SUB_GAP, VPC_PAD, VPC_HDR,
-        GW_INSIDE_W, GW_INSIDE_H, GW_INSIDE_GAP, GW_ROW_H,
-        COL_GAP, LINE_H, TOP_MARGIN, toIn
-      };
+      if (!_vsdxCache)
+        _vsdxCache = {
+          resetShapeState,
+          getShapes,
+          getPolyEdges,
+          getIdMap,
+          setIdMapEntry,
+          xmlEsc,
+          uid,
+          addRect,
+          addPolyEdge,
+          buildSubText,
+          buildShape,
+          buildPolyConnector,
+          buildVsdxXml,
+          computeSubnetHeights,
+          computePageDimensions,
+          gwStyles,
+          PX,
+          SUB_W,
+          SUB_H_MIN,
+          SUB_GAP,
+          VPC_PAD,
+          VPC_HDR,
+          GW_INSIDE_W,
+          GW_INSIDE_H,
+          GW_INSIDE_GAP,
+          GW_ROW_H,
+          COL_GAP,
+          LINE_H,
+          TOP_MARGIN,
+          toIn
+        };
       return _vsdxCache;
     },
     configurable: true

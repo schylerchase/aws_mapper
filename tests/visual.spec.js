@@ -5,7 +5,6 @@ const { BASE, loadDemo, openDashTab, clickSubnet } = require('./helpers');
 // Update baselines: npx playwright test tests/visual.spec.js --update-snapshots
 
 test.describe('Visual Regression', () => {
-
   test('landing page', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
@@ -61,5 +60,4 @@ test.describe('Visual Regression', () => {
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('classification.png', { maxDiffPixelRatio: 0.01 });
   });
-
 });

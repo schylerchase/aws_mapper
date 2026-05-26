@@ -13,29 +13,61 @@ let _fwFpDir = 'ingress';
 
 // ── State accessors ────────────────────────────────────────────────────
 
-export function getFwEdits() { return _fwEdits; }
-export function setFwEdits(v) { _fwEdits = v; }
+export function getFwEdits() {
+  return _fwEdits;
+}
+export function setFwEdits(v) {
+  _fwEdits = v;
+}
 
-export function getFwSnapshot() { return _fwSnapshot; }
-export function setFwSnapshot(v) { _fwSnapshot = v; }
+export function getFwSnapshot() {
+  return _fwSnapshot;
+}
+export function setFwSnapshot(v) {
+  _fwSnapshot = v;
+}
 
-export function getFwFpType() { return _fwFpType; }
-export function setFwFpType(v) { _fwFpType = v; }
+export function getFwFpType() {
+  return _fwFpType;
+}
+export function setFwFpType(v) {
+  _fwFpType = v;
+}
 
-export function getFwFpResId() { return _fwFpResId; }
-export function setFwFpResId(v) { _fwFpResId = v; }
+export function getFwFpResId() {
+  return _fwFpResId;
+}
+export function setFwFpResId(v) {
+  _fwFpResId = v;
+}
 
-export function getFwFpSub() { return _fwFpSub; }
-export function setFwFpSub(v) { _fwFpSub = v; }
+export function getFwFpSub() {
+  return _fwFpSub;
+}
+export function setFwFpSub(v) {
+  _fwFpSub = v;
+}
 
-export function getFwFpVpcId() { return _fwFpVpcId; }
-export function setFwFpVpcId(v) { _fwFpVpcId = v; }
+export function getFwFpVpcId() {
+  return _fwFpVpcId;
+}
+export function setFwFpVpcId(v) {
+  _fwFpVpcId = v;
+}
 
-export function getFwFpLk() { return _fwFpLk; }
-export function setFwFpLk(v) { _fwFpLk = v; }
+export function getFwFpLk() {
+  return _fwFpLk;
+}
+export function setFwFpLk(v) {
+  _fwFpLk = v;
+}
 
-export function getFwFpDir() { return _fwFpDir; }
-export function setFwFpDir(v) { _fwFpDir = v; }
+export function getFwFpDir() {
+  return _fwFpDir;
+}
+export function setFwFpDir(v) {
+  _fwFpDir = v;
+}
 
 // ── Protocol label helper ──────────────────────────────────────────────
 
@@ -67,11 +99,23 @@ export function fwRuleMatch(a, b) {
   if (String(a.IpProtocol) !== String(b.IpProtocol)) return false;
   if ((a.FromPort || 0) !== (b.FromPort || 0)) return false;
   if ((a.ToPort || 0) !== (b.ToPort || 0)) return false;
-  const aCidrs = (a.IpRanges || []).map(r => r.CidrIp).sort().join(',');
-  const bCidrs = (b.IpRanges || []).map(r => r.CidrIp).sort().join(',');
+  const aCidrs = (a.IpRanges || [])
+    .map((r) => r.CidrIp)
+    .sort()
+    .join(',');
+  const bCidrs = (b.IpRanges || [])
+    .map((r) => r.CidrIp)
+    .sort()
+    .join(',');
   if (aCidrs !== bCidrs) return false;
-  const aGrps = (a.UserIdGroupPairs || []).map(g => g.GroupId).sort().join(',');
-  const bGrps = (b.UserIdGroupPairs || []).map(g => g.GroupId).sort().join(',');
+  const aGrps = (a.UserIdGroupPairs || [])
+    .map((g) => g.GroupId)
+    .sort()
+    .join(',');
+  const bGrps = (b.UserIdGroupPairs || [])
+    .map((g) => g.GroupId)
+    .sort()
+    .join(',');
   return aGrps === bGrps;
 }
 
@@ -83,7 +127,7 @@ export function fwRuleMatch(a, b) {
  * @returns {number}
  */
 export function fwEditCount(resourceId) {
-  return _fwEdits.filter(e => e.resourceId === resourceId).length;
+  return _fwEdits.filter((e) => e.resourceId === resourceId).length;
 }
 
 // ── Validation ─────────────────────────────────────────────────────────
@@ -120,9 +164,7 @@ export function fwValidateNaclRule(rule, existingEntries, direction) {
   }
   const isEgress = direction === 'egress';
   if (existingEntries && !isNaN(num)) {
-    const dup = existingEntries.some(e =>
-      e.RuleNumber === num && e.Egress === isEgress
-    );
+    const dup = existingEntries.some((e) => e.RuleNumber === num && e.Egress === isEgress);
     if (dup) errs.push('Duplicate rule number ' + num + ' in ' + direction + ' direction');
   }
   if (!fwValidateCidr(rule.CidrBlock)) errs.push('Invalid CIDR format');
@@ -166,13 +208,13 @@ export function fwValidateSgRule(rule) {
       if (from > to) errs.push('FromPort must be <= ToPort');
     }
   }
-  const hasCidr = (rule.IpRanges || []).some(r => r.CidrIp);
-  const hasSgRef = (rule.UserIdGroupPairs || []).some(g => g.GroupId);
+  const hasCidr = (rule.IpRanges || []).some((r) => r.CidrIp);
+  const hasSgRef = (rule.UserIdGroupPairs || []).some((g) => g.GroupId);
   if (!hasCidr && !hasSgRef) {
     errs.push('At least one source (CIDR or SG reference) required');
   }
   if (hasCidr) {
-    (rule.IpRanges || []).forEach(r => {
+    (rule.IpRanges || []).forEach((r) => {
       if (r.CidrIp && !fwValidateCidr(r.CidrIp)) errs.push('Invalid CIDR: ' + r.CidrIp);
     });
   }
@@ -189,13 +231,15 @@ export function fwValidateRoute(route, existingRoutes) {
   const errs = [];
   if (!fwValidateCidr(route.DestinationCidrBlock)) errs.push('Invalid destination CIDR');
   if (existingRoutes) {
-    const dup = existingRoutes.some(r =>
-      r.DestinationCidrBlock === route.DestinationCidrBlock
-    );
+    const dup = existingRoutes.some((r) => r.DestinationCidrBlock === route.DestinationCidrBlock);
     if (dup) errs.push('Duplicate destination CIDR: ' + route.DestinationCidrBlock);
   }
-  const hasTarget = route.GatewayId || route.NatGatewayId ||
-    route.TransitGatewayId || route.VpcPeeringConnectionId || route.VpcEndpointId;
+  const hasTarget =
+    route.GatewayId ||
+    route.NatGatewayId ||
+    route.TransitGatewayId ||
+    route.VpcPeeringConnectionId ||
+    route.VpcEndpointId;
   if (!hasTarget) errs.push('Route target required');
   return errs;
 }
@@ -212,7 +256,7 @@ export function fwCheckNaclShadow(nacl, direction) {
   if (!nacl || !nacl.Entries) return [];
   const isEgress = direction === 'egress';
   const entries = (nacl.Entries || [])
-    .filter(e => e.Egress === isEgress && e.RuleNumber !== 32767)
+    .filter((e) => e.Egress === isEgress && e.RuleNumber !== 32767)
     .sort((a, b) => a.RuleNumber - b.RuleNumber);
   const warnings = [];
   for (let i = 1; i < entries.length; i++) {
@@ -223,9 +267,17 @@ export function fwCheckNaclShadow(nacl, direction) {
       const sameProto = (hi.Protocol || '') === (lo.Protocol || '') || lo.Protocol === '-1';
       if (sameCidr && sameProto && hi.RuleAction !== lo.RuleAction) {
         warnings.push(
-          'Rule #' + hi.RuleNumber + ' (' + hi.RuleAction + ') is shadowed by #' +
-          lo.RuleNumber + ' (' + lo.RuleAction + ') — same CIDR ' +
-          (hi.CidrBlock || 'any') + ', evaluated first'
+          'Rule #' +
+            hi.RuleNumber +
+            ' (' +
+            hi.RuleAction +
+            ') is shadowed by #' +
+            lo.RuleNumber +
+            ' (' +
+            lo.RuleAction +
+            ') — same CIDR ' +
+            (hi.CidrBlock || 'any') +
+            ', evaluated first'
         );
       }
     }
@@ -243,7 +295,7 @@ export function fwCheckNaclShadow(nacl, direction) {
 export function fwGenerateCli(edits) {
   const list = edits || _fwEdits;
   const cmds = [];
-  list.forEach(edit => {
+  list.forEach((edit) => {
     if (edit.type === 'nacl') fwGenNaclCli(edit, cmds);
     else if (edit.type === 'sg') fwGenSgCli(edit, cmds);
     else if (edit.type === 'route') fwGenRouteCli(edit, cmds);
@@ -265,17 +317,30 @@ export function fwGenNaclCli(edit, cmds) {
     cmds.push(_fwNaclEntryCmd('replace-network-acl-entry', id, edit.rule, dirFlag));
   } else if (edit.action === 'delete') {
     cmds.push(
-      'aws ec2 delete-network-acl-entry --network-acl-id ' + id +
-      ' --rule-number ' + edit.rule.RuleNumber + ' ' + dirFlag
+      'aws ec2 delete-network-acl-entry --network-acl-id ' +
+        id +
+        ' --rule-number ' +
+        edit.rule.RuleNumber +
+        ' ' +
+        dirFlag
     );
   }
 }
 
 function _fwNaclEntryCmd(verb, naclId, rule, dirFlag) {
-  let cmd = 'aws ec2 ' + verb + ' --network-acl-id ' + naclId +
-    ' --rule-number ' + rule.RuleNumber + ' ' + dirFlag +
-    ' --protocol ' + rule.Protocol +
-    ' --cidr-block ' + rule.CidrBlock;
+  let cmd =
+    'aws ec2 ' +
+    verb +
+    ' --network-acl-id ' +
+    naclId +
+    ' --rule-number ' +
+    rule.RuleNumber +
+    ' ' +
+    dirFlag +
+    ' --protocol ' +
+    rule.Protocol +
+    ' --cidr-block ' +
+    rule.CidrBlock;
   if (rule.PortRange) {
     cmd += ' --port-range From=' + rule.PortRange.From + ',To=' + rule.PortRange.To;
   }
@@ -304,16 +369,15 @@ export function fwGenSgCli(edit, cmds) {
 }
 
 function _fwSgRuleCmd(verb, sgId, rule) {
-  let cmd = 'aws ec2 ' + verb + ' --group-id ' + sgId +
-    ' --protocol ' + rule.IpProtocol;
+  let cmd = 'aws ec2 ' + verb + ' --group-id ' + sgId + ' --protocol ' + rule.IpProtocol;
   if (rule.FromPort !== undefined && rule.FromPort !== -1) {
     cmd += ' --port ' + rule.FromPort;
     if (rule.ToPort !== undefined && rule.ToPort !== rule.FromPort) {
       cmd += '-' + rule.ToPort;
     }
   }
-  const cidrs = (rule.IpRanges || []).map(r => r.CidrIp).filter(Boolean);
-  const sgRefs = (rule.UserIdGroupPairs || []).map(g => g.GroupId).filter(Boolean);
+  const cidrs = (rule.IpRanges || []).map((r) => r.CidrIp).filter(Boolean);
+  const sgRefs = (rule.UserIdGroupPairs || []).map((g) => g.GroupId).filter(Boolean);
   if (cidrs.length) cmd += ' --cidr ' + cidrs[0];
   else if (sgRefs.length) cmd += ' --source-group ' + sgRefs[0];
   return cmd;
@@ -332,19 +396,27 @@ export function fwGenRouteCli(edit, cmds) {
     cmds.push(_fwRouteCmd('replace-route', id, edit.rule));
   } else if (edit.action === 'delete') {
     cmds.push(
-      'aws ec2 delete-route --route-table-id ' + id +
-      ' --destination-cidr-block ' + edit.rule.DestinationCidrBlock
+      'aws ec2 delete-route --route-table-id ' +
+        id +
+        ' --destination-cidr-block ' +
+        edit.rule.DestinationCidrBlock
     );
   }
 }
 
 function _fwRouteCmd(verb, rtId, route) {
-  let cmd = 'aws ec2 ' + verb + ' --route-table-id ' + rtId +
-    ' --destination-cidr-block ' + route.DestinationCidrBlock;
+  let cmd =
+    'aws ec2 ' +
+    verb +
+    ' --route-table-id ' +
+    rtId +
+    ' --destination-cidr-block ' +
+    route.DestinationCidrBlock;
   if (route.GatewayId) cmd += ' --gateway-id ' + route.GatewayId;
   else if (route.NatGatewayId) cmd += ' --nat-gateway-id ' + route.NatGatewayId;
   else if (route.TransitGatewayId) cmd += ' --transit-gateway-id ' + route.TransitGatewayId;
-  else if (route.VpcPeeringConnectionId) cmd += ' --vpc-peering-connection-id ' + route.VpcPeeringConnectionId;
+  else if (route.VpcPeeringConnectionId)
+    cmd += ' --vpc-peering-connection-id ' + route.VpcPeeringConnectionId;
   else if (route.VpcEndpointId) cmd += ' --vpc-endpoint-id ' + route.VpcEndpointId;
   return cmd;
 }
@@ -374,11 +446,11 @@ export function fwTakeSnapshot(ctx) {
 export function fwResetAll(ctx) {
   if (!_fwSnapshot || !ctx) return;
   ctx.nacls.length = 0;
-  _fwSnapshot.nacls.forEach(n => ctx.nacls.push(structuredClone(n)));
+  _fwSnapshot.nacls.forEach((n) => ctx.nacls.push(structuredClone(n)));
   ctx.sgs.length = 0;
-  _fwSnapshot.sgs.forEach(s => ctx.sgs.push(structuredClone(s)));
+  _fwSnapshot.sgs.forEach((s) => ctx.sgs.push(structuredClone(s)));
   ctx.rts.length = 0;
-  _fwSnapshot.rts.forEach(r => ctx.rts.push(structuredClone(r)));
+  _fwSnapshot.rts.forEach((r) => ctx.rts.push(structuredClone(r)));
   fwRebuildLookups(ctx);
   _fwEdits = [];
   _fwSnapshot = null;
@@ -395,8 +467,8 @@ export function fwRebuildLookups(ctx) {
 
   // subNacl: SubnetId -> NACL
   const subNacl = {};
-  (ctx.nacls || []).forEach(n => {
-    (n.Associations || []).forEach(a => {
+  (ctx.nacls || []).forEach((n) => {
+    (n.Associations || []).forEach((a) => {
       if (a.SubnetId) subNacl[a.SubnetId] = n;
     });
   });
@@ -404,23 +476,23 @@ export function fwRebuildLookups(ctx) {
 
   // subRT: SubnetId -> RouteTable (with main RT fallback)
   const mainRT = {};
-  (ctx.rts || []).forEach(rt => {
-    if ((rt.Associations || []).some(a => a.Main)) mainRT[rt.VpcId] = rt;
+  (ctx.rts || []).forEach((rt) => {
+    if ((rt.Associations || []).some((a) => a.Main)) mainRT[rt.VpcId] = rt;
   });
   const subRT = {};
-  (ctx.rts || []).forEach(rt => {
-    (rt.Associations || []).forEach(a => {
+  (ctx.rts || []).forEach((rt) => {
+    (rt.Associations || []).forEach((a) => {
       if (a.SubnetId) subRT[a.SubnetId] = rt;
     });
   });
-  (ctx.subnets || []).forEach(s => {
+  (ctx.subnets || []).forEach((s) => {
     if (!subRT[s.SubnetId] && mainRT[s.VpcId]) subRT[s.SubnetId] = mainRT[s.VpcId];
   });
   ctx.subRT = subRT;
 
   // sgByVpc: VpcId -> SG[]
   const sgByVpc = {};
-  (ctx.sgs || []).forEach(sg => {
+  (ctx.sgs || []).forEach((sg) => {
     (sgByVpc[sg.VpcId] = sgByVpc[sg.VpcId] || []).push(sg);
   });
   ctx.sgByVpc = sgByVpc;
@@ -435,24 +507,26 @@ export function fwRebuildLookups(ctx) {
  */
 export function fwRemoveRule(edit, ctx) {
   if (edit.type === 'nacl') {
-    const nacl = (ctx.nacls || []).find(n => n.NetworkAclId === edit.resourceId);
+    const nacl = (ctx.nacls || []).find((n) => n.NetworkAclId === edit.resourceId);
     if (!nacl) return;
     const isEgress = edit.direction === 'egress';
-    const idx = (nacl.Entries || []).findIndex(e =>
-      e.RuleNumber === edit.rule.RuleNumber && e.Egress === isEgress
+    const idx = (nacl.Entries || []).findIndex(
+      (e) => e.RuleNumber === edit.rule.RuleNumber && e.Egress === isEgress
     );
     if (idx >= 0) nacl.Entries.splice(idx, 1);
   } else if (edit.type === 'sg') {
-    const sg = (ctx.sgs || []).find(s => s.GroupId === edit.resourceId);
+    const sg = (ctx.sgs || []).find((s) => s.GroupId === edit.resourceId);
     if (!sg) return;
     const arr = edit.direction === 'ingress' ? sg.IpPermissions : sg.IpPermissionsEgress;
     if (!arr) return;
-    const idx = arr.findIndex(p => fwRuleMatch(p, edit.rule));
+    const idx = arr.findIndex((p) => fwRuleMatch(p, edit.rule));
     if (idx >= 0) arr.splice(idx, 1);
   } else if (edit.type === 'route') {
-    const rt = (ctx.rts || []).find(r => r.RouteTableId === edit.resourceId);
+    const rt = (ctx.rts || []).find((r) => r.RouteTableId === edit.resourceId);
     if (!rt || !rt.Routes) return;
-    const idx = rt.Routes.findIndex(r => r.DestinationCidrBlock === edit.rule.DestinationCidrBlock);
+    const idx = rt.Routes.findIndex(
+      (r) => r.DestinationCidrBlock === edit.rule.DestinationCidrBlock
+    );
     if (idx >= 0) rt.Routes.splice(idx, 1);
   }
 }
@@ -478,30 +552,32 @@ export function fwRestoreRule(edit, ctx) {
  */
 export function fwApplyRule(type, resourceId, direction, ruleData, ctx) {
   if (type === 'nacl') {
-    const nacl = (ctx.nacls || []).find(n => n.NetworkAclId === resourceId);
+    const nacl = (ctx.nacls || []).find((n) => n.NetworkAclId === resourceId);
     if (!nacl) return;
     if (!nacl.Entries) nacl.Entries = [];
     const isEgress = direction === 'egress';
-    const idx = nacl.Entries.findIndex(e =>
-      e.RuleNumber === ruleData.RuleNumber && e.Egress === isEgress
+    const idx = nacl.Entries.findIndex(
+      (e) => e.RuleNumber === ruleData.RuleNumber && e.Egress === isEgress
     );
     const entry = Object.assign({}, ruleData, { Egress: isEgress });
     if (idx >= 0) nacl.Entries[idx] = entry;
     else nacl.Entries.push(entry);
   } else if (type === 'sg') {
-    const sg = (ctx.sgs || []).find(s => s.GroupId === resourceId);
+    const sg = (ctx.sgs || []).find((s) => s.GroupId === resourceId);
     if (!sg) return;
     const key = direction === 'ingress' ? 'IpPermissions' : 'IpPermissionsEgress';
     if (!sg[key]) sg[key] = [];
     const arr = sg[key];
-    const idx = arr.findIndex(p => fwRuleMatch(p, ruleData));
+    const idx = arr.findIndex((p) => fwRuleMatch(p, ruleData));
     if (idx >= 0) arr[idx] = Object.assign({}, ruleData);
     else arr.push(Object.assign({}, ruleData));
   } else if (type === 'route') {
-    const rt = (ctx.rts || []).find(r => r.RouteTableId === resourceId);
+    const rt = (ctx.rts || []).find((r) => r.RouteTableId === resourceId);
     if (!rt) return;
     if (!rt.Routes) rt.Routes = [];
-    const idx = rt.Routes.findIndex(r => r.DestinationCidrBlock === ruleData.DestinationCidrBlock);
+    const idx = rt.Routes.findIndex(
+      (r) => r.DestinationCidrBlock === ruleData.DestinationCidrBlock
+    );
     if (idx >= 0) rt.Routes[idx] = Object.assign({}, ruleData);
     else rt.Routes.push(Object.assign({}, ruleData));
   }
@@ -529,43 +605,75 @@ export function fwUndo(ctx) {
 // Window bridge: expose mutable state to app-core.js via live bindings
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, '_fwEdits', {
-    get() { return _fwEdits; },
-    set(v) { _fwEdits = v; },
+    get() {
+      return _fwEdits;
+    },
+    set(v) {
+      _fwEdits = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwSnapshot', {
-    get() { return _fwSnapshot; },
-    set(v) { _fwSnapshot = v; },
+    get() {
+      return _fwSnapshot;
+    },
+    set(v) {
+      _fwSnapshot = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwFpType', {
-    get() { return _fwFpType; },
-    set(v) { _fwFpType = v; },
+    get() {
+      return _fwFpType;
+    },
+    set(v) {
+      _fwFpType = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwFpResId', {
-    get() { return _fwFpResId; },
-    set(v) { _fwFpResId = v; },
+    get() {
+      return _fwFpResId;
+    },
+    set(v) {
+      _fwFpResId = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwFpSub', {
-    get() { return _fwFpSub; },
-    set(v) { _fwFpSub = v; },
+    get() {
+      return _fwFpSub;
+    },
+    set(v) {
+      _fwFpSub = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwFpVpcId', {
-    get() { return _fwFpVpcId; },
-    set(v) { _fwFpVpcId = v; },
+    get() {
+      return _fwFpVpcId;
+    },
+    set(v) {
+      _fwFpVpcId = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwFpLk', {
-    get() { return _fwFpLk; },
-    set(v) { _fwFpLk = v; },
+    get() {
+      return _fwFpLk;
+    },
+    set(v) {
+      _fwFpLk = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_fwFpDir', {
-    get() { return _fwFpDir; },
-    set(v) { _fwFpDir = v; },
+    get() {
+      return _fwFpDir;
+    },
+    set(v) {
+      _fwFpDir = v;
+    },
     configurable: true
   });
 }

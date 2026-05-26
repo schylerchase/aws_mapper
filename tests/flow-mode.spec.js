@@ -86,9 +86,7 @@ test.describe('Flow Mode', () => {
     });
 
     // Select target (different subnet)
-    const subnetCount = await page.evaluate(() =>
-      document.querySelectorAll('.subnet-node').length
-    );
+    const subnetCount = await page.evaluate(() => document.querySelectorAll('.subnet-node').length);
     if (subnetCount >= 2) {
       await page.evaluate(() => {
         const nodes = document.querySelectorAll('.subnet-node');
@@ -115,9 +113,7 @@ test.describe('Flow Mode', () => {
         if (node) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       });
 
-      const count = await page.evaluate(() =>
-        document.querySelectorAll('.subnet-node').length
-      );
+      const count = await page.evaluate(() => document.querySelectorAll('.subnet-node').length);
       if (count >= 2) {
         await page.evaluate(() => {
           const nodes = document.querySelectorAll('.subnet-node');

@@ -1,8 +1,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ipToInt, intToIp, parseCIDR, cidrToString,
-  splitCIDR, cidrContains, cidrOverlap, ipInCIDR
+  ipToInt,
+  intToIp,
+  parseCIDR,
+  cidrToString,
+  splitCIDR,
+  cidrContains,
+  cidrOverlap,
+  ipInCIDR
 } from '../../src/modules/cidr-engine.js';
 
 describe('ipToInt', () => {

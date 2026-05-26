@@ -11,7 +11,7 @@ test.describe('Dashboard Tabs', () => {
     { id: 'budr', button: '#budrBtn', expects: 'tier' },
     { id: 'inventory', button: '#inventoryBtn', expects: 'resource' },
     { id: 'classification', button: '#govBtn', expects: 'rule' },
-    { id: 'reports', button: '#reportsBtn', expects: 'report' },
+    { id: 'reports', button: '#reportsBtn', expects: 'report' }
   ];
 
   for (const tab of tabs) {

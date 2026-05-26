@@ -1,8 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ipToNum, ipFromCidr, cidrContains, protoMatch, portInRange, protoName,
-  evaluateRouteTable, evaluateNACL, evaluateSG
+  ipToNum,
+  ipFromCidr,
+  cidrContains,
+  protoMatch,
+  portInRange,
+  protoName,
+  evaluateRouteTable,
+  evaluateNACL,
+  evaluateSG
 } from '../../src/modules/network-rules.js';
 
 describe('ipToNum', () => {
@@ -23,9 +30,12 @@ describe('ipFromCidr', () => {
 });
 
 describe('cidrContains', () => {
-  it('0.0.0.0/0 contains any IP', () => assert.equal(cidrContains('0.0.0.0/0', '192.168.1.1'), true));
-  it('10.0.0.0/24 contains 10.0.0.5', () => assert.equal(cidrContains('10.0.0.0/24', '10.0.0.5'), true));
-  it('10.0.0.0/24 does not contain 10.0.1.5', () => assert.equal(cidrContains('10.0.0.0/24', '10.0.1.5'), false));
+  it('0.0.0.0/0 contains any IP', () =>
+    assert.equal(cidrContains('0.0.0.0/0', '192.168.1.1'), true));
+  it('10.0.0.0/24 contains 10.0.0.5', () =>
+    assert.equal(cidrContains('10.0.0.0/24', '10.0.0.5'), true));
+  it('10.0.0.0/24 does not contain 10.0.1.5', () =>
+    assert.equal(cidrContains('10.0.0.0/24', '10.0.1.5'), false));
   it('returns false for null inputs', () => assert.equal(cidrContains(null, '10.0.0.1'), false));
   it('returns false for malformed CIDR or IP input', () => {
     assert.equal(cidrContains('999.1.2.0/24', '231.1.2.5'), false);
@@ -50,7 +60,8 @@ describe('portInRange', () => {
   it('80 is not in range 443-443', () => assert.equal(portInRange(80, 443, 443), false));
   it('any port matches 0-65535', () => assert.equal(portInRange(8080, 0, 65535), true));
   it('any port matches -1 to -1 (all)', () => assert.equal(portInRange(443, -1, -1), true));
-  it('returns true when no range defined', () => assert.equal(portInRange(443, undefined, undefined), true));
+  it('returns true when no range defined', () =>
+    assert.equal(portInRange(443, undefined, undefined), true));
 });
 
 describe('protoName', () => {
@@ -104,7 +115,11 @@ describe('evaluateRouteTable', () => {
   it('detects blackhole route', () => {
     const rt = {
       Routes: [
-        { DestinationCidrBlock: '10.1.0.0/16', State: 'blackhole', VpcPeeringConnectionId: 'pcx-dead' }
+        {
+          DestinationCidrBlock: '10.1.0.0/16',
+          State: 'blackhole',
+          VpcPeeringConnectionId: 'pcx-dead'
+        }
       ]
     };
     const r = evaluateRouteTable(rt, '10.1.0.5');
@@ -113,9 +128,7 @@ describe('evaluateRouteTable', () => {
 
   it('detects peering connection route', () => {
     const rt = {
-      Routes: [
-        { DestinationCidrBlock: '10.1.0.0/16', VpcPeeringConnectionId: 'pcx-123' }
-      ]
+      Routes: [{ DestinationCidrBlock: '10.1.0.0/16', VpcPeeringConnectionId: 'pcx-123' }]
     };
     const r = evaluateRouteTable(rt, '10.1.0.5');
     assert.equal(r.type, 'pcx');
@@ -123,9 +136,7 @@ describe('evaluateRouteTable', () => {
 
   it('returns blackhole when no routes match', () => {
     const rt = {
-      Routes: [
-        { DestinationCidrBlock: '10.0.0.0/16', GatewayId: 'local' }
-      ]
+      Routes: [{ DestinationCidrBlock: '10.0.0.0/16', GatewayId: 'local' }]
     };
     const r = evaluateRouteTable(rt, '172.16.0.1');
     assert.equal(r.type, 'blackhole');
@@ -141,8 +152,22 @@ describe('evaluateNACL', () => {
   it('matches allow rule by number order', () => {
     const nacl = {
       Entries: [
-        { RuleNumber: 100, Egress: false, Protocol: '6', PortRange: { From: 443, To: 443 }, CidrBlock: '0.0.0.0/0', RuleAction: 'allow' },
-        { RuleNumber: 200, Egress: false, Protocol: '6', PortRange: { From: 443, To: 443 }, CidrBlock: '0.0.0.0/0', RuleAction: 'deny' }
+        {
+          RuleNumber: 100,
+          Egress: false,
+          Protocol: '6',
+          PortRange: { From: 443, To: 443 },
+          CidrBlock: '0.0.0.0/0',
+          RuleAction: 'allow'
+        },
+        {
+          RuleNumber: 200,
+          Egress: false,
+          Protocol: '6',
+          PortRange: { From: 443, To: 443 },
+          CidrBlock: '0.0.0.0/0',
+          RuleAction: 'deny'
+        }
       ]
     };
     const r = evaluateNACL(nacl, 'inbound', 'tcp', 443, '10.0.0.1/32');
@@ -153,8 +178,22 @@ describe('evaluateNACL', () => {
   it('deny rule takes precedence if lower number', () => {
     const nacl = {
       Entries: [
-        { RuleNumber: 50, Egress: false, Protocol: '6', PortRange: { From: 22, To: 22 }, CidrBlock: '0.0.0.0/0', RuleAction: 'deny' },
-        { RuleNumber: 100, Egress: false, Protocol: '6', PortRange: { From: 22, To: 22 }, CidrBlock: '0.0.0.0/0', RuleAction: 'allow' }
+        {
+          RuleNumber: 50,
+          Egress: false,
+          Protocol: '6',
+          PortRange: { From: 22, To: 22 },
+          CidrBlock: '0.0.0.0/0',
+          RuleAction: 'deny'
+        },
+        {
+          RuleNumber: 100,
+          Egress: false,
+          Protocol: '6',
+          PortRange: { From: 22, To: 22 },
+          CidrBlock: '0.0.0.0/0',
+          RuleAction: 'allow'
+        }
       ]
     };
     const r = evaluateNACL(nacl, 'inbound', 'tcp', 22, '10.0.0.1/32');
@@ -164,7 +203,14 @@ describe('evaluateNACL', () => {
   it('default deny when no rules match', () => {
     const nacl = {
       Entries: [
-        { RuleNumber: 100, Egress: false, Protocol: '6', PortRange: { From: 80, To: 80 }, CidrBlock: '10.0.0.0/24', RuleAction: 'allow' }
+        {
+          RuleNumber: 100,
+          Egress: false,
+          Protocol: '6',
+          PortRange: { From: 80, To: 80 },
+          CidrBlock: '10.0.0.0/24',
+          RuleAction: 'allow'
+        }
       ]
     };
     const r = evaluateNACL(nacl, 'inbound', 'tcp', 443, '172.16.0.1/32');
@@ -174,7 +220,14 @@ describe('evaluateNACL', () => {
   it('filters by direction (egress vs inbound)', () => {
     const nacl = {
       Entries: [
-        { RuleNumber: 100, Egress: true, Protocol: '6', PortRange: { From: 443, To: 443 }, CidrBlock: '0.0.0.0/0', RuleAction: 'allow' }
+        {
+          RuleNumber: 100,
+          Egress: true,
+          Protocol: '6',
+          PortRange: { From: 443, To: 443 },
+          CidrBlock: '0.0.0.0/0',
+          RuleAction: 'allow'
+        }
       ]
     };
     // Inbound should not match egress rule
@@ -195,42 +248,90 @@ describe('evaluateSG', () => {
   });
 
   it('matches inbound rule', () => {
-    const sgs = [{
-      GroupId: 'sg-123', GroupName: 'web',
-      IpPermissions: [{ IpProtocol: '6', FromPort: 443, ToPort: 443, IpRanges: [{ CidrIp: '0.0.0.0/0' }], Ipv6Ranges: [], UserIdGroupPairs: [] }],
-      IpPermissionsEgress: []
-    }];
+    const sgs = [
+      {
+        GroupId: 'sg-123',
+        GroupName: 'web',
+        IpPermissions: [
+          {
+            IpProtocol: '6',
+            FromPort: 443,
+            ToPort: 443,
+            IpRanges: [{ CidrIp: '0.0.0.0/0' }],
+            Ipv6Ranges: [],
+            UserIdGroupPairs: []
+          }
+        ],
+        IpPermissionsEgress: []
+      }
+    ];
     const r = evaluateSG(sgs, 'inbound', 'tcp', 443, '10.0.0.1/32');
     assert.equal(r.action, 'allow');
     assert.equal(r.matchedSg, 'sg-123');
   });
 
   it('deny when port does not match', () => {
-    const sgs = [{
-      GroupId: 'sg-123', GroupName: 'web',
-      IpPermissions: [{ IpProtocol: '6', FromPort: 443, ToPort: 443, IpRanges: [{ CidrIp: '0.0.0.0/0' }], Ipv6Ranges: [], UserIdGroupPairs: [] }],
-      IpPermissionsEgress: []
-    }];
+    const sgs = [
+      {
+        GroupId: 'sg-123',
+        GroupName: 'web',
+        IpPermissions: [
+          {
+            IpProtocol: '6',
+            FromPort: 443,
+            ToPort: 443,
+            IpRanges: [{ CidrIp: '0.0.0.0/0' }],
+            Ipv6Ranges: [],
+            UserIdGroupPairs: []
+          }
+        ],
+        IpPermissionsEgress: []
+      }
+    ];
     const r = evaluateSG(sgs, 'inbound', 'tcp', 22, '10.0.0.1/32');
     assert.equal(r.action, 'deny');
   });
 
   it('matches SG-to-SG reference', () => {
-    const sgs = [{
-      GroupId: 'sg-123', GroupName: 'app',
-      IpPermissions: [{ IpProtocol: '6', FromPort: 3306, ToPort: 3306, IpRanges: [], Ipv6Ranges: [], UserIdGroupPairs: [{ GroupId: 'sg-web' }] }],
-      IpPermissionsEgress: []
-    }];
+    const sgs = [
+      {
+        GroupId: 'sg-123',
+        GroupName: 'app',
+        IpPermissions: [
+          {
+            IpProtocol: '6',
+            FromPort: 3306,
+            ToPort: 3306,
+            IpRanges: [],
+            Ipv6Ranges: [],
+            UserIdGroupPairs: [{ GroupId: 'sg-web' }]
+          }
+        ],
+        IpPermissionsEgress: []
+      }
+    ];
     const r = evaluateSG(sgs, 'inbound', 'tcp', 3306, '10.0.0.1/32', { sourceSgIds: ['sg-web'] });
     assert.equal(r.action, 'allow');
   });
 
   it('deny SG-to-SG when source SG does not match', () => {
-    const sgs = [{
-      GroupId: 'sg-123', GroupName: 'app',
-      IpPermissions: [{ IpProtocol: '6', FromPort: 3306, ToPort: 3306, IpRanges: [], Ipv6Ranges: [], UserIdGroupPairs: [{ GroupId: 'sg-web' }] }],
-      IpPermissionsEgress: []
-    }];
+    const sgs = [
+      {
+        GroupId: 'sg-123',
+        GroupName: 'app',
+        IpPermissions: [
+          {
+            IpProtocol: '6',
+            FromPort: 3306,
+            ToPort: 3306,
+            IpRanges: [],
+            Ipv6Ranges: [],
+            UserIdGroupPairs: [{ GroupId: 'sg-web' }]
+          }
+        ],
+        IpPermissionsEgress: []
+      }
+    ];
     const r = evaluateSG(sgs, 'inbound', 'tcp', 3306, '10.0.0.1/32', { sourceSgIds: ['sg-other'] });
     assert.equal(r.action, 'deny');
   });

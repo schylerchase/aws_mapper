@@ -14,12 +14,24 @@ export const BUDR_TIER_META = {
 };
 
 // === State Accessors ===
-export function getUdashTab() { return _udashTab; }
-export function setUdashTab(v) { _udashTab = v; }
-export function getUdashAcctFilter() { return _udashAcctFilter; }
-export function setUdashAcctFilter(v) { _udashAcctFilter = v; }
-export function getBudrDashState() { return _budrDashState; }
-export function setBudrDashState(v) { _budrDashState = v; }
+export function getUdashTab() {
+  return _udashTab;
+}
+export function setUdashTab(v) {
+  _udashTab = v;
+}
+export function getUdashAcctFilter() {
+  return _udashAcctFilter;
+}
+export function setUdashAcctFilter(v) {
+  _udashAcctFilter = v;
+}
+export function getBudrDashState() {
+  return _budrDashState;
+}
+export function setBudrDashState(v) {
+  _budrDashState = v;
+}
 
 // === Pure Logic ===
 
@@ -32,9 +44,11 @@ export function udashFilterByAccount(items) {
   if (!_udashAcctFilter || _udashAcctFilter === 'all') return items;
   let id = _udashAcctFilter;
   // Resolve account label via window bridge (report builder provides _rptAccountLabel)
-  let lbl = (typeof window !== 'undefined' && typeof window._rptAccountLabel === 'function')
-    ? window._rptAccountLabel(id) : '';
-  return items.filter(function(item) {
+  let lbl =
+    typeof window !== 'undefined' && typeof window._rptAccountLabel === 'function'
+      ? window._rptAccountLabel(id)
+      : '';
+  return items.filter(function (item) {
     let a = item._accountId || item.account || '';
     return a === id || a === lbl;
   });
@@ -43,18 +57,30 @@ export function udashFilterByAccount(items) {
 // === Window Bridge (transitional) ===
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, '_udashTab', {
-    get() { return _udashTab; },
-    set(v) { _udashTab = v; },
+    get() {
+      return _udashTab;
+    },
+    set(v) {
+      _udashTab = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_udashAcctFilter', {
-    get() { return _udashAcctFilter; },
-    set(v) { _udashAcctFilter = v; },
+    get() {
+      return _udashAcctFilter;
+    },
+    set(v) {
+      _udashAcctFilter = v;
+    },
     configurable: true
   });
   Object.defineProperty(window, '_budrDashState', {
-    get() { return _budrDashState; },
-    set(v) { _budrDashState = v; },
+    get() {
+      return _budrDashState;
+    },
+    set(v) {
+      _budrDashState = v;
+    },
     configurable: true
   });
   window._BUDR_TIER_META = BUDR_TIER_META;
@@ -66,9 +92,4 @@ if (typeof window !== 'undefined') {
 }
 
 // === Backward Compat Exports ===
-export {
-  _udashTab,
-  _udashAcctFilter,
-  _budrDashState,
-  BUDR_TIER_META as _BUDR_TIER_META
-};
+export { _udashTab, _udashAcctFilter, _budrDashState, BUDR_TIER_META as _BUDR_TIER_META };

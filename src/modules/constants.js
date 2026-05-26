@@ -22,10 +22,17 @@ export const FW_LABELS = {
 
 // End-of-life Lambda runtimes
 export const EOL_RUNTIMES = new Set([
-  'nodejs14.x', 'nodejs12.x', 'nodejs10.x', 'nodejs8.10',
-  'python2.7', 'python3.6', 'python3.7',
-  'dotnetcore3.1', 'dotnetcore2.1',
-  'ruby2.5', 'ruby2.7',
+  'nodejs14.x',
+  'nodejs12.x',
+  'nodejs10.x',
+  'nodejs8.10',
+  'python2.7',
+  'python3.6',
+  'python3.7',
+  'dotnetcore3.1',
+  'dotnetcore2.1',
+  'ruby2.5',
+  'ruby2.7',
   'java8',
   'go1.x'
 ]);
@@ -97,11 +104,4 @@ export const MAX_SNAPSHOTS = 30;
 export const SAVE_INTERVAL = 30000; // 30 seconds
 
 // Note categories
-export const NOTE_CATEGORIES = [
-  'owner',
-  'status',
-  'incident',
-  'todo',
-  'info',
-  'warning'
-];
+export const NOTE_CATEGORIES = ['owner', 'status', 'incident', 'todo', 'info', 'warning'];

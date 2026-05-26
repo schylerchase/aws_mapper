@@ -52,9 +52,7 @@ test.describe('Detail Panel (Subnet)', () => {
   });
 
   test('clicking different subnets updates panel content', async ({ page }) => {
-    const subnetCount = await page.evaluate(() =>
-      document.querySelectorAll('.subnet-node').length
-    );
+    const subnetCount = await page.evaluate(() => document.querySelectorAll('.subnet-node').length);
     if (subnetCount < 2) return;
 
     await clickSubnet(page, 0);
@@ -62,7 +60,10 @@ test.describe('Detail Panel (Subnet)', () => {
 
     // Close and open different subnet
     await page.evaluate(() => document.getElementById('dpClose').click());
-    await page.locator('#detailPanel').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+    await page
+      .locator('#detailPanel')
+      .waitFor({ state: 'hidden', timeout: 3000 })
+      .catch(() => {});
     await clickSubnet(page, 1);
     const title2 = await page.locator('#dpTitle').textContent();
 

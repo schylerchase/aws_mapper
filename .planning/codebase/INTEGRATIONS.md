@@ -1,146 +1,139 @@
 # External Integrations
 
-**Analysis Date:** 2026-04-03
+**Analysis Date:** 2026-04-29
 
-## AWS CLI Integration
+## Runtime Integrations
 
-**Primary external integration — no SDK, CLI subprocess only.**
+### AWS CLI
 
-- Invocation: `main.js` spawns `/usr/bin/env bash scripts/export-aws-data.sh` via `child_process.spawn`
-- Auth: Relies on the user's pre-configured AWS CLI credentials (`~/.aws/credentials`, environment variables, or IAM role). No credentials are stored or managed by the app.
-- Profile selection: passed as `-p <profile>` flag to the shell script
-- Region selection: passed as `-r <region>` flag; `-a` flag sweeps all enabled regions
-- Windows equivalent: `scripts/export-aws-data.ps1` (PowerShell 7+, parallel API calls via `ForEach-Object -Parallel`)
+- Purpose: Collect AWS environment JSON for the desktop app.
+- Entry points:
+  - Renderer calls `window.electronAPI.scanAWS(opts)` from `preload.js`.
+  - Main process handles `ipcMain.handle('aws:scan', ...)` in `main.js`.
+  - Main process spawns `scripts/export-aws-data.sh` with profile/region flags.
+- Validation:
+  - `main.js` validates profile and region against `SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/`.
+  - `checkAwsCli()` uses `/usr/bin/which aws` before scan work.
+- Data returned:
+  - Progress, completion, and error events are streamed over IPC.
+  - JSON exports are ultimately mapped back into the renderer's resource textareas.
 
-**AWS services queried by the export scripts:**
+### AWS Export Scripts
 
-| Category | AWS CLI commands | Output file |
-|---|---|---|
-| Network | `ec2 describe-vpcs`, `describe-subnets`, `describe-route-tables`, `describe-security-groups`, `describe-network-acls`, `describe-network-interfaces` | `vpcs.json`, `subnets.json`, `route-tables.json`, `security-groups.json`, `network-acls.json`, `network-interfaces.json` |
-| Gateways | `ec2 describe-internet-gateways`, `describe-nat-gateways`, `describe-vpc-endpoints` | `internet-gateways.json`, `nat-gateways.json`, `vpc-endpoints.json` |
-| Compute | `ec2 describe-instances`, `rds describe-db-instances`, `lambda list-functions`, `elasticache describe-cache-clusters`, `redshift describe-clusters` | `ec2-instances.json`, `rds-instances.json`, `lambda-functions.json`, `elasticache-clusters.json`, `redshift-clusters.json` |
-| Load Balancing | `elbv2 describe-load-balancers`, `describe-target-groups` | `load-balancers.json`, `target-groups.json` |
-| Connectivity | `ec2 describe-vpc-peering-connections`, `describe-vpn-connections`, `describe-transit-gateway-attachments` | `vpc-peering.json`, `vpn-connections.json`, `tgw-attachments.json` |
-| Storage | `ec2 describe-volumes`, `describe-snapshots`, `s3api list-buckets` | `volumes.json`, `snapshots.json`, `s3-buckets.json` |
-| DNS | `route53 list-hosted-zones`, `list-resource-record-sets` | `hosted-zones.json`, `r53-records.json` |
-| Security | `wafv2 list-web-acls`, `cloudfront list-distributions` | `waf-web-acls.json`, `cloudfront.json` |
-| IAM | `iam get-account-authorization-details` | `iam.json` |
-| Containers | `ecs list-clusters`, `list-services`, `describe-services` | `ecs-services.json` |
+- `scripts/export-aws-data.sh` - Bash export script for macOS/Linux.
+- `scripts/export-aws-data.ps1` - PowerShell export script for Windows/cross-platform use.
+- README documents profile, region, all-region, and multi-profile use.
+- These scripts are also included in Electron packaged files via `package.json` `"files": ["scripts/**", ...]`.
 
-**Scan IPC flow:**
-1. Renderer calls `window.electronAPI.scanAWS({ profile, region })` → `preload.js` → `ipcRenderer.invoke('aws:scan')`
-2. `main.js` validates inputs, spawns the shell script, streams `stdout`/`stderr` back to renderer via `aws:scan:progress` events
-3. On exit code 0, main process reads output JSON files and sends them as `aws:scan:complete`
-4. Renderer calls `window.electronAPI.abortScan()` to send `SIGTERM` to active scan process
+### Python BUDR XLSX Utility
 
-## File I/O
+- Purpose: Native desktop BUDR XLSX export path.
+- Renderer calls `window.electronAPI.exportBUDRXlsx(jsonData)`.
+- Main process handles `ipcMain.handle('budr:export-xlsx', ...)`.
+- `main.js` writes temporary JSON, runs `python3 scripts/budr_export_xlsx.py`, reads the generated XLSX, and returns bytes.
+- Risk: Requires Python 3 on the desktop machine for this path.
 
-**Project files (`.awsmap`):**
-- Format: JSON, saved with UTF-8 encoding
-- Save: `ipcMain.handle('file:save')` → `dialog.showSaveDialog` → `fsp.writeFile`
-- Open: `ipcMain.handle('file:open')` → `dialog.showOpenDialog` → `fsp.readFile`
-- macOS drag-to-dock and double-click open: handled via `app.on('open-file')` event in `main.js`
+### File System and Native Dialogs
 
-**AWS export folder import:**
-- `ipcMain.handle('file:open-folder')` reads a directory tree up to 3 levels deep
-- Supports three folder structures: flat JSON files, region-organized (`us-east-1/`), or profile+region (`prod/us-east-1/`)
-- File size limit: 100MB per file (`MAX_FILE_SIZE` constant in `main.js`)
-- All reads are parallel using `Promise.all`; parsed as JSON, falls back to raw string on parse error
-- Returns `{ _structure: 'flat'|'multi-region'|'multi-profile', ... }`
+- `file:save`, `file:open`, `file:open-folder`, and `file:export` IPC handlers live in `main.js`.
+- `preload.js` exposes `saveFile`, `openFile`, `openFolder`, and `exportFile`.
+- Browser runtime uses blob downloads instead of native dialogs.
+- Electron import supports flat JSON files, region directories, and profile/region directory structures.
 
-**Export file output (all formats use native save dialog):**
-- `ipcMain.handle('file:export')` — generic handler; accepts `Buffer`, `ArrayBuffer`, or UTF-8 string
-- BUDR XLSX: special path through `ipcMain.handle('budr:export-xlsx')` — writes temp JSON to `os.tmpdir()`, invokes `python3 scripts/budr_export_xlsx.py`, reads resulting `.xlsx`, then prompts save dialog
+### Electron Auto Update
 
-## Auto-Update
+- Dependency: `electron-updater`.
+- Main process sets `autoDownload = false` and `autoInstallOnAppQuit = true`.
+- Events are bridged through preload:
+  - `onUpdateAvailable`
+  - `onUpdateDownloadProgress`
+  - `onUpdateDownloaded`
+  - `onUpdateError`
+  - `downloadUpdate`
+  - `installUpdate`
+- Publisher is configured as GitHub Releases in `package.json`.
 
-**Provider:** GitHub Releases (`electron-updater@^6.7.3`)
-- Configured in `main.js` via `autoUpdater` from `electron-updater`
-- Repo: `github.com/schylerchase/aws_mapper` (set in `package.json` `"publish"` key)
-- `autoDownload: false` — user must confirm download via renderer UI prompt
-- `autoInstallOnAppQuit: true` — installs after user quits
-- Update check fires automatically 5 seconds after app launch; also available via `Tools → Check for Updates`
-- IPC channels: `update:available`, `update:download-progress`, `update:downloaded`, `update:error`, `update:download` (trigger), `update:install` (trigger)
+## Web And Deployment Integrations
 
-## Export Format Integrations
+### Static Web Deployment
 
-The app generates files in multiple formats consumed by third-party tools. All generation is client-side (renderer process) using vendored libraries.
+- `index.html` and committed runtime assets can run as a static site.
+- `vercel.json` exists for Vercel deployment.
+- `index.html` currently includes Vercel analytics and speed-insights script paths:
+  - `/_vercel/insights/script.js`
+  - `/_vercel/speed-insights/script.js`
+- CSP includes `connect-src 'self'`; verify analytics behavior when changing CSP or deployment paths.
 
-**Visio VSDX** (`src/exports/exports-visio.js`):
-- Format: OOXML ZIP package (`.vsdx`)
-- Library: `libs/jszip.min.js` (vendored)
-- Consumed by: Microsoft Visio
+### GitHub Actions
 
-**Lucid CSV/ZIP** (`src/exports/exports-lucid.js`):
-- Format: Custom ZIP with CSV shape definitions
-- Library: `libs/jszip.min.js` (vendored)
-- Consumed by: Lucidchart import
+- `.github/workflows/ci.yml`
+  - Runs on pushes and PRs to main branches.
+  - Uses Node 20.
+  - Runs `npm ci`, `npm run test:unit`, `node build.js`, installs Playwright Chromium, and runs `npx playwright test`.
+  - Auto-tags package versions on main after tests pass.
 
-**DOCX** (`src/exports/exports-docx.js`):
-- Format: OOXML ZIP package (`.docx`)
-- Library: `libs/jszip.min.js` (vendored)
-- Consumed by: Microsoft Word, Google Docs
+- `.github/workflows/release.yml`
+  - Runs on `v*` tags and manual dispatch.
+  - Builds macOS, Linux, and Windows Electron artifacts.
+  - Uploads generated installers and metadata to GitHub Releases.
 
-**XLSX** (`src/exports/exports-xlsx.js`):
-- Format: Excel workbook
-- Libraries: `libs/xlsx.bundle.min.js` (SheetJS, vendored, ~415KB, loaded on demand) + `libs/jszip.min.js` for post-processing
-- Consumed by: Microsoft Excel, Google Sheets
+## Vendored Client Libraries
 
-**Terraform HCL** (`src/exports/exports-iac.js`):
-- Format: Plain text `.tf` files
-- No external library; string template generation
+### D3 Custom Bundle
 
-**CloudFormation YAML/JSON** (`src/exports/exports-iac.js`):
-- Format: Plain text YAML or JSON
-- No external library; string template generation
+- Source: `src/d3-custom.js`.
+- Output: `libs/d3.custom.min.js`.
+- Used by: Active topology rendering in `src/app-core.js`.
+- Built by: `build.js`.
 
-**Bash / PowerShell scripts** (`src/exports/exports-scripts.js`):
-- Format: Plain text shell scripts
-- No external library; string template generation
+### JSZip
 
-## CI/CD
+- File: `libs/jszip.min.js`.
+- Loaded before app bundles in `index.html`.
+- Used by: ZIP-like binary export formats and generated Office/document formats.
 
-**GitHub Actions** (`.github/workflows/`):
+### SheetJS
 
-`ci.yml` — runs on push/PR to `main`:
-1. Node.js 20 setup, `npm ci`
-2. Unit tests (`npm run test:unit`)
-3. Dev build (`node build.js`)
-4. Playwright install (Chromium only)
-5. E2E tests (`npx playwright test`) — visual regression skipped in CI
-6. Auto-tags a new git version tag when `package.json` version has no matching tag (triggers release)
+- File: `libs/xlsx.bundle.min.js`.
+- Loaded on demand by `src/exports/exports-xlsx.js`.
+- Used by: Compliance, BUDR, full report, and diff XLSX flows.
+- Concern: Full bundle is still vendored; only write functionality is needed.
 
-`release.yml` — runs on version tag push (`v*`) or manual dispatch:
-1. Matrix build: macOS (DMG/ZIP), Linux (AppImage/deb), Windows (NSIS/portable)
-2. Each runner: `npm ci`, `npm run build:mac|linux|win` (electron-builder)
-3. All artifacts uploaded and attached to a GitHub Release via `softprops/action-gh-release@v2`
-4. Release notes auto-generated by GitHub
+### Fonts
 
-**Secrets required in GitHub repo:**
-- `GITHUB_TOKEN` — auto-provided by GitHub Actions; used for tagging, release creation, and electron-builder publish
+- Files: `libs/fonts/*.woff2`.
+- Used by: CSS in `src/styles/main.css`.
+- Runtime dependency: Local only, no external font CDN.
 
-## Data Storage
+## AWS Resource Data Integrations
 
-**Databases:** None — no database dependency of any kind.
+The app accepts JSON exports for many AWS APIs. The primary data model is assembled from textarea IDs and file matching logic in `src/app-core.js`.
 
-**File Storage:** Local filesystem only. Project state is serialized to `.awsmap` JSON files by the user.
+Core categories include:
+- VPCs, subnets, route tables, NACLs, ENIs, security groups.
+- Internet gateways, NAT gateways, VPC endpoints, transit gateway attachments, peering, VPN.
+- EC2, Lambda, ECS, RDS, ElastiCache, Redshift.
+- ALB/NLB, target groups.
+- S3, EBS volumes, snapshots.
+- Route 53, CloudFront, WAF.
+- IAM authorization details.
 
-**In-memory state:** All application state lives in the renderer process during a session. `src/exports/state.js` provides a minimal shared `S` object used across the export bundle. `src/modules/state.js` provides a `STATE` object for the modules bundle.
+## Security Boundaries
 
-**Caching:** No server-side caching. AWS CLI check result is cached in `main.js` memory with a 60-second TTL (`_awsCliCached`, `AWS_CLI_CACHE_TTL`).
+- Electron renderer has no direct Node access.
+- All privileged work goes through the preload API and explicit IPC handlers.
+- External navigation is blocked except HTTP(S) URLs opened via `shell.openExternal`.
+- AWS scan user input is validated in the main process before spawning shell commands.
+- The app has no backend database or server-side persistence.
 
-## Fonts
+## Not Present
 
-**Vendored locally** (no CDN calls):
-- IBM Plex Mono (300, 400, 500, 600 weights) — `libs/fonts/ibm-plex-mono-*.woff2`
-- IBM Plex Sans Latin — `libs/fonts/ibm-plex-sans-latin.woff2`
-
-Referenced from `src/styles/main.css` via `@font-face`. The CSP in `index.html` restricts `font-src` to `'self'` — no external font loading is possible.
-
-## No External Network Calls from Renderer
-
-The Content-Security-Policy (`index.html` line 7) sets `connect-src 'self'`, preventing any `fetch`/`XHR` calls to external URLs from the renderer. All external communication (AWS CLI, auto-update) flows through the main process via IPC.
+- No database integration.
+- No auth provider integration.
+- No payment integration.
+- No hosted API dependency for normal runtime.
+- No cloud storage backend for saved projects.
 
 ---
-
-*Integration audit: 2026-04-03*
+*Integrations analysis: 2026-04-29*
+*Update when IPC, deployment, AWS export scripts, or vendored runtime libraries change.*

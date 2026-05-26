@@ -22,7 +22,9 @@ export function showToast(msg, duration = 3000) {
   clearTimeout(_toastTimer);
   _toastEl.textContent = msg;
   _toastEl.style.opacity = '1';
-  _toastTimer = setTimeout(() => { _toastEl.style.opacity = '0'; }, duration);
+  _toastTimer = setTimeout(() => {
+    _toastEl.style.opacity = '0';
+  }, duration);
 }
 
 /**
@@ -31,7 +33,7 @@ export function showToast(msg, duration = 3000) {
  */
 export function closeAllDashboards(except) {
   const ids = ['udash', 'diffDash', 'notesPanel'];
-  ids.forEach(function(id) {
+  ids.forEach(function (id) {
     if (id === except) return;
     const el = document.getElementById(id);
     if (el && el.classList.contains('open')) {

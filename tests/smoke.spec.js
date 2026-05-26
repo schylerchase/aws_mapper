@@ -2,7 +2,6 @@ const { test, expect } = require('@playwright/test');
 const { BASE, loadDemo, countElements, captureErrors } = require('./helpers');
 
 test.describe('App Load & Demo Data', () => {
-
   test('landing page renders with demo button', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
@@ -29,18 +28,33 @@ test.describe('App Load & Demo Data', () => {
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.locator('#landingDemo').click();
     await page.locator('#landingDash').waitFor({ state: 'hidden', timeout: 15000 });
-    await page.waitForFunction(() => {
-      const svg = document.getElementById('mapSvg');
-      const root = svg && svg.querySelector('.map-root');
-      const firstVpc = svg && svg.querySelector('.vpc-group');
-      if (!svg || !root || !firstVpc) return false;
-      const svgBox = svg.getBoundingClientRect();
-      const vpcBox = firstVpc.getBoundingClientRect();
-      const transform = root.getAttribute('transform') || '';
-      const hasFiniteTransform = !/NaN|Infinity/.test(transform);
-      const inViewport = vpcBox.right > svgBox.left && vpcBox.left < svgBox.right && vpcBox.bottom > svgBox.top && vpcBox.top < svgBox.bottom;
-      return hasFiniteTransform && svgBox.width > 0 && svgBox.height > 0 && vpcBox.width > 0 && vpcBox.height > 0 && inViewport;
-    }, null, { timeout: 15000 });
+    await page.waitForFunction(
+      () => {
+        const svg = document.getElementById('mapSvg');
+        const root = svg && svg.querySelector('.map-root');
+        const firstVpc = svg && svg.querySelector('.vpc-group');
+        if (!svg || !root || !firstVpc) return false;
+        const svgBox = svg.getBoundingClientRect();
+        const vpcBox = firstVpc.getBoundingClientRect();
+        const transform = root.getAttribute('transform') || '';
+        const hasFiniteTransform = !/NaN|Infinity/.test(transform);
+        const inViewport =
+          vpcBox.right > svgBox.left &&
+          vpcBox.left < svgBox.right &&
+          vpcBox.bottom > svgBox.top &&
+          vpcBox.top < svgBox.bottom;
+        return (
+          hasFiniteTransform &&
+          svgBox.width > 0 &&
+          svgBox.height > 0 &&
+          vpcBox.width > 0 &&
+          vpcBox.height > 0 &&
+          inViewport
+        );
+      },
+      null,
+      { timeout: 15000 }
+    );
   });
 
   test('SVG contains subnet nodes inside VPCs', async ({ page }) => {
@@ -68,9 +82,13 @@ test.describe('App Load & Demo Data', () => {
     const tooltipShown = await page.evaluate(() => {
       const hitarea = document.querySelector('.peering-hitarea');
       if (!hitarea) return false;
-      hitarea.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, clientX: 520, clientY: 320 }));
+      hitarea.dispatchEvent(
+        new MouseEvent('mouseenter', { bubbles: true, clientX: 520, clientY: 320 })
+      );
       const tooltip = document.getElementById('tooltip');
-      return tooltip && tooltip.style.display === 'block' && tooltip.textContent.includes('VPC Peering');
+      return (
+        tooltip && tooltip.style.display === 'block' && tooltip.textContent.includes('VPC Peering')
+      );
     });
     expect(tooltipShown).toBe(true);
   });
@@ -81,12 +99,17 @@ test.describe('App Load & Demo Data', () => {
       const groups = document.querySelectorAll('.vpc-group');
       return Array.from(groups).map((g) => {
         const rect = g.getBoundingClientRect();
-        return { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) };
+        return {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height)
+        };
       });
     });
     expect(boxes.length).toBeGreaterThanOrEqual(2);
     // At least some VPCs should have different x or y positions
-    const uniqueKeys = new Set(boxes.map(b => `${b.x},${b.y}`));
+    const uniqueKeys = new Set(boxes.map((b) => `${b.x},${b.y}`));
     expect(uniqueKeys.size).toBeGreaterThan(1);
   });
 });

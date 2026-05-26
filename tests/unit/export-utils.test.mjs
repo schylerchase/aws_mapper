@@ -3,12 +3,24 @@ import assert from 'node:assert/strict';
 
 // export-utils.js imports from utils.js and state.js — set up globals
 globalThis.window = globalThis;
-globalThis.document = { getElementById: () => null, querySelectorAll: () => [], querySelector: () => null };
+globalThis.document = {
+  getElementById: () => null,
+  querySelectorAll: () => [],
+  querySelector: () => null
+};
 
 const {
-  toIn, xmlEsc, sanitizeName, uid,
-  resetShapeState, getShapes, getPolyEdges, getIdMap, setIdMapEntry,
-  PX, SUB_W
+  toIn,
+  xmlEsc,
+  sanitizeName,
+  uid,
+  resetShapeState,
+  getShapes,
+  getPolyEdges,
+  getIdMap,
+  setIdMapEntry,
+  PX,
+  SUB_W
 } = await import('../../src/modules/export-utils.js');
 
 describe('toIn', () => {
@@ -73,7 +85,8 @@ describe('uid', () => {
     assert.match(id, /^\{[0-9a-f-]{36}\}$/);
   });
   it('returns unique values', () => {
-    const a = uid(), b = uid();
+    const a = uid(),
+      b = uid();
     assert.notEqual(a, b);
   });
 });

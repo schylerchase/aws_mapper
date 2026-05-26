@@ -85,6 +85,10 @@ CURRENT_OUTDIR=""
 # Export log entries — written to _export-log.json at end
 EXPORT_LOG="["
 
+json_escape() {
+  python3 -c 'import json, sys; print(json.dumps(sys.stdin.read())[1:-1], end="")'
+}
+
 # Helper: run an AWS CLI command, save output, report status
 run() {
   local label="$1"
@@ -109,7 +113,7 @@ run() {
   else
     echo "ERROR (${output:0:60})"
     local escaped_msg
-    escaped_msg=$(echo "${output:0:60}" | sed 's/"/\\"/g')
+    escaped_msg=$(printf '%s' "${output:0:60}" | json_escape)
     EXPORT_LOG="${EXPORT_LOG}{\"label\":\"$label\",\"file\":\"$filename\",\"status\":\"ERROR\",\"detail\":\"$escaped_msg\"},"
   fi
 }

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
 const { loadDemo, clickSubnet, openDashTab, captureErrors } = require('./helpers');
 
 test.describe('State Collisions & Edge Cases', () => {
@@ -96,17 +97,16 @@ test.describe('State Collisions & Edge Cases', () => {
 
   test('demo load → clear → demo load produces clean state', async ({ page }) => {
     // First load already happened in beforeEach
-    const vpcCount1 = await page.evaluate(() =>
-      document.querySelectorAll('.vpc-group').length
-    );
+    const vpcCount1 = await page.evaluate(() => document.querySelectorAll('.vpc-group').length);
     expect(vpcCount1).toBeGreaterThan(0);
 
     // Clear
     const errors = await captureErrors(page, async () => {
       await page.evaluate(() => {
         // Find and click the Clear button via DOM (overlay may block Playwright clicks)
-        const clearBtn = document.querySelector('#clearBtn, [id*="clear" i], .btn-clear')
-          || [...document.querySelectorAll('button')].find(b => /clear/i.test(b.textContent));
+        const clearBtn =
+          document.querySelector('#clearBtn, [id*="clear" i], .btn-clear') ||
+          [...document.querySelectorAll('button')].find((b) => /clear/i.test(b.textContent));
         if (clearBtn) clearBtn.click();
       });
       await page.waitForTimeout(500);
@@ -118,10 +118,26 @@ test.describe('State Collisions & Edge Cases', () => {
     expect(errors).toEqual([]);
 
     // Should have VPCs again
-    const vpcCount2 = await page.evaluate(() =>
-      document.querySelectorAll('.vpc-group').length
-    );
+    const vpcCount2 = await page.evaluate(() => document.querySelectorAll('.vpc-group').length);
     expect(vpcCount2).toBeGreaterThan(0);
+  });
+
+  test('project save produces the current awsmap payload', async ({ page }) => {
+    let download;
+    const errors = await captureErrors(page, async () => {
+      const downloadPromise = page.waitForEvent('download');
+      await page.evaluate(() => saveProject());
+      download = await downloadPromise;
+    });
+    expect(errors).toEqual([]);
+
+    expect(download.suggestedFilename()).toMatch(/\.awsmap$/);
+
+    const savedPath = await download.path();
+    const parsed = JSON.parse(fs.readFileSync(savedPath, 'utf8'));
+    expect(parsed._format).toBe('awsmap');
+    expect(parsed.textareas.in_vpcs).toBeTruthy();
+    expect(parsed.layout).toBeTruthy();
   });
 
   // --- Export edge cases ---
@@ -131,14 +147,16 @@ test.describe('State Collisions & Edge Cases', () => {
 
     // Disable all modules
     await page.evaluate(() => {
-      _RPT_MODULES.forEach(m => { m.enabled = false; });
+      _RPT_MODULES.forEach((m) => {
+        m.enabled = false;
+      });
     });
 
     const errors = await captureErrors(page, async () => {
       await page.evaluate(() => {
         window._testLastBlob = null;
         window._origDownloadBlob = window.downloadBlob;
-        window.downloadBlob = function(blob, name) {
+        window.downloadBlob = function (blob, name) {
           window._testLastBlob = { size: blob.size, name };
         };
       });

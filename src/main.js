@@ -3,49 +3,129 @@
 // This file is bundled by esbuild into dist/app.bundle.js
 
 // Core utilities
-import { SEV_ORDER, FW_LABELS, EOL_RUNTIMES, EFFORT_LABELS, EFFORT_TIME, PRIORITY_META, TIER_META, PRIORITY_ORDER, PRIORITY_KEYS, MUTE_KEY, NOTES_KEY, SNAP_KEY, SAVE_KEY, MAX_SNAPSHOTS, SAVE_INTERVAL, NOTE_CATEGORIES } from './modules/constants.js';
+import {
+  SEV_ORDER,
+  FW_LABELS,
+  EOL_RUNTIMES,
+  EFFORT_LABELS,
+  EFFORT_TIME,
+  PRIORITY_META,
+  TIER_META,
+  PRIORITY_ORDER,
+  PRIORITY_KEYS,
+  MUTE_KEY,
+  NOTES_KEY,
+  SNAP_KEY,
+  SAVE_KEY,
+  MAX_SNAPSHOTS,
+  SAVE_INTERVAL,
+  NOTE_CATEGORIES
+} from './modules/constants.js';
 import { safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv } from './modules/utils.js';
-import { showToast, closeAllDashboards, toggleClass, setVisible, getEl, qs, qsa } from './modules/dom-helpers.js';
+import {
+  showToast,
+  closeAllDashboards,
+  toggleClass,
+  setVisible,
+  getEl,
+  qs,
+  qsa
+} from './modules/dom-helpers.js';
 import { _prefs, loadPrefs, savePrefs } from './modules/prefs.js';
 
 // Feature engines
 import { generateDemo } from './modules/demo-data.js';
-import { ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR } from './modules/cidr-engine.js';
+import {
+  ipToInt,
+  intToIp,
+  parseCIDR,
+  cidrToString,
+  splitCIDR,
+  cidrContains,
+  cidrOverlap,
+  ipInCIDR
+} from './modules/cidr-engine.js';
 import { runComplianceChecks, invalidateComplianceCache } from './modules/compliance-engine.js';
 
 // Network rules (pure functions extracted from flow-analyzer)
-import { ipToNum, ipFromCidr, cidrContains as nrCidrContains, protoMatch, portInRange, protoName, evaluateRouteTable, evaluateNACL, evaluateSG } from './modules/network-rules.js';
+import {
+  ipToNum,
+  ipFromCidr,
+  cidrContains as nrCidrContains,
+  protoMatch,
+  portInRange,
+  protoName,
+  evaluateRouteTable,
+  evaluateNACL,
+  evaluateSG
+} from './modules/network-rules.js';
 
 // Shared state (cross-cutting globals used by 5+ regions)
 import * as State from './modules/state.js';
 
 // Safe DOM builders (used by extracted modules, available to inline code during transition)
-import { buildEl, buildOption, buildSelect, buildButton, setText, replaceChildren, safeHtml } from './modules/dom-builders.js';
+import {
+  buildEl,
+  buildOption,
+  buildSelect,
+  buildButton,
+  setText,
+  replaceChildren,
+  safeHtml
+} from './modules/dom-builders.js';
 
 // BUDR engine (backup, uptime, disaster recovery assessment)
 import {
-  _BUDR_STRATEGY, _BUDR_STRATEGY_ORDER, _BUDR_STRATEGY_LEGEND,
-  _BUDR_RTO_RPO, _BUDR_EST_MINUTES, _TIER_TARGETS,
-  runBUDRChecks, _budrTierCompliance, _fmtMin,
-  _enrichBudrWithClassification, _reapplyBUDROverrides,
-  _getBUDRTierCounts, _getBudrComplianceCounts,
-  budrFindings, budrAssessments, budrOverrides,
-  setBudrFindings, setBudrAssessments, setBudrOverrides,
-  _budrFindings, _budrAssessments, _budrOverrides
+  _BUDR_STRATEGY,
+  _BUDR_STRATEGY_ORDER,
+  _BUDR_STRATEGY_LEGEND,
+  _BUDR_RTO_RPO,
+  _BUDR_EST_MINUTES,
+  _TIER_TARGETS,
+  runBUDRChecks,
+  _budrTierCompliance,
+  _fmtMin,
+  _enrichBudrWithClassification,
+  _reapplyBUDROverrides,
+  _getBUDRTierCounts,
+  _getBudrComplianceCounts,
+  budrFindings,
+  budrAssessments,
+  budrOverrides,
+  setBudrFindings,
+  setBudrAssessments,
+  setBudrOverrides,
+  _budrFindings,
+  _budrAssessments,
+  _budrOverrides
 } from './modules/budr-engine.js';
 
 // Dependency graph (pure logic — DOM display functions remain inline)
 import {
-  buildDependencyGraph, getBlastRadius, getResType, getResName,
-  clearBlastRadius, resetDepGraph, isBlastActive,
-  depGraph, blastActive
+  buildDependencyGraph,
+  getBlastRadius,
+  getResType,
+  getResName,
+  clearBlastRadius,
+  resetDepGraph,
+  isBlastActive,
+  depGraph,
+  blastActive
 } from './modules/dep-graph.js';
 
 // IAM engine (policy analysis and compliance checks)
 import {
-  _stmtArr, _safePolicyParse,
-  parseIAMData, getIAMAccessForVpc, runIAMChecks,
-  _iamData, _showIAM, setIamData, setShowIAM, getIamData, getShowIAM
+  _stmtArr,
+  _safePolicyParse,
+  parseIAMData,
+  getIAMAccessForVpc,
+  runIAMChecks,
+  _iamData,
+  _showIAM,
+  setIamData,
+  setShowIAM,
+  getIamData,
+  getShowIAM
 } from './modules/iam-engine.js';
 
 // Timeline & Annotations (state + pure logic — DOM rendering remains inline)
@@ -86,6 +166,15 @@ import * as IacGenerator from './modules/iac-generator.js';
 
 // Report HTML generators (section renderers, CSS, interactive JS — extracted from app-core.js)
 import * as ReportHtml from './modules/report-html.js';
+import * as ReportModel from './modules/report-model.js';
+import * as ProjectFiles from './modules/project-files.js';
+import * as RenderLabels from './modules/render-labels.js';
+import * as UiEvents from './modules/ui-events.js';
+
+// Anonymous, opt in telemetry. Dormant unless build.js sets __TELEMETRY_ENABLED__ = "true".
+// Plan and constraints in .telemetry/. Wiring instructions in .telemetry/integration.md.
+import * as Telemetry from './modules/telemetry.js';
+import * as TelemetryUI from './modules/telemetry-ui.js';
 
 // NOTE: Diff and report code lives in app-core.js (DOM-coupled).
 // Pure diff logic extracted to src/exports/diff-logic.js (bundled into core.bundle.js).
@@ -93,80 +182,199 @@ import * as ReportHtml from './modules/report-html.js';
 // Export to global scope for backward compatibility with inline code
 window.AppModules = {
   // Constants (clean + underscore-prefixed aliases for inline code)
-  SEV_ORDER, FW_LABELS, EOL_RUNTIMES, EFFORT_LABELS, EFFORT_TIME,
-  PRIORITY_META, TIER_META, PRIORITY_ORDER, PRIORITY_KEYS,
-  MUTE_KEY, NOTES_KEY, SNAP_KEY, SAVE_KEY, MAX_SNAPSHOTS, SAVE_INTERVAL, NOTE_CATEGORIES,
+  SEV_ORDER,
+  FW_LABELS,
+  EOL_RUNTIMES,
+  EFFORT_LABELS,
+  EFFORT_TIME,
+  PRIORITY_META,
+  TIER_META,
+  PRIORITY_ORDER,
+  PRIORITY_KEYS,
+  MUTE_KEY,
+  NOTES_KEY,
+  SNAP_KEY,
+  SAVE_KEY,
+  MAX_SNAPSHOTS,
+  SAVE_INTERVAL,
+  NOTE_CATEGORIES,
   _SEV_ORDER: SEV_ORDER,
   _FW_LABELS: FW_LABELS,
 
   // Utils
-  safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv,
+  safeParse,
+  ext,
+  esc,
+  gn,
+  sid,
+  clsGw,
+  isShared,
+  gcv,
+  gch,
+  gv,
 
   // DOM helpers
-  showToast, closeAllDashboards, toggleClass, setVisible, getEl, qs, qsa,
+  showToast,
+  closeAllDashboards,
+  toggleClass,
+  setVisible,
+  getEl,
+  qs,
+  qsa,
 
   // Prefs
-  _prefs, loadPrefs, savePrefs,
+  _prefs,
+  loadPrefs,
+  savePrefs,
 
   // CIDR engine
-  ipToInt, intToIp, parseCIDR, cidrToString, splitCIDR, cidrContains, cidrOverlap, ipInCIDR,
+  ipToInt,
+  intToIp,
+  parseCIDR,
+  cidrToString,
+  splitCIDR,
+  cidrContains,
+  cidrOverlap,
+  ipInCIDR,
 
   // Compliance
-  runComplianceChecks, invalidateComplianceCache,
+  runComplianceChecks,
+  invalidateComplianceCache,
 
   // Engines
   generateDemo,
 
   // Network rules
-  ipToNum, ipFromCidr, nrCidrContains, protoMatch, portInRange, protoName,
-  evaluateRouteTable, evaluateNACL, evaluateSG,
+  ipToNum,
+  ipFromCidr,
+  nrCidrContains,
+  protoMatch,
+  portInRange,
+  protoName,
+  evaluateRouteTable,
+  evaluateNACL,
+  evaluateSG,
 
   // Shared state
   State,
 
   // DOM builders
-  buildEl, buildOption, buildSelect, buildButton, setText, replaceChildren, safeHtml,
+  buildEl,
+  buildOption,
+  buildSelect,
+  buildButton,
+  setText,
+  replaceChildren,
+  safeHtml,
 
   // BUDR engine
-  _BUDR_STRATEGY, _BUDR_STRATEGY_ORDER, _BUDR_STRATEGY_LEGEND,
-  _BUDR_RTO_RPO, _BUDR_EST_MINUTES, _TIER_TARGETS,
-  runBUDRChecks, _budrTierCompliance, _fmtMin,
-  _enrichBudrWithClassification, _reapplyBUDROverrides,
-  _getBUDRTierCounts, _getBudrComplianceCounts,
-  _budrFindings, _budrAssessments, _budrOverrides,
-  setBudrFindings, setBudrAssessments, setBudrOverrides,
+  _BUDR_STRATEGY,
+  _BUDR_STRATEGY_ORDER,
+  _BUDR_STRATEGY_LEGEND,
+  _BUDR_RTO_RPO,
+  _BUDR_EST_MINUTES,
+  _TIER_TARGETS,
+  runBUDRChecks,
+  _budrTierCompliance,
+  _fmtMin,
+  _enrichBudrWithClassification,
+  _reapplyBUDROverrides,
+  _getBUDRTierCounts,
+  _getBudrComplianceCounts,
+  _budrFindings,
+  _budrAssessments,
+  _budrOverrides,
+  setBudrFindings,
+  setBudrAssessments,
+  setBudrOverrides,
 
   // Dependency graph
-  buildDependencyGraph, getBlastRadius, getResType, getResName,
-  clearBlastRadius, resetDepGraph, isBlastActive,
+  buildDependencyGraph,
+  getBlastRadius,
+  getResType,
+  getResName,
+  clearBlastRadius,
+  resetDepGraph,
+  isBlastActive,
 
   // IAM engine
-  _stmtArr, _safePolicyParse,
-  parseIAMData, getIAMAccessForVpc, runIAMChecks,
-  _iamData, _showIAM, setIamData, setShowIAM, getIamData, getShowIAM,
+  _stmtArr,
+  _safePolicyParse,
+  parseIAMData,
+  getIAMAccessForVpc,
+  runIAMChecks,
+  _iamData,
+  _showIAM,
+  setIamData,
+  setShowIAM,
+  getIamData,
+  getShowIAM,
 
   // Timeline & Annotations (flattened for app-core.js backward compat)
-  Timeline, ...Timeline,
+  Timeline,
+  ...Timeline,
 
   // Phase 3: Feature Engines (flattened)
-  DesignMode, ...DesignMode,
-  FlowTracing, ...FlowTracing,
-  FlowAnalysis, ...FlowAnalysis,
-  FirewallEditor, ...FirewallEditor,
-  MultiAccount, ...MultiAccount,
+  DesignMode,
+  ...DesignMode,
+  FlowTracing,
+  ...FlowTracing,
+  FlowAnalysis,
+  ...FlowAnalysis,
+  FirewallEditor,
+  ...FirewallEditor,
+  MultiAccount,
+  ...MultiAccount,
 
   // Phase 4: Dashboards & Reports (flattened)
-  ComplianceView, ...ComplianceView,
-  UnifiedDashboard, ...UnifiedDashboard,
-  Governance, ...Governance,
+  ComplianceView,
+  ...ComplianceView,
+  UnifiedDashboard,
+  ...UnifiedDashboard,
+  Governance,
+  ...Governance,
 
   // Phase 5: Core (flattened)
-  ExportUtils, ...ExportUtils,
-  IacGenerator, ...IacGenerator,
-  ReportHtml, ...ReportHtml,
+  ExportUtils,
+  ...ExportUtils,
+  IacGenerator,
+  ...IacGenerator,
+  ReportHtml,
+  ...ReportHtml,
+  ReportModel,
+  ...ReportModel,
+  ProjectFiles,
+  ...ProjectFiles,
+  RenderLabels,
+  ...RenderLabels,
+  UiEvents,
+  ...UiEvents,
+
+  // Telemetry (dormant unless explicitly enabled at build time)
+  Telemetry,
+  TelemetryUI
 
   // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
 };
+
+// Initialize telemetry. No op when __TELEMETRY_ENABLED__ is "false" (the default).
+Telemetry.init();
+
+// Auto mount the consent prompt and settings row when telemetry is enabled.
+// Both helpers short circuit internally if telemetry is dormant, so this is a
+// no op in the default build. Scripts load with `defer`, so document.body is
+// already parsed by the time this runs.
+(function mountTelemetryUI() {
+  if (!Telemetry.isEnabled || !Telemetry.isEnabled()) return;
+  if (document.body) {
+    TelemetryUI.renderConsentPrompt(document.body, null);
+    const pop = document.getElementById('settingsPopover');
+    if (pop) {
+      const row = TelemetryUI.buildSettingsRow();
+      if (row) pop.appendChild(row);
+    }
+  }
+})();
 
 // Make functions available globally (transitional - will remove once all code is modularized)
 Object.assign(window, window.AppModules);

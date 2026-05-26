@@ -77,17 +77,21 @@ test.describe('Security', () => {
         enis: [eni],
         snapByVol: {},
         tgByAlb: {
-          [albArn]: [{
-            TargetGroupName: payload,
-            TargetGroupArn: 'arn:aws:elasticloadbalancing:us-east-1:123:targetgroup/test/1',
-            Protocol: payload,
-            Port: 443,
-            TargetType: payload,
-            HealthCheckPath: payload,
-            Targets: [{}]
-          }]
+          [albArn]: [
+            {
+              TargetGroupName: payload,
+              TargetGroupArn: 'arn:aws:elasticloadbalancing:us-east-1:123:targetgroup/test/1',
+              Protocol: payload,
+              Port: 443,
+              TargetType: payload,
+              HealthCheckPath: payload,
+              Targets: [{}]
+            }
+          ]
         },
-        wafByAlb: { [albArn]: [{ Name: payload, Description: payload, Rules: [{ Name: payload }] }] },
+        wafByAlb: {
+          [albArn]: [{ Name: payload, Description: payload, Rules: [{ Name: payload }] }]
+        },
         cfByAlb: { [albArn]: [{ DomainName: payload, Aliases: { Items: [payload] } }] },
         rdsBySub: { 'subnet-test': [rds] },
         ecsBySub: { 'subnet-test': [ecs] },

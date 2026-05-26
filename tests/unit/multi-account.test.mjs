@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 
 // multi-account.js imports from utils.js and state.js
 globalThis.window = globalThis;
-globalThis.document = { getElementById: () => null, querySelectorAll: () => [], querySelector: () => null };
+globalThis.document = {
+  getElementById: () => null,
+  querySelectorAll: () => [],
+  querySelector: () => null
+};
 
-const {
-  detectRegionFromCtx, buildRlCtxFromData
-} = await import('../../src/modules/multi-account.js');
+const { detectRegionFromCtx, buildRlCtxFromData } = await import(
+  '../../src/modules/multi-account.js'
+);
 
 describe('detectRegionFromCtx', () => {
   it('detects region from subnet AvailabilityZone', () => {
@@ -43,8 +47,21 @@ describe('buildRlCtxFromData', () => {
 
   it('builds context from VPC JSON string', () => {
     const textareas = {
-      in_vpcs: JSON.stringify({ Vpcs: [{ VpcId: 'vpc-123', CidrBlock: '10.0.0.0/16', Tags: [{ Key: 'Name', Value: 'main' }] }] }),
-      in_subnets: JSON.stringify({ Subnets: [{ SubnetId: 'sub-1', VpcId: 'vpc-123', CidrBlock: '10.0.1.0/24', AvailabilityZone: 'us-east-1a' }] })
+      in_vpcs: JSON.stringify({
+        Vpcs: [
+          { VpcId: 'vpc-123', CidrBlock: '10.0.0.0/16', Tags: [{ Key: 'Name', Value: 'main' }] }
+        ]
+      }),
+      in_subnets: JSON.stringify({
+        Subnets: [
+          {
+            SubnetId: 'sub-1',
+            VpcId: 'vpc-123',
+            CidrBlock: '10.0.1.0/24',
+            AvailabilityZone: 'us-east-1a'
+          }
+        ]
+      })
     };
     const result = buildRlCtxFromData(textareas, 'myaccount');
     assert.ok(result);
@@ -77,7 +94,9 @@ describe('buildRlCtxFromData', () => {
     const textareas = {
       in_vpcs: { Vpcs: [{ VpcId: 'vpc-1', CidrBlock: '10.0.0.0/16', Tags: [] }] },
       in_subnets: { Subnets: [{ SubnetId: 'sub-1', VpcId: 'vpc-1', CidrBlock: '10.0.1.0/24' }] },
-      in_ec2: { Reservations: [{ Instances: [{ InstanceId: 'i-1', SubnetId: 'sub-1', Tags: [] }] }] }
+      in_ec2: {
+        Reservations: [{ Instances: [{ InstanceId: 'i-1', SubnetId: 'sub-1', Tags: [] }] }]
+      }
     };
     const result = buildRlCtxFromData(textareas, '');
     assert.ok(result);

@@ -1,8 +1,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  _DIFF_KEYS, _DIFF_VOLATILE, _DIFF_STRUCTURAL,
-  normalizeResource, normalizeSG, classifyChange, _fieldDiff, computeDiff
+  _DIFF_KEYS,
+  _DIFF_VOLATILE,
+  _DIFF_STRUCTURAL,
+  normalizeResource,
+  normalizeSG,
+  classifyChange,
+  _fieldDiff,
+  computeDiff
 } from '../../src/exports/diff-logic.js';
 
 describe('constants', () => {
@@ -61,10 +67,12 @@ describe('normalizeSG', () => {
 
 describe('classifyChange', () => {
   it('CidrBlock is structural', () => assert.equal(classifyChange('CidrBlock'), 'structural'));
-  it('InstanceType is structural', () => assert.equal(classifyChange('InstanceType'), 'structural'));
+  it('InstanceType is structural', () =>
+    assert.equal(classifyChange('InstanceType'), 'structural'));
   it('Tags is metadata', () => assert.equal(classifyChange('Tags'), 'metadata'));
   it('Description is metadata', () => assert.equal(classifyChange('Description'), 'metadata'));
-  it('unknown field defaults to structural', () => assert.equal(classifyChange('SomeNewField'), 'structural'));
+  it('unknown field defaults to structural', () =>
+    assert.equal(classifyChange('SomeNewField'), 'structural'));
 });
 
 describe('_fieldDiff', () => {
@@ -134,8 +142,14 @@ describe('computeDiff', () => {
   });
 
   it('ignores volatile fields in diff', () => {
-    const baseline = { vpcs: [{ VpcId: 'vpc-1', CidrBlock: '10.0.0.0/16', LaunchTime: '2024-01-01' }], subnets: [] };
-    const current = { vpcs: [{ VpcId: 'vpc-1', CidrBlock: '10.0.0.0/16', LaunchTime: '2025-01-01' }], subnets: [] };
+    const baseline = {
+      vpcs: [{ VpcId: 'vpc-1', CidrBlock: '10.0.0.0/16', LaunchTime: '2024-01-01' }],
+      subnets: []
+    };
+    const current = {
+      vpcs: [{ VpcId: 'vpc-1', CidrBlock: '10.0.0.0/16', LaunchTime: '2025-01-01' }],
+      subnets: []
+    };
     const r = computeDiff(baseline, current);
     assert.equal(r.total.unchanged, 1);
     assert.equal(r.total.modified, 0);

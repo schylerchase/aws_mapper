@@ -13,7 +13,8 @@ export function safeParse(t) {
     return JSON.parse(t.trim());
   } catch (e) {
     const b = [];
-    let d = 0, s = -1;
+    let d = 0,
+      s = -1;
     for (let i = 0; i < t.length; i++) {
       if (t[i] === '{') {
         if (d === 0) s = i;
@@ -28,13 +29,15 @@ export function safeParse(t) {
       }
     }
     return b.length
-      ? b.map(x => {
-          try {
-            return JSON.parse(x);
-          } catch (e2) {
-            return null;
-          }
-        }).filter(Boolean)
+      ? b
+          .map((x) => {
+            try {
+              return JSON.parse(x);
+            } catch (e2) {
+              return null;
+            }
+          })
+          .filter(Boolean)
       : null;
   }
 }
@@ -78,7 +81,7 @@ export function esc(s) {
  * @returns {string} Escaped name or fallback
  */
 export function gn(i, f) {
-  const t = (i.Tags || []).find(x => x.Key === 'Name');
+  const t = (i.Tags || []).find((x) => x.Key === 'Name');
   return esc(t ? t.Value : f);
 }
 
@@ -126,15 +129,17 @@ export function isShared(t) {
  * @returns {string} CSS variable name
  */
 export function gcv(t) {
-  return {
-    IGW: 'var(--igw-color)',
-    NAT: 'var(--nat-color)',
-    TGW: 'var(--tgw-color)',
-    VGW: 'var(--vgw-color)',
-    VPCE: 'var(--vpce-color)',
-    PCX: 'var(--pcx-color)',
-    EIGW: 'var(--igw-color)'
-  }[t] || 'var(--text-muted)';
+  return (
+    {
+      IGW: 'var(--igw-color)',
+      NAT: 'var(--nat-color)',
+      TGW: 'var(--tgw-color)',
+      VGW: 'var(--vgw-color)',
+      VPCE: 'var(--vpce-color)',
+      PCX: 'var(--pcx-color)',
+      EIGW: 'var(--igw-color)'
+    }[t] || 'var(--text-muted)'
+  );
 }
 
 /**
@@ -143,15 +148,17 @@ export function gcv(t) {
  * @returns {string} Hex color
  */
 export function gch(t) {
-  return {
-    IGW: '#10b981',
-    NAT: '#f59e0b',
-    TGW: '#ec4899',
-    VGW: '#ef4444',
-    VPCE: '#a78bfa',
-    PCX: '#fb923c',
-    EIGW: '#10b981'
-  }[t] || '#4a5e80';
+  return (
+    {
+      IGW: '#10b981',
+      NAT: '#f59e0b',
+      TGW: '#ec4899',
+      VGW: '#ef4444',
+      VPCE: '#a78bfa',
+      PCX: '#fb923c',
+      EIGW: '#10b981'
+    }[t] || '#4a5e80'
+  );
 }
 
 /**

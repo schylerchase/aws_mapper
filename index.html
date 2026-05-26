@@ -1,602 +1,1769 @@
 <!-- #region HTML HEAD & SCRIPTS -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'">
-<title>AWS Network Topology Map</title>
-<script>
-/* Theme init — runs before CSS to avoid flash */
-(function(){
-  var saved=localStorage.getItem('theme');
-  var theme=saved||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');
-  if(theme==='light') document.documentElement.setAttribute('data-theme','light');
-})();
-function toggleTheme(){
-  var isLight=document.documentElement.getAttribute('data-theme')==='light';
-  var next=isLight?'dark':'light';
-  if(next==='light') document.documentElement.setAttribute('data-theme','light');
-  else document.documentElement.removeAttribute('data-theme');
-  localStorage.setItem('theme',next);
-  var btn=document.getElementById('themeToggle');
-  if(btn) btn.textContent=next==='light'?'\u263E':'\u2606';
-  // Re-render report preview if open so inline CSS adapts to new theme
-  if(document.getElementById('rptPreviewContent')&&typeof _renderRptPreview==='function') _renderRptPreview();
-}
-function _initThemeBtn(){
-  var btn=document.getElementById('themeToggle');
-  if(btn) btn.textContent=document.documentElement.getAttribute('data-theme')==='light'?'\u263E':'\u2606';
-}
-document.addEventListener('DOMContentLoaded',_initThemeBtn);
-</script>
-<!-- CSS first so browser discovers it before scripts -->
-<link rel="stylesheet" href="src/styles/main.css?v=4">
-<!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
-<script defer src="libs/d3.custom.min.js"></script>
-<script defer src="libs/jszip.min.js"></script>
-<script defer src="dist/app.bundle.js?v=fb00363c"></script>
-<script defer src="dist/core.bundle.js?v=ade5151c"></script>
-</head>
-<body>
-<!-- #endregion HTML HEAD & SCRIPTS -->
-<!-- #region HTML SIDEBAR -->
-<div class="sidebar" role="complementary" aria-label="Data input sidebar">
-  <div class="sidebar-header">
-    <div class="brand-row">
-      <div class="brand-icon"><img src="logo.png" alt="Logo" style="width:28px;height:28px;object-fit:contain"></div>
-      <div class="brand-text"><h1>AWS Network Mapper <span class="brand-ver">v2.8.7</span></h1><p>Infrastructure topology & compliance</p></div>
-    </div>
-    <div class="sidebar-hdr-actions">
-      <button class="settings-gear" id="settingsGear" title="Settings" aria-label="Settings">&#9881;</button>
-      <div class="settings-popover" id="settingsPopover">
-        <div class="global-txt-ctrl">
-          <span class="gtc-label">Text Size</span>
-          <button class="gtc-btn" id="gTxtDown" aria-label="Decrease text size">-</button>
-          <span class="gtc-val" id="gTxtVal">100%</span>
-          <button class="gtc-btn" id="gTxtUp" aria-label="Increase text size">+</button>
-          <span style="flex:1"></span>
-          <button class="gtc-btn theme-toggle" id="themeToggle" title="Toggle light/dark mode" onclick="toggleTheme()">&#9734;</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    />
+    <title>AWS Network Topology Map</title>
+    <script>
+      /* Theme init — runs before CSS to avoid flash */
+      (function () {
+        var saved = localStorage.getItem('theme');
+        var theme =
+          saved || (window.matchMedia('(prefers-color-scheme:light)').matches ? 'light' : 'dark');
+        if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      })();
+      function toggleTheme() {
+        var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        var next = isLight ? 'dark' : 'light';
+        if (next === 'light') document.documentElement.setAttribute('data-theme', 'light');
+        else document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', next);
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.textContent = next === 'light' ? '\u263E' : '\u2606';
+        // Re-render report preview if open so inline CSS adapts to new theme
+        if (document.getElementById('rptPreviewContent') && typeof _renderRptPreview === 'function')
+          _renderRptPreview();
+      }
+      function _initThemeBtn() {
+        var btn = document.getElementById('themeToggle');
+        if (btn)
+          btn.textContent =
+            document.documentElement.getAttribute('data-theme') === 'light' ? '\u263E' : '\u2606';
+      }
+      document.addEventListener('DOMContentLoaded', _initThemeBtn);
+    </script>
+    <!-- CSS first so browser discovers it before scripts -->
+    <link rel="stylesheet" href="src/styles/main.css?v=4" />
+    <!-- OPTIMIZED: Bundled locally to eliminate CDN dependency (was cdnjs.cloudflare.com) -->
+    <script defer src="libs/d3.custom.min.js"></script>
+    <script defer src="libs/jszip.min.js"></script>
+    <script defer src="dist/app.bundle.js?v=9f118a56"></script>
+    <script defer src="dist/core.bundle.js?v=ade5151c"></script>
+  </head>
+  <body>
+    <!-- #endregion HTML HEAD & SCRIPTS -->
+    <!-- #region HTML SIDEBAR -->
+    <div class="sidebar" role="complementary" aria-label="Data input sidebar">
+      <div class="sidebar-header">
+        <div class="brand-row">
+          <div class="brand-icon">
+            <img src="logo.png" alt="Logo" style="width: 28px; height: 28px; object-fit: contain" />
+          </div>
+          <div class="brand-text">
+            <h1>AWS Network Mapper <span class="brand-ver">v2.8.7</span></h1>
+            <p>Infrastructure topology & compliance</p>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-  <div class="sidebar-cta" id="sidebarCta">
-    <button class="cta-btn cta-primary" id="ctaImportFolder">&#8594; Import Folder</button>
-    <button class="cta-btn cta-secondary" id="ctaPasteJson">&#123;&#125; Paste JSON</button>
-    <button class="cta-btn cta-tertiary" id="ctaLoadReport">&#8593; Load Report</button>
-    <a class="cta-demo" id="ctaDemo">Try the demo &rarr;</a>
-  </div>
-  <div class="sidebar-summary" id="sidebarSummary" style="display:none"></div>
-  <div class="upload-row" id="uploadRow" style="display:none">
-    <button class="btn-action green" id="uploadBtn">&uarr; Upload JSON</button>
-    <button class="btn-action amber" id="importFolderBtn" style="display:none">&#8594; Import Folder</button>
-    <button class="btn-action amber" id="importFolderBrowser">&#8594; Import Folder</button>
-    <div style="position:relative;display:inline-block;margin-left:4px" id="exportScriptWrap">
-      <button class="btn-action indigo" id="dlExportScript" title="Download export script">&darr; Export Script &#9662;</button>
-      <div id="exportScriptMenu" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:4px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-top:4px">
-        <button id="dlBash" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:var(--font-ui);font-size:10px;cursor:pointer;border-radius:4px">
-          <span style="font-weight:600">Bash</span> <span style="color:var(--text-muted);font-size:9px">— macOS / Linux</span>
-        </button>
-        <button id="dlPowershell" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--text-primary);font-family:var(--font-ui);font-size:10px;cursor:pointer;border-radius:4px">
-          <span style="font-weight:600">PowerShell</span> <span style="color:var(--text-muted);font-size:9px">— Windows (parallel + multi-region)</span>
-        </button>
-      </div>
-    </div>
-    <input type="file" id="fileInput" multiple accept=".json" style="display:none" />
-  </div>
-  <div class="upload-status" id="uploadStatus"></div>
-  <div class="sidebar-body" id="sidebarBody" style="display:none"></div>
-  <div class="sidebar-actions">
-    <button class="btn btn-demo" id="loadDemo" style="display:none">Demo</button>
-    <button class="btn btn-secondary" id="clearBtn">Clear</button>
-    <button class="btn btn-primary" id="renderBtn">Render Map</button>
-  </div>
-</div>
-<!-- #endregion HTML SIDEBAR -->
-<!-- #region HTML MAIN CONTENT -->
-<button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar" aria-label="Toggle sidebar">&#x25C0;</button>
-<div class="main" role="main">
-  <div class="grid-bg"></div>
-  <div class="design-banner" id="designBanner">
-    <span class="db-title">Design Mode</span>
-    <span class="db-shortcuts"><kbd>D</kbd> toggle &nbsp;<kbd>Z</kbd> undo &nbsp;<kbd>E</kbd> export plan</span>
-    <button class="db-close" id="designBannerClose" title="Hide banner" aria-label="Close design mode banner">&times;</button>
-  </div>
-  <div class="loading-overlay" id="loadingOverlay"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-family:var(--font-ui);font-size:11px;color:var(--text-muted)">Rendering map...</div></div>
-  <div class="copy-toast" id="copyToast">Copied!</div>
-  <div class="empty-state" id="emptyState" style="display:none"><div class="icon">&#9700;</div><h2 id="emptyTitle">No data loaded</h2><p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p><button class="design-btn" id="emptyDesignBtn" style="display:none;margin-top:12px;padding:8px 20px;font-size:11px">Create VPC from Scratch</button></div>
-<div class="landing" id="landingDash">
-  <div class="landing-hero">
-    <div class="landing-icon"><img src="logo.png" alt="Logo" style="width:48px;height:48px;object-fit:contain"></div>
-    <h1>AWS Network Mapper</h1>
-    <div class="tagline">Visualize, audit &amp; design your AWS infrastructure</div>
-  </div>
-  <div class="landing-cta">
-    <button class="btn-cta primary" id="landingDemo">Explore Demo</button>
-    <button class="btn-cta secondary" id="landingImport">Import Your Data</button>
-    <button class="btn-cta secondary" id="landingImportReport">Load Report</button>
-  </div>
-  <div class="landing-cards">
-    <div class="landing-card" title="Interactive VPC, subnet &amp; resource visualization with D3.js rendering"><h3>Topology Map</h3><span class="card-hint">VPC &amp; subnet visualization</span><p>Interactive VPC, subnet &amp; resource visualization with D3.js rendering</p></div>
-    <div class="landing-card" title="30+ automated checks with remediation CLI, OPA Rego &amp; Checkov export"><h3>Compliance Engine</h3><span class="card-hint">30+ automated checks</span><p>30+ automated checks with remediation CLI, OPA Rego &amp; Checkov export</p></div>
-    <div class="landing-card" title="Trace ingress/egress paths, bastion chains &amp; access tier classification"><h3>Flow Analysis</h3><span class="card-hint">Trace ingress/egress paths</span><p>Trace ingress/egress paths, bastion chains &amp; access tier classification</p></div>
-    <div class="landing-card" title="Propose infrastructure changes with live preview and AWS CLI export"><h3>Design Mode</h3><span class="card-hint">Plan changes with CLI export</span><p>Propose infrastructure changes with live preview and AWS CLI export</p></div>
-    <div class="landing-card" title="Import multiple regions side-by-side with automatic boundary grouping"><h3>Multi-Region</h3><span class="card-hint">Side-by-side region import</span><p>Import multiple regions side-by-side with automatic boundary grouping</p></div>
-    <div class="landing-card" title="Audit backup coverage, retention gaps &amp; disaster recovery readiness"><h3>Backup &amp; DR</h3><span class="card-hint">Backup &amp; DR readiness</span><p>Audit backup coverage, retention gaps &amp; disaster recovery readiness</p></div>
-    <div class="landing-card" title="Generate executive, compliance &amp; architecture reports in HTML or XLSX"><h3>Report Builder</h3><span class="card-hint">HTML &amp; XLSX reports</span><p>Generate executive, compliance &amp; architecture reports in HTML or XLSX</p></div>
-    <div class="landing-card" title="Export infrastructure as CloudFormation, Terraform &amp; design change plans"><h3>IaC Export</h3><span class="card-hint">Terraform &amp; CloudFormation</span><p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p></div>
-    <div class="landing-card" title="IAM review, asset classification &amp; tiered access governance dashboard"><h3>Governance</h3><span class="card-hint">IAM &amp; access governance</span><p>IAM review, asset classification &amp; tiered access governance dashboard</p></div>
-  </div>
-  <div class="landing-footer">v2.8.7 &middot; MIT License &middot; <a href="https://github.com/schylerchase/aws_mapper" target="_blank" rel="noopener noreferrer">GitHub</a></div>
-</div>
-  <div class="stats-bar" id="statsBar"></div>
-  <svg id="mapSvg"></svg>
-  <div class="legend" id="legend">
-    <div class="legend-title" role="button" tabindex="0" aria-label="Toggle legend" onclick="this.parentElement.classList.toggle('collapsed')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.parentElement.classList.toggle('collapsed')}">Legend <span class="lg-arr">&#9660;</span></div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--subnet-public)"></div>Public Subnet</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--subnet-private)"></div>Private Subnet</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--igw-color)"></div>Internet GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--nat-color)"></div>NAT GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--vgw-color)"></div>Virtual Private GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--tgw-color)"></div>Transit GW</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--vpce-color)"></div>VPC Endpoint</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--pcx-color)"></div>Peering / VPN</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--alb-color)"></div>Load Balancer</div>
-    <div class="legend-item"><div class="legend-swatch" style="border:1.5px dashed var(--vpc-stroke);background:transparent"></div>VPC Boundary</div>
-    <div class="legend-hint">Click subnets for full details | Hover to trace routes</div>
-  </div>
-  <div class="zoom-controls">
-    <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
-    <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">-</button>
-    <button class="zoom-btn" id="zoomFit" aria-label="Zoom to fit">~</button>
-    <div id="zoomLevel" style="font-family:var(--font-ui);font-size:9px;color:var(--text-muted);text-align:center;padding:2px 0;min-width:32px">100%</div>
-    <div id="detailBtns" style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px">
-      <button class="zoom-btn wide" id="btnExpand" title="Show all resources with nested details">Expand</button>
-      <button class="zoom-btn wide" id="btnCollapse" title="Collapse to VPCs and subnet names only">Collapse</button>
-    </div>
-    <div class="zoom-layout-sel" id="zoomLayoutSel">
-      <button class="zoom-layout-btn active" data-layout="grid" title="Grid layout">Grid</button>
-      <button class="zoom-layout-btn" data-layout="landingzone" title="Hub-spoke layout">Hub-Spoke</button>
-      <button class="zoom-layout-btn" data-layout="executive" title="Executive overview">Executive</button>
-      <input type="text" class="zoom-hub-input" id="zoomHubVpc" placeholder="Hub VPC name" title="Specify hub VPC name or leave blank for auto-detect" style="display:none">
-    </div>
-    <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;position:relative;display:flex;flex-direction:column;align-items:center">
-      <button class="design-btn" id="designToggle" title="Enter Design Mode to propose changes">Design</button>
-      <div class="design-help" id="designHelp">
-        <div class="dh-title">Design Mode</div>
-        <div style="margin-bottom:6px">Plan infrastructure changes with live visual preview and AWS CLI export.</div>
-        <ul>
-          <li><b>Click VPCs</b> to add subnets, gateways, SGs</li>
-          <li><b>Click subnets</b> to split, add resources, routes</li>
-          <li><b>Change log</b> tracks all changes with undo</li>
-          <li><b>Export</b> generates AWS CLI commands</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  <div class="change-log" id="changeLog"></div>
-  <div class="export-bar collapsed" id="exportBar">
-    <div class="eb-row">
-      <button class="eb-toggle" id="ebToggle" aria-label="Toggle export panel">Export &#9654;</button>
-    </div>
-    <div class="eb-panel">
-      <span style="font-family:var(--font-ui);font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;padding:2px 0">Visual</span>
-      <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
-      <button class="export-btn" id="expVsdx" style="border-color:var(--accent-green)">Visio VSDX<span>Import into Lucidchart</span></button>
-      <button class="export-btn" id="expLucidDl">Lucid File (.lucid)<span>Download for manual import</span></button>
-      <span style="font-family:var(--font-ui);font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;width:100%;padding:2px 0;border-top:1px solid var(--border);margin-top:2px">Code</span>
-      <button class="export-btn" id="expTerraform" style="border-color:#c084fc">Terraform HCL<span>Infrastructure as Code</span></button>
-      <button class="export-btn" id="expCloudformation" style="border-color:#f59e0b">CloudFormation<span>YAML/JSON template</span></button>
-    </div>
-    <!-- Hidden layout controls (synced from zoom panel) -->
-    <select id="layoutMode" style="display:none"><option value="grid">Grid</option><option value="landingzone">Landing Zone</option><option value="executive">Executive</option></select>
-    <input type="text" id="hubVpcName" style="display:none">
-  </div>
-  <!-- IaC Export Modal -->
-  <div class="iac-modal" id="iacModal">
-    <div class="iac-box">
-      <div class="iac-header">
-        <h3 id="iacTitle">Export as Terraform HCL</h3>
-        <button class="iac-close" id="iacClose" aria-label="Close IaC export modal">&times;</button>
-      </div>
-      <div class="iac-opts">
-        <label>Mode <select id="iacMode"><option value="import">Import Existing</option><option value="create">Create New (Design Only)</option><option value="recreate">Full Recreate</option></select></label>
-        <label>Scope <select id="iacScope"><option value="all">All Resources</option></select></label>
-        <label><input type="checkbox" id="iacVars" checked> Variables</label>
-        <label><input type="checkbox" id="iacModular"> Modular</label>
-        <label>Format <select id="iacFormat"><option value="hcl">HCL</option><option value="json">JSON</option></select></label>
-        <button class="iac-gen" id="iacGenerate">Generate</button>
-      </div>
-      <div class="iac-preview" id="iacPreview"><div class="iac-empty">Click Generate to preview code</div></div>
-      <div class="iac-actions">
-        <button id="iacCopy">Copy to Clipboard</button>
-        <button id="iacDownload" class="primary">Download</button>
-      </div>
-    </div>
-  </div>
-  <div class="iac-modal" id="compExportModal">
-    <div class="iac-box" style="width:min(600px,90vw)">
-      <div class="iac-header">
-        <h3>Export Report</h3>
-        <button class="iac-close" id="compExportClose" aria-label="Close export report modal">&times;</button>
-      </div>
-      <div class="iac-opts" style="flex-direction:column;align-items:stretch;gap:10px;padding:12px">
-        <div style="display:flex;gap:12px;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
-          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:1;background:var(--bg-input)">
-            <input type="radio" name="compExpScope" value="compliance" checked id="compExpScopeComp"> Compliance Only</label>
-          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:1;background:var(--bg-input)">
-            <input type="radio" name="compExpScope" value="full" id="compExpScopeFull"> Full Assessment</label>
-        </div>
-        <div id="compExpFilters" style="display:flex;gap:16px;flex-wrap:wrap">
-          <fieldset style="border:1px solid var(--border);border-radius:6px;padding:8px 12px;flex:1;min-width:200px">
-            <legend style="font-family:var(--font-ui);font-size:calc(9px * var(--txt-scale,1));color:var(--text-muted);text-transform:uppercase;padding:0 4px">Frameworks</legend>
-            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
-              <label><input type="checkbox" checked data-comp-fw="CIS"> CIS</label>
-              <label><input type="checkbox" checked data-comp-fw="WAF"> WAF</label>
-              <label><input type="checkbox" checked data-comp-fw="IAM"> IAM</label>
-              <label><input type="checkbox" checked data-comp-fw="ARCH"> Best Practices</label>
-              <label><input type="checkbox" checked data-comp-fw="SOC2"> SOC2</label>
-              <label><input type="checkbox" checked data-comp-fw="PCI"> PCI DSS</label>
-              <label><input type="checkbox" checked data-comp-fw="BUDR"> BUDR</label>
+        <div class="sidebar-hdr-actions">
+          <button class="settings-gear" id="settingsGear" title="Settings" aria-label="Settings">
+            &#9881;
+          </button>
+          <div class="settings-popover" id="settingsPopover">
+            <div class="global-txt-ctrl">
+              <span class="gtc-label">Text Size</span>
+              <button class="gtc-btn" id="gTxtDown" aria-label="Decrease text size">-</button>
+              <span class="gtc-val" id="gTxtVal">100%</span>
+              <button class="gtc-btn" id="gTxtUp" aria-label="Increase text size">+</button>
+              <span style="flex: 1"></span>
+              <button
+                class="gtc-btn theme-toggle"
+                id="themeToggle"
+                title="Toggle light/dark mode"
+                onclick="toggleTheme()"
+              >
+                &#9734;
+              </button>
             </div>
-          </fieldset>
-          <fieldset style="border:1px solid var(--border);border-radius:6px;padding:8px 12px;min-width:160px">
-            <legend style="font-family:var(--font-ui);font-size:calc(9px * var(--txt-scale,1));color:var(--text-muted);text-transform:uppercase;padding:0 4px">Severities</legend>
-            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
-              <label><input type="checkbox" checked data-comp-sev="CRITICAL"> Critical</label>
-              <label><input type="checkbox" checked data-comp-sev="HIGH"> High</label>
-              <label><input type="checkbox" checked data-comp-sev="MEDIUM"> Medium</label>
-              <label><input type="checkbox" checked data-comp-sev="LOW"> Low</label>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-cta" id="sidebarCta">
+        <button class="cta-btn cta-primary" id="ctaImportFolder">&#8594; Import Folder</button>
+        <button class="cta-btn cta-secondary" id="ctaPasteJson">&#123;&#125; Paste JSON</button>
+        <button class="cta-btn cta-tertiary" id="ctaLoadReport">&#8593; Load Report</button>
+        <a class="cta-demo" id="ctaDemo">Try the demo &rarr;</a>
+      </div>
+      <div class="sidebar-summary" id="sidebarSummary" style="display: none"></div>
+      <div class="upload-row" id="uploadRow" style="display: none">
+        <button class="btn-action green" id="uploadBtn">&uarr; Upload JSON</button>
+        <button class="btn-action amber" id="importFolderBtn" style="display: none">
+          &#8594; Import Folder
+        </button>
+        <button class="btn-action amber" id="importFolderBrowser">&#8594; Import Folder</button>
+        <div
+          style="position: relative; display: inline-block; margin-left: 4px"
+          id="exportScriptWrap"
+        >
+          <button class="btn-action indigo" id="dlExportScript" title="Download export script">
+            &darr; Export Script &#9662;
+          </button>
+          <div
+            id="exportScriptMenu"
+            style="
+              display: none;
+              position: absolute;
+              top: 100%;
+              left: 0;
+              z-index: 50;
+              background: var(--bg-secondary);
+              border: 1px solid var(--border);
+              border-radius: 6px;
+              padding: 4px;
+              min-width: 220px;
+              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+              margin-top: 4px;
+            "
+          >
+            <button
+              id="dlBash"
+              style="
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 8px 10px;
+                border: none;
+                background: none;
+                color: var(--text-primary);
+                font-family: var(--font-ui);
+                font-size: 10px;
+                cursor: pointer;
+                border-radius: 4px;
+              "
+            >
+              <span style="font-weight: 600">Bash</span>
+              <span style="color: var(--text-muted); font-size: 9px">— macOS / Linux</span>
+            </button>
+            <button
+              id="dlPowershell"
+              style="
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 8px 10px;
+                border: none;
+                background: none;
+                color: var(--text-primary);
+                font-family: var(--font-ui);
+                font-size: 10px;
+                cursor: pointer;
+                border-radius: 4px;
+              "
+            >
+              <span style="font-weight: 600">PowerShell</span>
+              <span style="color: var(--text-muted); font-size: 9px"
+                >— Windows (parallel + multi-region)</span
+              >
+            </button>
+          </div>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".json" style="display: none" />
+      </div>
+      <div class="upload-status" id="uploadStatus"></div>
+      <div class="sidebar-body" id="sidebarBody" style="display: none"></div>
+      <div class="sidebar-actions">
+        <button class="btn btn-demo" id="loadDemo" style="display: none">Demo</button>
+        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+        <button class="btn btn-primary" id="renderBtn">Render Map</button>
+      </div>
+    </div>
+    <!-- #endregion HTML SIDEBAR -->
+    <!-- #region HTML MAIN CONTENT -->
+    <button
+      class="sidebar-toggle"
+      id="sidebarToggle"
+      title="Toggle sidebar"
+      aria-label="Toggle sidebar"
+    >
+      &#x25C0;
+    </button>
+    <div class="main" role="main">
+      <div class="grid-bg"></div>
+      <div class="design-banner" id="designBanner">
+        <span class="db-title">Design Mode</span>
+        <span class="db-shortcuts"
+          ><kbd>D</kbd> toggle &nbsp;<kbd>Z</kbd> undo &nbsp;<kbd>E</kbd> export plan</span
+        >
+        <button
+          class="db-close"
+          id="designBannerClose"
+          title="Hide banner"
+          aria-label="Close design mode banner"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="loading-overlay" id="loadingOverlay">
+        <div
+          style="
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          "
+        ></div>
+        <div style="font-family: var(--font-ui); font-size: 11px; color: var(--text-muted)">
+          Rendering map...
+        </div>
+      </div>
+      <div class="copy-toast" id="copyToast">Copied!</div>
+      <div class="empty-state" id="emptyState" style="display: none">
+        <div class="icon">&#9700;</div>
+        <h2 id="emptyTitle">No data loaded</h2>
+        <p id="emptyDesc">Paste AWS CLI JSON exports and click Render Map</p>
+        <button
+          class="design-btn"
+          id="emptyDesignBtn"
+          style="display: none; margin-top: 12px; padding: 8px 20px; font-size: 11px"
+        >
+          Create VPC from Scratch
+        </button>
+      </div>
+      <div class="landing" id="landingDash">
+        <div class="landing-hero">
+          <div class="landing-icon">
+            <img src="logo.png" alt="Logo" style="width: 48px; height: 48px; object-fit: contain" />
+          </div>
+          <h1>AWS Network Mapper</h1>
+          <div class="tagline">Visualize, audit &amp; design your AWS infrastructure</div>
+        </div>
+        <div class="landing-cta">
+          <button class="btn-cta primary" id="landingDemo">Explore Demo</button>
+          <button class="btn-cta secondary" id="landingImport">Import Your Data</button>
+          <button class="btn-cta secondary" id="landingImportReport">Load Report</button>
+        </div>
+        <div class="landing-cards">
+          <div
+            class="landing-card"
+            title="Interactive VPC, subnet &amp; resource visualization with D3.js rendering"
+          >
+            <h3>Topology Map</h3>
+            <span class="card-hint">VPC &amp; subnet visualization</span>
+            <p>Interactive VPC, subnet &amp; resource visualization with D3.js rendering</p>
+          </div>
+          <div
+            class="landing-card"
+            title="30+ automated checks with remediation CLI, OPA Rego &amp; Checkov export"
+          >
+            <h3>Compliance Engine</h3>
+            <span class="card-hint">30+ automated checks</span>
+            <p>30+ automated checks with remediation CLI, OPA Rego &amp; Checkov export</p>
+          </div>
+          <div
+            class="landing-card"
+            title="Trace ingress/egress paths, bastion chains &amp; access tier classification"
+          >
+            <h3>Flow Analysis</h3>
+            <span class="card-hint">Trace ingress/egress paths</span>
+            <p>Trace ingress/egress paths, bastion chains &amp; access tier classification</p>
+          </div>
+          <div
+            class="landing-card"
+            title="Propose infrastructure changes with live preview and AWS CLI export"
+          >
+            <h3>Design Mode</h3>
+            <span class="card-hint">Plan changes with CLI export</span>
+            <p>Propose infrastructure changes with live preview and AWS CLI export</p>
+          </div>
+          <div
+            class="landing-card"
+            title="Import multiple regions side-by-side with automatic boundary grouping"
+          >
+            <h3>Multi-Region</h3>
+            <span class="card-hint">Side-by-side region import</span>
+            <p>Import multiple regions side-by-side with automatic boundary grouping</p>
+          </div>
+          <div
+            class="landing-card"
+            title="Audit backup coverage, retention gaps &amp; disaster recovery readiness"
+          >
+            <h3>Backup &amp; DR</h3>
+            <span class="card-hint">Backup &amp; DR readiness</span>
+            <p>Audit backup coverage, retention gaps &amp; disaster recovery readiness</p>
+          </div>
+          <div
+            class="landing-card"
+            title="Generate executive, compliance &amp; architecture reports in HTML or XLSX"
+          >
+            <h3>Report Builder</h3>
+            <span class="card-hint">HTML &amp; XLSX reports</span>
+            <p>Generate executive, compliance &amp; architecture reports in HTML or XLSX</p>
+          </div>
+          <div
+            class="landing-card"
+            title="Export infrastructure as CloudFormation, Terraform &amp; design change plans"
+          >
+            <h3>IaC Export</h3>
+            <span class="card-hint">Terraform &amp; CloudFormation</span>
+            <p>Export infrastructure as CloudFormation, Terraform &amp; design change plans</p>
+          </div>
+          <div
+            class="landing-card"
+            title="IAM review, asset classification &amp; tiered access governance dashboard"
+          >
+            <h3>Governance</h3>
+            <span class="card-hint">IAM &amp; access governance</span>
+            <p>IAM review, asset classification &amp; tiered access governance dashboard</p>
+          </div>
+        </div>
+        <div class="landing-footer">
+          v2.8.7 &middot; MIT License &middot;
+          <a
+            href="https://github.com/schylerchase/aws_mapper"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub</a
+          >
+        </div>
+      </div>
+      <div class="stats-bar" id="statsBar"></div>
+      <svg id="mapSvg"></svg>
+      <div class="legend" id="legend">
+        <div
+          class="legend-title"
+          role="button"
+          tabindex="0"
+          aria-label="Toggle legend"
+          onclick="this.parentElement.classList.toggle('collapsed')"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.parentElement.classList.toggle('collapsed')}"
+        >
+          Legend <span class="lg-arr">&#9660;</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--subnet-public)"></div>
+          Public Subnet
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--subnet-private)"></div>
+          Private Subnet
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--igw-color)"></div>
+          Internet GW
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--nat-color)"></div>
+          NAT GW
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--vgw-color)"></div>
+          Virtual Private GW
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--tgw-color)"></div>
+          Transit GW
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--vpce-color)"></div>
+          VPC Endpoint
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--pcx-color)"></div>
+          Peering / VPN
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--alb-color)"></div>
+          Load Balancer
+        </div>
+        <div class="legend-item">
+          <div
+            class="legend-swatch"
+            style="border: 1.5px dashed var(--vpc-stroke); background: transparent"
+          ></div>
+          VPC Boundary
+        </div>
+        <div class="legend-hint">Click subnets for full details | Hover to trace routes</div>
+      </div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
+        <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">-</button>
+        <button class="zoom-btn" id="zoomFit" aria-label="Zoom to fit">~</button>
+        <div
+          id="zoomLevel"
+          style="
+            font-family: var(--font-ui);
+            font-size: 9px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 2px 0;
+            min-width: 32px;
+          "
+        >
+          100%
+        </div>
+        <div
+          id="detailBtns"
+          style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+            border-top: 1px solid var(--border);
+            padding-top: 4px;
+          "
+        >
+          <button
+            class="zoom-btn wide"
+            id="btnExpand"
+            title="Show all resources with nested details"
+          >
+            Expand
+          </button>
+          <button
+            class="zoom-btn wide"
+            id="btnCollapse"
+            title="Collapse to VPCs and subnet names only"
+          >
+            Collapse
+          </button>
+        </div>
+        <div class="zoom-layout-sel" id="zoomLayoutSel">
+          <button class="zoom-layout-btn active" data-layout="grid" title="Grid layout">
+            Grid
+          </button>
+          <button class="zoom-layout-btn" data-layout="landingzone" title="Hub-spoke layout">
+            Hub-Spoke
+          </button>
+          <button class="zoom-layout-btn" data-layout="executive" title="Executive overview">
+            Executive
+          </button>
+          <input
+            type="text"
+            class="zoom-hub-input"
+            id="zoomHubVpc"
+            placeholder="Hub VPC name"
+            title="Specify hub VPC name or leave blank for auto-detect"
+            style="display: none"
+          />
+        </div>
+        <div
+          style="
+            margin-top: 6px;
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          "
+        >
+          <button class="design-btn" id="designToggle" title="Enter Design Mode to propose changes">
+            Design
+          </button>
+          <div class="design-help" id="designHelp">
+            <div class="dh-title">Design Mode</div>
+            <div style="margin-bottom: 6px">
+              Plan infrastructure changes with live visual preview and AWS CLI export.
             </div>
-          </fieldset>
-        </div>
-        <div style="display:flex;gap:16px;align-items:center;font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1))">
-          <label id="compExpMutedWrap"><input type="checkbox" id="compExpMuted"> Include muted</label>
-          <label id="compExpRemWrap"><input type="checkbox" id="compExpRemediation" checked> Include remediation</label>
-          <label style="margin-left:auto">Format <select id="compExpFormat" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-family:inherit;font-size:inherit">
-            <option value="xlsx">Excel (.xlsx)</option>
-            <option value="csv">CSV</option>
-            <option value="html">HTML Report</option>
-          </select></label>
-        </div>
-        <div id="compExpPreview" style="font-family:var(--font-ui);font-size:calc(11px * var(--txt-scale,1));color:var(--accent-cyan);padding:4px 0"></div>
-      </div>
-      <div class="iac-actions" style="padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
-        <button id="compExpCancel" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:6px 14px;cursor:pointer;font-family:var(--font-ui)">Cancel</button>
-        <button id="compExpDownload" style="background:var(--accent-cyan);border:none;color:#0a0e17;border-radius:4px;padding:6px 14px;cursor:pointer;font-family:var(--font-ui);font-weight:600">Download Report</button>
-      </div>
-    </div>
-  </div>
-  <div id="bottomToolbar" class="dock-toolbar" role="toolbar" aria-label="Main toolbar">
-    <div class="dock-group" data-tb-group="file">
-      <span class="dock-label">FILE</span>
-      <button id="saveProjectBtn" class="dock-btn green" title="Save project to file (Ctrl+S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save</button>
-      <button id="loadProjectBtn" class="dock-btn orange" title="Load project from file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Open</button>
-      <button id="scanAwsBtn" class="dock-btn amber" style="display:none" title="Scan AWS account via CLI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>Scan AWS</button>
-    </div>
-    <div class="dock-group" data-tb-group="primary">
-      <span class="dock-label">ANALYZE</span>
-      <button id="searchBtn" class="dock-btn" title="Search resources (/)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search<span class="dock-kbd">/</span></button>
-      <button id="compDashBtn" class="dock-btn cyan" title="Compliance dashboard (Shift+C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Compliance<span class="dock-kbd">&#8679;C</span></button>
-      <button id="inventoryBtn" class="dock-btn orange" title="Resource inventory (Shift+I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inventory<span class="dock-kbd">&#8679;I</span></button>
-      <button id="reportsBtn" class="dock-btn amber" title="Report builder (Shift+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reports<span class="dock-kbd">&#8679;R</span></button>
-      <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Trace<span class="dock-kbd">&#8679;T</span></button>
-    </div>
-    <div class="dock-overflow" id="tbOverflow">
-      <button class="dock-overflow-btn" id="tbOverflowBtn">More &#9662;</button>
-      <div class="dock-overflow-menu" id="tbOverflowMenu">
-        <button class="dock-overflow-item" data-tb-click="compareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><path d="M14 3h7v7M3 14h7v7"/></svg>Compare</button>
-        <button class="dock-overflow-item" data-tb-click="timelineBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
-        <button class="dock-overflow-item" data-tb-click="budrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>BUDR</button>
-        <button class="dock-overflow-item" data-tb-click="govBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Governance</button>
-        <button class="dock-overflow-item" data-tb-click="flowAnalysisBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Flows</button>
-        <button class="dock-overflow-item" data-tb-click="firewallBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Firewall</button>
-        <button class="dock-overflow-item" data-tb-click="notesBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Notes</button>
-        <button class="dock-overflow-item" data-tb-click="accountsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Accounts</button>
-      </div>
-    </div>
-    <!-- Hidden buttons for overflow delegation and keyboard shortcuts -->
-    <div style="display:none">
-      <button id="compareBtn"></button>
-      <button id="timelineBtn"></button>
-      <button id="budrBtn"></button>
-      <button id="govBtn"></button>
-      <button id="flowAnalysisBtn"></button>
-      <button id="firewallBtn"></button>
-      <button id="notesBtn"></button>
-      <button id="accountsBtn"></button>
-    </div>
-    <div class="dock-group" data-tb-group="help">
-      <button id="helpBtn" class="dock-btn help" title="Help and keyboard shortcuts (?)">?</button>
-    </div>
-  </div>
-  <input type="file" id="loadProjectInput" accept=".awsmap,.json" style="display:none">
-  <input type="file" id="importReportInput" accept=".html,.htm" style="display:none">
-  <!-- Scan AWS Modal (Electron only) -->
-  <div id="scanModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
-    <div style="background:#111827;border:1px solid var(--border);border-radius:12px;padding:28px;width:420px;max-height:80vh;overflow:auto;font-family:var(--font-ui)">
-      <h3 style="margin:0 0 16px;color:#f59e0b;font-size:14px">Scan AWS Account</h3>
-      <div id="scanForm">
-        <label style="font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px">AWS Profile (blank = default)</label>
-        <input id="scanProfile" style="width:100%;box-sizing:border-box;padding:6px 10px;background:#0b1120;border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:inherit;font-size:12px;margin-bottom:12px" placeholder="default">
-        <label style="font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px">Region (blank = profile default)</label>
-        <input id="scanRegion" style="width:100%;box-sizing:border-box;padding:6px 10px;background:#0b1120;border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:inherit;font-size:12px;margin-bottom:16px" placeholder="us-east-1">
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button id="scanCancel" style="padding:6px 16px;border-radius:6px;background:none;border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:11px">Cancel</button>
-          <button id="scanStart" style="padding:6px 16px;border-radius:6px;background:#f59e0b;border:none;color:#000;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Start Scan</button>
+            <ul>
+              <li><b>Click VPCs</b> to add subnets, gateways, SGs</li>
+              <li><b>Click subnets</b> to split, add resources, routes</li>
+              <li><b>Change log</b> tracks all changes with undo</li>
+              <li><b>Export</b> generates AWS CLI commands</li>
+            </ul>
+          </div>
         </div>
       </div>
-      <div id="scanProgress" style="display:none">
-        <pre id="scanLog" style="background:#0b1120;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--text-secondary);max-height:300px;overflow:auto;white-space:pre-wrap;margin:0 0 12px"></pre>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button id="scanAbort" style="padding:6px 16px;border-radius:6px;background:none;border:1px solid #ef4444;color:#ef4444;cursor:pointer;font-family:inherit;font-size:11px">Abort</button>
+      <div class="change-log" id="changeLog"></div>
+      <div class="export-bar collapsed" id="exportBar">
+        <div class="eb-row">
+          <button class="eb-toggle" id="ebToggle" aria-label="Toggle export panel">
+            Export &#9654;
+          </button>
         </div>
-      </div>
-    </div>
-  </div>
-  <!-- Timeline Bar -->
-  <div class="timeline-bar" id="timelineBar">
-    <span class="timeline-label" id="timelineLabel">Snapshots</span>
-    <div class="timeline-dots" id="timelineDots"></div>
-    <button id="snapBtn" style="background:none;border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)" title="Take snapshot now">Snap</button>
-    <button id="timelineClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)">X</button>
-  </div>
-  <!-- History viewing banner -->
-  <div class="history-banner" id="historyBanner" style="display:none">
-    <span id="historyLabel">VIEWING HISTORY</span>
-    <button id="historyRestore">Restore this version</button>
-    <button id="historyReturn">Return to current</button>
-  </div>
-  <!-- Notes Panel -->
-  <div class="notes-panel" id="notesPanel">
-    <div class="notes-panel-hdr">
-      <h3>Annotations</h3>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span id="noteCount" style="font-size:10px;color:var(--text-muted);font-family:var(--font-ui)"></span>
-        <button id="notesPanelClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Close [Esc]</button>
-      </div>
-    </div>
-    <div class="notes-filter">
-      <span style="font-size:10px;color:var(--text-muted)">FILTER</span>
-      <select id="notesCatFilter"><option value="all">All Categories</option><option value="owner">Owner</option><option value="status">Status</option><option value="incident">Incident</option><option value="todo">Todo</option><option value="info">Info</option><option value="warning">Warning</option></select>
-      <input type="text" id="notesSearch" placeholder="Search notes..." style="flex:1">
-    </div>
-    <div class="notes-panel-body" id="notesPanelBody"></div>
-  </div>
-  <!-- Dependency / Blast Radius Overlay -->
-  <div class="dep-overlay" id="depOverlay">
-    <div class="dep-hdr">
-      <h3 id="depTitle">Dependency Analysis</h3>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="depBlastBtn" style="background:none;border:1px solid var(--accent-orange);color:var(--accent-orange);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Highlight on Map</button>
-        <button id="depCloseBtn" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Close [Esc]</button>
-      </div>
-    </div>
-    <div class="dep-body" id="depBody"></div>
-  </div>
-  <!-- Multi-Account Panel -->
-  <input type="file" id="addAccountInput" accept=".awsmap,.json" style="display:none">
-  <div class="account-panel" id="accountPanel">
-    <div class="account-panel-hdr">
-      <h3>Accounts</h3>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button id="addAccountBtn" style="background:none;border:1px solid var(--accent-green);color:var(--accent-green);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-ui)">+ Add</button>
-        <button id="accountPanelClose" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-ui)">Close</button>
-      </div>
-    </div>
-    <div class="account-panel-body" id="accountPanelBody">
-      <div style="text-align:center;padding:30px 10px;color:var(--text-muted);font-size:11px;font-family:var(--font-ui)">
-        <div style="font-size:24px;margin-bottom:10px;opacity:.4">&#128203;</div>
-        No accounts loaded.<br>Click <b>+ Add</b> to load an .awsmap file<br>or render current data first.
-      </div>
-    </div>
-    <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px">
-      <button id="mergeViewBtn" class="btn btn-primary" style="font-size:10px;padding:8px 12px">Merge View</button>
-      <button id="captureCurrentBtn" class="btn btn-secondary" style="font-size:10px;padding:8px 12px">Capture Current</button>
-    </div>
-  </div>
-  <!-- Flow Mode Banner -->
-  <div class="flow-banner" id="flowBanner" style="display:none">
-    <span id="flowLabel">TRACE FLOW</span>
-    <span class="flow-status" id="flowStatus"></span>
-    <button id="flowStepBack" title="Previous hop">&larr; Prev</button>
-    <button id="flowStepFwd" title="Next hop">Next &rarr;</button>
-    <button id="flowExitBtn" title="Exit flow mode (Esc)">Exit</button>
-  </div>
-  <!-- Flow Analysis Banner -->
-  <div class="flow-banner" id="flowAnalysisBanner" style="display:none">
-    <span id="faLabel">FLOW ANALYSIS</span>
-    <button class="fa-mode-pill active" data-fa-mode="tiers">Tiers</button>
-    <button class="fa-mode-pill" data-fa-mode="ingress">Ingress</button>
-    <button class="fa-mode-pill" data-fa-mode="egress">Egress</button>
-    <button class="fa-mode-pill" data-fa-mode="bastion">Bastion</button>
-    <button id="faDashBtn" title="Open full analysis dashboard" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981;padding:2px 10px;border-radius:3px;font-size:9px;font-family:var(--font-ui);cursor:pointer;font-weight:600">Dashboard</button>
-    <button id="faExitBtn" title="Exit flow analysis (Esc)">Exit</button>
-  </div>
-  <!-- Right-Click Context Menu -->
-  <div id="flowContextMenu" class="flow-ctx-menu" style="display:none">
-    <div class="flow-ctx-item" data-ctx-action="trace-from"><span class="ctx-icon">→</span>Trace from here</div>
-    <div class="flow-ctx-item" data-ctx-action="trace-to"><span class="ctx-icon">←</span>Trace to here</div>
-    <div class="flow-ctx-sep"></div>
-    <div class="flow-ctx-item" data-ctx-action="analyze"><span class="ctx-icon">◎</span>Analyze flows</div>
-  </div>
-  <!-- Diff Mode Banner -->
-  <div class="diff-banner" id="diffBanner" style="display:none">
-    <span id="diffLabel">COMPARING</span>
-    <span class="diff-stat added" id="diffAdded">+0 added</span>
-    <span class="diff-stat removed" id="diffRemoved">-0 removed</span>
-    <span class="diff-stat modified" id="diffModified">~0 modified</span>
-    <button id="diffToggleFilter" title="Toggle changes only / all">Changes Only</button>
-    <button id="diffShowSummary" title="Show change list">Details</button>
-    <button id="diffExportBtn" title="Export diff report">Export Diff</button>
-    <button id="diffExitBtn" title="Exit diff mode (Esc)">Exit Diff</button>
-  </div>
-  <div class="diff-summary" id="diffSummary"></div>
-  <!-- Compare Dashboard (full-screen like Compliance) -->
-  <div class="diff-dash" id="diffDash">
-    <div class="diff-dash-hdr dash-hdr">
-      <h2 style="color:#f59e0b">Compare</h2>
-      <span class="diff-dash-label" id="diffDashLabel">baseline vs current</span>
-      <select id="diffSnapPicker" class="diff-dash-select" title="Compare with a snapshot">
-        <option value="">— pick snapshot —</option>
-      </select>
-      <button id="diffDashFileBtn" class="diff-dash-action">Compare File…</button>
-      <div id="diffDashPills" class="diff-dash-pills"></div>
-      <button class="dash-close" id="diffDashClose">Close <kbd>Esc</kbd></button>
-    </div>
-    <div class="diff-dash-toolbar dash-toolbar">
-      <label>Search</label>
-      <input id="diffDashSearch" type="text" placeholder="Filter by name, key, type, field…">
-      <label>Type</label>
-      <select id="diffTypeFilter"><option value="all">All Types</option></select>
-      <label>VPC</label>
-      <select id="diffVpcFilter"><option value="all">All VPCs</option></select>
-      <label>Kind</label>
-      <select id="diffKindFilter">
-        <option value="all">All Changes</option>
-        <option value="structural">Structural Only</option>
-        <option value="metadata">Metadata Only</option>
-      </select>
-      <span class="diff-dash-rowcount" id="diffDashRowCount">0 of 0</span>
-    </div>
-    <div class="diff-dash-body" id="diffDashBody"></div>
-    <div class="diff-dash-footer dash-footer">
-      <button id="diffDashExportJSON">Export JSON</button>
-      <button id="diffDashExportXLSX" style="background:rgba(245,158,11,.15);border-color:#f59e0b;font-weight:600">Export XLSX</button>
-      <span class="dash-footer-meta" id="diffDashMeta"></span>
-      <div class="diff-dash-pagination" id="diffDashPagination">
-        <button class="diff-page-prev" id="diffPagePrev" title="Previous page">◂ Prev</button>
-        <span class="diff-page-info" id="diffPageInfo">Page 1 of 1</span>
-        <button class="diff-page-next" id="diffPageNext" title="Next page">Next ▸</button>
-        <select id="diffPerPage" class="diff-per-page" title="Rows per page">
-          <option value="25">25</option>
-          <option value="50" selected>50</option>
-          <option value="100">100</option>
-          <option value="0">All</option>
+        <div class="eb-panel">
+          <span
+            style="
+              font-family: var(--font-ui);
+              font-size: 8px;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              width: 100%;
+              padding: 2px 0;
+            "
+            >Visual</span
+          >
+          <button class="export-btn" id="expPng">PNG Image<span>Auto-scaled to fit</span></button>
+          <button class="export-btn" id="expVsdx" style="border-color: var(--accent-green)">
+            Visio VSDX<span>Import into Lucidchart</span>
+          </button>
+          <button class="export-btn" id="expLucidDl">
+            Lucid File (.lucid)<span>Download for manual import</span>
+          </button>
+          <span
+            style="
+              font-family: var(--font-ui);
+              font-size: 8px;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              width: 100%;
+              padding: 2px 0;
+              border-top: 1px solid var(--border);
+              margin-top: 2px;
+            "
+            >Code</span
+          >
+          <button class="export-btn" id="expTerraform" style="border-color: #c084fc">
+            Terraform HCL<span>Infrastructure as Code</span>
+          </button>
+          <button class="export-btn" id="expCloudformation" style="border-color: #f59e0b">
+            CloudFormation<span>YAML/JSON template</span>
+          </button>
+        </div>
+        <!-- Hidden layout controls (synced from zoom panel) -->
+        <select id="layoutMode" style="display: none">
+          <option value="grid">Grid</option>
+          <option value="landingzone">Landing Zone</option>
+          <option value="executive">Executive</option>
         </select>
+        <input type="text" id="hubVpcName" style="display: none" />
+      </div>
+      <!-- IaC Export Modal -->
+      <div class="iac-modal" id="iacModal">
+        <div class="iac-box">
+          <div class="iac-header">
+            <h3 id="iacTitle">Export as Terraform HCL</h3>
+            <button class="iac-close" id="iacClose" aria-label="Close IaC export modal">
+              &times;
+            </button>
+          </div>
+          <div class="iac-opts">
+            <label
+              >Mode
+              <select id="iacMode">
+                <option value="import">Import Existing</option>
+                <option value="create">Create New (Design Only)</option>
+                <option value="recreate">Full Recreate</option>
+              </select></label
+            >
+            <label
+              >Scope
+              <select id="iacScope">
+                <option value="all">All Resources</option>
+              </select></label
+            >
+            <label><input type="checkbox" id="iacVars" checked /> Variables</label>
+            <label><input type="checkbox" id="iacModular" /> Modular</label>
+            <label
+              >Format
+              <select id="iacFormat">
+                <option value="hcl">HCL</option>
+                <option value="json">JSON</option>
+              </select></label
+            >
+            <button class="iac-gen" id="iacGenerate">Generate</button>
+          </div>
+          <div class="iac-preview" id="iacPreview">
+            <div class="iac-empty">Click Generate to preview code</div>
+          </div>
+          <div class="iac-actions">
+            <button id="iacCopy">Copy to Clipboard</button>
+            <button id="iacDownload" class="primary">Download</button>
+          </div>
+        </div>
+      </div>
+      <div class="iac-modal" id="compExportModal">
+        <div class="iac-box" style="width: min(600px, 90vw)">
+          <div class="iac-header">
+            <h3>Export Report</h3>
+            <button class="iac-close" id="compExportClose" aria-label="Close export report modal">
+              &times;
+            </button>
+          </div>
+          <div
+            class="iac-opts"
+            style="flex-direction: column; align-items: stretch; gap: 10px; padding: 12px"
+          >
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                font-family: var(--font-ui);
+                font-size: calc(11px * var(--txt-scale, 1));
+              "
+            >
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  padding: 6px 12px;
+                  border: 1px solid var(--border);
+                  border-radius: 6px;
+                  cursor: pointer;
+                  flex: 1;
+                  background: var(--bg-input);
+                "
+              >
+                <input
+                  type="radio"
+                  name="compExpScope"
+                  value="compliance"
+                  checked
+                  id="compExpScopeComp"
+                />
+                Compliance Only</label
+              >
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  padding: 6px 12px;
+                  border: 1px solid var(--border);
+                  border-radius: 6px;
+                  cursor: pointer;
+                  flex: 1;
+                  background: var(--bg-input);
+                "
+              >
+                <input type="radio" name="compExpScope" value="full" id="compExpScopeFull" /> Full
+                Assessment</label
+              >
+            </div>
+            <div id="compExpFilters" style="display: flex; gap: 16px; flex-wrap: wrap">
+              <fieldset
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 6px;
+                  padding: 8px 12px;
+                  flex: 1;
+                  min-width: 200px;
+                "
+              >
+                <legend
+                  style="
+                    font-family: var(--font-ui);
+                    font-size: calc(9px * var(--txt-scale, 1));
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    padding: 0 4px;
+                  "
+                >
+                  Frameworks
+                </legend>
+                <div
+                  style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px 12px;
+                    font-family: var(--font-ui);
+                    font-size: calc(11px * var(--txt-scale, 1));
+                  "
+                >
+                  <label><input type="checkbox" checked data-comp-fw="CIS" /> CIS</label>
+                  <label><input type="checkbox" checked data-comp-fw="WAF" /> WAF</label>
+                  <label><input type="checkbox" checked data-comp-fw="IAM" /> IAM</label>
+                  <label
+                    ><input type="checkbox" checked data-comp-fw="ARCH" /> Best Practices</label
+                  >
+                  <label><input type="checkbox" checked data-comp-fw="SOC2" /> SOC2</label>
+                  <label><input type="checkbox" checked data-comp-fw="PCI" /> PCI DSS</label>
+                  <label><input type="checkbox" checked data-comp-fw="BUDR" /> BUDR</label>
+                </div>
+              </fieldset>
+              <fieldset
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 6px;
+                  padding: 8px 12px;
+                  min-width: 160px;
+                "
+              >
+                <legend
+                  style="
+                    font-family: var(--font-ui);
+                    font-size: calc(9px * var(--txt-scale, 1));
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    padding: 0 4px;
+                  "
+                >
+                  Severities
+                </legend>
+                <div
+                  style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px 12px;
+                    font-family: var(--font-ui);
+                    font-size: calc(11px * var(--txt-scale, 1));
+                  "
+                >
+                  <label><input type="checkbox" checked data-comp-sev="CRITICAL" /> Critical</label>
+                  <label><input type="checkbox" checked data-comp-sev="HIGH" /> High</label>
+                  <label><input type="checkbox" checked data-comp-sev="MEDIUM" /> Medium</label>
+                  <label><input type="checkbox" checked data-comp-sev="LOW" /> Low</label>
+                </div>
+              </fieldset>
+            </div>
+            <div
+              style="
+                display: flex;
+                gap: 16px;
+                align-items: center;
+                font-family: var(--font-ui);
+                font-size: calc(11px * var(--txt-scale, 1));
+              "
+            >
+              <label id="compExpMutedWrap"
+                ><input type="checkbox" id="compExpMuted" /> Include muted</label
+              >
+              <label id="compExpRemWrap"
+                ><input type="checkbox" id="compExpRemediation" checked /> Include
+                remediation</label
+              >
+              <label style="margin-left: auto"
+                >Format
+                <select
+                  id="compExpFormat"
+                  style="
+                    background: var(--bg-input);
+                    border: 1px solid var(--border);
+                    color: var(--text-primary);
+                    border-radius: 4px;
+                    padding: 3px 6px;
+                    font-family: inherit;
+                    font-size: inherit;
+                  "
+                >
+                  <option value="xlsx">Excel (.xlsx)</option>
+                  <option value="csv">CSV</option>
+                  <option value="html">HTML Report</option>
+                </select></label
+              >
+            </div>
+            <div
+              id="compExpPreview"
+              style="
+                font-family: var(--font-ui);
+                font-size: calc(11px * var(--txt-scale, 1));
+                color: var(--accent-cyan);
+                padding: 4px 0;
+              "
+            ></div>
+          </div>
+          <div
+            class="iac-actions"
+            style="
+              padding: 12px;
+              border-top: 1px solid var(--border);
+              display: flex;
+              gap: 8px;
+              justify-content: flex-end;
+            "
+          >
+            <button
+              id="compExpCancel"
+              style="
+                background: var(--bg-input);
+                border: 1px solid var(--border);
+                color: var(--text-primary);
+                border-radius: 4px;
+                padding: 6px 14px;
+                cursor: pointer;
+                font-family: var(--font-ui);
+              "
+            >
+              Cancel
+            </button>
+            <button
+              id="compExpDownload"
+              style="
+                background: var(--accent-cyan);
+                border: none;
+                color: #0a0e17;
+                border-radius: 4px;
+                padding: 6px 14px;
+                cursor: pointer;
+                font-family: var(--font-ui);
+                font-weight: 600;
+              "
+            >
+              Download Report
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="bottomToolbar" class="dock-toolbar" role="toolbar" aria-label="Main toolbar">
+        <div class="dock-group" data-tb-group="file">
+          <span class="dock-label">FILE</span>
+          <button id="saveProjectBtn" class="dock-btn green" title="Save project to file (Ctrl+S)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" /></svg
+            >Save
+          </button>
+          <button id="loadProjectBtn" class="dock-btn orange" title="Load project from file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"
+              /></svg
+            >Open
+          </button>
+          <button
+            id="scanAwsBtn"
+            class="dock-btn amber"
+            style="display: none"
+            title="Scan AWS account via CLI"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path d="M9 12l2 2 4-4" /></svg
+            >Scan AWS
+          </button>
+        </div>
+        <div class="dock-group" data-tb-group="primary">
+          <span class="dock-label">ANALYZE</span>
+          <button id="searchBtn" class="dock-btn" title="Search resources (/)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" /></svg
+            >Search<span class="dock-kbd">/</span>
+          </button>
+          <button id="compDashBtn" class="dock-btn cyan" title="Compliance dashboard (Shift+C)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18" />
+              <path d="M9 21V9" /></svg
+            >Compliance<span class="dock-kbd">&#8679;C</span>
+          </button>
+          <button id="inventoryBtn" class="dock-btn orange" title="Resource inventory (Shift+I)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" /></svg
+            >Inventory<span class="dock-kbd">&#8679;I</span>
+          </button>
+          <button id="reportsBtn" class="dock-btn amber" title="Report builder (Shift+R)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" /></svg
+            >Reports<span class="dock-kbd">&#8679;R</span>
+          </button>
+          <button id="flowBtn" class="dock-btn cyan" title="Trace traffic flow (Shift+T)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7" /></svg
+            >Trace<span class="dock-kbd">&#8679;T</span>
+          </button>
+        </div>
+        <div class="dock-overflow" id="tbOverflow">
+          <button class="dock-overflow-btn" id="tbOverflowBtn">More &#9662;</button>
+          <div class="dock-overflow-menu" id="tbOverflowMenu">
+            <button class="dock-overflow-item" data-tb-click="compareBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <path d="M14 3h7v7M3 14h7v7" /></svg
+              >Compare
+            </button>
+            <button class="dock-overflow-item" data-tb-click="timelineBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" /></svg
+              >History
+            </button>
+            <button class="dock-overflow-item" data-tb-click="budrBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="M9 12l2 2 4-4" /></svg
+              >BUDR
+            </button>
+            <button class="dock-overflow-item" data-tb-click="govBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" /></svg
+              >Governance
+            </button>
+            <button class="dock-overflow-item" data-tb-click="flowAnalysisBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path
+                  d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
+                /></svg
+              >Flows
+            </button>
+            <button class="dock-overflow-item" data-tb-click="firewallBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg
+              >Firewall
+            </button>
+            <button class="dock-overflow-item" data-tb-click="notesBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg
+              >Notes
+            </button>
+            <button class="dock-overflow-item" data-tb-click="accountsBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                <path d="M16 3.13a4 4 0 010 7.75" /></svg
+              >Accounts
+            </button>
+          </div>
+        </div>
+        <!-- Hidden buttons for overflow delegation and keyboard shortcuts -->
+        <div style="display: none">
+          <button id="compareBtn"></button>
+          <button id="timelineBtn"></button>
+          <button id="budrBtn"></button>
+          <button id="govBtn"></button>
+          <button id="flowAnalysisBtn"></button>
+          <button id="firewallBtn"></button>
+          <button id="notesBtn"></button>
+          <button id="accountsBtn"></button>
+        </div>
+        <div class="dock-group" data-tb-group="help">
+          <button id="helpBtn" class="dock-btn help" title="Help and keyboard shortcuts (?)">
+            ?
+          </button>
+        </div>
+      </div>
+      <input type="file" id="loadProjectInput" accept=".awsmap,.json" style="display: none" />
+      <input type="file" id="importReportInput" accept=".html,.htm" style="display: none" />
+      <!-- Scan AWS Modal (Electron only) -->
+      <div
+        id="scanModal"
+        style="
+          display: none;
+          position: fixed;
+          inset: 0;
+          z-index: 500;
+          background: rgba(0, 0, 0, 0.7);
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        <div
+          style="
+            background: #111827;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            width: 420px;
+            max-height: 80vh;
+            overflow: auto;
+            font-family: var(--font-ui);
+          "
+        >
+          <h3 style="margin: 0 0 16px; color: #f59e0b; font-size: 14px">Scan AWS Account</h3>
+          <div id="scanForm">
+            <label
+              style="
+                font-size: 11px;
+                color: var(--text-secondary);
+                display: block;
+                margin-bottom: 4px;
+              "
+              >AWS Profile (blank = default)</label
+            >
+            <input
+              id="scanProfile"
+              style="
+                width: 100%;
+                box-sizing: border-box;
+                padding: 6px 10px;
+                background: #0b1120;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-primary);
+                font-family: inherit;
+                font-size: 12px;
+                margin-bottom: 12px;
+              "
+              placeholder="default"
+            />
+            <label
+              style="
+                font-size: 11px;
+                color: var(--text-secondary);
+                display: block;
+                margin-bottom: 4px;
+              "
+              >Region (blank = profile default)</label
+            >
+            <input
+              id="scanRegion"
+              style="
+                width: 100%;
+                box-sizing: border-box;
+                padding: 6px 10px;
+                background: #0b1120;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-primary);
+                font-family: inherit;
+                font-size: 12px;
+                margin-bottom: 16px;
+              "
+              placeholder="us-east-1"
+            />
+            <div style="display: flex; gap: 8px; justify-content: flex-end">
+              <button
+                id="scanCancel"
+                style="
+                  padding: 6px 16px;
+                  border-radius: 6px;
+                  background: none;
+                  border: 1px solid var(--border);
+                  color: var(--text-secondary);
+                  cursor: pointer;
+                  font-family: inherit;
+                  font-size: 11px;
+                "
+              >
+                Cancel
+              </button>
+              <button
+                id="scanStart"
+                style="
+                  padding: 6px 16px;
+                  border-radius: 6px;
+                  background: #f59e0b;
+                  border: none;
+                  color: #000;
+                  cursor: pointer;
+                  font-family: inherit;
+                  font-size: 11px;
+                  font-weight: 600;
+                "
+              >
+                Start Scan
+              </button>
+            </div>
+          </div>
+          <div id="scanProgress" style="display: none">
+            <pre
+              id="scanLog"
+              style="
+                background: #0b1120;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 10px;
+                font-size: 10px;
+                color: var(--text-secondary);
+                max-height: 300px;
+                overflow: auto;
+                white-space: pre-wrap;
+                margin: 0 0 12px;
+              "
+            ></pre>
+            <div style="display: flex; gap: 8px; justify-content: flex-end">
+              <button
+                id="scanAbort"
+                style="
+                  padding: 6px 16px;
+                  border-radius: 6px;
+                  background: none;
+                  border: 1px solid #ef4444;
+                  color: #ef4444;
+                  cursor: pointer;
+                  font-family: inherit;
+                  font-size: 11px;
+                "
+              >
+                Abort
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Timeline Bar -->
+      <div class="timeline-bar" id="timelineBar">
+        <span class="timeline-label" id="timelineLabel">Snapshots</span>
+        <div class="timeline-dots" id="timelineDots"></div>
+        <button
+          id="snapBtn"
+          style="
+            background: none;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: var(--font-ui);
+          "
+          title="Take snapshot now"
+        >
+          Snap
+        </button>
+        <button
+          id="timelineClose"
+          style="
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: var(--font-ui);
+          "
+        >
+          X
+        </button>
+      </div>
+      <!-- History viewing banner -->
+      <div class="history-banner" id="historyBanner" style="display: none">
+        <span id="historyLabel">VIEWING HISTORY</span>
+        <button id="historyRestore">Restore this version</button>
+        <button id="historyReturn">Return to current</button>
+      </div>
+      <!-- Notes Panel -->
+      <div class="notes-panel" id="notesPanel">
+        <div class="notes-panel-hdr">
+          <h3>Annotations</h3>
+          <div style="display: flex; gap: 6px; align-items: center">
+            <span
+              id="noteCount"
+              style="font-size: 10px; color: var(--text-muted); font-family: var(--font-ui)"
+            ></span>
+            <button
+              id="notesPanelClose"
+              style="
+                background: none;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                padding: 4px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-family: var(--font-ui);
+              "
+            >
+              Close [Esc]
+            </button>
+          </div>
+        </div>
+        <div class="notes-filter">
+          <span style="font-size: 10px; color: var(--text-muted)">FILTER</span>
+          <select id="notesCatFilter">
+            <option value="all">All Categories</option>
+            <option value="owner">Owner</option>
+            <option value="status">Status</option>
+            <option value="incident">Incident</option>
+            <option value="todo">Todo</option>
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+          </select>
+          <input type="text" id="notesSearch" placeholder="Search notes..." style="flex: 1" />
+        </div>
+        <div class="notes-panel-body" id="notesPanelBody"></div>
+      </div>
+      <!-- Dependency / Blast Radius Overlay -->
+      <div class="dep-overlay" id="depOverlay">
+        <div class="dep-hdr">
+          <h3 id="depTitle">Dependency Analysis</h3>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <button
+              id="depBlastBtn"
+              style="
+                background: none;
+                border: 1px solid var(--accent-orange);
+                color: var(--accent-orange);
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-family: var(--font-ui);
+              "
+            >
+              Highlight on Map
+            </button>
+            <button
+              id="depCloseBtn"
+              style="
+                background: none;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                padding: 4px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-family: var(--font-ui);
+              "
+            >
+              Close [Esc]
+            </button>
+          </div>
+        </div>
+        <div class="dep-body" id="depBody"></div>
+      </div>
+      <!-- Multi-Account Panel -->
+      <input type="file" id="addAccountInput" accept=".awsmap,.json" style="display: none" />
+      <div class="account-panel" id="accountPanel">
+        <div class="account-panel-hdr">
+          <h3>Accounts</h3>
+          <div style="display: flex; gap: 6px; align-items: center">
+            <button
+              id="addAccountBtn"
+              style="
+                background: none;
+                border: 1px solid var(--accent-green);
+                color: var(--accent-green);
+                padding: 4px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 10px;
+                font-family: var(--font-ui);
+              "
+            >
+              + Add
+            </button>
+            <button
+              id="accountPanelClose"
+              style="
+                background: none;
+                border: 1px solid var(--border);
+                color: var(--text-muted);
+                padding: 4px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-family: var(--font-ui);
+              "
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <div class="account-panel-body" id="accountPanelBody">
+          <div
+            style="
+              text-align: center;
+              padding: 30px 10px;
+              color: var(--text-muted);
+              font-size: 11px;
+              font-family: var(--font-ui);
+            "
+          >
+            <div style="font-size: 24px; margin-bottom: 10px; opacity: 0.4">&#128203;</div>
+            No accounts loaded.<br />Click <b>+ Add</b> to load an .awsmap file<br />or render
+            current data first.
+          </div>
+        </div>
+        <div
+          style="padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px"
+        >
+          <button
+            id="mergeViewBtn"
+            class="btn btn-primary"
+            style="font-size: 10px; padding: 8px 12px"
+          >
+            Merge View
+          </button>
+          <button
+            id="captureCurrentBtn"
+            class="btn btn-secondary"
+            style="font-size: 10px; padding: 8px 12px"
+          >
+            Capture Current
+          </button>
+        </div>
+      </div>
+      <!-- Flow Mode Banner -->
+      <div class="flow-banner" id="flowBanner" style="display: none">
+        <span id="flowLabel">TRACE FLOW</span>
+        <span class="flow-status" id="flowStatus"></span>
+        <button id="flowStepBack" title="Previous hop">&larr; Prev</button>
+        <button id="flowStepFwd" title="Next hop">Next &rarr;</button>
+        <button id="flowExitBtn" title="Exit flow mode (Esc)">Exit</button>
+      </div>
+      <!-- Flow Analysis Banner -->
+      <div class="flow-banner" id="flowAnalysisBanner" style="display: none">
+        <span id="faLabel">FLOW ANALYSIS</span>
+        <button class="fa-mode-pill active" data-fa-mode="tiers">Tiers</button>
+        <button class="fa-mode-pill" data-fa-mode="ingress">Ingress</button>
+        <button class="fa-mode-pill" data-fa-mode="egress">Egress</button>
+        <button class="fa-mode-pill" data-fa-mode="bastion">Bastion</button>
+        <button
+          id="faDashBtn"
+          title="Open full analysis dashboard"
+          style="
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+            padding: 2px 10px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-family: var(--font-ui);
+            cursor: pointer;
+            font-weight: 600;
+          "
+        >
+          Dashboard
+        </button>
+        <button id="faExitBtn" title="Exit flow analysis (Esc)">Exit</button>
+      </div>
+      <!-- Right-Click Context Menu -->
+      <div id="flowContextMenu" class="flow-ctx-menu" style="display: none">
+        <div class="flow-ctx-item" data-ctx-action="trace-from">
+          <span class="ctx-icon">→</span>Trace from here
+        </div>
+        <div class="flow-ctx-item" data-ctx-action="trace-to">
+          <span class="ctx-icon">←</span>Trace to here
+        </div>
+        <div class="flow-ctx-sep"></div>
+        <div class="flow-ctx-item" data-ctx-action="analyze">
+          <span class="ctx-icon">◎</span>Analyze flows
+        </div>
+      </div>
+      <!-- Diff Mode Banner -->
+      <div class="diff-banner" id="diffBanner" style="display: none">
+        <span id="diffLabel">COMPARING</span>
+        <span class="diff-stat added" id="diffAdded">+0 added</span>
+        <span class="diff-stat removed" id="diffRemoved">-0 removed</span>
+        <span class="diff-stat modified" id="diffModified">~0 modified</span>
+        <button id="diffToggleFilter" title="Toggle changes only / all">Changes Only</button>
+        <button id="diffShowSummary" title="Show change list">Details</button>
+        <button id="diffExportBtn" title="Export diff report">Export Diff</button>
+        <button id="diffExitBtn" title="Exit diff mode (Esc)">Exit Diff</button>
+      </div>
+      <div class="diff-summary" id="diffSummary"></div>
+      <!-- Compare Dashboard (full-screen like Compliance) -->
+      <div class="diff-dash" id="diffDash">
+        <div class="diff-dash-hdr dash-hdr">
+          <h2 style="color: #f59e0b">Compare</h2>
+          <span class="diff-dash-label" id="diffDashLabel">baseline vs current</span>
+          <select id="diffSnapPicker" class="diff-dash-select" title="Compare with a snapshot">
+            <option value="">— pick snapshot —</option>
+          </select>
+          <button id="diffDashFileBtn" class="diff-dash-action">Compare File…</button>
+          <div id="diffDashPills" class="diff-dash-pills"></div>
+          <button class="dash-close" id="diffDashClose">Close <kbd>Esc</kbd></button>
+        </div>
+        <div class="diff-dash-toolbar dash-toolbar">
+          <label>Search</label>
+          <input id="diffDashSearch" type="text" placeholder="Filter by name, key, type, field…" />
+          <label>Type</label>
+          <select id="diffTypeFilter">
+            <option value="all">All Types</option>
+          </select>
+          <label>VPC</label>
+          <select id="diffVpcFilter">
+            <option value="all">All VPCs</option>
+          </select>
+          <label>Kind</label>
+          <select id="diffKindFilter">
+            <option value="all">All Changes</option>
+            <option value="structural">Structural Only</option>
+            <option value="metadata">Metadata Only</option>
+          </select>
+          <span class="diff-dash-rowcount" id="diffDashRowCount">0 of 0</span>
+        </div>
+        <div class="diff-dash-body" id="diffDashBody"></div>
+        <div class="diff-dash-footer dash-footer">
+          <button id="diffDashExportJSON">Export JSON</button>
+          <button
+            id="diffDashExportXLSX"
+            style="background: rgba(245, 158, 11, 0.15); border-color: #f59e0b; font-weight: 600"
+          >
+            Export XLSX
+          </button>
+          <span class="dash-footer-meta" id="diffDashMeta"></span>
+          <div class="diff-dash-pagination" id="diffDashPagination">
+            <button class="diff-page-prev" id="diffPagePrev" title="Previous page">◂ Prev</button>
+            <span class="diff-page-info" id="diffPageInfo">Page 1 of 1</span>
+            <button class="diff-page-next" id="diffPageNext" title="Next page">Next ▸</button>
+            <select id="diffPerPage" class="diff-per-page" title="Rows per page">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="0">All</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="diffFileInput" multiple accept=".awsmap,.json" style="display: none" />
+      <div
+        id="helpOverlay"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          z-index: 100;
+          justify-content: center;
+          align-items: center;
+        "
+      >
+        <div
+          style="
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 24px;
+          "
+        >
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 16px;
+            "
+          >
+            <h2 style="font-family: var(--font-ui); font-size: 16px; color: var(--accent-cyan)">
+              AWS Mapper Guide
+            </h2>
+            <button
+              id="helpClose"
+              style="
+                background: none;
+                border: none;
+                color: var(--text-muted);
+                font-size: 20px;
+                cursor: pointer;
+              "
+            >
+              &times;
+            </button>
+          </div>
+          <div style="font-size: 13px; line-height: 1.7; color: var(--text-secondary)">
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Getting Started
+            </h3>
+            <p>
+              1. Run AWS CLI commands (listed in the left sidebar) and paste JSON output into the
+              matching text areas
+            </p>
+            <p>2. Click <b>Render Map</b> to visualize your infrastructure</p>
+            <p>3. The <b>Account</b> field at top labels data from different AWS accounts.</p>
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Keyboard Shortcuts
+            </h3>
+            <table style="width: 100%; font-family: var(--font-ui); font-size: 11px">
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">D</td>
+                <td>Toggle Design Mode</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+D</td>
+                <td>Compare / Diff Mode</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Z</td>
+                <td>Undo last design change</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">E</td>
+                <td>Export design plan as JSON</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">/</td>
+                <td>Open resource search</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Esc</td>
+                <td>Close panels / exit search</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">+/-</td>
+                <td>Zoom in/out</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Ctrl+S</td>
+                <td>Save project to .awsmap file</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+A</td>
+                <td>Toggle Accounts panel</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+B</td>
+                <td>Backup & DR Assessment</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+C</td>
+                <td>Compliance Dashboard</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+R</td>
+                <td>Report Builder</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+T</td>
+                <td>Traffic Trace</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+F</td>
+                <td>Flow Analysis</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">Shift+I</td>
+                <td>Resource Inventory</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">F</td>
+                <td>Firewall Editor</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 8px; color: var(--accent-cyan)">N</td>
+                <td>Notes / Annotations</td>
+              </tr>
+            </table>
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Save and Load
+            </h3>
+            <p>
+              <b>Save</b> downloads your workspace as a .awsmap file. <b>Open</b> loads it back.
+              Compatible between web and desktop. Auto-saved to browser every 30s.
+            </p>
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Compliance
+            </h3>
+            <p>
+              Click the <b>Compliance</b> chip in the stats bar to open the full dashboard. Checks
+              include CIS Benchmarks, Well-Architected Framework, IAM analysis, and AWS Architecture
+              Best Practices. Mute individual findings, filter by severity/framework, export as CSV.
+            </p>
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Interactions
+            </h3>
+            <p>
+              <b>Click a VPC</b> to lock highlight. <b>Click a Subnet</b> for firewall rules.
+              <b>Click a Gateway</b> to highlight routes. <b>Hover</b> for previews.
+            </p>
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Design Mode
+            </h3>
+            <p>
+              Press <b>D</b> to enter. Use the palette to add VPCs, subnets, gateways, and
+              resources. Press <b>E</b> to export a plan with CLI commands.
+            </p>
+            <h3 style="color: var(--accent-orange); font-size: 13px; margin: 12px 0 6px">
+              Layouts
+            </h3>
+            <p>
+              <b>Grid</b> — VPCs side by side. <b>Landing Zone</b> — Hub-spoke topology.
+              <b>Executive</b> — Simplified overview.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div id="udash" class="udash">
+        <div class="udash-hdr">
+          <div id="udashTabs" class="udash-tabs"></div>
+          <div id="udashAcctBar" class="udash-acct-bar" style="display: none"></div>
+          <button id="udashClose" class="dash-close" title="Close (Esc)">&times;</button>
+        </div>
+        <div id="udashToolbar" class="udash-toolbar"></div>
+        <div id="udashBody" class="udash-body"></div>
+        <div id="udashFooter" class="udash-footer"></div>
+      </div>
+      <div
+        id="searchOverlay"
+        style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 90"
+      >
+        <div
+          style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+          "
+          id="searchBackdrop"
+        ></div>
+        <div
+          style="
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-width: 90%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            padding: 8px;
+          "
+        >
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search by name, ID, CIDR, or type..."
+            style="
+              width: 100%;
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              border-radius: 6px;
+              color: var(--text-primary);
+              font-family: var(--font-ui);
+              font-size: 13px;
+              padding: 10px 14px;
+              outline: none;
+            "
+            autocomplete="off"
+          />
+          <div
+            id="searchResults"
+            style="max-height: 400px; overflow-y: auto; margin-top: 6px"
+          ></div>
+        </div>
+      </div>
+      <div class="hl-locked-indicator" id="hlLockInd">Highlight locked -- click to unlock</div>
+      <div class="tooltip" id="tooltip"></div>
+      <div class="detail-panel" id="detailPanel">
+        <div class="dp-resize-handle" id="dpResizeHandle"></div>
+        <div class="dp-drag-handle" id="dpDragHandle"><div class="dp-drag-bar"></div></div>
+        <div class="dp-header">
+          <div style="min-width: 0; flex: 1">
+            <div class="dp-title" id="dpTitle"></div>
+            <div class="dp-subtitle" id="dpSub"></div>
+          </div>
+          <button class="dp-close" id="dpClose">x</button>
+        </div>
+        <div class="dp-breadcrumbs" id="dpBreadcrumbs" style="display: none"></div>
+        <div class="dp-toolbar">
+          <span class="dp-size-label">Text</span>
+          <button class="dp-size-btn" id="dpSizeDown">-</button>
+          <button class="dp-size-btn" id="dpSizeUp">+</button>
+          <button
+            class="dp-size-btn"
+            id="dpSizeReset"
+            style="font-size: 9px; width: auto; padding: 0 6px"
+          >
+            Reset
+          </button>
+          <span style="flex: 1"></span>
+          <span class="dp-action-btn blue" id="dpExpandAll" style="display: none">Expand All</span>
+          <span class="dp-action-btn blue" id="dpCollapseAll" style="display: none"
+            >Collapse All</span
+          >
+          <span class="dp-action-btn cyan" id="dpTraceFrom" style="display: none">Trace</span>
+          <span class="dp-action-btn" id="dpFullscreen" title="Toggle fullscreen"
+            ><svg
+              viewBox="0 0 16 16"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <path d="M1 6V1h5M15 6V1h-5M1 10v5h5M15 10v5h-5" /></svg
+          ></span>
+        </div>
+        <div class="dp-body" id="dpBody"></div>
+      </div>
+      <!-- Onboarding overlay (first-visit guide) -->
+      <div id="onboardOverlay" class="onboard-overlay" style="display: none"></div>
+      <div id="onboardTooltip" class="onboard-tooltip" style="display: none"></div>
+    </div>
+    <!-- Multi-Account Merge Banner (outside .main to avoid stacking context issues) -->
+    <div class="account-merge-banner" id="mergeBanner" style="display: none">
+      <span
+        class="merge-label"
+        id="mergeBannerLabel"
+        style="cursor: pointer"
+        title="Click to view accounts"
+        >MULTI-ACCOUNT VIEW</span
+      >
+      <span id="mergeAcctChips" style="display: flex; gap: 4px; align-items: center"></span>
+      <button id="mergeExitBtn">Exit Merge</button>
+      <button
+        id="mergeBannerCollapse"
+        title="Collapse banner"
+        style="padding: 2px 6px; font-size: 9px"
+      >
+        &#9650;
+      </button>
+    </div>
+    <div class="fw-full-panel" id="fwFullPanel">
+      <div class="fw-fp-header">
+        <h3 id="fwFpTitle">Firewall Editor</h3>
+        <div style="display: flex; gap: 6px; align-items: center">
+          <button
+            id="fwFpRetrace"
+            style="
+              display: none;
+              background: rgba(34, 211, 238, 0.12);
+              border: 1px solid rgba(34, 211, 238, 0.3);
+              border-radius: 4px;
+              color: var(--accent-cyan);
+              padding: 3px 10px;
+              cursor: pointer;
+              font-family: var(--font-ui);
+              font-size: 10px;
+            "
+          >
+            Re-trace
+          </button>
+          <button
+            id="fwFpCopy"
+            style="
+              background: rgba(16, 185, 129, 0.12);
+              border: 1px solid rgba(16, 185, 129, 0.3);
+              border-radius: 4px;
+              color: var(--accent-green);
+              padding: 3px 10px;
+              cursor: pointer;
+              font-family: var(--font-ui);
+              font-size: 10px;
+            "
+          >
+            Copy CLI
+          </button>
+          <button
+            id="fwFpClose"
+            style="
+              background: none;
+              border: 1px solid var(--border);
+              border-radius: 4px;
+              color: var(--text-secondary);
+              cursor: pointer;
+              padding: 3px 10px;
+              font-family: var(--font-ui);
+              font-size: 11px;
+            "
+          >
+            Close
+          </button>
+        </div>
+      </div>
+      <div class="fw-fp-tabs" id="fwFpTabs">
+        <button class="fw-fp-tab active" data-dir="ingress">Inbound</button>
+        <button class="fw-fp-tab" data-dir="egress">Outbound</button>
+      </div>
+      <div class="fw-fp-body" id="fwFpBody"></div>
+      <div class="fw-fp-bottom">
+        <div class="fw-fp-visual" id="fwFpVisual"></div>
+        <div class="fw-fp-cli" id="fwFpCli"></div>
       </div>
     </div>
-  </div>
-  <input type="file" id="diffFileInput" multiple accept=".awsmap,.json" style="display:none">
-  <div id="helpOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center">
-    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;padding:24px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-family:var(--font-ui);font-size:16px;color:var(--accent-cyan)">AWS Mapper Guide</h2>
-        <button id="helpClose" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button>
-      </div>
-      <div style="font-size:13px;line-height:1.7;color:var(--text-secondary)">
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Getting Started</h3>
-        <p>1. Run AWS CLI commands (listed in the left sidebar) and paste JSON output into the matching text areas</p>
-        <p>2. Click <b>Render Map</b> to visualize your infrastructure</p>
-        <p>3. The <b>Account</b> field at top labels data from different AWS accounts.</p>
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Keyboard Shortcuts</h3>
-        <table style="width:100%;font-family:var(--font-ui);font-size:11px">
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">D</td><td>Toggle Design Mode</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+D</td><td>Compare / Diff Mode</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Z</td><td>Undo last design change</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">E</td><td>Export design plan as JSON</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">/</td><td>Open resource search</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Esc</td><td>Close panels / exit search</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">+/-</td><td>Zoom in/out</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Ctrl+S</td><td>Save project to .awsmap file</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+A</td><td>Toggle Accounts panel</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+B</td><td>Backup & DR Assessment</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+C</td><td>Compliance Dashboard</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+R</td><td>Report Builder</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+T</td><td>Traffic Trace</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+F</td><td>Flow Analysis</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">Shift+I</td><td>Resource Inventory</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">F</td><td>Firewall Editor</td></tr>
-          <tr><td style="padding:3px 8px;color:var(--accent-cyan)">N</td><td>Notes / Annotations</td></tr>
-        </table>
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Save and Load</h3>
-        <p><b>Save</b> downloads your workspace as a .awsmap file. <b>Open</b> loads it back. Compatible between web and desktop. Auto-saved to browser every 30s.</p>
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Compliance</h3>
-        <p>Click the <b>Compliance</b> chip in the stats bar to open the full dashboard. Checks include CIS Benchmarks, Well-Architected Framework, IAM analysis, and AWS Architecture Best Practices. Mute individual findings, filter by severity/framework, export as CSV.</p>
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Interactions</h3>
-        <p><b>Click a VPC</b> to lock highlight. <b>Click a Subnet</b> for firewall rules. <b>Click a Gateway</b> to highlight routes. <b>Hover</b> for previews.</p>
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Design Mode</h3>
-        <p>Press <b>D</b> to enter. Use the palette to add VPCs, subnets, gateways, and resources. Press <b>E</b> to export a plan with CLI commands.</p>
-        <h3 style="color:var(--accent-orange);font-size:13px;margin:12px 0 6px">Layouts</h3>
-        <p><b>Grid</b> — VPCs side by side. <b>Landing Zone</b> — Hub-spoke topology. <b>Executive</b> — Simplified overview.</p>
-      </div>
-    </div>
-  </div>
-  <div id="udash" class="udash">
-    <div class="udash-hdr">
-      <div id="udashTabs" class="udash-tabs"></div>
-      <div id="udashAcctBar" class="udash-acct-bar" style="display:none"></div>
-      <button id="udashClose" class="dash-close" title="Close (Esc)">&times;</button>
-    </div>
-    <div id="udashToolbar" class="udash-toolbar"></div>
-    <div id="udashBody" class="udash-body"></div>
-    <div id="udashFooter" class="udash-footer"></div>
-  </div>
-  <div id="searchOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:90">
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5)" id="searchBackdrop"></div>
-    <div style="position:absolute;top:60px;left:50%;transform:translateX(-50%);width:500px;max-width:90%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);padding:8px">
-      <input id="searchInput" type="text" placeholder="Search by name, ID, CIDR, or type..." style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-ui);font-size:13px;padding:10px 14px;outline:none" autocomplete="off">
-      <div id="searchResults" style="max-height:400px;overflow-y:auto;margin-top:6px"></div>
-    </div>
-  </div>
-  <div class="hl-locked-indicator" id="hlLockInd">Highlight locked -- click to unlock</div>
-  <div class="tooltip" id="tooltip"></div>
-  <div class="detail-panel" id="detailPanel">
-    <div class="dp-resize-handle" id="dpResizeHandle"></div>
-    <div class="dp-drag-handle" id="dpDragHandle"><div class="dp-drag-bar"></div></div>
-    <div class="dp-header">
-      <div style="min-width:0;flex:1"><div class="dp-title" id="dpTitle"></div><div class="dp-subtitle" id="dpSub"></div></div>
-      <button class="dp-close" id="dpClose">x</button>
-    </div>
-    <div class="dp-breadcrumbs" id="dpBreadcrumbs" style="display:none"></div>
-    <div class="dp-toolbar">
-      <span class="dp-size-label">Text</span>
-      <button class="dp-size-btn" id="dpSizeDown">-</button>
-      <button class="dp-size-btn" id="dpSizeUp">+</button>
-      <button class="dp-size-btn" id="dpSizeReset" style="font-size:9px;width:auto;padding:0 6px">Reset</button>
-      <span style="flex:1"></span>
-      <span class="dp-action-btn blue" id="dpExpandAll" style="display:none">Expand All</span>
-      <span class="dp-action-btn blue" id="dpCollapseAll" style="display:none">Collapse All</span>
-      <span class="dp-action-btn cyan" id="dpTraceFrom" style="display:none">Trace</span>
-      <span class="dp-action-btn" id="dpFullscreen" title="Toggle fullscreen"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 6V1h5M15 6V1h-5M1 10v5h5M15 10v5h-5"/></svg></span>
-    </div>
-    <div class="dp-body" id="dpBody"></div>
-  </div>
-  <!-- Onboarding overlay (first-visit guide) -->
-  <div id="onboardOverlay" class="onboard-overlay" style="display:none"></div>
-  <div id="onboardTooltip" class="onboard-tooltip" style="display:none"></div>
-</div>
-<!-- Multi-Account Merge Banner (outside .main to avoid stacking context issues) -->
-<div class="account-merge-banner" id="mergeBanner" style="display:none">
-  <span class="merge-label" id="mergeBannerLabel" style="cursor:pointer" title="Click to view accounts">MULTI-ACCOUNT VIEW</span>
-  <span id="mergeAcctChips" style="display:flex;gap:4px;align-items:center"></span>
-  <button id="mergeExitBtn">Exit Merge</button>
-  <button id="mergeBannerCollapse" title="Collapse banner" style="padding:2px 6px;font-size:9px">&#9650;</button>
-</div>
-<div class="fw-full-panel" id="fwFullPanel">
-  <div class="fw-fp-header">
-    <h3 id="fwFpTitle">Firewall Editor</h3>
-    <div style="display:flex;gap:6px;align-items:center">
-      <button id="fwFpRetrace" style="display:none;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);border-radius:4px;color:var(--accent-cyan);padding:3px 10px;cursor:pointer;font-family:var(--font-ui);font-size:10px">Re-trace</button>
-      <button id="fwFpCopy" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:4px;color:var(--accent-green);padding:3px 10px;cursor:pointer;font-family:var(--font-ui);font-size:10px">Copy CLI</button>
-      <button id="fwFpClose" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;padding:3px 10px;font-family:var(--font-ui);font-size:11px">Close</button>
-    </div>
-  </div>
-  <div class="fw-fp-tabs" id="fwFpTabs">
-    <button class="fw-fp-tab active" data-dir="ingress">Inbound</button>
-    <button class="fw-fp-tab" data-dir="egress">Outbound</button>
-  </div>
-  <div class="fw-fp-body" id="fwFpBody"></div>
-  <div class="fw-fp-bottom">
-    <div class="fw-fp-visual" id="fwFpVisual"></div>
-    <div class="fw-fp-cli" id="fwFpCli"></div>
-  </div>
-</div>
-<!-- #endregion HTML MAIN CONTENT -->
-<script defer src="dist/app-core.js?v=75915cca"></script>
-<script defer src="dist/edge-tests.js?v=dev" onerror="/* dev-only, ignored in prod */"></script>
-<script defer src="/_vercel/insights/script.js"></script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
-</body>
+    <!-- #endregion HTML MAIN CONTENT -->
+    <script defer src="dist/app-core.js?v=31da9cc9"></script>
+    <script defer src="dist/edge-tests.js?v=dev" onerror="/* dev-only, ignored in prod */"></script>
+    <script defer src="/_vercel/insights/script.js"></script>
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+  </body>
 </html>
