@@ -594,7 +594,7 @@ function prepareIAMReviewData(iamData) {
     const policyCount = (role.RolePolicyList || []).length + (role.AttachedManagedPolicies || []).length;
     const policyNames = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
     const roleAcct = (role.Arn || '').match(/:(\d{12}):/);
-    items.push({ name: role.RoleName || '', arn: role.Arn || '', type: 'Role', created: created, lastUsed: lastUsed, isAdmin: role._isAdmin || false, hasWildcard: role._hasWildcard || false, crossAccounts: crossAccts, policies: policyCount, policyNames: policyNames, permBoundary: role.PermissionsBoundary ? role.PermissionsBoundary.PermissionsBoundaryArn : '', findings: findings, _accountId: roleAcct ? roleAcct[1] : '', _raw: role });
+    items.push({ name: role.RoleName || '', arn: role.Arn || '', type: 'Role', created: created, lastUsed: lastUsed, isAdmin: role._isAdmin || false, hasWildcard: role._hasWildcard || false, crossAccounts: Array.from(new Set(crossAccts)), policies: policyCount, policyNames: policyNames, permBoundary: role.PermissionsBoundary ? role.PermissionsBoundary.PermissionsBoundaryArn : '', findings: findings, _accountId: roleAcct ? roleAcct[1] : '', _raw: role });
   });
   // Process users
   (iamData.users || []).forEach(function(user) {

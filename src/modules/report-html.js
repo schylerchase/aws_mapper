@@ -1298,7 +1298,7 @@ export function _rptTagName(o) {
 
 export function _rptActionPlan(ctx, opts) {
   let h = '<section class="rpt-section" id="s-action-plan"><h2 class="rpt-section-toggle">Action Plan</h2>';
-  const view = window._buildComplianceView({accountFilter:_rptGetAccountFilter(),includeMuted:true});
+  const view = window._buildComplianceView({findings:window._complianceFindings||[],accountFilter:_rptGetAccountFilter(),includeMuted:true});
   if (!view.filtered.length) { return h + '<p>No findings to prioritize.</p></section>'; }
   h += '<div class="rpt-section-body">';
   const tiers = view.tiers;

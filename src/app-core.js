@@ -207,8 +207,10 @@ function detectRegion(resource){
   // 2. AvailabilityZone fallback
   const az=resource.AvailabilityZone||(resource.Placement&&resource.Placement.AvailabilityZone)||null;
   if(az&&typeof az==='string')return az.replace(/[a-z]$/,'');
-  // 3. S3 LocationConstraint fallback
-  if(resource.LocationConstraint)return resource.LocationConstraint;
+  // 3. S3 bucket fallback. list-buckets rows carry only Name+CreationDate; AWS returns an
+  // empty/null LocationConstraint for us-east-1 and the legacy alias 'EU' for eu-west-1.
+  const isS3Bucket='LocationConstraint' in resource||(resource.Name!=null&&resource.CreationDate!=null&&resource.Arn==null);
+  if(isS3Bucket){const lc=resource.LocationConstraint;if(lc==='EU')return 'eu-west-1';if(lc)return lc;return 'us-east-1';}
   return null;
 }
 
@@ -7387,7 +7389,9 @@ async function _renderMapInner(){
         }
       }
       const rl=structG.append('path').attr('class','route-line route-structural').attr('d',d).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
-      if(gwLeft) rl.style('animation-direction','reverse');
+      // Egress always flows subnet -> IGW -> internet. The path d is drawn subnet->trunk for
+      // both gwLeft and gwRight, so no reversal: reversing on gwLeft made the last VPC render
+      // IGW -> subnet while other VPCs rendered subnet -> IGW.
       // Solid filled square at trunk junction to cover dash-pattern gaps
       const jd=`M${tx-3},${sy-3} L${tx+3},${sy-3} L${tx+3},${sy+3} L${tx-3},${sy+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',jd).attr('stroke',col).attr('fill',col).attr('stroke-width',1).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid).attr('data-sid',c.sid);
@@ -7422,7 +7426,8 @@ async function _renderMapInner(){
       structG.append('path').attr('class','route-trunk route-structural').attr('d',fullPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid).attr('data-vert','1');
       // Solid L-bend connector from trunk to gateway
       const lb=structG.append('path').attr('class','route-trunk route-structural').attr('d',lbendPath).attr('stroke',col).attr('data-gid',gid).attr('data-vid',vid);
-      if(gwLeft) lb.style('animation-direction','reverse');
+      // L-bend is drawn trunk->gateway edge for both sides, so the normal animation already
+      // flows toward the gateway (egress); do not reverse on gwLeft.
       // Solid patch at L-bend corner
       const bendPatch=`M${tx-3},${gp.y-3} L${tx+3},${gp.y-3} L${tx+3},${gp.y+3} L${tx-3},${gp.y+3} Z`;
       structG.append('path').attr('class','route-junction route-structural').attr('d',bendPatch).attr('stroke',col).attr('fill',col).style('stroke-dasharray','none').attr('data-gid',gid).attr('data-vid',vid);
@@ -17876,7 +17881,7 @@ async function _rptBuildSections(enabled){
   for(var si=0;si<enabled.length;si++){
     var id=enabled[si];
     var m=_RPT_MODULES.find(function(x){return x.id===id});
-    try{h+=m.render(_rlCtx,{});}catch(e){
+    try{h+=await m.render(_rlCtx,{});}catch(e){
       h+='<section class="rpt-section" id="s-'+esc(id)+'"><h2>'+esc(m.name)+'</h2>';
       h+='<p>Error rendering section: '+esc(e.message)+'</p></section>';
     }
