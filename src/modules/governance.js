@@ -1,4 +1,4 @@
-// Governance & Inventory — state and pure logic
+// Governance & Inventory - state and pure logic
 // DOM rendering functions (_renderClassificationTab, _renderIAMTab, _openRulesEditor)
 // live in app-core.js due to dual-state and unified dashboard coupling.
 
@@ -52,7 +52,7 @@ const _DEFAULT_CLASS_RULES = [
   { pattern: 'alb|elb|loadbalancer|nlb', scope: 'type', tier: 'high', weight: 65 },
   { pattern: 'lambda|fargate|ecs', scope: 'type', tier: 'medium', weight: 40 },
   { pattern: 'bastion|jump|ssh', scope: 'name', tier: 'medium', weight: 35 },
-  // Tag-based rules — Environment tag is strongest classification signal
+  // Tag-based rules - Environment tag is strongest classification signal
   { pattern: 'prod|production|prd', scope: 'tag:Environment', tier: 'critical', weight: 120 },
   { pattern: 'staging|stage|uat|qa', scope: 'tag:Environment', tier: 'medium', weight: 110 },
   { pattern: 'dev|develop|sandbox|test', scope: 'tag:Environment', tier: 'low', weight: 110 }
@@ -260,7 +260,7 @@ function _buildInventoryData() {
   // 1. Classification tier lookup
   const classMap = {};
   (_classificationData || []).forEach(function(c) { classMap[c.id] = c; });
-  // 2. BUDR assessment lookup — use window bridge for cross-region data
+  // 2. BUDR assessment lookup - use window bridge for cross-region data
   const budrAssessments = (typeof window !== 'undefined' && window._budrAssessments) || [];
   const budrMap = {};
   (budrAssessments || []).forEach(function(a) {
@@ -293,7 +293,7 @@ function _buildInventoryData() {
  */
 function _filterInventory() {
   let st = _invState;
-  // _udashFilterByAccount is a global UI function — access via window bridge
+  // _udashFilterByAccount is a global UI function - access via window bridge
   const filterFn = (typeof window !== 'undefined' && window._udashFilterByAccount) || function(x) { return x; };
   let items = filterFn(_inventoryData).slice();
   if (st.typeFilter !== 'all') items = items.filter(function(r) { return r.type === st.typeFilter; });
@@ -816,7 +816,7 @@ function summarizePermissions(principal, iamData) {
 // Expose all exports to window for inline callers that haven't migrated yet
 if (typeof window !== 'undefined') {
   Object.assign(window, {
-    // State variables — direct references (for backward compat reading)
+    // State variables - direct references (for backward compat reading)
     _govDashState, _iamDashState, _classificationData, _classificationOverrides,
     _iamReviewData, _inventoryData, _invState, _appRegistry, _appAutoDiscovered,
     _appSummaryState, _APP_TYPE_SUGGESTIONS, _invToolbarRendered,

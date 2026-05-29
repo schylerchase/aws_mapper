@@ -761,9 +761,9 @@ export function _rptSecurityPosture(ctx, opts) {
   h += '<h3>Encryption &amp; Secrets</h3><table class="rpt-tbl"><thead><tr><th>Service</th><th>Status</th><th>Details</th></tr></thead><tbody>';
   const custKeys = keys.filter(function(k) { return k.KeyManager === 'CUSTOMER' && k.KeyState === 'Enabled'; });
   const rotKeys = custKeys.filter(function(k) { return k.RotationEnabled; }).length;
-  h += '<tr><td>KMS Keys</td><td>'+stp(custKeys.length > 0 && rotKeys === custKeys.length, rotKeys > 0)+'</td><td>'+esc(rotKeys + ' of ' + custKeys.length + ' with rotation')+'</td></tr>';
+  h += '<tr><td>KMS Keys</td><td>'+stp(custKeys.length === 0 || rotKeys === custKeys.length, rotKeys > 0)+'</td><td>'+esc(rotKeys + ' of ' + custKeys.length + ' with rotation')+'</td></tr>';
   const secRot = secs.filter(function(s) { return s.RotationEnabled; }).length;
-  h += '<tr><td>Secrets Manager</td><td>'+stp(secs.length > 0 && secRot === secs.length, secRot > 0)+'</td><td>'+esc(secRot + ' of ' + secs.length + ' with rotation')+'</td></tr>';
+  h += '<tr><td>Secrets Manager</td><td>'+stp(secs.length === 0 || secRot === secs.length, secRot > 0)+'</td><td>'+esc(secRot + ' of ' + secs.length + ' with rotation')+'</td></tr>';
   const ecrScan = ecr.filter(function(r) { return (r.imageScanningConfiguration || {}).scanOnPush; }).length;
   const ecrImm = ecr.filter(function(r) { return r.imageTagMutability === 'IMMUTABLE'; }).length;
   h += '<tr><td>ECR Repositories</td><td>'+stp(ecr.length > 0 && ecrScan === ecr.length && ecrImm === ecr.length, ecrScan > 0 || ecrImm > 0)+'</td><td>'+esc(ecr.length + ' repo(s): ' + ecrScan + ' scan, ' + ecrImm + ' immutable')+'</td></tr>';
