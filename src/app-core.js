@@ -17587,7 +17587,7 @@ function _renderRptPicker(){
     container.appendChild(card);
   });
 }
-function _renderRptPreview(){
+async function _renderRptPreview(){
   var container=document.getElementById('rptPreviewContent');
   var enabled=_rptEnabledModules();
   if(!enabled.length){
@@ -17601,7 +17601,7 @@ function _renderRptPreview(){
   var html='<style>'+_rptCSS()+_rptInteractiveCSS()+'</style>';
   html+=_rptBuildHeader();
   html+=_rptBuildTOC(enabled);
-  html+=_rptBuildSections(enabled);
+  html+=await _rptBuildSections(enabled);
   html+=_rptBuildFooter();
   var wrapper=document.createElement('div');
   wrapper.innerHTML=html;
