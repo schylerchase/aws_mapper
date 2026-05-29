@@ -17950,7 +17950,7 @@ async function _rptFullHTML(enabled,pngDataUrl){
   html+='<meta charset="UTF-8">\n';
   html+='<meta name="viewport" content="width=device-width,initial-scale=1.0">\n';
   html+='<title>'+title+'</title>\n';
-  var lt=!document.body.classList.contains('dark-mode');
+  var lt=document.documentElement.dataset.theme==='light';
   var expBg=lt?'#ffffff':'#0f172a';var expTx=lt?'#1e293b':'#e2e8f0';
   html+='<style>\nbody{margin:0;padding:24px 40px;background:'+expBg+';color:'+expTx+';font-family:"Segoe UI",system-ui,sans-serif;line-height:1.6}\n'+_rptCSS()+'\n'+_rptInteractiveCSS()+'\n</style>\n';
   html+='</head>\n<body>\n';
