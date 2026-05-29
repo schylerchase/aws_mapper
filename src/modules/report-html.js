@@ -1,4 +1,4 @@
-// Report HTML generators — builds HTML sections for the assessment report.
+// Report HTML generators - builds HTML sections for the assessment report.
 // Extracted from app-core.js REPORT BUILDER region.
 // Functions produce HTML strings consumed by the report preview/export flow.
 
@@ -112,13 +112,13 @@ export const _complianceRefs = {
   'IAM-6':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html',ref:'External ID Best Practice'},
   'IAM-7':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#bp-use-aws-defined-policies',ref:'Managed vs Inline Policies'},
   'IAM-8':{url:'https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html',ref:'Permission Boundaries'},
-  'CKV_AWS_79':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html',ref:'Checkov CKV_AWS_79 \u2014 IMDSv2'},
-  'CKV_AWS_126':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',ref:'Checkov CKV_AWS_126 \u2014 VPC Flow Logs'},
-  'CKV_AWS_21':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html',ref:'Checkov CKV_AWS_21 \u2014 S3 Versioning'},
-  'CKV_AWS_18':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html',ref:'Checkov CKV_AWS_18 \u2014 S3 Access Logging'},
-  'CKV_AWS_26':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'Checkov CKV_AWS_26 \u2014 RDS Backup Retention'},
-  'CKV_AWS_45':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html',ref:'Checkov CKV_AWS_45 \u2014 Lambda Env Encryption'},
-  'CKV_AWS_50':{url:'https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html',ref:'Checkov CKV_AWS_50 \u2014 Lambda X-Ray Tracing'},
+  'CKV_AWS_79':{url:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html',ref:'Checkov CKV_AWS_79 - IMDSv2'},
+  'CKV_AWS_126':{url:'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',ref:'Checkov CKV_AWS_126 - VPC Flow Logs'},
+  'CKV_AWS_21':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html',ref:'Checkov CKV_AWS_21 - S3 Versioning'},
+  'CKV_AWS_18':{url:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html',ref:'Checkov CKV_AWS_18 - S3 Access Logging'},
+  'CKV_AWS_26':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',ref:'Checkov CKV_AWS_26 - RDS Backup Retention'},
+  'CKV_AWS_45':{url:'https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html',ref:'Checkov CKV_AWS_45 - Lambda Env Encryption'},
+  'CKV_AWS_50':{url:'https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html',ref:'Checkov CKV_AWS_50 - Lambda X-Ray Tracing'},
   'BUDR-HA-1':{url:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',ref:'RDS Multi-AZ Deployments'},
   'BUDR-HA-2':{url:'https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html',ref:'EC2 Auto Scaling'},
   'BUDR-HA-3':{url:'https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html',ref:'ECS Service Scaling'},
@@ -861,7 +861,7 @@ export function _rptAppSummary(ctx, opts) {
     let bestTier = 'low';
     matched.forEach(function(r) { if ((tierPri[r.tier] || 99) < (tierPri[bestTier] || 99)) bestTier = r.tier; });
     const tier = app.tier || bestTier;
-    appRows.push({name:app.name,type:app.type || '\u2014',tier:tier,matched:matched});
+    appRows.push({name:app.name,type:app.type || '-',tier:tier,matched:matched});
   });
   appRows.sort(function(a, b) { return (tierPri[a.tier] || 99) - (tierPri[b.tier] || 99); });
   const tierColors = {critical:'#ef4444',high:'#f59e0b',medium:'#22d3ee',low:'#64748b'};
@@ -896,7 +896,7 @@ export function _rptAppSummary(ctx, opts) {
       h += '<tr><td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.name)+'</td>';
       h += '<td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.type)+'</td>';
       h += '<td style="padding:3px 8px;border-bottom:1px solid #1e293b;color:'+rm.color+'">'+r.tier+'</td>';
-      h += '<td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.vpcName || '\u2014')+'</td></tr>';
+      h += '<td style="padding:3px 8px;border-bottom:1px solid #1e293b">'+esc(r.vpcName || '-')+'</td></tr>';
     });
     h += '</tbody></table>';
   });
@@ -1195,10 +1195,10 @@ export function _rptIAMReview(ctx, opts) {
     h += '<table><thead><tr><th>Name</th><th>Type</th><th>Created</th><th>Last Used</th><th>Policies</th><th>Findings</th></tr></thead><tbody>';
     admins.forEach(function(r) {
       h += '<tr><td>'+esc(r.name)+'</td><td>'+esc(r.type)+'</td>';
-      h += '<td>'+(r.created ? r.created.toISOString().split('T')[0] : '\u2014')+'</td>';
+      h += '<td>'+(r.created ? r.created.toISOString().split('T')[0] : '-')+'</td>';
       h += '<td>'+(r.lastUsed ? r.lastUsed.toISOString().split('T')[0] : 'Never')+'</td>';
       h += '<td>'+r.policies+'</td>';
-      h += '<td>'+(r.findings.length || '\u2014')+'</td></tr>';
+      h += '<td>'+r.findings.length+'</td></tr>';
     });
     h += '</tbody></table>';
   }
@@ -1208,7 +1208,7 @@ export function _rptIAMReview(ctx, opts) {
     crossAcct.forEach(function(r) {
       h += '<tr><td>'+esc(r.name)+'</td><td>'+r.crossAccounts.map(esc).join(', ')+'</td>';
       h += '<td>'+(r.isAdmin ? '<span style="color:#ef4444">Yes</span>' : 'No')+'</td>';
-      h += '<td>'+(r.findings.length || '\u2014')+'</td></tr>';
+      h += '<td>'+r.findings.length+'</td></tr>';
     });
     h += '</tbody></table>';
   }
@@ -1222,7 +1222,7 @@ export function _rptIAMReview(ctx, opts) {
       h += '<td>'+(u.hasConsole ? 'Yes' : 'No')+'</td>';
       h += '<td>'+(u.activeKeys || 0)+'</td>';
       h += '<td>'+(u.isAdmin ? '<span style="color:#ef4444">Yes</span>' : 'No')+'</td>';
-      h += '<td>'+(u.findings.length || '\u2014')+'</td></tr>';
+      h += '<td>'+u.findings.length+'</td></tr>';
     });
     h += '</tbody></table>';
   }
@@ -1366,7 +1366,7 @@ export function _rptIaCRecs(ctx, opts) {
   limit.forEach(function(item) {
     h += '<div class="code-block">';
     h += '<span class="sev-badge sev-'+esc(item.severity)+'">'+esc(item.severity)+'</span> ';
-    h += esc(item.control) + ' &mdash; ' + esc(item.resourceName || item.resource);
+    h += esc(item.control) + ' - ' + esc(item.resourceName || item.resource);
     h += '<br><br><strong>Finding:</strong> '+esc(item.message);
     h += '<br><strong>Remediation:</strong> '+esc(item.remediation);
     h += '</div>';
