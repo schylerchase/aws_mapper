@@ -9882,11 +9882,12 @@ function _renderNoteBadges(){
   });
 }
 // Build a lookup: resourceId → {worst severity, count, findings[]}
-function _buildComplianceLookup(){
+function _buildComplianceLookup(findings){
   const lookup={};
-  if(!_complianceFindings||!_complianceFindings.length)return lookup;
+  const src=findings||_complianceFindings;
+  if(!src||!src.length)return lookup;
   const sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
-  _complianceFindings.forEach(f=>{
+  src.forEach(f=>{
     if(_isMuted(f))return;
     const rid=f.resource;if(!rid||rid==='Multiple')return;
     if(!lookup[rid])lookup[rid]={worst:'LOW',count:0,findings:[]};
@@ -9907,7 +9908,7 @@ function _renderComplianceBadges(){
   _mapG.selectAll('.comp-badge').remove();
   if(!_complianceFindings||!_complianceFindings.length)return;
   const nodesLayer=_mapG.select('.nodes-layer');if(nodesLayer.empty())return;
-  const lookup=_buildComplianceLookup();
+  const lookup=_buildComplianceLookup(typeof _udashFilterByAccount==='function'?_udashFilterByAccount(_complianceFindings||[]):_complianceFindings);
   // Pre-build DOM element index (single querySelectorAll instead of N querySelector calls)
   const _elIndex={};
   _mapG.node().querySelectorAll('[data-vpc-id],[data-subnet-id],[data-gwid],[data-id]').forEach(function(el){
