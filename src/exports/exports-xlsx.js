@@ -482,7 +482,15 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings) {
       r++;
     }
     // Region row
-    var regions = c._regions ? Array.from(c._regions) : [];
+    var _regSet = new Set(c._regions || []);
+    Object.keys(c).forEach(function (k) {
+      var a = c[k];
+      if (Array.isArray(a))
+        {a.forEach(function (o) {
+          if (o && o._region && o._region !== 'unknown') {_regSet.add(o._region);}
+        });}
+    });
+    var regions = Array.from(_regSet).filter(Boolean).sort();
     if (regions.length) {
       var regLabel = XLSX.utils.encode_cell({ r: r, c: 0 });
       ws[regLabel] = {

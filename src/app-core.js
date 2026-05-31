@@ -408,9 +408,22 @@ function detectRegion(resource) {
   if (az && typeof az === 'string') {
     return az.replace(/[a-z]$/, '');
   }
-  // 3. S3 LocationConstraint fallback
-  if (resource.LocationConstraint) {
-    return resource.LocationConstraint;
+  // 3. S3 bucket fallback. list-buckets rows carry only Name+CreationDate; AWS returns an
+  // empty/null LocationConstraint for us-east-1 and the legacy alias 'EU' for eu-west-1.
+  const isS3Bucket =
+    'LocationConstraint' in resource ||
+    (resource.Name != null &&
+      resource.CreationDate != null &&
+      resource.Arn == null);
+  if (isS3Bucket) {
+    const lc = resource.LocationConstraint;
+    if (lc === 'EU') {
+      return 'eu-west-1';
+    }
+    if (lc) {
+      return lc;
+    }
+    return 'us-east-1';
   }
   return null;
 }
@@ -15970,9 +15983,9 @@ async function _renderMapInner() {
           .attr('data-gid', gid)
           .attr('data-vid', vid)
           .attr('data-sid', c.sid);
-        if (gwLeft) {
-          rl.style('animation-direction', 'reverse');
-        }
+        // Egress always flows subnet -> IGW -> internet. The path d is drawn subnet->trunk for
+        // both gwLeft and gwRight, so no reversal: reversing on gwLeft made the last VPC render
+        // IGW -> subnet while other VPCs rendered subnet -> IGW.
         // Solid filled square at trunk junction to cover dash-pattern gaps
         const jd = `M${tx - 3},${sy - 3} L${tx + 3},${sy - 3} L${tx + 3},${sy + 3} L${tx - 3},${sy + 3} Z`;
         structG
@@ -16051,9 +16064,8 @@ async function _renderMapInner() {
           .attr('stroke', col)
           .attr('data-gid', gid)
           .attr('data-vid', vid);
-        if (gwLeft) {
-          lb.style('animation-direction', 'reverse');
-        }
+        // L-bend is drawn trunk->gateway edge for both sides, so the normal animation already
+        // flows toward the gateway (egress); do not reverse on gwLeft.
         // Solid patch at L-bend corner
         const bendPatch = `M${tx - 3},${gp.y - 3} L${tx + 3},${gp.y - 3} L${tx + 3},${gp.y + 3} L${tx - 3},${gp.y + 3} Z`;
         structG
@@ -21267,13 +21279,14 @@ function _renderNoteBadges() {
   });
 }
 // Build a lookup: resourceId → {worst severity, count, findings[]}
-function _buildComplianceLookup() {
+function _buildComplianceLookup(findings) {
   const lookup = {};
-  if (!_complianceFindings || !_complianceFindings.length) {
+  const src = findings || _complianceFindings;
+  if (!src || !src.length) {
     return lookup;
   }
   const sevOrder = { CRITICAL: 1, HIGH: 2, MEDIUM: 3, LOW: 4 };
-  _complianceFindings.forEach((f) => {
+  src.forEach((f) => {
     if (_isMuted(f)) {
       return;
     }
@@ -21310,7 +21323,11 @@ function _renderComplianceBadges() {
   if (nodesLayer.empty()) {
     return;
   }
-  const lookup = _buildComplianceLookup();
+  const lookup = _buildComplianceLookup(
+    typeof _udashFilterByAccount === 'function'
+      ? _udashFilterByAccount(_complianceFindings || [])
+      : _complianceFindings
+  );
   // Pre-build DOM element index (single querySelectorAll instead of N querySelector calls)
   const _elIndex = {};
   _mapG
@@ -37580,7 +37597,7 @@ async function _rptFullHTML(enabled, pngDataUrl) {
   html += '<meta charset="UTF-8">\n';
   html += '<meta name="viewport" content="width=device-width,initial-scale=1.0">\n';
   html += '<title>' + title + '</title>\n';
-  var lt = !document.body.classList.contains('dark-mode');
+  var lt = document.documentElement.dataset.theme === 'light';
   var expBg = lt ? '#ffffff' : '#0f172a';
   var expTx = lt ? '#1e293b' : '#e2e8f0';
   html +=

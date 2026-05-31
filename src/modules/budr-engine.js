@@ -25,7 +25,7 @@ const _BUDR_STRATEGY_LEGEND = [
     label: 'Critical (Hot)',
     color: '#ef4444',
     icon: '🔴',
-    desc: 'Active-active — full replica running at all times. Near-zero RTO & RPO.'
+    desc: 'Active-active - full replica running at all times. Near-zero RTO & RPO.'
   },
   {
     k: 'high',
@@ -83,151 +83,151 @@ const _BUDR_EST_MINUTES = {
     rpo: 1,
     rtoWhy: 'Multi-AZ automatic failover completes in 1-2 min; DNS propagation adds ~3 min',
     rpoWhy:
-      'Synchronous replication to standby — data loss limited to in-flight transactions (~seconds)'
+      'Synchronous replication to standby - data loss limited to in-flight transactions (~seconds)'
   },
   rds_single_backup: {
     rto: 30,
     rpo: 1440,
     rtoWhy:
       'Restore from automated snapshot requires instance provisioning + data load (~20-30 min)',
-    rpoWhy: 'Automated backups run daily — worst case RPO is 24 hours since last backup window'
+    rpoWhy: 'Automated backups run daily - worst case RPO is 24 hours since last backup window'
   },
   rds_no_backup: {
     rto: 480,
     rpo: Infinity,
-    rtoWhy: 'No backups — requires manual rebuild from application layer or external source',
-    rpoWhy: 'No backup mechanism configured — all data since creation is unrecoverable'
+    rtoWhy: 'No backups - requires manual rebuild from application layer or external source',
+    rpoWhy: 'No backup mechanism configured - all data since creation is unrecoverable'
   },
   rds_aurora: {
     rto: 0.5,
     rpo: 5,
     rtoWhy: 'Aurora automatic failover promotes read replica in <30 sec; DNS TTL is 5 sec',
     rpoWhy:
-      'Aurora replicates 6 copies across 3 AZs — RPO limited to last committed transaction (~seconds)'
+      'Aurora replicates 6 copies across 3 AZs - RPO limited to last committed transaction (~seconds)'
   },
   ec2_asg: {
     rto: 3,
     rpo: 0,
     rtoWhy:
       'ASG detects failure via health check (1-2 min) and launches replacement from AMI (~1-2 min)',
-    rpoWhy: 'Stateless compute — no persistent data on instance; state lives in external stores'
+    rpoWhy: 'Stateless compute - no persistent data on instance; state lives in external stores'
   },
   ec2_ami_snap: {
     rto: 15,
     rpo: 10080,
     rtoWhy: 'Manual AMI launch + EBS restore from snapshot (~10-15 min depending on volume size)',
-    rpoWhy: 'Snapshot frequency is typically weekly — worst case RPO is 7 days since last snapshot'
+    rpoWhy: 'Snapshot frequency is typically weekly - worst case RPO is 7 days since last snapshot'
   },
   ec2_standalone: {
     rto: 480,
     rpo: Infinity,
     rtoWhy:
-      'No AMI/snapshot — requires full OS install, config, and application deployment from scratch',
-    rpoWhy: 'No backup mechanism — local EBS data is unrecoverable if instance or volume is lost'
+      'No AMI/snapshot - requires full OS install, config, and application deployment from scratch',
+    rpoWhy: 'No backup mechanism - local EBS data is unrecoverable if instance or volume is lost'
   },
   ecs_multi: {
     rto: 1,
     rpo: 0,
     rtoWhy: 'ECS service scheduler replaces failed tasks in ~30-60 sec from container image',
     rpoWhy:
-      'Stateless containers — no persistent data; state lives in external stores (RDS, S3, etc.)'
+      'Stateless containers - no persistent data; state lives in external stores (RDS, S3, etc.)'
   },
   ecs_single: {
     rto: 5,
     rpo: 0,
     rtoWhy: 'Single task replacement takes ~2-5 min including image pull and health check',
-    rpoWhy: 'Stateless containers — no persistent data; state lives in external stores'
+    rpoWhy: 'Stateless containers - no persistent data; state lives in external stores'
   },
   lambda: {
     rto: 0,
     rpo: 0,
-    rtoWhy: 'Fully managed — AWS handles all availability; cold start adds <1 sec latency',
-    rpoWhy: 'Stateless execution — no persistent data; code stored in S3 with versioning'
+    rtoWhy: 'Fully managed - AWS handles all availability; cold start adds <1 sec latency',
+    rpoWhy: 'Stateless execution - no persistent data; code stored in S3 with versioning'
   },
   ecache_multi: {
     rto: 2,
     rpo: 0.1,
     rtoWhy:
       'Multi-AZ auto-failover promotes replica in 1-2 min; DNS endpoint updates automatically',
-    rpoWhy: 'Async replication lag is typically <100ms — data loss limited to replication lag'
+    rpoWhy: 'Async replication lag is typically <100ms - data loss limited to replication lag'
   },
   ecache_single: {
     rto: 15,
     rpo: 10080,
     rtoWhy: 'Restore from snapshot requires new cluster provisioning + data load (~10-15 min)',
-    rpoWhy: 'Snapshot frequency is typically daily/weekly — worst case RPO equals snapshot interval'
+    rpoWhy: 'Snapshot frequency is typically daily/weekly - worst case RPO equals snapshot interval'
   },
   ecache_no_snap: {
     rto: 15,
     rpo: Infinity,
     rtoWhy: 'New cluster provisioning takes ~10-15 min but cache starts cold (empty)',
-    rpoWhy: 'No snapshots — entire cache contents are lost; must be rebuilt from source of truth'
+    rpoWhy: 'No snapshots - entire cache contents are lost; must be rebuilt from source of truth'
   },
   redshift_snap: {
     rto: 30,
     rpo: 1440,
     rtoWhy: 'Restore from snapshot creates new cluster (~20-30 min depending on data size)',
-    rpoWhy: 'Automated snapshots run every 8 hours by default — worst case RPO is snapshot interval'
+    rpoWhy: 'Automated snapshots run every 8 hours by default - worst case RPO is snapshot interval'
   },
   redshift_multi: {
     rto: 15,
     rpo: 5,
     rtoWhy: 'Multi-node cluster redistributes work to surviving nodes (~10-15 min recovery)',
-    rpoWhy: 'Synchronous replication across nodes — RPO limited to in-flight queries (~minutes)'
+    rpoWhy: 'Synchronous replication across nodes - RPO limited to in-flight queries (~minutes)'
   },
   redshift_none: {
     rto: 480,
     rpo: Infinity,
-    rtoWhy: 'No snapshots — requires full data reload from S3/source systems (hours to days)',
-    rpoWhy: 'No backup mechanism — all warehouse data is unrecoverable'
+    rtoWhy: 'No snapshots - requires full data reload from S3/source systems (hours to days)',
+    rpoWhy: 'No backup mechanism - all warehouse data is unrecoverable'
   },
   alb_multi_az: {
     rto: 0,
     rpo: 0,
-    rtoWhy: 'Fully managed multi-AZ — AWS handles node replacement transparently',
-    rpoWhy: 'Stateless load balancer — no data to lose; config stored in AWS control plane'
+    rtoWhy: 'Fully managed multi-AZ - AWS handles node replacement transparently',
+    rpoWhy: 'Stateless load balancer - no data to lose; config stored in AWS control plane'
   },
   alb_single_az: {
     rto: 5,
     rpo: 0,
     rtoWhy: 'Single-AZ ALB may need DNS failover if AZ goes down (~3-5 min)',
-    rpoWhy: 'Stateless load balancer — no data to lose'
+    rpoWhy: 'Stateless load balancer - no data to lose'
   },
   s3: {
     rto: 0,
     rpo: 0,
-    rtoWhy: '11 nines durability — service is always available across 3+ AZs',
+    rtoWhy: '11 nines durability - service is always available across 3+ AZs',
     rpoWhy: 'Objects replicated across multiple AZs automatically'
   },
   s3_versioned: {
     rto: 0,
     rpo: 0,
     rtoWhy: 'Versioned objects can be restored to any previous version instantly',
-    rpoWhy: 'Every object change creates a new version — zero data loss possible'
+    rpoWhy: 'Every object change creates a new version - zero data loss possible'
   },
   s3_unversioned: {
     rto: 0,
     rpo: Infinity,
     rtoWhy: 'Bucket is always available, but deleted/overwritten objects cannot be recovered',
-    rpoWhy: 'No versioning — overwrites and deletes are permanent and unrecoverable'
+    rpoWhy: 'No versioning - overwrites and deletes are permanent and unrecoverable'
   },
   s3_mfa_delete: {
     rto: 0,
     rpo: 0,
-    rtoWhy: 'MFA Delete prevents accidental deletion — objects recoverable from versions',
+    rtoWhy: 'MFA Delete prevents accidental deletion - objects recoverable from versions',
     rpoWhy: 'Versioning + MFA Delete = immutable storage; data cannot be accidentally lost'
   },
   ebs_snap: {
     rto: 15,
     rpo: 10080,
     rtoWhy: 'Create new volume from snapshot + attach to instance (~10-15 min)',
-    rpoWhy: 'Snapshot frequency is typically weekly — worst case RPO is 7 days since last snapshot'
+    rpoWhy: 'Snapshot frequency is typically weekly - worst case RPO is 7 days since last snapshot'
   },
   ebs_no_snap: {
     rto: 480,
     rpo: Infinity,
-    rtoWhy: 'No snapshots — volume data is unrecoverable if volume fails (rare but possible)',
-    rpoWhy: 'No backup mechanism — all volume data is permanently lost on failure'
+    rtoWhy: 'No snapshots - volume data is unrecoverable if volume fails (rare but possible)',
+    rpoWhy: 'No backup mechanism - all volume data is permanently lost on failure'
   }
 };
 // Classification tier targets in minutes (from compliance policy)
@@ -237,7 +237,7 @@ const _TIER_TARGETS = {
   medium: { rto: 720, rpo: 1440, rtoLabel: '12 hours', rpoLabel: 'Daily' },
   low: { rto: 1440, rpo: 10080, rtoLabel: '24 hours', rpoLabel: 'Weekly' }
 };
-// Compare estimated restore capability vs tier target — returns compliance status
+// Compare estimated restore capability vs tier target - returns compliance status
 function _budrTierCompliance(profileKey, classTier) {
   if (!profileKey || !classTier) {
     return { status: 'unknown', issues: [] };
@@ -252,7 +252,7 @@ function _budrTierCompliance(profileKey, classTier) {
     issues.push({
       field: 'RPO',
       severity: 'critical',
-      msg: 'No backup — RPO unrecoverable (target: ' + target.rpoLabel + ')'
+      msg: 'No backup - RPO unrecoverable (target: ' + target.rpoLabel + ')'
     });
   } else if (est.rpo > target.rpo) {
     issues.push({
@@ -354,7 +354,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'RDS not Multi-AZ — single point of failure',
+        message: 'RDS not Multi-AZ - single point of failure',
         remediation: 'Enable Multi-AZ for automatic failover'
       });
     } else {
@@ -380,7 +380,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'RDS single-AZ with backups only — extended RTO on AZ failure',
+        message: 'RDS single-AZ with backups only - extended RTO on AZ failure',
         remediation: 'Enable Multi-AZ or create cross-region read replica'
       });
     }
@@ -465,7 +465,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'EC2 not in Auto Scaling group — manual recovery required',
+        message: 'EC2 not in Auto Scaling group - manual recovery required',
         remediation: 'Place behind ASG or create AMI + launch template for quick recovery'
       });
     } else {
@@ -476,7 +476,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'EC2 standalone with no EBS snapshots — unrecoverable on failure',
+        message: 'EC2 standalone with no EBS snapshots - unrecoverable on failure',
         remediation: 'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'
       });
       if (!inASG) {
@@ -516,7 +516,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'ECS service has desiredCount=' + desired + ' — no redundancy',
+        message: 'ECS service has desiredCount=' + desired + ' - no redundancy',
         remediation: 'Set desiredCount ≥ 2 across multiple AZs'
       });
     }
@@ -556,7 +556,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'ElastiCache single node — failover requires manual intervention',
+        message: 'ElastiCache single node - failover requires manual intervention',
         remediation: 'Add replicas or enable cluster mode for automatic failover'
       });
     } else {
@@ -567,7 +567,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'ElastiCache single node with no snapshots — data loss risk',
+        message: 'ElastiCache single node with no snapshots - data loss risk',
         remediation: 'Enable automatic snapshots and add read replicas'
       });
     }
@@ -596,7 +596,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'Redshift single-node cluster — no compute redundancy',
+        message: 'Redshift single-node cluster - no compute redundancy',
         remediation: 'Resize to multi-node cluster for HA'
       });
     } else {
@@ -607,7 +607,7 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'Redshift with no automated snapshots — data loss risk',
+        message: 'Redshift with no automated snapshots - data loss risk',
         remediation: 'Enable automated snapshots with ≥7 day retention'
       });
     }
@@ -635,13 +635,13 @@ function runBUDRChecks(ctx) {
         framework: 'BUDR',
         resource: id,
         resourceName: name,
-        message: 'ALB in single AZ only — no failover',
+        message: 'ALB in single AZ only - no failover',
         remediation: 'Register subnets in at least 2 AZs'
       });
     }
     assessments.push({ type: 'ALB', id, name, profile, signals: { AZCount: azs } });
   });
-  // EBS volumes (standalone — not already counted via EC2)
+  // EBS volumes (standalone - not already counted via EC2)
   (ctx.volumes || []).forEach((vol) => {
     if (vol.State !== 'in-use') {
       return;
@@ -970,7 +970,7 @@ export {
   _getBudrComplianceCounts
 };
 
-// State — clean names + setters
+// State - clean names + setters
 export {
   budrFindings,
   budrAssessments,

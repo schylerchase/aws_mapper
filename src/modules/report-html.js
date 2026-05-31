@@ -1,4 +1,4 @@
-// Report HTML generators — builds HTML sections for the assessment report.
+// Report HTML generators - builds HTML sections for the assessment report.
 // Extracted from app-core.js REPORT BUILDER region.
 // Functions produce HTML strings consumed by the report preview/export flow.
 
@@ -320,31 +320,31 @@ export const _complianceRefs = {
   },
   CKV_AWS_79: {
     url: 'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html',
-    ref: 'Checkov CKV_AWS_79 \u2014 IMDSv2'
+    ref: 'Checkov CKV_AWS_79 - IMDSv2'
   },
   CKV_AWS_126: {
     url: 'https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html',
-    ref: 'Checkov CKV_AWS_126 \u2014 VPC Flow Logs'
+    ref: 'Checkov CKV_AWS_126 - VPC Flow Logs'
   },
   CKV_AWS_21: {
     url: 'https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html',
-    ref: 'Checkov CKV_AWS_21 \u2014 S3 Versioning'
+    ref: 'Checkov CKV_AWS_21 - S3 Versioning'
   },
   CKV_AWS_18: {
     url: 'https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerLogs.html',
-    ref: 'Checkov CKV_AWS_18 \u2014 S3 Access Logging'
+    ref: 'Checkov CKV_AWS_18 - S3 Access Logging'
   },
   CKV_AWS_26: {
     url: 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html',
-    ref: 'Checkov CKV_AWS_26 \u2014 RDS Backup Retention'
+    ref: 'Checkov CKV_AWS_26 - RDS Backup Retention'
   },
   CKV_AWS_45: {
     url: 'https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html',
-    ref: 'Checkov CKV_AWS_45 \u2014 Lambda Env Encryption'
+    ref: 'Checkov CKV_AWS_45 - Lambda Env Encryption'
   },
   CKV_AWS_50: {
     url: 'https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html',
-    ref: 'Checkov CKV_AWS_50 \u2014 Lambda X-Ray Tracing'
+    ref: 'Checkov CKV_AWS_50 - Lambda X-Ray Tracing'
   },
   'BUDR-HA-1': {
     url: 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html',
@@ -1467,7 +1467,7 @@ export function _rptSecurityPosture(ctx, opts) {
   }).length;
   h +=
     '<tr><td>KMS Keys</td><td>' +
-    stp(custKeys.length > 0 && rotKeys === custKeys.length, rotKeys > 0) +
+    stp(custKeys.length === 0 || rotKeys === custKeys.length, rotKeys > 0) +
     '</td><td>' +
     esc(rotKeys + ' of ' + custKeys.length + ' with rotation') +
     '</td></tr>';
@@ -1476,7 +1476,7 @@ export function _rptSecurityPosture(ctx, opts) {
   }).length;
   h +=
     '<tr><td>Secrets Manager</td><td>' +
-    stp(secs.length > 0 && secRot === secs.length, secRot > 0) +
+    stp(secs.length === 0 || secRot === secs.length, secRot > 0) +
     '</td><td>' +
     esc(secRot + ' of ' + secs.length + ' with rotation') +
     '</td></tr>';
@@ -1642,7 +1642,7 @@ export function _rptAppSummary(ctx, opts) {
       }
     });
     const tier = app.tier || bestTier;
-    appRows.push({ name: app.name, type: app.type || '\u2014', tier: tier, matched: matched });
+    appRows.push({ name: app.name, type: app.type || '-', tier: tier, matched: matched });
   });
   appRows.sort(function (a, b) {
     return (tierPri[a.tier] || 99) - (tierPri[b.tier] || 99);
@@ -1714,7 +1714,7 @@ export function _rptAppSummary(ctx, opts) {
         '</td>';
       h +=
         '<td style="padding:3px 8px;border-bottom:1px solid #1e293b">' +
-        esc(r.vpcName || '\u2014') +
+        esc(r.vpcName || '-') +
         '</td></tr>';
     });
     h += '</tbody></table>';
@@ -2158,10 +2158,10 @@ export function _rptIAMReview(ctx, opts) {
       '<table><thead><tr><th>Name</th><th>Type</th><th>Created</th><th>Last Used</th><th>Policies</th><th>Findings</th></tr></thead><tbody>';
     admins.forEach(function (r) {
       h += '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.type) + '</td>';
-      h += '<td>' + (r.created ? r.created.toISOString().split('T')[0] : '\u2014') + '</td>';
+      h += '<td>' + (r.created ? r.created.toISOString().split('T')[0] : '-') + '</td>';
       h += '<td>' + (r.lastUsed ? r.lastUsed.toISOString().split('T')[0] : 'Never') + '</td>';
       h += '<td>' + r.policies + '</td>';
-      h += '<td>' + (r.findings.length || '\u2014') + '</td></tr>';
+      h += '<td>' + r.findings.length + '</td></tr>';
     });
     h += '</tbody></table>';
   }
@@ -2175,7 +2175,7 @@ export function _rptIAMReview(ctx, opts) {
     crossAcct.forEach(function (r) {
       h += '<tr><td>' + esc(r.name) + '</td><td>' + r.crossAccounts.map(esc).join(', ') + '</td>';
       h += '<td>' + (r.isAdmin ? '<span style="color:#ef4444">Yes</span>' : 'No') + '</td>';
-      h += '<td>' + (r.findings.length || '\u2014') + '</td></tr>';
+      h += '<td>' + r.findings.length + '</td></tr>';
     });
     h += '</tbody></table>';
   }
@@ -2195,7 +2195,7 @@ export function _rptIAMReview(ctx, opts) {
       h += '<td>' + (u.hasConsole ? 'Yes' : 'No') + '</td>';
       h += '<td>' + (u.activeKeys || 0) + '</td>';
       h += '<td>' + (u.isAdmin ? '<span style="color:#ef4444">Yes</span>' : 'No') + '</td>';
-      h += '<td>' + (u.findings.length || '\u2014') + '</td></tr>';
+      h += '<td>' + u.findings.length + '</td></tr>';
     });
     h += '</tbody></table>';
   }
@@ -2312,6 +2312,7 @@ export function _rptActionPlan(ctx, opts) {
   let h =
     '<section class="rpt-section" id="s-action-plan"><h2 class="rpt-section-toggle">Action Plan</h2>';
   const view = window._buildComplianceView({
+    findings: window._complianceFindings || [],
     accountFilter: _rptGetAccountFilter(),
     includeMuted: true
   });
@@ -2415,7 +2416,7 @@ export function _rptIaCRecs(ctx, opts) {
     h += '<div class="code-block">';
     h +=
       '<span class="sev-badge sev-' + esc(item.severity) + '">' + esc(item.severity) + '</span> ';
-    h += esc(item.control) + ' &mdash; ' + esc(item.resourceName || item.resource);
+    h += esc(item.control) + ' - ' + esc(item.resourceName || item.resource);
     h += '<br><br><strong>Finding:</strong> ' + esc(item.message);
     h += '<br><strong>Remediation:</strong> ' + esc(item.remediation);
     h += '</div>';

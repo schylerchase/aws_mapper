@@ -1786,6 +1786,10 @@
   /* === UNIFIED DASHBOARD SHELL === */
   .udash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;background:var(--bg-primary);display:none;flex-direction:column;font-family:var(--font-ui)}
   .udash.open{display:flex}
+  /* Shift the report dashboard off the open left sidebar instead of covering it */
+  .sidebar:not(.collapsed)~.main .udash.open{left:360px;transition:left .15s ease}
+  @media (max-width:1024px){.sidebar:not(.collapsed)~.main .udash.open{left:300px}}
+  @media (max-width:768px){.sidebar:not(.collapsed)~.main .udash.open{left:0}}
   .udash-hdr{display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-secondary);padding:0 12px;flex-shrink:0;height:42px}
   .udash-tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
   .udash-acct-bar{display:flex;align-items:center;gap:4px;margin-right:8px;flex-shrink:0}

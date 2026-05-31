@@ -1,4 +1,4 @@
-// Governance & Inventory — state and pure logic
+// Governance & Inventory - state and pure logic
 // DOM rendering functions (_renderClassificationTab, _renderIAMTab, _openRulesEditor)
 // live in app-core.js due to dual-state and unified dashboard coupling.
 
@@ -113,7 +113,7 @@ const _DEFAULT_CLASS_RULES = [
   { pattern: 'alb|elb|loadbalancer|nlb', scope: 'type', tier: 'high', weight: 65 },
   { pattern: 'lambda|fargate|ecs', scope: 'type', tier: 'medium', weight: 40 },
   { pattern: 'bastion|jump|ssh', scope: 'name', tier: 'medium', weight: 35 },
-  // Tag-based rules — Environment tag is strongest classification signal
+  // Tag-based rules - Environment tag is strongest classification signal
   { pattern: 'prod|production|prd', scope: 'tag:Environment', tier: 'critical', weight: 120 },
   { pattern: 'staging|stage|uat|qa', scope: 'tag:Environment', tier: 'medium', weight: 110 },
   { pattern: 'dev|develop|sandbox|test', scope: 'tag:Environment', tier: 'low', weight: 110 }
@@ -1304,7 +1304,7 @@ function prepareIAMReviewData(iamData) {
       lastUsed: lastUsed,
       isAdmin: role._isAdmin || false,
       hasWildcard: role._hasWildcard || false,
-      crossAccounts: crossAccts,
+      crossAccounts: Array.from(new Set(crossAccts)),
       policies: policyCount,
       policyNames: policyNames,
       permBoundary: role.PermissionsBoundary ? role.PermissionsBoundary.PermissionsBoundaryArn : '',
