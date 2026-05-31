@@ -1,6 +1,16 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch } from '../../src/modules/utils.js';
+import {
+  safeParse,
+  ext,
+  esc,
+  gn,
+  sid,
+  clsGw,
+  isShared,
+  gcv,
+  gch
+} from '../../src/modules/utils.js';
 
 describe('safeParse', () => {
   it('parses valid JSON', () => {
@@ -41,7 +51,10 @@ describe('ext', () => {
 
 describe('esc', () => {
   it('escapes HTML entities', () => {
-    assert.equal(esc('<script>alert("xss")</script>'), '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+    assert.equal(
+      esc('<script>alert("xss")</script>'),
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+    );
   });
   it('escapes ampersand', () => {
     assert.equal(esc('a & b'), 'a &amp; b');

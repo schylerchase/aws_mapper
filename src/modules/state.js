@@ -13,9 +13,9 @@ export let mapG = null;
 export let gwNames = {};
 
 // UI state — affects sidebar, canvas, and detail panel rendering
-export let detailLevel = 0;   // 0=collapsed, 1=normal, 2=expanded
+export let detailLevel = 0; // 0=collapsed, 1=normal, 2=expanded
 export let showNested = false; // topology nesting toggle
-export let gTxtScale = 1.0;   // global text scale factor
+export let gTxtScale = 1.0; // global text scale factor
 
 // Compliance findings — core data used by dashboard, exports, and reports
 export let complianceFindings = [];
@@ -24,13 +24,33 @@ export let complianceFindings = [];
 export let sb = null;
 
 // Setters — ES modules can't reassign imported bindings, so consumers use these
-export function setRlCtx(v) { rlCtx = v; }
-export function setMapSvg(v) { mapSvg = v; }
-export function setMapZoom(v) { mapZoom = v; }
-export function setMapG(v) { mapG = v; }
-export function setGwNames(v) { gwNames = v; }
-export function setDetailLevel(v) { detailLevel = v; }
-export function setShowNested(v) { showNested = v; }
-export function setGTxtScale(v) { gTxtScale = v; }
-export function setComplianceFindings(v) { complianceFindings = v; }
-export function setSb(v) { sb = v; }
+export function setRlCtx(v) {
+  rlCtx = v;
+}
+export function setMapSvg(v) {
+  mapSvg = v;
+}
+export function setMapZoom(v) {
+  mapZoom = v;
+}
+export function setMapG(v) {
+  mapG = v;
+}
+export function setGwNames(v) {
+  gwNames = v;
+}
+export function setDetailLevel(v) {
+  detailLevel = v;
+}
+export function setShowNested(v) {
+  showNested = v;
+}
+export function setGTxtScale(v) {
+  gTxtScale = v;
+}
+export function setComplianceFindings(v) {
+  complianceFindings = v;
+}
+export function setSb(v) {
+  sb = v;
+}

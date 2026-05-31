@@ -11,6 +11,7 @@ out/
 .DS_Store
 aws-export-*/
 docs/
+OPTIMIZATION_PLAN.md
 delete-me/
 AGENTS.md
 CLAUDE.md

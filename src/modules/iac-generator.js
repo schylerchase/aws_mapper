@@ -7,16 +7,28 @@ import { sanitizeName } from './export-utils.js';
 
 // === Module State ===
 let _iacType = 'terraform'; // 'terraform' | 'cloudformation'
-let _iacOutput = '';         // raw generated text
-let _tfIdMap = {};           // resource ID -> TF name mapping
+let _iacOutput = ''; // raw generated text
+let _tfIdMap = {}; // resource ID -> TF name mapping
 
 // === State Accessors ===
-export function getIacType() { return _iacType; }
-export function setIacType(v) { _iacType = v; }
-export function getIacOutput() { return _iacOutput; }
-export function setIacOutput(v) { _iacOutput = v; }
-export function getTfIdMap() { return _tfIdMap; }
-export function setTfIdMap(v) { _tfIdMap = v; }
+export function getIacType() {
+  return _iacType;
+}
+export function setIacType(v) {
+  _iacType = v;
+}
+export function getIacOutput() {
+  return _iacOutput;
+}
+export function setIacOutput(v) {
+  _iacOutput = v;
+}
+export function getTfIdMap() {
+  return _tfIdMap;
+}
+export function setTfIdMap(v) {
+  _tfIdMap = v;
+}
 
 // === Pure Logic ===
 
@@ -24,8 +36,15 @@ export function setTfIdMap(v) { _tfIdMap = v; }
  * Extract a TF resource name from a resource's Name tag or ID fields.
  */
 export function _tfName(resource, prefix) {
-  const n = resource.Tags && resource.Tags.find(t => t.Key === 'Name');
-  const raw = n ? n.Value : (resource.VpcId || resource.SubnetId || resource.GroupId || resource.InstanceId || prefix || 'res');
+  const n = resource.Tags && resource.Tags.find((t) => t.Key === 'Name');
+  const raw = n
+    ? n.Value
+    : resource.VpcId ||
+      resource.SubnetId ||
+      resource.GroupId ||
+      resource.InstanceId ||
+      prefix ||
+      'res';
   return sanitizeName(raw);
 }
 
@@ -39,7 +58,9 @@ export function _hclMapKey(s) {
 }
 
 export function _hclComment(s) {
-  return String(s == null ? '' : s).replace(/[\r\n]+/g, ' ').trim();
+  return String(s == null ? '' : s)
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
 }
 
 /**
@@ -47,7 +68,9 @@ export function _hclComment(s) {
  * Returns the mapped TF resource ref if known, otherwise a quoted literal.
  */
 export function _tfRef(id, attr) {
-  if (_tfIdMap[id]) return _tfIdMap[id] + '.' + attr;
+  if (_tfIdMap[id]) {
+    return _tfIdMap[id] + '.' + attr;
+  }
   return _hclString(id);
 }
 
@@ -57,38 +80,53 @@ export function _tfRef(id, attr) {
  */
 export function detectCircularSGs(sgs) {
   const graph = {};
-  sgs.forEach(sg => {
+  sgs.forEach((sg) => {
     graph[sg.GroupId] = new Set();
-    (sg.IpPermissions || []).concat(sg.IpPermissionsEgress || []).forEach(rule => {
-      (rule.UserIdGroupPairs || []).forEach(pair => {
-        if (pair.GroupId && pair.GroupId !== sg.GroupId) graph[sg.GroupId].add(pair.GroupId);
+    (sg.IpPermissions || []).concat(sg.IpPermissionsEgress || []).forEach((rule) => {
+      (rule.UserIdGroupPairs || []).forEach((pair) => {
+        if (pair.GroupId && pair.GroupId !== sg.GroupId) {
+          graph[sg.GroupId].add(pair.GroupId);
+        }
       });
     });
   });
   const cycles = [];
-  const visited = new Set(), inStack = new Set();
+  const visited = new Set(),
+    inStack = new Set();
   function dfs(node, path) {
     if (inStack.has(node)) {
       const ci = path.indexOf(node);
-      if (ci >= 0) cycles.push(path.slice(ci));
+      if (ci >= 0) {
+        cycles.push(path.slice(ci));
+      }
       return;
     }
-    if (visited.has(node)) return;
-    visited.add(node); inStack.add(node); path.push(node);
-    (graph[node] || new Set()).forEach(nb => dfs(nb, [...path]));
+    if (visited.has(node)) {
+      return;
+    }
+    visited.add(node);
+    inStack.add(node);
+    path.push(node);
+    (graph[node] || new Set()).forEach((nb) => dfs(nb, [...path]));
     inStack.delete(node);
   }
-  Object.keys(graph).forEach(n => { if (!visited.has(n)) dfs(n, []); });
+  Object.keys(graph).forEach((n) => {
+    if (!visited.has(n)) {
+      dfs(n, []);
+    }
+  });
   return cycles;
 }
 
 // --- HCL tag block writer ---
 export function _writeTags(lines, resource) {
-  const tags = (resource.Tags || []).filter(t => t.Key !== 'aws:');
-  if (!tags.length) return;
+  const tags = (resource.Tags || []).filter((t) => t.Key !== 'aws:');
+  if (!tags.length) {
+    return;
+  }
   lines.push('');
   lines.push('  tags = {');
-  tags.forEach(t => {
+  tags.forEach((t) => {
     lines.push('    ' + _hclMapKey(t.Key) + ' = ' + _hclString(t.Value || ''));
   });
   lines.push('  }');
@@ -102,14 +140,22 @@ export function _writeSGRule(lines, rule) {
   lines.push('    protocol    = ' + _hclString(proto));
   lines.push('    from_port   = ' + fromPort);
   lines.push('    to_port     = ' + toPort);
-  const cidrs = (rule.IpRanges || []).map(r => r.CidrIp).filter(Boolean);
-  const v6cidrs = (rule.Ipv6Ranges || []).map(r => r.CidrIpv6).filter(Boolean);
-  const sgRefs = (rule.UserIdGroupPairs || []).map(p => p.GroupId).filter(Boolean);
-  if (cidrs.length) lines.push('    cidr_blocks = ' + JSON.stringify(cidrs));
-  if (v6cidrs.length) lines.push('    ipv6_cidr_blocks = ' + JSON.stringify(v6cidrs));
-  if (sgRefs.length) lines.push('    security_groups = [' + sgRefs.map(s => _tfRef(s, 'id')).join(', ') + ']');
-  const desc = (rule.IpRanges || []).find(r => r.Description);
-  if (desc) lines.push('    description = ' + _hclString(desc.Description || ''));
+  const cidrs = (rule.IpRanges || []).map((r) => r.CidrIp).filter(Boolean);
+  const v6cidrs = (rule.Ipv6Ranges || []).map((r) => r.CidrIpv6).filter(Boolean);
+  const sgRefs = (rule.UserIdGroupPairs || []).map((p) => p.GroupId).filter(Boolean);
+  if (cidrs.length) {
+    lines.push('    cidr_blocks = ' + JSON.stringify(cidrs));
+  }
+  if (v6cidrs.length) {
+    lines.push('    ipv6_cidr_blocks = ' + JSON.stringify(v6cidrs));
+  }
+  if (sgRefs.length) {
+    lines.push('    security_groups = [' + sgRefs.map((s) => _tfRef(s, 'id')).join(', ') + ']');
+  }
+  const desc = (rule.IpRanges || []).find((r) => r.Description);
+  if (desc) {
+    lines.push('    description = ' + _hclString(desc.Description || ''));
+  }
 }
 
 // --- HCL SG rule writer (flat/standalone) ---
@@ -120,10 +166,14 @@ export function _writeSGRuleFlat(lines, rule) {
   lines.push('  protocol         = ' + _hclString(proto));
   lines.push('  from_port        = ' + fromPort);
   lines.push('  to_port          = ' + toPort);
-  const cidrs = (rule.IpRanges || []).map(r => r.CidrIp).filter(Boolean);
-  const sgRefs = (rule.UserIdGroupPairs || []).map(p => p.GroupId).filter(Boolean);
-  if (cidrs.length) lines.push('  cidr_blocks      = ' + JSON.stringify(cidrs));
-  if (sgRefs.length && sgRefs[0]) lines.push('  source_security_group_id = ' + _tfRef(sgRefs[0], 'id'));
+  const cidrs = (rule.IpRanges || []).map((r) => r.CidrIp).filter(Boolean);
+  const sgRefs = (rule.UserIdGroupPairs || []).map((p) => p.GroupId).filter(Boolean);
+  if (cidrs.length) {
+    lines.push('  cidr_blocks      = ' + JSON.stringify(cidrs));
+  }
+  if (sgRefs.length && sgRefs[0]) {
+    lines.push('  source_security_group_id = ' + _tfRef(sgRefs[0], 'id'));
+  }
 }
 
 /**
@@ -131,7 +181,9 @@ export function _writeSGRuleFlat(lines, rule) {
  * Pure function: takes a context object and options, returns generated code + metadata.
  */
 export function generateTerraform(ctx, opts) {
-  if (!ctx || !ctx.vpcs) return '# No data loaded';
+  if (!ctx || !ctx.vpcs) {
+    return '# No data loaded';
+  }
   _tfIdMap = {};
   const lines = [];
   const vars = [];
@@ -142,47 +194,63 @@ export function generateTerraform(ctx, opts) {
   const includeVars = opts.includeVars !== false;
 
   // Filter by scope
-  const vpcs = scopeVpc ? ctx.vpcs.filter(v => v.VpcId === scopeVpc) : ctx.vpcs;
-  const vpcIds = new Set(vpcs.map(v => v.VpcId));
-  const subnets = (ctx.subnets || []).filter(s => vpcIds.has(s.VpcId));
-  const subIds = new Set(subnets.map(s => s.SubnetId));
-  const sgs = (ctx.sgs || []).filter(s => vpcIds.has(s.VpcId));
-  const rts = (ctx.rts || []).filter(r => {
-    const assoc = (r.Associations || []);
-    return assoc.some(a => vpcIds.has(a.SubnetId ? subnets.find(s => s.SubnetId === a.SubnetId)?.VpcId : null)) || vpcIds.has(r.VpcId);
+  const vpcs = scopeVpc ? ctx.vpcs.filter((v) => v.VpcId === scopeVpc) : ctx.vpcs;
+  const vpcIds = new Set(vpcs.map((v) => v.VpcId));
+  const subnets = (ctx.subnets || []).filter((s) => vpcIds.has(s.VpcId));
+  const subIds = new Set(subnets.map((s) => s.SubnetId));
+  const sgs = (ctx.sgs || []).filter((s) => vpcIds.has(s.VpcId));
+  const rts = (ctx.rts || []).filter((r) => {
+    const assoc = r.Associations || [];
+    return (
+      assoc.some((a) =>
+        vpcIds.has(a.SubnetId ? subnets.find((s) => s.SubnetId === a.SubnetId)?.VpcId : null)
+      ) || vpcIds.has(r.VpcId)
+    );
   });
-  const nacls = (ctx.nacls || []).filter(n => vpcIds.has(n.VpcId));
-  const igws = (ctx.igws || []).filter(g => (g.Attachments || []).some(a => vpcIds.has(a.VpcId)));
-  const nats = (ctx.nats || []).filter(n => vpcIds.has(n.VpcId));
-  const vpces = (ctx.vpces || []).filter(v => vpcIds.has(v.VpcId));
-  const instances = (ctx.instances || []).filter(i => subIds.has(i.SubnetId));
-  const rdsInstances = (ctx.rdsInstances || []).filter(r => {
+  const nacls = (ctx.nacls || []).filter((n) => vpcIds.has(n.VpcId));
+  const igws = (ctx.igws || []).filter((g) =>
+    (g.Attachments || []).some((a) => vpcIds.has(a.VpcId))
+  );
+  const nats = (ctx.nats || []).filter((n) => vpcIds.has(n.VpcId));
+  const vpces = (ctx.vpces || []).filter((v) => vpcIds.has(v.VpcId));
+  const instances = (ctx.instances || []).filter((i) => subIds.has(i.SubnetId));
+  const rdsInstances = (ctx.rdsInstances || []).filter((r) => {
     const sn = r.DBSubnetGroup;
-    return sn && (sn.Subnets || []).some(s => subIds.has(s.SubnetIdentifier));
+    return sn && (sn.Subnets || []).some((s) => subIds.has(s.SubnetIdentifier));
   });
-  const lambdaFns = (ctx.lambdaFns || []).filter(l => {
+  const lambdaFns = (ctx.lambdaFns || []).filter((l) => {
     const vc = l.VpcConfig;
-    return vc && (vc.SubnetIds || []).some(s => subIds.has(s));
+    return vc && (vc.SubnetIds || []).some((s) => subIds.has(s));
   });
-  const ecsServices = (ctx.ecsServices || []).filter(e => {
+  const ecsServices = (ctx.ecsServices || []).filter((e) => {
     const nc = (e.networkConfiguration || {}).awsvpcConfiguration;
-    return nc && (nc.subnets || []).some(s => subIds.has(s));
+    return nc && (nc.subnets || []).some((s) => subIds.has(s));
   });
-  const ecacheClusters = (ctx.ecacheClusters || []).filter(c => c.CacheSubnetGroupName);
-  const redshiftClusters = (ctx.redshiftClusters || []).filter(c => c.ClusterSubnetGroupName);
-  const albs = (ctx.albs || []).filter(a => (a.AvailabilityZones || []).some(az => subIds.has(az.SubnetId)));
-  const volumes = (ctx.volumes || []).filter(v => v.Attachments && v.Attachments.some(a => instances.find(i => i.InstanceId === a.InstanceId)));
-  const s3bk = scopeVpc ? [] : (ctx.s3bk || []);
-  const peerings = (ctx.peerings || []).filter(p => {
-    const a = p.AccepterVpcInfo, r = p.RequesterVpcInfo;
+  const ecacheClusters = (ctx.ecacheClusters || []).filter((c) => c.CacheSubnetGroupName);
+  const redshiftClusters = (ctx.redshiftClusters || []).filter((c) => c.ClusterSubnetGroupName);
+  const albs = (ctx.albs || []).filter((a) =>
+    (a.AvailabilityZones || []).some((az) => subIds.has(az.SubnetId))
+  );
+  const volumes = (ctx.volumes || []).filter(
+    (v) =>
+      v.Attachments &&
+      v.Attachments.some((a) => instances.find((i) => i.InstanceId === a.InstanceId))
+  );
+  const s3bk = scopeVpc ? [] : ctx.s3bk || [];
+  const peerings = (ctx.peerings || []).filter((p) => {
+    const a = p.AccepterVpcInfo,
+      r = p.RequesterVpcInfo;
     return (a && vpcIds.has(a.VpcId)) || (r && vpcIds.has(r.VpcId));
   });
-  const cfDistributions = scopeVpc ? [] : (ctx.cfDistributions || []);
+  const cfDistributions = scopeVpc ? [] : ctx.cfDistributions || [];
 
   // Header
   lines.push('# Generated by AWS Mapper');
   lines.push('# Date: ' + new Date().toISOString().split('T')[0]);
-  lines.push('# Mode: ' + (mode === 'import' ? 'Import Existing' : mode === 'create' ? 'Create New' : 'Full Recreate'));
+  lines.push(
+    '# Mode: ' +
+      (mode === 'import' ? 'Import Existing' : mode === 'create' ? 'Create New' : 'Full Recreate')
+  );
   lines.push('#');
   lines.push('# KNOWN LIMITATIONS - Review before applying:');
   lines.push('# - AMI IDs are region-specific and may need updating');
@@ -216,17 +284,36 @@ export function generateTerraform(ctx, opts) {
 
   // Variables
   if (includeVars) {
-    const region = subnets.length && subnets[0].AvailabilityZone ? subnets[0].AvailabilityZone.replace(/[a-z]$/, '') : 'us-east-1';
+    const region =
+      subnets.length && subnets[0].AvailabilityZone
+        ? subnets[0].AvailabilityZone.replace(/[a-z]$/, '')
+        : 'us-east-1';
     vars.push({ name: 'aws_region', desc: 'AWS Region', type: 'string', def: region });
-    const cidrs = new Set(vpcs.map(v => v.CidrBlock));
-    if (cidrs.size) vars.push({ name: 'vpc_cidrs', desc: 'VPC CIDR blocks', type: 'map(string)', def: null });
-    const azs = new Set(subnets.map(s => s.AvailabilityZone).filter(Boolean));
-    if (azs.size) vars.push({ name: 'availability_zones', desc: 'Availability zones', type: 'list(string)', def: [...azs] });
-    const iTypes = new Set(instances.map(i => i.InstanceType).filter(Boolean));
-    if (iTypes.size) vars.push({ name: 'instance_types', desc: 'EC2 instance types in use', type: 'map(string)', def: null });
+    const cidrs = new Set(vpcs.map((v) => v.CidrBlock));
+    if (cidrs.size) {
+      vars.push({ name: 'vpc_cidrs', desc: 'VPC CIDR blocks', type: 'map(string)', def: null });
+    }
+    const azs = new Set(subnets.map((s) => s.AvailabilityZone).filter(Boolean));
+    if (azs.size) {
+      vars.push({
+        name: 'availability_zones',
+        desc: 'Availability zones',
+        type: 'list(string)',
+        def: [...azs]
+      });
+    }
+    const iTypes = new Set(instances.map((i) => i.InstanceType).filter(Boolean));
+    if (iTypes.size) {
+      vars.push({
+        name: 'instance_types',
+        desc: 'EC2 instance types in use',
+        type: 'map(string)',
+        def: null
+      });
+    }
   }
 
-  vars.forEach(v => {
+  vars.forEach((v) => {
     lines.push('variable "' + v.name + '" {');
     lines.push('  description = ' + _hclString(v.desc));
     lines.push('  type        = ' + v.type);
@@ -244,74 +331,114 @@ export function generateTerraform(ctx, opts) {
   // Detect circular SGs
   const sgCycles = detectCircularSGs(sgs);
   const cyclicSgIds = new Set();
-  sgCycles.forEach(c => c.forEach(id => cyclicSgIds.add(id)));
+  sgCycles.forEach((c) => c.forEach((id) => cyclicSgIds.add(id)));
 
   // --- VPCs ---
-  vpcs.forEach(vpc => {
+  vpcs.forEach((vpc) => {
     const name = _tfName(vpc, 'vpc');
     const resName = 'aws_vpc.' + name;
     _tfIdMap[vpc.VpcId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: vpc.VpcId });
-    lines.push('# VPC: ' + _hclComment(vpc.Tags && vpc.Tags.find(t => t.Key === 'Name') ? vpc.Tags.find(t => t.Key === 'Name').Value : vpc.VpcId));
+    if (mode === 'import') {
+      imports.push({ to: resName, id: vpc.VpcId });
+    }
+    lines.push(
+      '# VPC: ' +
+        _hclComment(
+          vpc.Tags && vpc.Tags.find((t) => t.Key === 'Name')
+            ? vpc.Tags.find((t) => t.Key === 'Name').Value
+            : vpc.VpcId
+        )
+    );
     lines.push('resource "aws_vpc" "' + name + '" {');
     lines.push('  cidr_block           = ' + _hclString(vpc.CidrBlock));
     lines.push('  enable_dns_support   = ' + (vpc.EnableDnsSupport !== false ? 'true' : 'false'));
     lines.push('  enable_dns_hostnames = ' + (vpc.EnableDnsHostnames === true ? 'true' : 'false'));
-    if (vpc.InstanceTenancy && vpc.InstanceTenancy !== 'default') lines.push('  instance_tenancy     = ' + _hclString(vpc.InstanceTenancy));
+    if (vpc.InstanceTenancy && vpc.InstanceTenancy !== 'default') {
+      lines.push('  instance_tenancy     = ' + _hclString(vpc.InstanceTenancy));
+    }
     _writeTags(lines, vpc);
     lines.push('}');
     lines.push('');
   });
 
   // --- IGWs ---
-  igws.forEach(igw => {
+  igws.forEach((igw) => {
     const name = _tfName(igw, 'igw');
     const resName = 'aws_internet_gateway.' + name;
     _tfIdMap[igw.InternetGatewayId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: igw.InternetGatewayId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: igw.InternetGatewayId });
+    }
     lines.push('resource "aws_internet_gateway" "' + name + '" {');
     const att = (igw.Attachments || [])[0];
-    if (att) lines.push('  vpc_id = ' + _tfRef(att.VpcId, 'id'));
+    if (att) {
+      lines.push('  vpc_id = ' + _tfRef(att.VpcId, 'id'));
+    }
     _writeTags(lines, igw);
     lines.push('}');
     lines.push('');
   });
 
   // --- Subnets ---
-  subnets.forEach(sub => {
+  subnets.forEach((sub) => {
     const name = _tfName(sub, 'subnet');
     const resName = 'aws_subnet.' + name;
     _tfIdMap[sub.SubnetId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: sub.SubnetId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: sub.SubnetId });
+    }
     lines.push('resource "aws_subnet" "' + name + '" {');
     lines.push('  vpc_id            = ' + _tfRef(sub.VpcId, 'id'));
     lines.push('  cidr_block        = ' + _hclString(sub.CidrBlock));
-    if (sub.AvailabilityZone) lines.push('  availability_zone = ' + _hclString(sub.AvailabilityZone));
-    if (sub.MapPublicIpOnLaunch) lines.push('  map_public_ip_on_launch = true');
+    if (sub.AvailabilityZone) {
+      lines.push('  availability_zone = ' + _hclString(sub.AvailabilityZone));
+    }
+    if (sub.MapPublicIpOnLaunch) {
+      lines.push('  map_public_ip_on_launch = true');
+    }
     _writeTags(lines, sub);
     lines.push('}');
     lines.push('');
   });
 
   // --- Route Tables ---
-  rts.forEach(rt => {
+  rts.forEach((rt) => {
     const name = _tfName(rt, 'rt');
     const resName = 'aws_route_table.' + name;
     _tfIdMap[rt.RouteTableId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: rt.RouteTableId });
-    const vpcId = rt.VpcId || (rt.Associations && rt.Associations[0] ? rt.Associations[0].VpcId : null);
+    if (mode === 'import') {
+      imports.push({ to: resName, id: rt.RouteTableId });
+    }
+    const vpcId =
+      rt.VpcId || (rt.Associations && rt.Associations[0] ? rt.Associations[0].VpcId : null);
     lines.push('resource "aws_route_table" "' + name + '" {');
-    if (vpcId) lines.push('  vpc_id = ' + _tfRef(vpcId, 'id'));
-    (rt.Routes || []).forEach(route => {
-      if (route.GatewayId === 'local') return;
+    if (vpcId) {
+      lines.push('  vpc_id = ' + _tfRef(vpcId, 'id'));
+    }
+    (rt.Routes || []).forEach((route) => {
+      if (route.GatewayId === 'local') {
+        return;
+      }
       lines.push('');
       lines.push('  route {');
-      if (route.DestinationCidrBlock) lines.push('    cidr_block = ' + _hclString(route.DestinationCidrBlock));
-      if (route.GatewayId && route.GatewayId !== 'local') lines.push('    gateway_id = ' + _tfRef(route.GatewayId, 'id'));
-      if (route.NatGatewayId) lines.push('    nat_gateway_id = ' + _tfRef(route.NatGatewayId, 'id'));
-      if (route.VpcPeeringConnectionId) lines.push('    vpc_peering_connection_id = ' + _tfRef(route.VpcPeeringConnectionId, 'id'));
-      if (route.TransitGatewayId) lines.push('    transit_gateway_id = ' + _hclString(route.TransitGatewayId));
-      if (route.VpcEndpointId) lines.push('    vpc_endpoint_id = ' + _tfRef(route.VpcEndpointId, 'id'));
+      if (route.DestinationCidrBlock) {
+        lines.push('    cidr_block = ' + _hclString(route.DestinationCidrBlock));
+      }
+      if (route.GatewayId && route.GatewayId !== 'local') {
+        lines.push('    gateway_id = ' + _tfRef(route.GatewayId, 'id'));
+      }
+      if (route.NatGatewayId) {
+        lines.push('    nat_gateway_id = ' + _tfRef(route.NatGatewayId, 'id'));
+      }
+      if (route.VpcPeeringConnectionId) {
+        lines.push('    vpc_peering_connection_id = ' + _tfRef(route.VpcPeeringConnectionId, 'id'));
+      }
+      if (route.TransitGatewayId) {
+        lines.push('    transit_gateway_id = ' + _hclString(route.TransitGatewayId));
+      }
+      if (route.VpcEndpointId) {
+        lines.push('    vpc_endpoint_id = ' + _tfRef(route.VpcEndpointId, 'id'));
+      }
       lines.push('  }');
     });
     _writeTags(lines, rt);
@@ -319,8 +446,12 @@ export function generateTerraform(ctx, opts) {
     lines.push('');
     // RT associations
     (rt.Associations || []).forEach((assoc, ai) => {
-      if (assoc.Main) return;
-      if (!assoc.SubnetId) return;
+      if (assoc.Main) {
+        return;
+      }
+      if (!assoc.SubnetId) {
+        return;
+      }
       const aname = name + '_assoc_' + ai;
       lines.push('resource "aws_route_table_association" "' + aname + '" {');
       lines.push('  subnet_id      = ' + _tfRef(assoc.SubnetId, 'id'));
@@ -331,15 +462,21 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- NAT Gateways ---
-  nats.forEach(nat => {
+  nats.forEach((nat) => {
     const name = _tfName(nat, 'nat');
     const resName = 'aws_nat_gateway.' + name;
     _tfIdMap[nat.NatGatewayId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: nat.NatGatewayId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: nat.NatGatewayId });
+    }
     lines.push('resource "aws_nat_gateway" "' + name + '" {');
-    if (nat.SubnetId) lines.push('  subnet_id     = ' + _tfRef(nat.SubnetId, 'id'));
+    if (nat.SubnetId) {
+      lines.push('  subnet_id     = ' + _tfRef(nat.SubnetId, 'id'));
+    }
     const eip = (nat.NatGatewayAddresses || [])[0];
-    if (eip && eip.AllocationId) lines.push('  allocation_id = ' + _hclString(eip.AllocationId) + ' # EIP allocation');
+    if (eip && eip.AllocationId) {
+      lines.push('  allocation_id = ' + _hclString(eip.AllocationId) + ' # EIP allocation');
+    }
     lines.push('  connectivity_type = ' + _hclString(nat.ConnectivityType || 'public'));
     _writeTags(lines, nat);
     lines.push('}');
@@ -347,25 +484,31 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- Security Groups ---
-  sgs.forEach(sg => {
+  sgs.forEach((sg) => {
     const name = _tfName(sg, 'sg');
     const resName = 'aws_security_group.' + name;
     _tfIdMap[sg.GroupId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: sg.GroupId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: sg.GroupId });
+    }
     const isCyclic = cyclicSgIds.has(sg.GroupId);
-    if (isCyclic) lines.push('# Circular SG reference detected - rules split into separate resources');
+    if (isCyclic) {
+      lines.push('# Circular SG reference detected - rules split into separate resources');
+    }
     lines.push('resource "aws_security_group" "' + name + '" {');
     lines.push('  name        = ' + _hclString(sg.GroupName || name));
     lines.push('  description = ' + _hclString(sg.Description || 'Managed by Terraform'));
-    if (sg.VpcId) lines.push('  vpc_id      = ' + _tfRef(sg.VpcId, 'id'));
+    if (sg.VpcId) {
+      lines.push('  vpc_id      = ' + _tfRef(sg.VpcId, 'id'));
+    }
     if (!isCyclic) {
-      (sg.IpPermissions || []).forEach(rule => {
+      (sg.IpPermissions || []).forEach((rule) => {
         lines.push('');
         lines.push('  ingress {');
         _writeSGRule(lines, rule);
         lines.push('  }');
       });
-      (sg.IpPermissionsEgress || []).forEach(rule => {
+      (sg.IpPermissionsEgress || []).forEach((rule) => {
         lines.push('');
         lines.push('  egress {');
         _writeSGRule(lines, rule);
@@ -397,24 +540,34 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- NACLs ---
-  nacls.forEach(nacl => {
+  nacls.forEach((nacl) => {
     const name = _tfName(nacl, 'nacl');
     const resName = 'aws_network_acl.' + name;
     _tfIdMap[nacl.NetworkAclId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: nacl.NetworkAclId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: nacl.NetworkAclId });
+    }
     lines.push('resource "aws_network_acl" "' + name + '" {');
-    if (nacl.VpcId) lines.push('  vpc_id     = ' + _tfRef(nacl.VpcId, 'id'));
-    const assocSubs = (nacl.Associations || []).map(a => a.SubnetId).filter(Boolean);
-    if (assocSubs.length) lines.push('  subnet_ids = [' + assocSubs.map(s => _tfRef(s, 'id')).join(', ') + ']');
-    (nacl.Entries || []).forEach(entry => {
-      if (entry.RuleNumber === 32767) return; // default deny
+    if (nacl.VpcId) {
+      lines.push('  vpc_id     = ' + _tfRef(nacl.VpcId, 'id'));
+    }
+    const assocSubs = (nacl.Associations || []).map((a) => a.SubnetId).filter(Boolean);
+    if (assocSubs.length) {
+      lines.push('  subnet_ids = [' + assocSubs.map((s) => _tfRef(s, 'id')).join(', ') + ']');
+    }
+    (nacl.Entries || []).forEach((entry) => {
+      if (entry.RuleNumber === 32767) {
+        return;
+      } // default deny
       const dir = entry.Egress ? 'egress' : 'ingress';
       lines.push('');
       lines.push('  ' + dir + ' {');
       lines.push('    rule_no    = ' + entry.RuleNumber);
       lines.push('    protocol   = ' + _hclString(entry.Protocol));
       lines.push('    action     = ' + _hclString(entry.RuleAction || 'allow'));
-      if (entry.CidrBlock) lines.push('    cidr_block = ' + _hclString(entry.CidrBlock));
+      if (entry.CidrBlock) {
+        lines.push('    cidr_block = ' + _hclString(entry.CidrBlock));
+      }
       if (entry.PortRange) {
         lines.push('    from_port  = ' + (entry.PortRange.From || 0));
         lines.push('    to_port    = ' + (entry.PortRange.To || 0));
@@ -427,20 +580,32 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- VPC Endpoints ---
-  vpces.forEach(vpce => {
+  vpces.forEach((vpce) => {
     const name = _tfName(vpce, 'vpce');
     const resName = 'aws_vpc_endpoint.' + name;
     _tfIdMap[vpce.VpcEndpointId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: vpce.VpcEndpointId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: vpce.VpcEndpointId });
+    }
     lines.push('resource "aws_vpc_endpoint" "' + name + '" {');
-    if (vpce.VpcId) lines.push('  vpc_id            = ' + _tfRef(vpce.VpcId, 'id'));
-    if (vpce.ServiceName) lines.push('  service_name      = ' + _hclString(vpce.ServiceName));
-    if (vpce.VpcEndpointType) lines.push('  vpc_endpoint_type = ' + _hclString(vpce.VpcEndpointType));
+    if (vpce.VpcId) {
+      lines.push('  vpc_id            = ' + _tfRef(vpce.VpcId, 'id'));
+    }
+    if (vpce.ServiceName) {
+      lines.push('  service_name      = ' + _hclString(vpce.ServiceName));
+    }
+    if (vpce.VpcEndpointType) {
+      lines.push('  vpc_endpoint_type = ' + _hclString(vpce.VpcEndpointType));
+    }
     if (vpce.VpcEndpointType === 'Interface' && vpce.SubnetIds && vpce.SubnetIds.length) {
-      lines.push('  subnet_ids        = [' + vpce.SubnetIds.map(s => _tfRef(s, 'id')).join(', ') + ']');
+      lines.push(
+        '  subnet_ids        = [' + vpce.SubnetIds.map((s) => _tfRef(s, 'id')).join(', ') + ']'
+      );
     }
     if (vpce.RouteTableIds && vpce.RouteTableIds.length) {
-      lines.push('  route_table_ids   = [' + vpce.RouteTableIds.map(r => _tfRef(r, 'id')).join(', ') + ']');
+      lines.push(
+        '  route_table_ids   = [' + vpce.RouteTableIds.map((r) => _tfRef(r, 'id')).join(', ') + ']'
+      );
     }
     _writeTags(lines, vpce);
     lines.push('}');
@@ -448,20 +613,48 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- EC2 Instances ---
-  instances.forEach(inst => {
+  instances.forEach((inst) => {
     const name = _tfName(inst, 'ec2');
     const resName = 'aws_instance.' + name;
     _tfIdMap[inst.InstanceId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: inst.InstanceId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: inst.InstanceId });
+    }
     lines.push('resource "aws_instance" "' + name + '" {');
-    if (inst.ImageId) lines.push('  ami           = ' + _hclString(inst.ImageId) + ' # WARNING: AMI is region-specific');
-    if (inst.InstanceType) lines.push('  instance_type = ' + _hclString(inst.InstanceType));
-    if (inst.SubnetId) lines.push('  subnet_id     = ' + _tfRef(inst.SubnetId, 'id'));
-    if (inst.KeyName) lines.push('  key_name      = ' + _hclString(inst.KeyName) + ' # Must exist in target account');
-    const sgIds = (inst.SecurityGroups || inst.NetworkInterfaces && inst.NetworkInterfaces[0] && inst.NetworkInterfaces[0].Groups || []).map(g => g.GroupId).filter(Boolean);
-    if (sgIds.length) lines.push('  vpc_security_group_ids = [' + sgIds.map(s => _tfRef(s, 'id')).join(', ') + ']');
+    if (inst.ImageId) {
+      lines.push(
+        '  ami           = ' + _hclString(inst.ImageId) + ' # WARNING: AMI is region-specific'
+      );
+    }
+    if (inst.InstanceType) {
+      lines.push('  instance_type = ' + _hclString(inst.InstanceType));
+    }
+    if (inst.SubnetId) {
+      lines.push('  subnet_id     = ' + _tfRef(inst.SubnetId, 'id'));
+    }
+    if (inst.KeyName) {
+      lines.push(
+        '  key_name      = ' + _hclString(inst.KeyName) + ' # Must exist in target account'
+      );
+    }
+    const sgIds = (
+      inst.SecurityGroups ||
+      (inst.NetworkInterfaces && inst.NetworkInterfaces[0] && inst.NetworkInterfaces[0].Groups) ||
+      []
+    )
+      .map((g) => g.GroupId)
+      .filter(Boolean);
+    if (sgIds.length) {
+      lines.push(
+        '  vpc_security_group_ids = [' + sgIds.map((s) => _tfRef(s, 'id')).join(', ') + ']'
+      );
+    }
     if (inst.IamInstanceProfile && inst.IamInstanceProfile.Arn) {
-      lines.push('  iam_instance_profile = ' + _hclString(inst.IamInstanceProfile.Arn.split('/').pop()) + ' # IAM profile must exist');
+      lines.push(
+        '  iam_instance_profile = ' +
+          _hclString(inst.IamInstanceProfile.Arn.split('/').pop()) +
+          ' # IAM profile must exist'
+      );
     }
     if (inst.Placement && inst.Placement.Tenancy && inst.Placement.Tenancy !== 'default') {
       lines.push('  tenancy = ' + _hclString(inst.Placement.Tenancy));
@@ -472,63 +665,108 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- EBS Volumes ---
-  volumes.forEach(vol => {
+  volumes.forEach((vol) => {
     const name = _tfName(vol, 'vol');
     const resName = 'aws_ebs_volume.' + name;
     _tfIdMap[vol.VolumeId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: vol.VolumeId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: vol.VolumeId });
+    }
     lines.push('resource "aws_ebs_volume" "' + name + '" {');
-    if (vol.AvailabilityZone) lines.push('  availability_zone = ' + _hclString(vol.AvailabilityZone));
-    if (vol.Size) lines.push('  size              = ' + vol.Size);
-    if (vol.VolumeType) lines.push('  type              = ' + _hclString(vol.VolumeType));
-    if (vol.Iops && (vol.VolumeType === 'io1' || vol.VolumeType === 'io2' || vol.VolumeType === 'gp3')) lines.push('  iops              = ' + vol.Iops);
-    if (vol.Encrypted) lines.push('  encrypted         = true');
+    if (vol.AvailabilityZone) {
+      lines.push('  availability_zone = ' + _hclString(vol.AvailabilityZone));
+    }
+    if (vol.Size) {
+      lines.push('  size              = ' + vol.Size);
+    }
+    if (vol.VolumeType) {
+      lines.push('  type              = ' + _hclString(vol.VolumeType));
+    }
+    if (
+      vol.Iops &&
+      (vol.VolumeType === 'io1' || vol.VolumeType === 'io2' || vol.VolumeType === 'gp3')
+    ) {
+      lines.push('  iops              = ' + vol.Iops);
+    }
+    if (vol.Encrypted) {
+      lines.push('  encrypted         = true');
+    }
     _writeTags(lines, vol);
     lines.push('}');
     lines.push('');
   });
 
   // --- ALBs ---
-  albs.forEach(alb => {
+  albs.forEach((alb) => {
     const name = _tfName(alb, 'alb');
     const type = alb.Type || 'application';
     const resType = 'aws_lb';
     const resName = resType + '.' + name;
     _tfIdMap[alb.LoadBalancerArn] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: alb.LoadBalancerArn });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: alb.LoadBalancerArn });
+    }
     lines.push('resource "' + resType + '" "' + name + '" {');
-    if (alb.LoadBalancerName) lines.push('  name               = ' + _hclString(alb.LoadBalancerName));
+    if (alb.LoadBalancerName) {
+      lines.push('  name               = ' + _hclString(alb.LoadBalancerName));
+    }
     lines.push('  load_balancer_type = ' + _hclString(type));
     lines.push('  internal           = ' + (alb.Scheme === 'internal' ? 'true' : 'false'));
-    const albSubs = (alb.AvailabilityZones || []).map(az => az.SubnetId).filter(Boolean);
-    if (albSubs.length) lines.push('  subnets            = [' + albSubs.map(s => _tfRef(s, 'id')).join(', ') + ']');
-    const albSgs = (alb.SecurityGroups || []);
-    if (albSgs.length) lines.push('  security_groups    = [' + albSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
+    const albSubs = (alb.AvailabilityZones || []).map((az) => az.SubnetId).filter(Boolean);
+    if (albSubs.length) {
+      lines.push('  subnets            = [' + albSubs.map((s) => _tfRef(s, 'id')).join(', ') + ']');
+    }
+    const albSgs = alb.SecurityGroups || [];
+    if (albSgs.length) {
+      lines.push('  security_groups    = [' + albSgs.map((s) => _tfRef(s, 'id')).join(', ') + ']');
+    }
     _writeTags(lines, alb);
     lines.push('}');
     lines.push('');
   });
 
   // --- RDS Instances ---
-  rdsInstances.forEach(rds => {
+  rdsInstances.forEach((rds) => {
     const name = sanitizeName(rds.DBInstanceIdentifier || 'rds');
     const resName = 'aws_db_instance.' + name;
     _tfIdMap[rds.DBInstanceIdentifier] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: rds.DBInstanceIdentifier });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: rds.DBInstanceIdentifier });
+    }
     lines.push('resource "aws_db_instance" "' + name + '" {');
-    if (rds.DBInstanceIdentifier) lines.push('  identifier     = ' + _hclString(rds.DBInstanceIdentifier));
-    if (rds.Engine) lines.push('  engine         = ' + _hclString(rds.Engine));
-    if (rds.EngineVersion) lines.push('  engine_version = ' + _hclString(rds.EngineVersion));
-    if (rds.DBInstanceClass) lines.push('  instance_class = ' + _hclString(rds.DBInstanceClass));
-    if (rds.AllocatedStorage) lines.push('  allocated_storage = ' + rds.AllocatedStorage);
-    if (rds.StorageType) lines.push('  storage_type   = ' + _hclString(rds.StorageType));
-    if (rds.MultiAZ) lines.push('  multi_az       = true');
-    if (rds.StorageEncrypted) lines.push('  storage_encrypted = true');
+    if (rds.DBInstanceIdentifier) {
+      lines.push('  identifier     = ' + _hclString(rds.DBInstanceIdentifier));
+    }
+    if (rds.Engine) {
+      lines.push('  engine         = ' + _hclString(rds.Engine));
+    }
+    if (rds.EngineVersion) {
+      lines.push('  engine_version = ' + _hclString(rds.EngineVersion));
+    }
+    if (rds.DBInstanceClass) {
+      lines.push('  instance_class = ' + _hclString(rds.DBInstanceClass));
+    }
+    if (rds.AllocatedStorage) {
+      lines.push('  allocated_storage = ' + rds.AllocatedStorage);
+    }
+    if (rds.StorageType) {
+      lines.push('  storage_type   = ' + _hclString(rds.StorageType));
+    }
+    if (rds.MultiAZ) {
+      lines.push('  multi_az       = true');
+    }
+    if (rds.StorageEncrypted) {
+      lines.push('  storage_encrypted = true');
+    }
     if (rds.DBSubnetGroup && rds.DBSubnetGroup.DBSubnetGroupName) {
       lines.push('  db_subnet_group_name = ' + _hclString(rds.DBSubnetGroup.DBSubnetGroupName));
     }
-    const rdsSgs = (rds.VpcSecurityGroups || []).map(s => s.VpcSecurityGroupId).filter(Boolean);
-    if (rdsSgs.length) lines.push('  vpc_security_group_ids = [' + rdsSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
+    const rdsSgs = (rds.VpcSecurityGroups || []).map((s) => s.VpcSecurityGroupId).filter(Boolean);
+    if (rdsSgs.length) {
+      lines.push(
+        '  vpc_security_group_ids = [' + rdsSgs.map((s) => _tfRef(s, 'id')).join(', ') + ']'
+      );
+    }
     lines.push('  username         = "admin" # PLACEHOLDER - set actual username');
     lines.push('  password         = "CHANGE_ME" # PLACEHOLDER - use secrets manager');
     lines.push('  skip_final_snapshot = true');
@@ -537,66 +775,120 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- ElastiCache ---
-  ecacheClusters.forEach(ec => {
+  ecacheClusters.forEach((ec) => {
     const name = sanitizeName(ec.CacheClusterId || 'cache');
     const resName = 'aws_elasticache_cluster.' + name;
     _tfIdMap[ec.CacheClusterId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: ec.CacheClusterId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: ec.CacheClusterId });
+    }
     lines.push('resource "aws_elasticache_cluster" "' + name + '" {');
-    if (ec.CacheClusterId) lines.push('  cluster_id      = ' + _hclString(ec.CacheClusterId));
-    if (ec.Engine) lines.push('  engine          = ' + _hclString(ec.Engine));
-    if (ec.CacheNodeType) lines.push('  node_type       = ' + _hclString(ec.CacheNodeType));
-    if (ec.NumCacheNodes) lines.push('  num_cache_nodes = ' + ec.NumCacheNodes);
-    if (ec.EngineVersion) lines.push('  engine_version  = ' + _hclString(ec.EngineVersion));
-    if (ec.CacheSubnetGroupName) lines.push('  subnet_group_name = ' + _hclString(ec.CacheSubnetGroupName));
-    const ecSgs = (ec.SecurityGroups || []).map(s => s.SecurityGroupId).filter(Boolean);
-    if (ecSgs.length) lines.push('  security_group_ids = [' + ecSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
+    if (ec.CacheClusterId) {
+      lines.push('  cluster_id      = ' + _hclString(ec.CacheClusterId));
+    }
+    if (ec.Engine) {
+      lines.push('  engine          = ' + _hclString(ec.Engine));
+    }
+    if (ec.CacheNodeType) {
+      lines.push('  node_type       = ' + _hclString(ec.CacheNodeType));
+    }
+    if (ec.NumCacheNodes) {
+      lines.push('  num_cache_nodes = ' + ec.NumCacheNodes);
+    }
+    if (ec.EngineVersion) {
+      lines.push('  engine_version  = ' + _hclString(ec.EngineVersion));
+    }
+    if (ec.CacheSubnetGroupName) {
+      lines.push('  subnet_group_name = ' + _hclString(ec.CacheSubnetGroupName));
+    }
+    const ecSgs = (ec.SecurityGroups || []).map((s) => s.SecurityGroupId).filter(Boolean);
+    if (ecSgs.length) {
+      lines.push('  security_group_ids = [' + ecSgs.map((s) => _tfRef(s, 'id')).join(', ') + ']');
+    }
     lines.push('}');
     lines.push('');
   });
 
   // --- Redshift ---
-  redshiftClusters.forEach(rs => {
+  redshiftClusters.forEach((rs) => {
     const name = sanitizeName(rs.ClusterIdentifier || 'redshift');
     const resName = 'aws_redshift_cluster.' + name;
     _tfIdMap[rs.ClusterIdentifier] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: rs.ClusterIdentifier });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: rs.ClusterIdentifier });
+    }
     lines.push('resource "aws_redshift_cluster" "' + name + '" {');
-    if (rs.ClusterIdentifier) lines.push('  cluster_identifier  = ' + _hclString(rs.ClusterIdentifier));
-    if (rs.NodeType) lines.push('  node_type           = ' + _hclString(rs.NodeType));
-    if (rs.NumberOfNodes > 1) lines.push('  number_of_nodes     = ' + rs.NumberOfNodes);
-    lines.push('  cluster_type        = ' + _hclString(rs.NumberOfNodes > 1 ? 'multi-node' : 'single-node'));
-    if (rs.DBName) lines.push('  database_name       = ' + _hclString(rs.DBName));
+    if (rs.ClusterIdentifier) {
+      lines.push('  cluster_identifier  = ' + _hclString(rs.ClusterIdentifier));
+    }
+    if (rs.NodeType) {
+      lines.push('  node_type           = ' + _hclString(rs.NodeType));
+    }
+    if (rs.NumberOfNodes > 1) {
+      lines.push('  number_of_nodes     = ' + rs.NumberOfNodes);
+    }
+    lines.push(
+      '  cluster_type        = ' + _hclString(rs.NumberOfNodes > 1 ? 'multi-node' : 'single-node')
+    );
+    if (rs.DBName) {
+      lines.push('  database_name       = ' + _hclString(rs.DBName));
+    }
     lines.push('  master_username     = "admin" # PLACEHOLDER');
     lines.push('  master_password     = "CHANGE_ME" # PLACEHOLDER');
-    if (rs.ClusterSubnetGroupName) lines.push('  cluster_subnet_group_name = ' + _hclString(rs.ClusterSubnetGroupName));
-    const rsSgs = (rs.VpcSecurityGroups || []).map(s => s.VpcSecurityGroupId).filter(Boolean);
-    if (rsSgs.length) lines.push('  vpc_security_group_ids = [' + rsSgs.map(s => _tfRef(s, 'id')).join(', ') + ']');
+    if (rs.ClusterSubnetGroupName) {
+      lines.push('  cluster_subnet_group_name = ' + _hclString(rs.ClusterSubnetGroupName));
+    }
+    const rsSgs = (rs.VpcSecurityGroups || []).map((s) => s.VpcSecurityGroupId).filter(Boolean);
+    if (rsSgs.length) {
+      lines.push(
+        '  vpc_security_group_ids = [' + rsSgs.map((s) => _tfRef(s, 'id')).join(', ') + ']'
+      );
+    }
     lines.push('  skip_final_snapshot = true');
     lines.push('}');
     lines.push('');
   });
 
   // --- Lambda Functions ---
-  lambdaFns.forEach(fn => {
+  lambdaFns.forEach((fn) => {
     const name = sanitizeName(fn.FunctionName || 'lambda');
     const resName = 'aws_lambda_function.' + name;
     _tfIdMap[fn.FunctionName] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: fn.FunctionName });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: fn.FunctionName });
+    }
     lines.push('resource "aws_lambda_function" "' + name + '" {');
-    if (fn.FunctionName) lines.push('  function_name = ' + _hclString(fn.FunctionName));
-    if (fn.Runtime) lines.push('  runtime       = ' + _hclString(fn.Runtime));
-    if (fn.Handler) lines.push('  handler       = ' + _hclString(fn.Handler));
-    if (fn.MemorySize) lines.push('  memory_size   = ' + fn.MemorySize);
-    if (fn.Timeout) lines.push('  timeout       = ' + fn.Timeout);
+    if (fn.FunctionName) {
+      lines.push('  function_name = ' + _hclString(fn.FunctionName));
+    }
+    if (fn.Runtime) {
+      lines.push('  runtime       = ' + _hclString(fn.Runtime));
+    }
+    if (fn.Handler) {
+      lines.push('  handler       = ' + _hclString(fn.Handler));
+    }
+    if (fn.MemorySize) {
+      lines.push('  memory_size   = ' + fn.MemorySize);
+    }
+    if (fn.Timeout) {
+      lines.push('  timeout       = ' + fn.Timeout);
+    }
     lines.push('  role          = "arn:aws:iam::role/PLACEHOLDER" # Set actual IAM role ARN');
     lines.push('  filename      = "placeholder.zip" # Set actual deployment package');
     const vc = fn.VpcConfig;
     if (vc && (vc.SubnetIds || []).length) {
       lines.push('');
       lines.push('  vpc_config {');
-      lines.push('    subnet_ids         = [' + vc.SubnetIds.map(s => _tfRef(s, 'id')).join(', ') + ']');
-      if (vc.SecurityGroupIds && vc.SecurityGroupIds.length) lines.push('    security_group_ids = [' + vc.SecurityGroupIds.map(s => _tfRef(s, 'id')).join(', ') + ']');
+      lines.push(
+        '    subnet_ids         = [' + vc.SubnetIds.map((s) => _tfRef(s, 'id')).join(', ') + ']'
+      );
+      if (vc.SecurityGroupIds && vc.SecurityGroupIds.length) {
+        lines.push(
+          '    security_group_ids = [' +
+            vc.SecurityGroupIds.map((s) => _tfRef(s, 'id')).join(', ') +
+            ']'
+        );
+      }
       lines.push('  }');
     }
     lines.push('}');
@@ -604,24 +896,44 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- ECS Services ---
-  ecsServices.forEach(svc => {
+  ecsServices.forEach((svc) => {
     const name = sanitizeName(svc.serviceName || 'ecs');
     lines.push('# ECS Service: ' + _hclComment(svc.serviceName));
     lines.push('# NOTE: ECS services require cluster and task definition resources');
     lines.push('# which are not captured in network-level data. Skeleton below.');
     lines.push('resource "aws_ecs_service" "' + name + '" {');
-    if (svc.serviceName) lines.push('  name            = ' + _hclString(svc.serviceName));
+    if (svc.serviceName) {
+      lines.push('  name            = ' + _hclString(svc.serviceName));
+    }
     lines.push('  cluster         = "PLACEHOLDER" # Set actual cluster ARN');
     lines.push('  task_definition = "PLACEHOLDER" # Set actual task definition');
-    if (svc.desiredCount) lines.push('  desired_count   = ' + svc.desiredCount);
-    if (svc.launchType) lines.push('  launch_type     = ' + _hclString(svc.launchType));
+    if (svc.desiredCount) {
+      lines.push('  desired_count   = ' + svc.desiredCount);
+    }
+    if (svc.launchType) {
+      lines.push('  launch_type     = ' + _hclString(svc.launchType));
+    }
     const nc = (svc.networkConfiguration || {}).awsvpcConfiguration;
     if (nc) {
       lines.push('');
       lines.push('  network_configuration {');
-      if (nc.subnets && nc.subnets.length) lines.push('    subnets          = [' + nc.subnets.map(s => _tfRef(s, 'id')).join(', ') + ']');
-      if (nc.securityGroups && nc.securityGroups.length) lines.push('    security_groups  = [' + nc.securityGroups.map(s => _tfRef(s, 'id')).join(', ') + ']');
-      if (nc.assignPublicIp) lines.push('    assign_public_ip = ' + (nc.assignPublicIp === 'ENABLED' ? 'true' : 'false'));
+      if (nc.subnets && nc.subnets.length) {
+        lines.push(
+          '    subnets          = [' + nc.subnets.map((s) => _tfRef(s, 'id')).join(', ') + ']'
+        );
+      }
+      if (nc.securityGroups && nc.securityGroups.length) {
+        lines.push(
+          '    security_groups  = [' +
+            nc.securityGroups.map((s) => _tfRef(s, 'id')).join(', ') +
+            ']'
+        );
+      }
+      if (nc.assignPublicIp) {
+        lines.push(
+          '    assign_public_ip = ' + (nc.assignPublicIp === 'ENABLED' ? 'true' : 'false')
+        );
+      }
       lines.push('  }');
     }
     lines.push('}');
@@ -629,43 +941,60 @@ export function generateTerraform(ctx, opts) {
   });
 
   // --- S3 Buckets ---
-  s3bk.forEach(bk => {
+  s3bk.forEach((bk) => {
     const name = sanitizeName(bk.Name || 'bucket');
     const resName = 'aws_s3_bucket.' + name;
     _tfIdMap[bk.Name] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: bk.Name });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: bk.Name });
+    }
     lines.push('resource "aws_s3_bucket" "' + name + '" {');
-    if (bk.Name) lines.push('  bucket = ' + _hclString(bk.Name));
+    if (bk.Name) {
+      lines.push('  bucket = ' + _hclString(bk.Name));
+    }
     lines.push('}');
     lines.push('');
   });
 
   // --- VPC Peering ---
-  peerings.forEach(peer => {
+  peerings.forEach((peer) => {
     const name = sanitizeName(peer.VpcPeeringConnectionId || 'peer');
     const resName = 'aws_vpc_peering_connection.' + name;
     _tfIdMap[peer.VpcPeeringConnectionId] = resName;
-    if (mode === 'import') imports.push({ to: resName, id: peer.VpcPeeringConnectionId });
+    if (mode === 'import') {
+      imports.push({ to: resName, id: peer.VpcPeeringConnectionId });
+    }
     lines.push('resource "aws_vpc_peering_connection" "' + name + '" {');
-    const req = peer.RequesterVpcInfo, acc = peer.AccepterVpcInfo;
-    if (req && req.VpcId) lines.push('  vpc_id      = ' + _tfRef(req.VpcId, 'id'));
-    if (acc && acc.VpcId) lines.push('  peer_vpc_id = ' + _tfRef(acc.VpcId, 'id'));
-    if (acc && acc.OwnerId) lines.push('  peer_owner_id = ' + _hclString(acc.OwnerId));
-    if (acc && acc.Region) lines.push('  peer_region   = ' + _hclString(acc.Region));
+    const req = peer.RequesterVpcInfo,
+      acc = peer.AccepterVpcInfo;
+    if (req && req.VpcId) {
+      lines.push('  vpc_id      = ' + _tfRef(req.VpcId, 'id'));
+    }
+    if (acc && acc.VpcId) {
+      lines.push('  peer_vpc_id = ' + _tfRef(acc.VpcId, 'id'));
+    }
+    if (acc && acc.OwnerId) {
+      lines.push('  peer_owner_id = ' + _hclString(acc.OwnerId));
+    }
+    if (acc && acc.Region) {
+      lines.push('  peer_region   = ' + _hclString(acc.Region));
+    }
     lines.push('  auto_accept = false # Set to true for same-account peering');
     lines.push('}');
     lines.push('');
   });
 
   // --- CloudFront ---
-  cfDistributions.forEach(cf => {
+  cfDistributions.forEach((cf) => {
     const name = sanitizeName(cf.Id || 'cf');
     lines.push('# CloudFront Distribution: ' + _hclComment(cf.DomainName || cf.Id));
     lines.push('# NOTE: CloudFront has many configuration options not captured here.');
     lines.push('# This is a skeleton. Review and customize before applying.');
     lines.push('resource "aws_cloudfront_distribution" "' + name + '" {');
     lines.push('  enabled = ' + (cf.Enabled !== false ? 'true' : 'false'));
-    if (cf.Comment) lines.push('  comment = ' + _hclString(cf.Comment));
+    if (cf.Comment) {
+      lines.push('  comment = ' + _hclString(cf.Comment));
+    }
     lines.push('');
     lines.push('  origin {');
     lines.push('    domain_name = "PLACEHOLDER.s3.amazonaws.com"');
@@ -699,7 +1028,7 @@ export function generateTerraform(ctx, opts) {
     lines.push('# === Import Blocks (Terraform 1.5+) ===');
     lines.push('# Run: terraform plan to verify imports match existing state');
     lines.push('');
-    imports.forEach(imp => {
+    imports.forEach((imp) => {
       lines.push('import {');
       lines.push('  to = ' + imp.to);
       lines.push('  id = ' + _hclString(imp.id));
@@ -709,10 +1038,20 @@ export function generateTerraform(ctx, opts) {
   }
 
   // Warnings
-  if (instances.some(i => i.ImageId)) warnings.push('AMI IDs are region-specific. Update for target region.');
-  if (instances.some(i => i.KeyName)) warnings.push('Key pair names must exist in the target account.');
-  if (rdsInstances.length || redshiftClusters.length) warnings.push('Database passwords are placeholders. Use AWS Secrets Manager.');
-  if (sgCycles.length) warnings.push(sgCycles.length + ' circular SG reference(s) detected. Rules split into separate resources.');
+  if (instances.some((i) => i.ImageId)) {
+    warnings.push('AMI IDs are region-specific. Update for target region.');
+  }
+  if (instances.some((i) => i.KeyName)) {
+    warnings.push('Key pair names must exist in the target account.');
+  }
+  if (rdsInstances.length || redshiftClusters.length) {
+    warnings.push('Database passwords are placeholders. Use AWS Secrets Manager.');
+  }
+  if (sgCycles.length) {
+    warnings.push(
+      sgCycles.length + ' circular SG reference(s) detected. Rules split into separate resources.'
+    );
+  }
 
   _iacOutput = lines.join('\n');
   return {
@@ -723,7 +1062,7 @@ export function generateTerraform(ctx, opts) {
       subnets: subnets.length,
       sgs: sgs.length,
       instances: instances.length,
-      total: imports.length || lines.filter(l => l.startsWith('resource ')).length
+      total: imports.length || lines.filter((l) => l.startsWith('resource ')).length
     }
   };
 }
@@ -732,30 +1071,48 @@ export function generateTerraform(ctx, opts) {
 
 /** CFN tag formatter — filters out aws: prefixed tags */
 export function _cfnTags(resource) {
-  return (resource.Tags || []).filter(t => !t.Key.startsWith('aws:')).map(t => ({ Key: t.Key, Value: t.Value || '' }));
+  return (resource.Tags || [])
+    .filter((t) => !t.Key.startsWith('aws:'))
+    .map((t) => ({ Key: t.Key, Value: t.Value || '' }));
 }
 
 /** CFN inline SG rule (single CIDR) */
 export function _cfnSGRule(rule) {
   const r = { IpProtocol: rule.IpProtocol || '-1' };
-  if (rule.FromPort != null) r.FromPort = rule.FromPort;
-  if (rule.ToPort != null) r.ToPort = rule.ToPort;
-  const cidrs = (rule.IpRanges || []).map(c => c.CidrIp).filter(Boolean);
-  if (cidrs.length) r.CidrIp = cidrs[0]; // CFN inline rule takes single CIDR
-  const sgRefs = (rule.UserIdGroupPairs || []).map(p => p.GroupId).filter(Boolean);
-  if (sgRefs.length) r.SourceSecurityGroupId = sgRefs[0];
+  if (rule.FromPort != null) {
+    r.FromPort = rule.FromPort;
+  }
+  if (rule.ToPort != null) {
+    r.ToPort = rule.ToPort;
+  }
+  const cidrs = (rule.IpRanges || []).map((c) => c.CidrIp).filter(Boolean);
+  if (cidrs.length) {
+    r.CidrIp = cidrs[0];
+  } // CFN inline rule takes single CIDR
+  const sgRefs = (rule.UserIdGroupPairs || []).map((p) => p.GroupId).filter(Boolean);
+  if (sgRefs.length) {
+    r.SourceSecurityGroupId = sgRefs[0];
+  }
   return r;
 }
 
 /** CFN standalone SG rule properties */
 export function _cfnSGRuleProps(rule) {
   const r = {};
-  if (rule.FromPort != null) r.FromPort = rule.FromPort;
-  if (rule.ToPort != null) r.ToPort = rule.ToPort;
-  const cidrs = (rule.IpRanges || []).map(c => c.CidrIp).filter(Boolean);
-  if (cidrs.length) r.CidrIp = cidrs[0];
-  const sgRefs = (rule.UserIdGroupPairs || []).map(p => p.GroupId).filter(Boolean);
-  if (sgRefs.length) r.SourceSecurityGroupId = sgRefs[0];
+  if (rule.FromPort != null) {
+    r.FromPort = rule.FromPort;
+  }
+  if (rule.ToPort != null) {
+    r.ToPort = rule.ToPort;
+  }
+  const cidrs = (rule.IpRanges || []).map((c) => c.CidrIp).filter(Boolean);
+  if (cidrs.length) {
+    r.CidrIp = cidrs[0];
+  }
+  const sgRefs = (rule.UserIdGroupPairs || []).map((p) => p.GroupId).filter(Boolean);
+  if (sgRefs.length) {
+    r.SourceSecurityGroupId = sgRefs[0];
+  }
   return r;
 }
 
@@ -764,26 +1121,47 @@ export function _cfnSGRuleProps(rule) {
  * Pure function: returns { code, warnings, stats }.
  */
 export function generateCloudFormation(ctx, opts) {
-  if (!ctx || !ctx.vpcs) return '# No data loaded';
+  if (!ctx || !ctx.vpcs) {
+    return '# No data loaded';
+  }
   const scopeVpc = opts.scopeVpcId || null;
-  const vpcs = scopeVpc ? ctx.vpcs.filter(v => v.VpcId === scopeVpc) : ctx.vpcs;
-  const vpcIds = new Set(vpcs.map(v => v.VpcId));
-  const subnets = (ctx.subnets || []).filter(s => vpcIds.has(s.VpcId));
-  const subIds = new Set(subnets.map(s => s.SubnetId));
-  const sgs = (ctx.sgs || []).filter(s => vpcIds.has(s.VpcId));
-  const igws = (ctx.igws || []).filter(g => (g.Attachments || []).some(a => vpcIds.has(a.VpcId)));
-  const nats = (ctx.nats || []).filter(n => vpcIds.has(n.VpcId));
-  const instances = (ctx.instances || []).filter(i => subIds.has(i.SubnetId));
-  const rts = (ctx.rts || []).filter(r => r.VpcId && vpcIds.has(r.VpcId));
-  const rdsInstances = (ctx.rdsInstances || []).filter(r => {
+  const vpcs = scopeVpc ? ctx.vpcs.filter((v) => v.VpcId === scopeVpc) : ctx.vpcs;
+  const vpcIds = new Set(vpcs.map((v) => v.VpcId));
+  const subnets = (ctx.subnets || []).filter((s) => vpcIds.has(s.VpcId));
+  const subIds = new Set(subnets.map((s) => s.SubnetId));
+  const sgs = (ctx.sgs || []).filter((s) => vpcIds.has(s.VpcId));
+  const igws = (ctx.igws || []).filter((g) =>
+    (g.Attachments || []).some((a) => vpcIds.has(a.VpcId))
+  );
+  const nats = (ctx.nats || []).filter((n) => vpcIds.has(n.VpcId));
+  const instances = (ctx.instances || []).filter((i) => subIds.has(i.SubnetId));
+  const rts = (ctx.rts || []).filter((r) => r.VpcId && vpcIds.has(r.VpcId));
+  const rdsInstances = (ctx.rdsInstances || []).filter((r) => {
     const sn = r.DBSubnetGroup;
-    return sn && (sn.Subnets || []).some(s => subIds.has(s.SubnetIdentifier));
+    return sn && (sn.Subnets || []).some((s) => subIds.has(s.SubnetIdentifier));
   });
-  const albs = (ctx.albs || []).filter(a => (a.AvailabilityZones || []).some(az => subIds.has(az.SubnetId)));
+  const albs = (ctx.albs || []).filter((a) =>
+    (a.AvailabilityZones || []).some((az) => subIds.has(az.SubnetId))
+  );
 
   const warnings = [];
-  const totalResources = vpcs.length + subnets.length + sgs.length + igws.length + nats.length + instances.length + rts.length + rdsInstances.length + albs.length;
-  if (totalResources > 450) warnings.push('Resource count (' + totalResources + ') approaches CloudFormation 500-resource limit. Consider nested stacks.');
+  const totalResources =
+    vpcs.length +
+    subnets.length +
+    sgs.length +
+    igws.length +
+    nats.length +
+    instances.length +
+    rts.length +
+    rdsInstances.length +
+    albs.length;
+  if (totalResources > 450) {
+    warnings.push(
+      'Resource count (' +
+        totalResources +
+        ') approaches CloudFormation 500-resource limit. Consider nested stacks.'
+    );
+  }
 
   const template = {
     AWSTemplateFormatVersion: '2010-09-09',
@@ -796,24 +1174,29 @@ export function generateCloudFormation(ctx, opts) {
   // ID to logical name map for Ref
   const cfnIdMap = {};
   function cfnName(resource, prefix) {
-    const n = resource.Tags && resource.Tags.find(t => t.Key === 'Name');
-    const raw = n ? n.Value : (prefix || 'Res');
+    const n = resource.Tags && resource.Tags.find((t) => t.Key === 'Name');
+    const raw = n ? n.Value : prefix || 'Res';
     return raw.replace(/[^a-zA-Z0-9]/g, '');
   }
   function cfnRef(id) {
-    if (cfnIdMap[id]) return { 'Ref': cfnIdMap[id] };
+    if (cfnIdMap[id]) {
+      return { Ref: cfnIdMap[id] };
+    }
     return id;
   }
 
   // Parameters
   template.Parameters.AWSRegion = {
     Type: 'String',
-    Default: subnets.length && subnets[0].AvailabilityZone ? subnets[0].AvailabilityZone.replace(/[a-z]$/, '') : 'us-east-1',
+    Default:
+      subnets.length && subnets[0].AvailabilityZone
+        ? subnets[0].AvailabilityZone.replace(/[a-z]$/, '')
+        : 'us-east-1',
     Description: 'AWS Region'
   };
 
   // VPCs
-  vpcs.forEach(vpc => {
+  vpcs.forEach((vpc) => {
     const ln = cfnName(vpc, 'VPC');
     cfnIdMap[vpc.VpcId] = ln;
     template.Resources[ln] = {
@@ -828,141 +1211,221 @@ export function generateCloudFormation(ctx, opts) {
   });
 
   // IGWs
-  igws.forEach(igw => {
+  igws.forEach((igw) => {
     const ln = cfnName(igw, 'IGW');
     cfnIdMap[igw.InternetGatewayId] = ln;
-    template.Resources[ln] = { Type: 'AWS::EC2::InternetGateway', Properties: { Tags: _cfnTags(igw) } };
+    template.Resources[ln] = {
+      Type: 'AWS::EC2::InternetGateway',
+      Properties: { Tags: _cfnTags(igw) }
+    };
     const att = (igw.Attachments || [])[0];
     if (att) {
       template.Resources[ln + 'Attach'] = {
         Type: 'AWS::EC2::VPCGatewayAttachment',
-        Properties: { InternetGatewayId: { 'Ref': ln }, VpcId: cfnRef(att.VpcId) }
+        Properties: { InternetGatewayId: { Ref: ln }, VpcId: cfnRef(att.VpcId) }
       };
     }
   });
 
   // Subnets
-  subnets.forEach(sub => {
+  subnets.forEach((sub) => {
     const ln = cfnName(sub, 'Subnet');
     cfnIdMap[sub.SubnetId] = ln;
     const props = { VpcId: cfnRef(sub.VpcId), CidrBlock: sub.CidrBlock, Tags: _cfnTags(sub) };
-    if (sub.AvailabilityZone) props.AvailabilityZone = sub.AvailabilityZone;
-    if (sub.MapPublicIpOnLaunch) props.MapPublicIpOnLaunch = true;
+    if (sub.AvailabilityZone) {
+      props.AvailabilityZone = sub.AvailabilityZone;
+    }
+    if (sub.MapPublicIpOnLaunch) {
+      props.MapPublicIpOnLaunch = true;
+    }
     template.Resources[ln] = { Type: 'AWS::EC2::Subnet', Properties: props };
   });
 
   // Route Tables
-  rts.forEach(rt => {
+  rts.forEach((rt) => {
     const ln = cfnName(rt, 'RT');
     cfnIdMap[rt.RouteTableId] = ln;
-    template.Resources[ln] = { Type: 'AWS::EC2::RouteTable', Properties: { VpcId: cfnRef(rt.VpcId), Tags: _cfnTags(rt) } };
+    template.Resources[ln] = {
+      Type: 'AWS::EC2::RouteTable',
+      Properties: { VpcId: cfnRef(rt.VpcId), Tags: _cfnTags(rt) }
+    };
     (rt.Routes || []).forEach((route, ri) => {
-      if (route.GatewayId === 'local') return;
-      const routeProps = { RouteTableId: { 'Ref': ln } };
-      if (route.DestinationCidrBlock) routeProps.DestinationCidrBlock = route.DestinationCidrBlock;
-      if (route.GatewayId && route.GatewayId !== 'local') routeProps.GatewayId = cfnRef(route.GatewayId);
-      if (route.NatGatewayId) routeProps.NatGatewayId = cfnRef(route.NatGatewayId);
+      if (route.GatewayId === 'local') {
+        return;
+      }
+      const routeProps = { RouteTableId: { Ref: ln } };
+      if (route.DestinationCidrBlock) {
+        routeProps.DestinationCidrBlock = route.DestinationCidrBlock;
+      }
+      if (route.GatewayId && route.GatewayId !== 'local') {
+        routeProps.GatewayId = cfnRef(route.GatewayId);
+      }
+      if (route.NatGatewayId) {
+        routeProps.NatGatewayId = cfnRef(route.NatGatewayId);
+      }
       template.Resources[ln + 'Route' + ri] = { Type: 'AWS::EC2::Route', Properties: routeProps };
     });
     (rt.Associations || []).forEach((assoc, ai) => {
-      if (assoc.Main || !assoc.SubnetId) return;
+      if (assoc.Main || !assoc.SubnetId) {
+        return;
+      }
       template.Resources[ln + 'Assoc' + ai] = {
         Type: 'AWS::EC2::SubnetRouteTableAssociation',
-        Properties: { SubnetId: cfnRef(assoc.SubnetId), RouteTableId: { 'Ref': ln } }
+        Properties: { SubnetId: cfnRef(assoc.SubnetId), RouteTableId: { Ref: ln } }
       };
     });
   });
 
   // NAT Gateways
-  nats.forEach(nat => {
+  nats.forEach((nat) => {
     const ln = cfnName(nat, 'NAT');
     cfnIdMap[nat.NatGatewayId] = ln;
-    const props = { SubnetId: cfnRef(nat.SubnetId), ConnectivityType: nat.ConnectivityType || 'public' };
+    const props = {
+      SubnetId: cfnRef(nat.SubnetId),
+      ConnectivityType: nat.ConnectivityType || 'public'
+    };
     const eip = (nat.NatGatewayAddresses || [])[0];
-    if (eip && eip.AllocationId) props.AllocationId = eip.AllocationId;
+    if (eip && eip.AllocationId) {
+      props.AllocationId = eip.AllocationId;
+    }
     template.Resources[ln] = {
       Type: 'AWS::EC2::NatGateway',
       Properties: props,
-      DependsOn: Object.keys(template.Resources).filter(k => k.endsWith('Attach'))
+      DependsOn: Object.keys(template.Resources).filter((k) => k.endsWith('Attach'))
     };
   });
 
   // Security Groups
   const sgCycles = detectCircularSGs(sgs);
   const cyclicSgIds = new Set();
-  sgCycles.forEach(c => c.forEach(id => cyclicSgIds.add(id)));
+  sgCycles.forEach((c) => c.forEach((id) => cyclicSgIds.add(id)));
 
-  sgs.forEach(sg => {
+  sgs.forEach((sg) => {
     const ln = cfnName(sg, 'SG');
     cfnIdMap[sg.GroupId] = ln;
     const isCyclic = cyclicSgIds.has(sg.GroupId);
-    const props = { GroupDescription: sg.Description || 'Managed by CloudFormation', VpcId: cfnRef(sg.VpcId), Tags: _cfnTags(sg) };
+    const props = {
+      GroupDescription: sg.Description || 'Managed by CloudFormation',
+      VpcId: cfnRef(sg.VpcId),
+      Tags: _cfnTags(sg)
+    };
     if (!isCyclic) {
-      if (sg.IpPermissions && sg.IpPermissions.length) props.SecurityGroupIngress = sg.IpPermissions.map(_cfnSGRule);
-      if (sg.IpPermissionsEgress && sg.IpPermissionsEgress.length) props.SecurityGroupEgress = sg.IpPermissionsEgress.map(_cfnSGRule);
+      if (sg.IpPermissions && sg.IpPermissions.length) {
+        props.SecurityGroupIngress = sg.IpPermissions.map(_cfnSGRule);
+      }
+      if (sg.IpPermissionsEgress && sg.IpPermissionsEgress.length) {
+        props.SecurityGroupEgress = sg.IpPermissionsEgress.map(_cfnSGRule);
+      }
     }
     template.Resources[ln] = { Type: 'AWS::EC2::SecurityGroup', Properties: props };
     // Standalone rules for cyclic
     if (isCyclic) {
       (sg.IpPermissions || []).forEach((rule, ri) => {
-        const rProps = Object.assign({ GroupId: { 'Ref': ln }, IpProtocol: rule.IpProtocol || '-1' }, _cfnSGRuleProps(rule));
-        template.Resources[ln + 'Ingress' + ri] = { Type: 'AWS::EC2::SecurityGroupIngress', Properties: rProps };
+        const rProps = Object.assign(
+          { GroupId: { Ref: ln }, IpProtocol: rule.IpProtocol || '-1' },
+          _cfnSGRuleProps(rule)
+        );
+        template.Resources[ln + 'Ingress' + ri] = {
+          Type: 'AWS::EC2::SecurityGroupIngress',
+          Properties: rProps
+        };
       });
       (sg.IpPermissionsEgress || []).forEach((rule, ri) => {
-        const rProps = Object.assign({ GroupId: { 'Ref': ln }, IpProtocol: rule.IpProtocol || '-1' }, _cfnSGRuleProps(rule));
-        template.Resources[ln + 'Egress' + ri] = { Type: 'AWS::EC2::SecurityGroupEgress', Properties: rProps };
+        const rProps = Object.assign(
+          { GroupId: { Ref: ln }, IpProtocol: rule.IpProtocol || '-1' },
+          _cfnSGRuleProps(rule)
+        );
+        template.Resources[ln + 'Egress' + ri] = {
+          Type: 'AWS::EC2::SecurityGroupEgress',
+          Properties: rProps
+        };
       });
     }
   });
 
   // EC2 Instances
-  instances.forEach(inst => {
+  instances.forEach((inst) => {
     const ln = cfnName(inst, 'EC2');
     cfnIdMap[inst.InstanceId] = ln;
     const props = {};
-    if (inst.ImageId) props.ImageId = inst.ImageId;
-    if (inst.InstanceType) props.InstanceType = inst.InstanceType;
-    if (inst.SubnetId) props.SubnetId = cfnRef(inst.SubnetId);
-    if (inst.KeyName) props.KeyName = inst.KeyName;
-    const sgIds = (inst.SecurityGroups || inst.NetworkInterfaces && inst.NetworkInterfaces[0] && inst.NetworkInterfaces[0].Groups || []).map(g => g.GroupId).filter(Boolean);
-    if (sgIds.length) props.SecurityGroupIds = sgIds.map(s => cfnRef(s));
+    if (inst.ImageId) {
+      props.ImageId = inst.ImageId;
+    }
+    if (inst.InstanceType) {
+      props.InstanceType = inst.InstanceType;
+    }
+    if (inst.SubnetId) {
+      props.SubnetId = cfnRef(inst.SubnetId);
+    }
+    if (inst.KeyName) {
+      props.KeyName = inst.KeyName;
+    }
+    const sgIds = (
+      inst.SecurityGroups ||
+      (inst.NetworkInterfaces && inst.NetworkInterfaces[0] && inst.NetworkInterfaces[0].Groups) ||
+      []
+    )
+      .map((g) => g.GroupId)
+      .filter(Boolean);
+    if (sgIds.length) {
+      props.SecurityGroupIds = sgIds.map((s) => cfnRef(s));
+    }
     props.Tags = _cfnTags(inst);
     template.Resources[ln] = { Type: 'AWS::EC2::Instance', Properties: props };
   });
 
   // ALBs
-  albs.forEach(alb => {
+  albs.forEach((alb) => {
     const ln = cfnName(alb, 'ALB');
     cfnIdMap[alb.LoadBalancerArn] = ln;
     const props = { Type: alb.Type || 'application', Scheme: alb.Scheme || 'internet-facing' };
-    if (alb.LoadBalancerName) props.Name = alb.LoadBalancerName;
-    const albSubs = (alb.AvailabilityZones || []).map(az => az.SubnetId).filter(Boolean);
-    if (albSubs.length) props.Subnets = albSubs.map(s => cfnRef(s));
-    const albSgs = (alb.SecurityGroups || []);
-    if (albSgs.length) props.SecurityGroups = albSgs.map(s => cfnRef(s));
-    template.Resources[ln] = { Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer', Properties: props };
+    if (alb.LoadBalancerName) {
+      props.Name = alb.LoadBalancerName;
+    }
+    const albSubs = (alb.AvailabilityZones || []).map((az) => az.SubnetId).filter(Boolean);
+    if (albSubs.length) {
+      props.Subnets = albSubs.map((s) => cfnRef(s));
+    }
+    const albSgs = alb.SecurityGroups || [];
+    if (albSgs.length) {
+      props.SecurityGroups = albSgs.map((s) => cfnRef(s));
+    }
+    template.Resources[ln] = {
+      Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+      Properties: props
+    };
   });
 
   // RDS
-  rdsInstances.forEach(rds => {
+  rdsInstances.forEach((rds) => {
     const ln = cfnName({ Tags: [{ Key: 'Name', Value: rds.DBInstanceIdentifier }] }, 'RDS');
     cfnIdMap[rds.DBInstanceIdentifier] = ln;
     const props = { DBInstanceIdentifier: rds.DBInstanceIdentifier };
-    if (rds.Engine) props.Engine = rds.Engine;
-    if (rds.EngineVersion) props.EngineVersion = rds.EngineVersion;
-    if (rds.DBInstanceClass) props.DBInstanceClass = rds.DBInstanceClass;
-    if (rds.AllocatedStorage) props.AllocatedStorage = String(rds.AllocatedStorage);
-    if (rds.MultiAZ) props.MultiAZ = true;
+    if (rds.Engine) {
+      props.Engine = rds.Engine;
+    }
+    if (rds.EngineVersion) {
+      props.EngineVersion = rds.EngineVersion;
+    }
+    if (rds.DBInstanceClass) {
+      props.DBInstanceClass = rds.DBInstanceClass;
+    }
+    if (rds.AllocatedStorage) {
+      props.AllocatedStorage = String(rds.AllocatedStorage);
+    }
+    if (rds.MultiAZ) {
+      props.MultiAZ = true;
+    }
     props.MasterUsername = 'admin';
     props.MasterUserPassword = 'CHANGE_ME';
     template.Resources[ln] = { Type: 'AWS::RDS::DBInstance', Properties: props };
   });
 
   // Outputs
-  vpcs.forEach(vpc => {
+  vpcs.forEach((vpc) => {
     const ln = cfnIdMap[vpc.VpcId];
     if (ln) {
-      template.Outputs[ln + 'Id'] = { Value: { 'Ref': ln }, Description: 'VPC ID for ' + ln };
+      template.Outputs[ln + 'Id'] = { Value: { Ref: ln }, Description: 'VPC ID for ' + ln };
     }
   });
 
@@ -975,10 +1438,18 @@ export function generateCloudFormation(ctx, opts) {
     code = _serializeCfnYaml(template);
   }
 
-  if (sgCycles.length) warnings.push(sgCycles.length + ' circular SG reference(s) detected. Rules split into standalone resources.');
+  if (sgCycles.length) {
+    warnings.push(
+      sgCycles.length + ' circular SG reference(s) detected. Rules split into standalone resources.'
+    );
+  }
 
   _iacOutput = code;
-  return { code: code, warnings: warnings, stats: { resources: Object.keys(template.Resources).length } };
+  return {
+    code: code,
+    warnings: warnings,
+    stats: { resources: Object.keys(template.Resources).length }
+  };
 }
 
 // === Checkov CFN Generator ===
@@ -986,113 +1457,193 @@ export function generateCloudFormation(ctx, opts) {
 /** Generate unique logical ID for Checkov template */
 export function _ckId(name, prefix, seen) {
   let base = (name || prefix || 'Res').replace(/[^a-zA-Z0-9]/g, '');
-  if (!base || /^\d/.test(base)) base = (prefix || 'R') + base;
-  let id = base, i = 2;
-  while (seen.has(id)) { id = base + i; i++; }
+  if (!base || /^\d/.test(base)) {
+    base = (prefix || 'R') + base;
+  }
+  let id = base,
+    i = 2;
+  while (seen.has(id)) {
+    id = base + i;
+    i++;
+  }
   seen.add(id);
   return id;
 }
 
 export function _ckVpcs(vpcs, res, seen) {
-  vpcs.forEach(function(v) {
+  vpcs.forEach(function (v) {
     const id = _ckId(gn(v, v.VpcId), 'VPC', seen);
-    res[id] = { Type: 'AWS::EC2::VPC', Properties: {
-      CidrBlock: v.CidrBlock || '10.0.0.0/16',
-      EnableDnsSupport: v.EnableDnsSupport !== false,
-      EnableDnsHostnames: v.EnableDnsHostnames === true,
-      Tags: _cfnTags(v)
-    }};
+    res[id] = {
+      Type: 'AWS::EC2::VPC',
+      Properties: {
+        CidrBlock: v.CidrBlock || '10.0.0.0/16',
+        EnableDnsSupport: v.EnableDnsSupport !== false,
+        EnableDnsHostnames: v.EnableDnsHostnames === true,
+        Tags: _cfnTags(v)
+      }
+    };
   });
 }
 
 export function _ckSubnets(subnets, res, seen) {
-  subnets.forEach(function(s) {
+  subnets.forEach(function (s) {
     const id = _ckId(gn(s, s.SubnetId), 'Subnet', seen);
-    res[id] = { Type: 'AWS::EC2::Subnet', Properties: {
-      VpcId: s.VpcId, CidrBlock: s.CidrBlock,
-      AvailabilityZone: s.AvailabilityZone || '',
-      MapPublicIpOnLaunch: s.MapPublicIpOnLaunch === true,
-      Tags: _cfnTags(s)
-    }};
+    res[id] = {
+      Type: 'AWS::EC2::Subnet',
+      Properties: {
+        VpcId: s.VpcId,
+        CidrBlock: s.CidrBlock,
+        AvailabilityZone: s.AvailabilityZone || '',
+        MapPublicIpOnLaunch: s.MapPublicIpOnLaunch === true,
+        Tags: _cfnTags(s)
+      }
+    };
   });
 }
 
 export function _ckExpandRules(perms) {
   const rules = [];
-  (perms || []).forEach(function(p) {
+  (perms || []).forEach(function (p) {
     const base = { IpProtocol: p.IpProtocol || '-1' };
-    if (p.FromPort != null) base.FromPort = p.FromPort;
-    if (p.ToPort != null) base.ToPort = p.ToPort;
-    (p.IpRanges || []).forEach(function(r) { rules.push(Object.assign({}, base, { CidrIp: r.CidrIp })); });
-    (p.Ipv6Ranges || []).forEach(function(r) { rules.push(Object.assign({}, base, { CidrIpv6: r.CidrIpv6 })); });
-    (p.UserIdGroupPairs || []).forEach(function(pair) { rules.push(Object.assign({}, base, { SourceSecurityGroupId: pair.GroupId })); });
-    if (!(p.IpRanges || []).length && !(p.Ipv6Ranges || []).length && !(p.UserIdGroupPairs || []).length) rules.push(base);
+    if (p.FromPort != null) {
+      base.FromPort = p.FromPort;
+    }
+    if (p.ToPort != null) {
+      base.ToPort = p.ToPort;
+    }
+    (p.IpRanges || []).forEach(function (r) {
+      rules.push(Object.assign({}, base, { CidrIp: r.CidrIp }));
+    });
+    (p.Ipv6Ranges || []).forEach(function (r) {
+      rules.push(Object.assign({}, base, { CidrIpv6: r.CidrIpv6 }));
+    });
+    (p.UserIdGroupPairs || []).forEach(function (pair) {
+      rules.push(Object.assign({}, base, { SourceSecurityGroupId: pair.GroupId }));
+    });
+    if (
+      !(p.IpRanges || []).length &&
+      !(p.Ipv6Ranges || []).length &&
+      !(p.UserIdGroupPairs || []).length
+    ) {
+      rules.push(base);
+    }
   });
   return rules;
 }
 
 export function _ckSgs(sgs, res, seen) {
-  sgs.forEach(function(sg) {
+  sgs.forEach(function (sg) {
     const id = _ckId(sg.GroupName || sg.GroupId, 'SG', seen);
-    res[id] = { Type: 'AWS::EC2::SecurityGroup', Properties: {
-      GroupDescription: sg.Description || sg.GroupName || '',
-      VpcId: sg.VpcId,
-      SecurityGroupIngress: _ckExpandRules(sg.IpPermissions),
-      SecurityGroupEgress: _ckExpandRules(sg.IpPermissionsEgress),
-      Tags: _cfnTags(sg)
-    }};
+    res[id] = {
+      Type: 'AWS::EC2::SecurityGroup',
+      Properties: {
+        GroupDescription: sg.Description || sg.GroupName || '',
+        VpcId: sg.VpcId,
+        SecurityGroupIngress: _ckExpandRules(sg.IpPermissions),
+        SecurityGroupEgress: _ckExpandRules(sg.IpPermissionsEgress),
+        Tags: _cfnTags(sg)
+      }
+    };
   });
 }
 
 export function _ckNacls(nacls, res, seen) {
-  nacls.forEach(function(nacl) {
+  nacls.forEach(function (nacl) {
     const nId = _ckId(gn(nacl, nacl.NetworkAclId), 'NACL', seen);
-    res[nId] = { Type: 'AWS::EC2::NetworkAcl', Properties: { VpcId: nacl.VpcId, Tags: _cfnTags(nacl) } };
-    (nacl.Entries || []).forEach(function(e) {
+    res[nId] = {
+      Type: 'AWS::EC2::NetworkAcl',
+      Properties: { VpcId: nacl.VpcId, Tags: _cfnTags(nacl) }
+    };
+    (nacl.Entries || []).forEach(function (e) {
       const eId = _ckId(nId + 'Rule' + e.RuleNumber + (e.Egress ? 'E' : 'I'), 'NACLEntry', seen);
-      const props = { NetworkAclId: nacl.NetworkAclId, RuleNumber: e.RuleNumber,
-        Protocol: String(e.Protocol), RuleAction: e.RuleAction, Egress: e.Egress === true };
-      if (e.CidrBlock) props.CidrBlock = e.CidrBlock;
-      if (e.Ipv6CidrBlock) props.Ipv6CidrBlock = e.Ipv6CidrBlock;
-      if (e.PortRange) props.PortRange = { From: e.PortRange.From, To: e.PortRange.To };
+      const props = {
+        NetworkAclId: nacl.NetworkAclId,
+        RuleNumber: e.RuleNumber,
+        Protocol: String(e.Protocol),
+        RuleAction: e.RuleAction,
+        Egress: e.Egress === true
+      };
+      if (e.CidrBlock) {
+        props.CidrBlock = e.CidrBlock;
+      }
+      if (e.Ipv6CidrBlock) {
+        props.Ipv6CidrBlock = e.Ipv6CidrBlock;
+      }
+      if (e.PortRange) {
+        props.PortRange = { From: e.PortRange.From, To: e.PortRange.To };
+      }
       res[eId] = { Type: 'AWS::EC2::NetworkAclEntry', Properties: props };
     });
   });
 }
 
 export function _ckRts(rts, res, seen) {
-  rts.forEach(function(rt) {
+  rts.forEach(function (rt) {
     const rtId = _ckId(gn(rt, rt.RouteTableId), 'RT', seen);
-    res[rtId] = { Type: 'AWS::EC2::RouteTable', Properties: { VpcId: rt.VpcId, Tags: _cfnTags(rt) } };
-    (rt.Routes || []).forEach(function(r) {
-      if (r.GatewayId === 'local') return;
-      const rId = _ckId(rtId + (r.DestinationCidrBlock || '').replace(/[^a-zA-Z0-9]/g, ''), 'Route', seen);
+    res[rtId] = {
+      Type: 'AWS::EC2::RouteTable',
+      Properties: { VpcId: rt.VpcId, Tags: _cfnTags(rt) }
+    };
+    (rt.Routes || []).forEach(function (r) {
+      if (r.GatewayId === 'local') {
+        return;
+      }
+      const rId = _ckId(
+        rtId + (r.DestinationCidrBlock || '').replace(/[^a-zA-Z0-9]/g, ''),
+        'Route',
+        seen
+      );
       const props = { RouteTableId: rt.RouteTableId };
-      if (r.DestinationCidrBlock) props.DestinationCidrBlock = r.DestinationCidrBlock;
-      if (r.GatewayId) props.GatewayId = r.GatewayId;
-      if (r.NatGatewayId) props.NatGatewayId = r.NatGatewayId;
-      if (r.VpcEndpointId) props.VpcEndpointId = r.VpcEndpointId;
+      if (r.DestinationCidrBlock) {
+        props.DestinationCidrBlock = r.DestinationCidrBlock;
+      }
+      if (r.GatewayId) {
+        props.GatewayId = r.GatewayId;
+      }
+      if (r.NatGatewayId) {
+        props.NatGatewayId = r.NatGatewayId;
+      }
+      if (r.VpcEndpointId) {
+        props.VpcEndpointId = r.VpcEndpointId;
+      }
       res[rId] = { Type: 'AWS::EC2::Route', Properties: props };
     });
   });
 }
 
 export function _ckEc2(instances, ctx, res, seen) {
-  instances.forEach(function(inst) {
+  instances.forEach(function (inst) {
     const id = _ckId(gn(inst, inst.InstanceId), 'EC2', seen);
-    const props = { InstanceType: inst.InstanceType || 't3.micro', SubnetId: inst.SubnetId || '',
-      SecurityGroupIds: (inst.SecurityGroups || []).map(function(s) { return s.GroupId; }),
-      ImageId: inst.ImageId || '', Tags: _cfnTags(inst) };
+    const props = {
+      InstanceType: inst.InstanceType || 't3.micro',
+      SubnetId: inst.SubnetId || '',
+      SecurityGroupIds: (inst.SecurityGroups || []).map(function (s) {
+        return s.GroupId;
+      }),
+      ImageId: inst.ImageId || '',
+      Tags: _cfnTags(inst)
+    };
     // IMDSv2 — Checkov CKV_AWS_79
     const mo = inst.MetadataOptions || {};
-    props.MetadataOptions = { HttpTokens: mo.HttpTokens || 'optional', HttpEndpoint: mo.HttpEndpoint || 'enabled' };
+    props.MetadataOptions = {
+      HttpTokens: mo.HttpTokens || 'optional',
+      HttpEndpoint: mo.HttpEndpoint || 'enabled'
+    };
     // IAM profile
-    if (inst.IamInstanceProfile) props.IamInstanceProfile = inst.IamInstanceProfile.Arn || '';
+    if (inst.IamInstanceProfile) {
+      props.IamInstanceProfile = inst.IamInstanceProfile.Arn || '';
+    }
     // EBS encryption
     if (inst.BlockDeviceMappings && inst.BlockDeviceMappings.length) {
-      props.BlockDeviceMappings = inst.BlockDeviceMappings.map(function(b) {
+      props.BlockDeviceMappings = inst.BlockDeviceMappings.map(function (b) {
         const r = { DeviceName: b.DeviceName || '/dev/xvda' };
-        if (b.Ebs) r.Ebs = { Encrypted: b.Ebs.Encrypted === true, VolumeSize: b.Ebs.VolumeSize || 8, VolumeType: b.Ebs.VolumeType || 'gp3' };
+        if (b.Ebs) {
+          r.Ebs = {
+            Encrypted: b.Ebs.Encrypted === true,
+            VolumeSize: b.Ebs.VolumeSize || 8,
+            VolumeType: b.Ebs.VolumeType || 'gp3'
+          };
+        }
         return r;
       });
     }
@@ -1101,68 +1652,102 @@ export function _ckEc2(instances, ctx, res, seen) {
 }
 
 export function _ckRds(rdsInstances, res, seen) {
-  rdsInstances.forEach(function(db) {
+  rdsInstances.forEach(function (db) {
     const id = _ckId(db.DBInstanceIdentifier, 'RDS', seen);
-    res[id] = { Type: 'AWS::RDS::DBInstance', Properties: {
-      DBInstanceIdentifier: db.DBInstanceIdentifier,
-      Engine: db.Engine || '', EngineVersion: db.EngineVersion || '',
-      DBInstanceClass: db.DBInstanceClass || 'db.t3.micro',
-      StorageEncrypted: db.StorageEncrypted === true,
-      PubliclyAccessible: db.PubliclyAccessible === true,
-      MultiAZ: db.MultiAZ === true,
-      BackupRetentionPeriod: db.BackupRetentionPeriod || 0,
-      StorageType: db.StorageType || 'gp2',
-      AllocatedStorage: db.AllocatedStorage || 20,
-      MasterUsername: 'admin'
-    }};
+    res[id] = {
+      Type: 'AWS::RDS::DBInstance',
+      Properties: {
+        DBInstanceIdentifier: db.DBInstanceIdentifier,
+        Engine: db.Engine || '',
+        EngineVersion: db.EngineVersion || '',
+        DBInstanceClass: db.DBInstanceClass || 'db.t3.micro',
+        StorageEncrypted: db.StorageEncrypted === true,
+        PubliclyAccessible: db.PubliclyAccessible === true,
+        MultiAZ: db.MultiAZ === true,
+        BackupRetentionPeriod: db.BackupRetentionPeriod || 0,
+        StorageType: db.StorageType || 'gp2',
+        AllocatedStorage: db.AllocatedStorage || 20,
+        MasterUsername: 'admin'
+      }
+    };
   });
 }
 
 export function _ckS3(buckets, res, seen) {
-  buckets.forEach(function(bk) {
+  buckets.forEach(function (bk) {
     const id = _ckId(bk.Name, 'S3', seen);
     const props = { BucketName: bk.Name };
     // Omit encryption/versioning — Checkov flags their absence, which is correct
-    if (bk.BucketEncryption) props.BucketEncryption = bk.BucketEncryption;
-    if (bk.VersioningConfiguration) props.VersioningConfiguration = bk.VersioningConfiguration;
+    if (bk.BucketEncryption) {
+      props.BucketEncryption = bk.BucketEncryption;
+    }
+    if (bk.VersioningConfiguration) {
+      props.VersioningConfiguration = bk.VersioningConfiguration;
+    }
     res[id] = { Type: 'AWS::S3::Bucket', Properties: props };
   });
 }
 
 export function _ckAlbs(albs, res, seen) {
-  albs.forEach(function(alb) {
+  albs.forEach(function (alb) {
     const id = _ckId(alb.LoadBalancerName || alb.LoadBalancerArn, 'ALB', seen);
     const props = { Type: alb.Type || 'application', Scheme: alb.Scheme || 'internet-facing' };
-    if (alb.SecurityGroups) props.SecurityGroups = alb.SecurityGroups;
-    if (alb.Subnets) props.Subnets = alb.Subnets;
-    else if (alb.AvailabilityZones) props.Subnets = alb.AvailabilityZones.map(function(az) { return az.SubnetId; }).filter(Boolean);
+    if (alb.SecurityGroups) {
+      props.SecurityGroups = alb.SecurityGroups;
+    }
+    if (alb.Subnets) {
+      props.Subnets = alb.Subnets;
+    } else if (alb.AvailabilityZones) {
+      props.Subnets = alb.AvailabilityZones.map(function (az) {
+        return az.SubnetId;
+      }).filter(Boolean);
+    }
     res[id] = { Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer', Properties: props };
   });
 }
 
 export function _ckLambda(fns, res, seen) {
-  fns.forEach(function(fn) {
+  fns.forEach(function (fn) {
     const id = _ckId(fn.FunctionName, 'Lambda', seen);
-    const props = { FunctionName: fn.FunctionName, Runtime: fn.Runtime || '', Handler: fn.Handler || 'index.handler',
-      MemorySize: fn.MemorySize || 128, Timeout: fn.Timeout || 3,
+    const props = {
+      FunctionName: fn.FunctionName,
+      Runtime: fn.Runtime || '',
+      Handler: fn.Handler || 'index.handler',
+      MemorySize: fn.MemorySize || 128,
+      Timeout: fn.Timeout || 3,
       Role: fn.Role || 'arn:aws:iam::111222333444:role/LambdaRole',
-      Code: { ZipFile: 'exports.handler=async()=>({})' } };
+      Code: { ZipFile: 'exports.handler=async()=>({})' }
+    };
     if (fn.VpcConfig && fn.VpcConfig.SubnetIds && fn.VpcConfig.SubnetIds.length) {
-      props.VpcConfig = { SubnetIds: fn.VpcConfig.SubnetIds, SecurityGroupIds: fn.VpcConfig.SecurityGroupIds || [] };
+      props.VpcConfig = {
+        SubnetIds: fn.VpcConfig.SubnetIds,
+        SecurityGroupIds: fn.VpcConfig.SecurityGroupIds || []
+      };
     }
     res[id] = { Type: 'AWS::Lambda::Function', Properties: props };
   });
 }
 
 export function _ckIamRoles(roles, res, seen) {
-  roles.forEach(function(role) {
+  roles.forEach(function (role) {
     const id = _ckId(role.RoleName, 'Role', seen);
-    const props = { RoleName: role.RoleName,
-      AssumeRolePolicyDocument: role.AssumeRolePolicyDocument || { Version: '2012-10-17', Statement: [] } };
-    const managed = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyArn; }).filter(Boolean);
-    if (managed.length) props.ManagedPolicyArns = managed;
+    const props = {
+      RoleName: role.RoleName,
+      AssumeRolePolicyDocument: role.AssumeRolePolicyDocument || {
+        Version: '2012-10-17',
+        Statement: []
+      }
+    };
+    const managed = (role.AttachedManagedPolicies || [])
+      .map(function (p) {
+        return p.PolicyArn;
+      })
+      .filter(Boolean);
+    if (managed.length) {
+      props.ManagedPolicyArns = managed;
+    }
     if (role.RolePolicyList && role.RolePolicyList.length) {
-      props.Policies = role.RolePolicyList.map(function(p) {
+      props.Policies = role.RolePolicyList.map(function (p) {
         return { PolicyName: p.PolicyName, PolicyDocument: p.PolicyDocument || {} };
       });
     }
@@ -1171,13 +1756,19 @@ export function _ckIamRoles(roles, res, seen) {
 }
 
 export function _ckIamUsers(users, res, seen) {
-  users.forEach(function(user) {
+  users.forEach(function (user) {
     const id = _ckId(user.UserName, 'User', seen);
     const props = { UserName: user.UserName };
-    const managed = (user.AttachedManagedPolicies || []).map(function(p) { return p.PolicyArn; }).filter(Boolean);
-    if (managed.length) props.ManagedPolicyArns = managed;
+    const managed = (user.AttachedManagedPolicies || [])
+      .map(function (p) {
+        return p.PolicyArn;
+      })
+      .filter(Boolean);
+    if (managed.length) {
+      props.ManagedPolicyArns = managed;
+    }
     if (user.UserPolicyList && user.UserPolicyList.length) {
-      props.Policies = user.UserPolicyList.map(function(p) {
+      props.Policies = user.UserPolicyList.map(function (p) {
         return { PolicyName: p.PolicyName, PolicyDocument: p.PolicyDocument || {} };
       });
     }
@@ -1186,27 +1777,37 @@ export function _ckIamUsers(users, res, seen) {
 }
 
 export function _ckElastiCache(clusters, res, seen) {
-  clusters.forEach(function(c) {
+  clusters.forEach(function (c) {
     const id = _ckId(c.CacheClusterId, 'Cache', seen);
-    res[id] = { Type: 'AWS::ElastiCache::CacheCluster', Properties: {
-      Engine: c.Engine || 'redis', CacheNodeType: c.CacheNodeType || 'cache.t3.micro',
-      NumCacheNodes: c.NumCacheNodes || 1,
-      AtRestEncryptionEnabled: c.AtRestEncryptionEnabled === true,
-      TransitEncryptionEnabled: c.TransitEncryptionEnabled === true
-    }};
+    res[id] = {
+      Type: 'AWS::ElastiCache::CacheCluster',
+      Properties: {
+        Engine: c.Engine || 'redis',
+        CacheNodeType: c.CacheNodeType || 'cache.t3.micro',
+        NumCacheNodes: c.NumCacheNodes || 1,
+        AtRestEncryptionEnabled: c.AtRestEncryptionEnabled === true,
+        TransitEncryptionEnabled: c.TransitEncryptionEnabled === true
+      }
+    };
   });
 }
 
 export function _ckRedshift(clusters, res, seen) {
-  clusters.forEach(function(c) {
+  clusters.forEach(function (c) {
     const id = _ckId(c.ClusterIdentifier, 'Redshift', seen);
-    res[id] = { Type: 'AWS::Redshift::Cluster', Properties: {
-      ClusterIdentifier: c.ClusterIdentifier,
-      NodeType: c.NodeType || 'dc2.large', NumberOfNodes: c.NumberOfNodes || 1,
-      Encrypted: c.Encrypted === true, PubliclyAccessible: c.PubliclyAccessible === true,
-      MasterUsername: 'admin', MasterUserPassword: 'placeholder',
-      DBName: c.DBName || 'dev'
-    }};
+    res[id] = {
+      Type: 'AWS::Redshift::Cluster',
+      Properties: {
+        ClusterIdentifier: c.ClusterIdentifier,
+        NodeType: c.NodeType || 'dc2.large',
+        NumberOfNodes: c.NumberOfNodes || 1,
+        Encrypted: c.Encrypted === true,
+        PubliclyAccessible: c.PubliclyAccessible === true,
+        MasterUsername: 'admin',
+        MasterUserPassword: 'placeholder',
+        DBName: c.DBName || 'dev'
+      }
+    };
   });
 }
 
@@ -1215,11 +1816,17 @@ export function _ckRedshift(clusters, res, seen) {
  * Pure function: returns JSON string or null.
  */
 export function generateCheckovCfn(ctx, iamData) {
-  if (!ctx || !ctx.vpcs) return null;
-  const template = { AWSTemplateFormatVersion: '2010-09-09',
-    Description: 'Generated by AWS Mapper for Checkov scanning — ' + new Date().toISOString().split('T')[0],
-    Resources: {} };
-  const res = template.Resources, seen = new Set();
+  if (!ctx || !ctx.vpcs) {
+    return null;
+  }
+  const template = {
+    AWSTemplateFormatVersion: '2010-09-09',
+    Description:
+      'Generated by AWS Mapper for Checkov scanning — ' + new Date().toISOString().split('T')[0],
+    Resources: {}
+  };
+  const res = template.Resources,
+    seen = new Set();
   _ckVpcs(ctx.vpcs || [], res, seen);
   _ckSubnets(ctx.subnets || [], res, seen);
   _ckSgs(ctx.sgs || [], res, seen);
@@ -1245,29 +1852,63 @@ export function _serializeCfnYaml(obj, indent) {
   indent = indent || 0;
   const pad = '  '.repeat(indent);
   const lines = [];
-  if (obj === null || obj === undefined) return 'null';
-  if (typeof obj === 'boolean') return obj ? 'true' : 'false';
-  if (typeof obj === 'number') return String(obj);
+  if (obj === null || obj === undefined) {
+    return 'null';
+  }
+  if (typeof obj === 'boolean') {
+    return obj ? 'true' : 'false';
+  }
+  if (typeof obj === 'number') {
+    return String(obj);
+  }
   if (typeof obj === 'string') {
-    if (obj.includes('\n')) return '|\n' + obj.split('\n').map(l => pad + '  ' + l).join('\n');
-    if (obj.match(/[:{}\[\],&*?|>!%@`#'"]/)||obj===''||obj==='true'||obj==='false'||!isNaN(obj)) return "'" + obj.replace(/'/g, "''") + "'";
+    if (obj.includes('\n')) {
+      return (
+        '|\n' +
+        obj
+          .split('\n')
+          .map((l) => pad + '  ' + l)
+          .join('\n')
+      );
+    }
+    if (
+      obj.match(/[:{}\[\],&*?|>!%@`#'"]/) ||
+      obj === '' ||
+      obj === 'true' ||
+      obj === 'false' ||
+      !isNaN(obj)
+    ) {
+      return "'" + obj.replace(/'/g, "''") + "'";
+    }
     return obj;
   }
   if (Array.isArray(obj)) {
-    if (obj.length === 0) return '[]';
-    // Check if array of simple values
-    if (obj.every(v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')) {
-      return '[' + obj.map(v => {
-        if (typeof v === 'string') return "'" + v.replace(/'/g, "''") + "'";
-        return String(v);
-      }).join(', ') + ']';
+    if (obj.length === 0) {
+      return '[]';
     }
-    obj.forEach(item => {
+    // Check if array of simple values
+    if (
+      obj.every((v) => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')
+    ) {
+      return (
+        '[' +
+        obj
+          .map((v) => {
+            if (typeof v === 'string') {
+              return "'" + v.replace(/'/g, "''") + "'";
+            }
+            return String(v);
+          })
+          .join(', ') +
+        ']'
+      );
+    }
+    obj.forEach((item) => {
       if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
         const keys = Object.keys(item);
         if (keys.length) {
           lines.push(pad + '- ' + keys[0] + ': ' + _serializeCfnYaml(item[keys[0]], indent + 2));
-          keys.slice(1).forEach(k => {
+          keys.slice(1).forEach((k) => {
             lines.push(pad + '  ' + k + ': ' + _serializeCfnYaml(item[k], indent + 2));
           });
         } else {
@@ -1282,14 +1923,24 @@ export function _serializeCfnYaml(obj, indent) {
   if (typeof obj === 'object') {
     // Handle CFN intrinsic functions
     const keys = Object.keys(obj);
-    if (keys.length === 1 && keys[0] === 'Ref') return '!Ref ' + obj.Ref;
-    if (keys.length === 1 && keys[0] === 'Fn::GetAtt') return '!GetAtt ' + obj['Fn::GetAtt'].join('.');
-    if (keys.length === 1 && keys[0] === 'Fn::Sub') return '!Sub ' + _serializeCfnYaml(obj['Fn::Sub'], indent);
+    if (keys.length === 1 && keys[0] === 'Ref') {
+      return '!Ref ' + obj.Ref;
+    }
+    if (keys.length === 1 && keys[0] === 'Fn::GetAtt') {
+      return '!GetAtt ' + obj['Fn::GetAtt'].join('.');
+    }
+    if (keys.length === 1 && keys[0] === 'Fn::Sub') {
+      return '!Sub ' + _serializeCfnYaml(obj['Fn::Sub'], indent);
+    }
 
-    if (keys.length === 0) return '{}';
-    keys.forEach(k => {
+    if (keys.length === 0) {
+      return '{}';
+    }
+    keys.forEach((k) => {
       const val = obj[k];
-      if (val === null || val === undefined) return;
+      if (val === null || val === undefined) {
+        return;
+      }
       if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length > 0) {
         // Check for intrinsic
         const vkeys = Object.keys(val);
@@ -1327,23 +1978,36 @@ export function highlightHCL(code) {
   // Escape HTML first
   code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   // Process line-by-line to avoid cross-match issues
-  return code.split('\n').map(line => {
-    // Comments take precedence
-    if (line.match(/^\s*#/)) return '<span class="hcl-cmt">' + line + '</span>';
-    // Strings: replace "..." with colored spans
-    line = line.replace(/"([^"]*)"/g, function(_, s) { return '"<span class="hcl-str">' + s + '</span>"'; });
-    // Keywords
-    line = line.replace(/\b(resource|variable|data|module|provider|output|terraform|required_providers|import|locals|dynamic)\b/g, '<span class="hcl-kw">$1</span>');
-    // Types
-    line = line.replace(/\b(string|number|bool|list|map|set|object|any)\b/g, '<span class="hcl-type">$1</span>');
-    // Numbers (standalone, not inside strings)
-    line = line.replace(/= (\d+)$/g, '= <span class="hcl-num">$1</span>');
-    // Booleans
-    line = line.replace(/\b(true|false|null)\b/g, '<span class="hcl-num">$1</span>');
-    // Resource refs
-    line = line.replace(/(aws_[a-z_]+\.[a-z_0-9]+\.[a-z_]+)/g, '<span class="hcl-ref">$1</span>');
-    return line;
-  }).join('\n');
+  return code
+    .split('\n')
+    .map((line) => {
+      // Comments take precedence
+      if (line.match(/^\s*#/)) {
+        return '<span class="hcl-cmt">' + line + '</span>';
+      }
+      // Strings: replace "..." with colored spans
+      line = line.replace(/"([^"]*)"/g, function (_, s) {
+        return '"<span class="hcl-str">' + s + '</span>"';
+      });
+      // Keywords
+      line = line.replace(
+        /\b(resource|variable|data|module|provider|output|terraform|required_providers|import|locals|dynamic)\b/g,
+        '<span class="hcl-kw">$1</span>'
+      );
+      // Types
+      line = line.replace(
+        /\b(string|number|bool|list|map|set|object|any)\b/g,
+        '<span class="hcl-type">$1</span>'
+      );
+      // Numbers (standalone, not inside strings)
+      line = line.replace(/= (\d+)$/g, '= <span class="hcl-num">$1</span>');
+      // Booleans
+      line = line.replace(/\b(true|false|null)\b/g, '<span class="hcl-num">$1</span>');
+      // Resource refs
+      line = line.replace(/(aws_[a-z_]+\.[a-z_0-9]+\.[a-z_]+)/g, '<span class="hcl-ref">$1</span>');
+      return line;
+    })
+    .join('\n');
 }
 
 /**
@@ -1352,14 +2016,22 @@ export function highlightHCL(code) {
  */
 export function highlightYAML(code) {
   code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return code.split('\n').map(line => {
-    if (line.match(/^\s*#/)) return '<span class="hcl-cmt">' + line + '</span>';
-    line = line.replace(/(!Ref|!GetAtt|!Sub|!Select|!Join|!If)\b/g, '<span class="hcl-kw">$1</span>');
-    line = line.replace(/(AWS::[A-Za-z0-9:]+)/g, '<span class="hcl-type">$1</span>');
-    line = line.replace(/'([^']*)'/g, "'<span class=\"hcl-str\">$1</span>'");
-    line = line.replace(/\b(true|false|null)\b/g, '<span class="hcl-num">$1</span>');
-    return line;
-  }).join('\n');
+  return code
+    .split('\n')
+    .map((line) => {
+      if (line.match(/^\s*#/)) {
+        return '<span class="hcl-cmt">' + line + '</span>';
+      }
+      line = line.replace(
+        /(!Ref|!GetAtt|!Sub|!Select|!Join|!If)\b/g,
+        '<span class="hcl-kw">$1</span>'
+      );
+      line = line.replace(/(AWS::[A-Za-z0-9:]+)/g, '<span class="hcl-type">$1</span>');
+      line = line.replace(/'([^']*)'/g, '\'<span class="hcl-str">$1</span>\'');
+      line = line.replace(/\b(true|false|null)\b/g, '<span class="hcl-num">$1</span>');
+      return line;
+    })
+    .join('\n');
 }
 
 // Window bridge removed — all exports are on window via AppModules spread in main.js

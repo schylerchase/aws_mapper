@@ -6,32 +6,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── File Operations ───────────────────────────────────────────
 
-  saveFile: (data, defaultName) =>
-    ipcRenderer.invoke('file:save', { data, defaultName }),
+  saveFile: (data, defaultName) => ipcRenderer.invoke('file:save', { data, defaultName }),
 
-  openFile: () =>
-    ipcRenderer.invoke('file:open'),
+  openFile: () => ipcRenderer.invoke('file:open'),
 
-  openFolder: () =>
-    ipcRenderer.invoke('file:open-folder'),
+  openFolder: () => ipcRenderer.invoke('file:open-folder'),
 
   exportFile: (data, defaultName, filters) =>
     ipcRenderer.invoke('file:export', { data, defaultName, filters }),
 
   // ── BUDR Export ──────────────────────────────────────────────
-  exportBUDRXlsx: (jsonData) =>
-    ipcRenderer.invoke('budr:export-xlsx', { jsonData }),
+  exportBUDRXlsx: (jsonData) => ipcRenderer.invoke('budr:export-xlsx', { jsonData }),
 
   // ── AWS CLI ───────────────────────────────────────────────────
 
-  checkCli: () =>
-    ipcRenderer.invoke('aws:check-cli'),
+  checkCli: () => ipcRenderer.invoke('aws:check-cli'),
 
-  scanAWS: (opts) =>
-    ipcRenderer.invoke('aws:scan', opts),
+  scanAWS: (opts) => ipcRenderer.invoke('aws:scan', opts),
 
-  abortScan: () =>
-    ipcRenderer.send('aws:scan:abort'),
+  abortScan: () => ipcRenderer.send('aws:scan:abort'),
 
   // ── Event Listeners (return unsubscribe function) ─────────────
 

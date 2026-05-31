@@ -1,0 +1,23 @@
+# Normalize line endings: store LF in the repo and check out LF everywhere.
+# Prevents the Windows<->WSL CRLF churn this repo was accumulating (no prior policy).
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF to run correctly on Windows.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Minified/vendored libs: treat as binary so they don't produce noisy line-ending diffs.
+libs/** -text
+*.min.js -text
+
+# Binary assets — never normalize.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.vsdx binary

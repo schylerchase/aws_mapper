@@ -4,25 +4,45 @@
 /**
  * Show a toast notification
  * @param {string} msg - Message to display
- * @param {number} duration - Duration in ms (default: 3000)
+ * @param {string|number} typeOrDuration - Toast type or legacy duration in ms
+ * @param {number} duration - Duration in ms when a type is provided
  */
 let _toastEl = null;
 let _toastTimer = null;
-export function showToast(msg, duration = 3000) {
+export function showToast(msg, typeOrDuration = 3000, duration) {
+  let type = 'success';
+  let timeout = 3000;
+  if (typeof typeOrDuration === 'number') {
+    timeout = typeOrDuration;
+  } else if (typeof typeOrDuration === 'string') {
+    type = typeOrDuration;
+    timeout = typeof duration === 'number' ? duration : 3000;
+  }
   if (!_toastEl) {
     _toastEl = document.createElement('div');
     _toastEl.style.cssText = `
       position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:300;
-      background:var(--accent-green);color:#000;padding:8px 20px;border-radius:6px;
+      padding:8px 20px;border-radius:6px;
       font-family:Segoe UI,system-ui,sans-serif;font-size:12px;font-weight:600;
       box-shadow:0 4px 12px rgba(0,0,0,.4);transition:opacity .3s
     `;
     document.body.appendChild(_toastEl);
   }
   clearTimeout(_toastTimer);
+  const styles = {
+    success: { bg: 'var(--accent-green)', fg: '#000' },
+    info: { bg: 'var(--accent-cyan)', fg: '#001018' },
+    warn: { bg: 'var(--accent-orange)', fg: '#111827' },
+    error: { bg: 'var(--accent-red)', fg: '#fff' }
+  };
+  const palette = styles[type] || styles.success;
+  _toastEl.style.background = palette.bg;
+  _toastEl.style.color = palette.fg;
   _toastEl.textContent = msg;
   _toastEl.style.opacity = '1';
-  _toastTimer = setTimeout(() => { _toastEl.style.opacity = '0'; }, duration);
+  _toastTimer = setTimeout(() => {
+    _toastEl.style.opacity = '0';
+  }, timeout);
 }
 
 /**
@@ -31,8 +51,10 @@ export function showToast(msg, duration = 3000) {
  */
 export function closeAllDashboards(except) {
   const ids = ['udash', 'diffDash', 'notesPanel'];
-  ids.forEach(function(id) {
-    if (id === except) return;
+  ids.forEach(function (id) {
+    if (id === except) {
+      return;
+    }
     const el = document.getElementById(id);
     if (el && el.classList.contains('open')) {
       el.classList.remove('open');
@@ -52,7 +74,9 @@ export function closeAllDashboards(except) {
  */
 export function toggleClass(el, className) {
   const element = typeof el === 'string' ? document.getElementById(el) : el;
-  if (!element) return false;
+  if (!element) {
+    return false;
+  }
   const hasClass = element.classList.contains(className);
   element.classList.toggle(className);
   return !hasClass;
@@ -65,7 +89,9 @@ export function toggleClass(el, className) {
  */
 export function setVisible(el, visible) {
   const element = typeof el === 'string' ? document.getElementById(el) : el;
-  if (!element) return;
+  if (!element) {
+    return;
+  }
   element.style.display = visible ? '' : 'none';
 }
 

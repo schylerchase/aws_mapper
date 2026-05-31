@@ -27,14 +27,19 @@ test.describe('Export Functions', () => {
   test('HTML report generates without errors', async ({ page }) => {
     // Enable all modules and ensure at least one is available
     const hasEnabled = await page.evaluate(() => _rptEnabledModules().length > 0);
-    if (!hasEnabled) return;
+    if (!hasEnabled) {
+      return;
+    }
 
     // Intercept download to prevent file dialog
     await page.evaluate(() => {
       window._testLastBlob = null;
       window._origDownloadBlob = window.downloadBlob;
-      window.downloadBlob = function(blob, name) {
+      window.downloadBlob = function (blob, name) {
         window._testLastBlob = { size: blob.size, name: name, type: blob.type };
+        blob.text().then((text) => {
+          window._testLastBlob.text = text;
+        });
       };
     });
 
@@ -45,6 +50,10 @@ test.describe('Export Functions', () => {
         () => document.getElementById('rptExportHTML').textContent !== 'Generating...',
         { timeout: 15000 }
       );
+      await page.waitForFunction(
+        () => window._testLastBlob && typeof window._testLastBlob.text === 'string',
+        { timeout: 15000 }
+      );
     });
 
     expect(errors).toEqual([]);
@@ -53,19 +62,29 @@ test.describe('Export Functions', () => {
     const blob = await page.evaluate(() => window._testLastBlob);
     expect(blob).not.toBeNull();
     expect(blob.size).toBeGreaterThan(100);
+    expect(blob.text).toContain('Table of Contents');
+    expect(blob.text).toContain('Executive Summary');
+    expect(blob.text).toContain('function rptSortValue');
+    expect(blob.text).toContain('data-sort-type="strategy"');
+    expect(blob.text).toContain('data-tier="at_risk"');
+    expect(blob.text).not.toContain('[object Promise]');
 
     // Restore original
-    await page.evaluate(() => { window.downloadBlob = window._origDownloadBlob; });
+    await page.evaluate(() => {
+      window.downloadBlob = window._origDownloadBlob;
+    });
   });
 
   test('XLSX export generates without errors', async ({ page }) => {
     const hasEnabled = await page.evaluate(() => _rptEnabledModules().length > 0);
-    if (!hasEnabled) return;
+    if (!hasEnabled) {
+      return;
+    }
 
     await page.evaluate(() => {
       window._testLastBlob = null;
       window._origDownloadBlob = window.downloadBlob;
-      window.downloadBlob = function(blob, name) {
+      window.downloadBlob = function (blob, name) {
         window._testLastBlob = { size: blob.size, name: name, type: blob.type };
       };
     });
@@ -86,17 +105,21 @@ test.describe('Export Functions', () => {
     expect(blob).not.toBeNull();
     expect(blob.size).toBeGreaterThan(1000);
 
-    await page.evaluate(() => { window.downloadBlob = window._origDownloadBlob; });
+    await page.evaluate(() => {
+      window.downloadBlob = window._origDownloadBlob;
+    });
   });
 
   test('DOCX export (executive tone) generates without errors', async ({ page }) => {
     const hasEnabled = await page.evaluate(() => _rptEnabledModules().length > 0);
-    if (!hasEnabled) return;
+    if (!hasEnabled) {
+      return;
+    }
 
     await page.evaluate(() => {
       window._testLastBlob = null;
       window._origDownloadBlob = window.downloadBlob;
-      window.downloadBlob = function(blob, name) {
+      window.downloadBlob = function (blob, name) {
         window._testLastBlob = { size: blob.size, name: name, type: blob.type };
       };
     });
@@ -121,17 +144,21 @@ test.describe('Export Functions', () => {
     expect(blob.size).toBeGreaterThan(1000);
     expect(blob.name).toContain('.docx');
 
-    await page.evaluate(() => { window.downloadBlob = window._origDownloadBlob; });
+    await page.evaluate(() => {
+      window.downloadBlob = window._origDownloadBlob;
+    });
   });
 
   test('DOCX export (technical tone) generates without errors', async ({ page }) => {
     const hasEnabled = await page.evaluate(() => _rptEnabledModules().length > 0);
-    if (!hasEnabled) return;
+    if (!hasEnabled) {
+      return;
+    }
 
     await page.evaluate(() => {
       window._testLastBlob = null;
       window._origDownloadBlob = window.downloadBlob;
-      window.downloadBlob = function(blob, name) {
+      window.downloadBlob = function (blob, name) {
         window._testLastBlob = { size: blob.size, name: name, type: blob.type };
       };
     });
@@ -155,6 +182,8 @@ test.describe('Export Functions', () => {
     // Technical should be larger than executive
     expect(blob.size).toBeGreaterThan(5000);
 
-    await page.evaluate(() => { window.downloadBlob = window._origDownloadBlob; });
+    await page.evaluate(() => {
+      window.downloadBlob = window._origDownloadBlob;
+    });
   });
 });

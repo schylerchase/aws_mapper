@@ -9,11 +9,11 @@ module.exports = defineConfig({
   use: {
     browserName: 'chromium',
     headless: true,
-    viewport: { width: 1400, height: 900 },
+    viewport: { width: 1400, height: 900 }
   },
   webServer: {
     command: 'npx serve . -l 8377 --no-clipboard',
     port: 8377,
-    reuseExistingServer: true,
-  },
+    reuseExistingServer: true
+  }
 });

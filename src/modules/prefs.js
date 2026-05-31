@@ -22,7 +22,9 @@ const _prefs = loadPrefs();
 function savePrefs(p) {
   for (const k of Object.keys(p)) {
     // Prototype pollution protection
-    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') {
+      continue;
+    }
     _prefs[k] = p[k];
   }
   try {

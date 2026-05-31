@@ -39,7 +39,9 @@ test.describe('Flow Mode', () => {
     // Dispatch click on first subnet node via JS (SVG elements)
     await page.evaluate(() => {
       const node = document.querySelector('.subnet-node');
-      if (node) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      if (node) {
+        node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
     });
 
     const hasSource = await page.evaluate(() => !!_flowSource);
@@ -64,7 +66,9 @@ test.describe('Flow Mode', () => {
     // Select a source subnet
     await page.evaluate(() => {
       const node = document.querySelector('.subnet-node');
-      if (node) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      if (node) {
+        node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
     });
 
     await page.evaluate(() => exitFlowMode());
@@ -82,13 +86,13 @@ test.describe('Flow Mode', () => {
     // Select source
     await page.evaluate(() => {
       const node = document.querySelector('.subnet-node');
-      if (node) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      if (node) {
+        node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
     });
 
     // Select target (different subnet)
-    const subnetCount = await page.evaluate(() =>
-      document.querySelectorAll('.subnet-node').length
-    );
+    const subnetCount = await page.evaluate(() => document.querySelectorAll('.subnet-node').length);
     if (subnetCount >= 2) {
       await page.evaluate(() => {
         const nodes = document.querySelectorAll('.subnet-node');
@@ -112,12 +116,12 @@ test.describe('Flow Mode', () => {
 
       await page.evaluate(() => {
         const node = document.querySelector('.subnet-node');
-        if (node) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        if (node) {
+          node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        }
       });
 
-      const count = await page.evaluate(() =>
-        document.querySelectorAll('.subnet-node').length
-      );
+      const count = await page.evaluate(() => document.querySelectorAll('.subnet-node').length);
       if (count >= 2) {
         await page.evaluate(() => {
           const nodes = document.querySelectorAll('.subnet-node');

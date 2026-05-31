@@ -1,0 +1,12 @@
+dist/
+libs/
+node_modules/
+tests/visual.spec.js-snapshots/
+coverage/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.asar
+package-lock.json

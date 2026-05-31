@@ -36,19 +36,38 @@ test.describe('XSS regression -- inline-handler -> delegated-listener refactor',
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.locator('#landingDash').waitFor({ state: 'visible', timeout: 10000 });
 
-    await page.evaluate(({ payload, idBreakout }) => {
-      window.__xssFired = false;
-      // Seed the resource-list context the detail panel reads from (var _rlCtx is a real global).
-      _rlCtx = {
-        vpcs: [{ VpcId: 'vpc-xss', CidrBlock: '10.0.0.0/16', State: 'available',
-                 Tags: [{ Key: 'Name', Value: payload }] }],
-        // Subnet name carries an HTML payload; SubnetId carries an attribute-breakout payload.
-        subnets: [{ SubnetId: idBreakout, VpcId: 'vpc-xss', CidrBlock: '10.0.1.0/24',
-                    Tags: [{ Key: 'Name', Value: payload }] }],
-        pubSubs: new Set(), igws: [], nats: [], sgs: [], instances: [],
-      };
-      _openDetailForSearch('VPC', 'vpc-xss');
-    }, { payload: PAYLOAD, idBreakout: ID_BREAKOUT });
+    await page.evaluate(
+      ({ payload, idBreakout }) => {
+        window.__xssFired = false;
+        // Seed the resource-list context the detail panel reads from (var _rlCtx is a real global).
+        _rlCtx = {
+          vpcs: [
+            {
+              VpcId: 'vpc-xss',
+              CidrBlock: '10.0.0.0/16',
+              State: 'available',
+              Tags: [{ Key: 'Name', Value: payload }]
+            }
+          ],
+          // Subnet name carries an HTML payload; SubnetId carries an attribute-breakout payload.
+          subnets: [
+            {
+              SubnetId: idBreakout,
+              VpcId: 'vpc-xss',
+              CidrBlock: '10.0.1.0/24',
+              Tags: [{ Key: 'Name', Value: payload }]
+            }
+          ],
+          pubSubs: new Set(),
+          igws: [],
+          nats: [],
+          sgs: [],
+          instances: []
+        };
+        _openDetailForSearch('VPC', 'vpc-xss');
+      },
+      { payload: PAYLOAD, idBreakout: ID_BREAKOUT }
+    );
 
     await page.locator('#detailPanel.open').waitFor({ state: 'visible', timeout: 5000 });
     await assertNoXss(page, '#dpBody');
@@ -68,15 +87,22 @@ test.describe('XSS regression -- inline-handler -> delegated-listener refactor',
       window._annotations = {};
       window._notesLoaded = true;
       const vpc = (_rlCtx.vpcs || [])[0];
-      if (!vpc) return;
+      if (!vpc) {
+        return;
+      }
       vpc.Tags = [{ Key: 'Name', Value: payload }];
-      if (typeof _invalidateSearchIndex === 'function') _invalidateSearchIndex();
+      if (typeof _invalidateSearchIndex === 'function') {
+        _invalidateSearchIndex();
+      }
     }, PAYLOAD);
 
     await page.evaluate(() => openSearch());
     await page.locator('#searchInput').fill('img');
     await page.waitForTimeout(250);
-    await page.locator('#searchResults > div').first().waitFor({ state: 'attached', timeout: 5000 });
+    await page
+      .locator('#searchResults > div')
+      .first()
+      .waitFor({ state: 'attached', timeout: 5000 });
     await assertNoXss(page, '#searchResults');
     await expect(page.locator('#searchResults')).toContainText('<img src=x onerror=');
   });
@@ -89,10 +115,14 @@ test.describe('XSS regression -- inline-handler -> delegated-listener refactor',
     const result = await page.evaluate((payload) => {
       window.__xssFired = false;
       const node = document.querySelector('[data-vpc-id]');
-      if (!node) return 'no-vpc-node';
+      if (!node) {
+        return 'no-vpc-node';
+      }
       const vid = node.getAttribute('data-vpc-id');
-      const vpc = (_rlCtx.vpcs || []).find(v => v.VpcId === vid);
-      if (!vpc) return 'no-vpc-ctx';
+      const vpc = (_rlCtx.vpcs || []).find((v) => v.VpcId === vid);
+      if (!vpc) {
+        return 'no-vpc-ctx';
+      }
       vpc.Tags = [{ Key: 'Name', Value: payload }];
       _openResourceSpotlight(vid);
       return 'opened';

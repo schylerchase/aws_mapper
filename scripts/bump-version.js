@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Single-command version bump: updates package.json, syncs package-lock.json,
-// runs build to inject into index.html + README.md, then verifies all locations.
+// runs a build to verify the bundled runtime version, then checks source
+// placeholders remain template-safe.
 //
 // Usage:
 //   npm run version:bump -- patch    # 2.8.0 → 2.8.1
@@ -28,11 +29,18 @@ const [maj, min, pat] = current.split('.').map(Number);
 
 // Compute new version
 let next;
-if (arg === 'patch') next = `${maj}.${min}.${pat + 1}`;
-else if (arg === 'minor') next = `${maj}.${min + 1}.0`;
-else if (arg === 'major') next = `${maj + 1}.0.0`;
-else if (/^\d+\.\d+\.\d+$/.test(arg)) next = arg;
-else { console.error(`Invalid argument: ${arg}`); process.exit(1); }
+if (arg === 'patch') {
+  next = `${maj}.${min}.${pat + 1}`;
+} else if (arg === 'minor') {
+  next = `${maj}.${min + 1}.0`;
+} else if (arg === 'major') {
+  next = `${maj + 1}.0.0`;
+} else if (/^\d+\.\d+\.\d+$/.test(arg)) {
+  next = arg;
+} else {
+  console.error(`Invalid argument: ${arg}`);
+  process.exit(1);
+}
 
 console.log(`Bumping version: ${current} → ${next}\n`);
 
@@ -53,18 +61,19 @@ if (fs.existsSync(lockPath)) {
   console.log('  ✓ package-lock.json');
 }
 
-// 3. Run build to inject version into index.html + README.md
+// 3. Run build so __APP_VERSION__ is compiled from package.json
 console.log('\nRunning build...');
 execSync('node build.js', { cwd: root, stdio: 'inherit' });
 
-// 4. Verify all locations match
+// 4. Verify package files match and source files stayed template-safe
 console.log('\nVerifying version consistency...');
 const checks = [
   { file: 'package.json', pattern: /"version":\s*"([^"]+)"/, label: 'package.json' },
-  { file: 'package-lock.json', pattern: /"version":\s*"([^"]+)"/, label: 'package-lock.json (root)' },
-  { file: 'index.html', pattern: /brand-ver">v([^<]+)</, label: 'index.html (brand)' },
-  { file: 'index.html', pattern: /landing-footer">v([\d.]+)/, label: 'index.html (footer)' },
-  { file: 'README.md', pattern: /badge\/version-([^-]+)-blue/, label: 'README.md (badge)' },
+  {
+    file: 'package-lock.json',
+    pattern: /"version":\s*"([^"]+)"/,
+    label: 'package-lock.json (root)'
+  }
 ];
 
 let allMatch = true;
@@ -74,12 +83,42 @@ for (const check of checks) {
   const found = match ? match[1] : 'NOT FOUND';
   const ok = found === next;
   console.log(`  ${ok ? '✓' : '✗'} ${check.label}: ${found}`);
-  if (!ok) allMatch = false;
+  if (!ok) {
+    allMatch = false;
+  }
 }
 
 if (allMatch) {
-  console.log(`\n✓ All locations updated to v${next}`);
+  const sourceChecks = [
+    {
+      file: 'index.html',
+      pattern: /brand-ver">v__VERSION__</,
+      label: 'index.html brand placeholder'
+    },
+    {
+      file: 'index.html',
+      pattern: /landing-footer">v__VERSION__/,
+      label: 'index.html footer placeholder'
+    },
+    {
+      file: 'README.md',
+      pattern: /shields\.io\/github\/package-json\/v\/schylerchase\/aws_mapper/,
+      label: 'README.md dynamic version badge'
+    }
+  ];
+  for (const check of sourceChecks) {
+    const content = fs.readFileSync(path.join(root, check.file), 'utf8');
+    const ok = check.pattern.test(content);
+    console.log(`  ${ok ? '✓' : '✗'} ${check.label}`);
+    if (!ok) {
+      allMatch = false;
+    }
+  }
+}
+
+if (allMatch) {
+  console.log(`\n✓ Package files updated to v${next}; source placeholders preserved`);
 } else {
-  console.error(`\n✗ Version mismatch detected! Expected ${next} everywhere.`);
+  console.error(`\n✗ Version mismatch or source placeholder issue detected! Expected ${next}.`);
   process.exit(1);
 }

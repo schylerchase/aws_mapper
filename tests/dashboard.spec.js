@@ -11,7 +11,7 @@ test.describe('Dashboard Tabs', () => {
     { id: 'budr', button: '#budrBtn', expects: 'tier' },
     { id: 'inventory', button: '#inventoryBtn', expects: 'resource' },
     { id: 'classification', button: '#govBtn', expects: 'rule' },
-    { id: 'reports', button: '#reportsBtn', expects: 'report' },
+    { id: 'reports', button: '#reportsBtn', expects: 'report' }
   ];
 
   for (const tab of tabs) {
@@ -63,6 +63,32 @@ test.describe('Dashboard Tabs', () => {
     // Should contain a table or grid with resource types
     const body = await page.locator('#udashBody').innerHTML();
     expect(body).toContain('EC2');
+  });
+
+  test('reports preview awaits async sections', async ({ page }) => {
+    await openDashTab(page, 'reports');
+    const preview = page.locator('#rptPreviewContent');
+    await expect(preview).toContainText('Table of Contents');
+    await expect(preview).not.toContainText('[object Promise]');
+    await expect(preview).toContainText('Executive Summary');
+  });
+
+  test('report presets and module toggles update the preview', async ({ page }) => {
+    await openDashTab(page, 'reports');
+    const preview = page.locator('#rptPreviewContent');
+
+    const errors = await captureErrors(page, async () => {
+      await page.locator('#rptPresets [data-preset="budr"]').click();
+      await expect(page.locator('.rpt-mod-card[data-mod="budr"] .rm-check')).toBeChecked();
+      await expect(page.locator('.rpt-mod-card[data-mod="inventory"] .rm-check')).not.toBeChecked();
+      await expect(preview).toContainText('BUDR Assessment');
+      await expect(preview).not.toContainText('Resource Inventory');
+
+      await page.locator('.rpt-mod-card[data-mod="inventory"] .rm-check').setChecked(true);
+      await expect(preview).toContainText('Resource Inventory');
+    });
+
+    expect(errors).toEqual([]);
   });
 
   test('closing dashboard removes open class', async ({ page }) => {

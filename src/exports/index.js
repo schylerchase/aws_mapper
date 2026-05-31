@@ -8,9 +8,12 @@
 import { S } from './state.js';
 
 import {
-  generateTerraform, generateCloudFormation,
-  detectCircularSGs, generateCheckovCfn,
-  _highlightHCL, _highlightYAML
+  generateTerraform,
+  generateCloudFormation,
+  detectCircularSGs,
+  generateCheckovCfn,
+  _highlightHCL,
+  _highlightYAML
 } from './exports-iac.js';
 
 import { exportVsdx } from './exports-visio.js';
@@ -18,14 +21,24 @@ import { buildLucidZip } from './exports-lucid.js';
 import { generateBashScript, generatePsScript } from './exports-scripts.js';
 import { generateDocx } from './exports-docx.js';
 import {
-  generateXlsx, exportComplianceXlsx, exportFullXlsx,
-  loadSheetJS, xlsxHeaderStyle, xlsxBorder
+  generateXlsx,
+  exportComplianceXlsx,
+  exportFullXlsx,
+  loadSheetJS,
+  xlsxHeaderStyle,
+  xlsxBorder
 } from './exports-xlsx.js';
 
 import {
-  _DIFF_KEYS, _DIFF_VOLATILE, _DIFF_STRUCTURAL,
-  normalizeResource, normalizeSG, classifyChange,
-  _fieldDiff, computeDiff, _diffResName
+  _DIFF_KEYS,
+  _DIFF_VOLATILE,
+  _DIFF_STRUCTURAL,
+  normalizeResource,
+  normalizeSG,
+  classifyChange,
+  _fieldDiff,
+  computeDiff,
+  _diffResName
 } from './diff-logic.js';
 
 // Expose shared state and extracted modules globally

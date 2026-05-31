@@ -1,8 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  _stmtArr, _safePolicyParse,
-  parseIAMData, getIAMAccessForVpc, runIAMChecks
+  _stmtArr,
+  _safePolicyParse,
+  parseIAMData,
+  getIAMAccessForVpc,
+  runIAMChecks
 } from '../../src/modules/iam-engine.js';
 
 describe('_stmtArr', () => {
@@ -43,7 +46,10 @@ describe('parseIAMData', () => {
     assert.equal(parseIAMData(null), null);
   });
   it('parses roles from RoleDetailList', () => {
-    const raw = { RoleDetailList: [{ RoleName: 'test-role', RolePolicyList: [], AttachedManagedPolicies: [] }], Policies: [] };
+    const raw = {
+      RoleDetailList: [{ RoleName: 'test-role', RolePolicyList: [], AttachedManagedPolicies: [] }],
+      Policies: []
+    };
     const data = parseIAMData(raw);
     assert.equal(data.roles.length, 1);
     assert.equal(data.roles[0].RoleName, 'test-role');
@@ -55,15 +61,19 @@ describe('parseIAMData', () => {
   });
   it('detects admin role with *:* permissions', () => {
     const raw = {
-      RoleDetailList: [{
-        RoleName: 'admin-role',
-        RolePolicyList: [{
-          PolicyDocument: JSON.stringify({
-            Statement: [{ Effect: 'Allow', Action: '*', Resource: '*' }]
-          })
-        }],
-        AttachedManagedPolicies: []
-      }],
+      RoleDetailList: [
+        {
+          RoleName: 'admin-role',
+          RolePolicyList: [
+            {
+              PolicyDocument: JSON.stringify({
+                Statement: [{ Effect: 'Allow', Action: '*', Resource: '*' }]
+              })
+            }
+          ],
+          AttachedManagedPolicies: []
+        }
+      ],
       Policies: []
     };
     const data = parseIAMData(raw);
@@ -103,35 +113,53 @@ describe('runIAMChecks', () => {
   });
   it('flags admin role', () => {
     const iamData = {
-      roles: [{
-        RoleName: 'admin', _isAdmin: true, _hasWildcard: true, _vpcAccess: [],
-        RolePolicyList: [], AttachedManagedPolicies: []
-      }],
-      users: [], policies: []
+      roles: [
+        {
+          RoleName: 'admin',
+          _isAdmin: true,
+          _hasWildcard: true,
+          _vpcAccess: [],
+          RolePolicyList: [],
+          AttachedManagedPolicies: []
+        }
+      ],
+      users: [],
+      policies: []
     };
     const findings = runIAMChecks(iamData);
-    assert.ok(findings.some(f => f.control === 'IAM-1'));
+    assert.ok(findings.some((f) => f.control === 'IAM-1'));
   });
   it('flags user without MFA', () => {
     const iamData = {
-      roles: [], policies: [],
-      users: [{
-        UserName: 'bob', MFADevices: [],
-        UserPolicyList: [], AttachedManagedPolicies: []
-      }]
+      roles: [],
+      policies: [],
+      users: [
+        {
+          UserName: 'bob',
+          MFADevices: [],
+          UserPolicyList: [],
+          AttachedManagedPolicies: []
+        }
+      ]
     };
     const findings = runIAMChecks(iamData);
-    assert.ok(findings.some(f => f.control === 'IAM-3' && f.resource === 'bob'));
+    assert.ok(findings.some((f) => f.control === 'IAM-3' && f.resource === 'bob'));
   });
   it('flags console login without MFA', () => {
     const iamData = {
-      roles: [], policies: [],
-      users: [{
-        UserName: 'carol', MFADevices: [], LoginProfile: { CreateDate: '2024-01-01' },
-        UserPolicyList: [], AttachedManagedPolicies: []
-      }]
+      roles: [],
+      policies: [],
+      users: [
+        {
+          UserName: 'carol',
+          MFADevices: [],
+          LoginProfile: { CreateDate: '2024-01-01' },
+          UserPolicyList: [],
+          AttachedManagedPolicies: []
+        }
+      ]
     };
     const findings = runIAMChecks(iamData);
-    assert.ok(findings.some(f => f.control === 'IAM-11'));
+    assert.ok(findings.some((f) => f.control === 'IAM-11'));
   });
 });

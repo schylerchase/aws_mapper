@@ -17,9 +17,9 @@ const VERSION = pkg.version;
 // (and set TELEMETRY_ENDPOINT) when ready to ship analytics. See
 // .telemetry/integration.md for the full rollout checklist, including the
 // required CSP connect-src widening in index.html.
-const TELEMETRY_ENABLED  = process.env.TELEMETRY_ENABLED === 'true' ? 'true' : 'false';
+const TELEMETRY_ENABLED = process.env.TELEMETRY_ENABLED === 'true' ? 'true' : 'false';
 const TELEMETRY_ENDPOINT = process.env.TELEMETRY_ENDPOINT || '';
-const BUILD_CHANNEL      = process.env.BUILD_CHANNEL || (isProd ? 'browser_vercel' : 'dev');
+const BUILD_CHANNEL = process.env.BUILD_CHANNEL || (isProd ? 'browser_vercel' : 'dev');
 
 const buildConfig = {
   entryPoints: ['src/main.js'],
@@ -32,11 +32,11 @@ const buildConfig = {
   target: 'es2020',
   platform: 'browser',
   define: {
-    'process.env.NODE_ENV':    JSON.stringify(process.env.NODE_ENV || 'development'),
-    '__TELEMETRY_ENABLED__':   JSON.stringify(TELEMETRY_ENABLED),
-    '__TELEMETRY_ENDPOINT__':  JSON.stringify(TELEMETRY_ENDPOINT),
-    '__APP_VERSION__':         JSON.stringify(VERSION),
-    '__BUILD_CHANNEL__':       JSON.stringify(BUILD_CHANNEL),
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+    __TELEMETRY_ENABLED__: JSON.stringify(TELEMETRY_ENABLED),
+    __TELEMETRY_ENDPOINT__: JSON.stringify(TELEMETRY_ENDPOINT),
+    __APP_VERSION__: JSON.stringify(VERSION),
+    __BUILD_CHANNEL__: JSON.stringify(BUILD_CHANNEL)
   },
   logLevel: 'info'
 };
@@ -90,10 +90,13 @@ async function buildCore() {
 }
 
 if (watch) {
-  esbuild.context(buildConfig).then(ctx => {
-    ctx.watch();
-    console.log('Watching for changes...');
-  }).catch(() => process.exit(1));
+  esbuild
+    .context(buildConfig)
+    .then((ctx) => {
+      ctx.watch();
+      console.log('Watching for changes...');
+    })
+    .catch(() => process.exit(1));
 
   // Also watch app-core.js, core modules, and dev files
   buildCoreModules();
@@ -109,35 +112,42 @@ if (watch) {
     });
   }
 } else {
-  esbuild.build(buildConfig).then(async () => {
-    await buildCoreModules();
-    await buildCore();
-    await buildD3();
+  esbuild
+    .build(buildConfig)
+    .then(async () => {
+      await buildCoreModules();
+      await buildCore();
+      await buildD3();
 
-    // Inject version from package.json into index.html and README.md
-    // Matches both the __VERSION__ placeholder and any previously injected semver
-    const htmlPath = path.join(__dirname, 'index.html');
-    let html = fs.readFileSync(htmlPath, 'utf8');
-    html = html.replace(/brand-ver">v[^<]+</, `brand-ver">v${VERSION}<`);
-    html = html.replace(/landing-footer">v[\d.]+/, `landing-footer">v${VERSION}`);
-    const readmePath = path.join(__dirname, 'README.md');
-    if (fs.existsSync(readmePath)) {
-      let readme = fs.readFileSync(readmePath, 'utf8');
-      readme = readme.replace(/badge\/version-[^-]+-blue/g, `badge/version-${VERSION}-blue`);
-      fs.writeFileSync(readmePath, readme, 'utf8');
-    }
-    console.log(`Version: ${VERSION}`);
+      const htmlPath = path.join(__dirname, 'index.html');
+      let html = fs.readFileSync(htmlPath, 'utf8');
+      console.log(`Version: ${VERSION}`);
 
-    if (isProd) {
-      // Auto-inject content hashes into index.html for cache busting
-      const bundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/app.bundle.js')).digest('hex').slice(0, 8);
-      const coreBundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/core.bundle.js')).digest('hex').slice(0, 8);
-      const coreHash = crypto.createHash('md5').update(fs.readFileSync('dist/app-core.js')).digest('hex').slice(0, 8);
-      html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
-      html = html.replace(/core\.bundle\.js\?v=[^"]+/, `core.bundle.js?v=${coreBundleHash}`);
-      html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
-      console.log(`Cache bust: app.bundle.js?v=${bundleHash}, core.bundle.js?v=${coreBundleHash}, app-core.js?v=${coreHash}`);
-    }
-    fs.writeFileSync(htmlPath, html, 'utf8');
-  }).catch(() => process.exit(1));
+      if (isProd) {
+        // Auto-inject content hashes into index.html for cache busting
+        const bundleHash = crypto
+          .createHash('md5')
+          .update(fs.readFileSync('dist/app.bundle.js'))
+          .digest('hex')
+          .slice(0, 8);
+        const coreBundleHash = crypto
+          .createHash('md5')
+          .update(fs.readFileSync('dist/core.bundle.js'))
+          .digest('hex')
+          .slice(0, 8);
+        const coreHash = crypto
+          .createHash('md5')
+          .update(fs.readFileSync('dist/app-core.js'))
+          .digest('hex')
+          .slice(0, 8);
+        html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
+        html = html.replace(/core\.bundle\.js\?v=[^"]+/, `core.bundle.js?v=${coreBundleHash}`);
+        html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
+        console.log(
+          `Cache bust: app.bundle.js?v=${bundleHash}, core.bundle.js?v=${coreBundleHash}, app-core.js?v=${coreHash}`
+        );
+      }
+      fs.writeFileSync(htmlPath, html, 'utf8');
+    })
+    .catch(() => process.exit(1));
 }

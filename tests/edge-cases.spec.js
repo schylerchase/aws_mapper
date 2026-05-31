@@ -96,18 +96,19 @@ test.describe('State Collisions & Edge Cases', () => {
 
   test('demo load → clear → demo load produces clean state', async ({ page }) => {
     // First load already happened in beforeEach
-    const vpcCount1 = await page.evaluate(() =>
-      document.querySelectorAll('.vpc-group').length
-    );
+    const vpcCount1 = await page.evaluate(() => document.querySelectorAll('.vpc-group').length);
     expect(vpcCount1).toBeGreaterThan(0);
 
     // Clear
     const errors = await captureErrors(page, async () => {
       await page.evaluate(() => {
         // Find and click the Clear button via DOM (overlay may block Playwright clicks)
-        const clearBtn = document.querySelector('#clearBtn, [id*="clear" i], .btn-clear')
-          || [...document.querySelectorAll('button')].find(b => /clear/i.test(b.textContent));
-        if (clearBtn) clearBtn.click();
+        const clearBtn =
+          document.querySelector('#clearBtn, [id*="clear" i], .btn-clear') ||
+          [...document.querySelectorAll('button')].find((b) => /clear/i.test(b.textContent));
+        if (clearBtn) {
+          clearBtn.click();
+        }
       });
       await page.waitForTimeout(500);
 
@@ -118,9 +119,7 @@ test.describe('State Collisions & Edge Cases', () => {
     expect(errors).toEqual([]);
 
     // Should have VPCs again
-    const vpcCount2 = await page.evaluate(() =>
-      document.querySelectorAll('.vpc-group').length
-    );
+    const vpcCount2 = await page.evaluate(() => document.querySelectorAll('.vpc-group').length);
     expect(vpcCount2).toBeGreaterThan(0);
   });
 
@@ -131,14 +130,16 @@ test.describe('State Collisions & Edge Cases', () => {
 
     // Disable all modules
     await page.evaluate(() => {
-      _RPT_MODULES.forEach(m => { m.enabled = false; });
+      _RPT_MODULES.forEach((m) => {
+        m.enabled = false;
+      });
     });
 
     const errors = await captureErrors(page, async () => {
       await page.evaluate(() => {
         window._testLastBlob = null;
         window._origDownloadBlob = window.downloadBlob;
-        window.downloadBlob = function(blob, name) {
+        window.downloadBlob = function (blob, name) {
           window._testLastBlob = { size: blob.size, name };
         };
       });
@@ -153,8 +154,34 @@ test.describe('State Collisions & Edge Cases', () => {
     expect(blob).toBeNull();
 
     await page.evaluate(() => {
-      if (window._origDownloadBlob) window.downloadBlob = window._origDownloadBlob;
+      if (window._origDownloadBlob) {
+        window.downloadBlob = window._origDownloadBlob;
+      }
     });
+  });
+
+  test('typed toasts stay visible and use typed styling', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      showToast('Typed warning toast', 'warn');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const toast = [...document.body.children].find(
+        (el) => el.textContent === 'Typed warning toast'
+      );
+      return toast
+        ? {
+            text: toast.textContent,
+            opacity: getComputedStyle(toast).opacity,
+            background: toast.style.background,
+            color: toast.style.color
+          }
+        : null;
+    });
+
+    expect(result).not.toBeNull();
+    expect(result.text).toBe('Typed warning toast');
+    expect(result.opacity).toBe('1');
+    expect(result.background).toContain('accent-orange');
+    expect(result.color).toBe('rgb(17, 24, 39)');
   });
 
   // --- Layout mode transitions ---

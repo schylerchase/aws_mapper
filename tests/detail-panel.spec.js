@@ -52,17 +52,20 @@ test.describe('Detail Panel (Subnet)', () => {
   });
 
   test('clicking different subnets updates panel content', async ({ page }) => {
-    const subnetCount = await page.evaluate(() =>
-      document.querySelectorAll('.subnet-node').length
-    );
-    if (subnetCount < 2) return;
+    const subnetCount = await page.evaluate(() => document.querySelectorAll('.subnet-node').length);
+    if (subnetCount < 2) {
+      return;
+    }
 
     await clickSubnet(page, 0);
     const title1 = await page.locator('#dpTitle').textContent();
 
     // Close and open different subnet
     await page.evaluate(() => document.getElementById('dpClose').click());
-    await page.locator('#detailPanel').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+    await page
+      .locator('#detailPanel')
+      .waitFor({ state: 'hidden', timeout: 3000 })
+      .catch(() => {});
     await clickSubnet(page, 1);
     const title2 = await page.locator('#dpTitle').textContent();
 
@@ -72,7 +75,9 @@ test.describe('Detail Panel (Subnet)', () => {
   test('section collapse/expand toggles without crashing', async ({ page }) => {
     await clickSubnet(page, 0);
     const headerCount = await page.locator('.dp-sec-hdr').count();
-    if (headerCount === 0) return;
+    if (headerCount === 0) {
+      return;
+    }
 
     // Click first section header to toggle
     await page.locator('.dp-sec-hdr').first().click();

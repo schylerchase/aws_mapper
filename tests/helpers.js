@@ -41,7 +41,9 @@ async function openDashTab(page, tabId) {
 async function clickSubnet(page, index = 0) {
   const subnetId = await page.evaluate((idx) => {
     const nodes = document.querySelectorAll('.subnet-node');
-    if (!nodes[idx]) return null;
+    if (!nodes[idx]) {
+      return null;
+    }
     nodes[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     return nodes[idx].getAttribute('data-subnet-id');
   }, index);
@@ -62,7 +64,9 @@ async function captureErrors(page, fn) {
     if (msg.type() === 'error') {
       const text = msg.text();
       // Ignore 404s for static assets — expected when serving locally
-      if (text.includes('404') && text.includes('Failed to load resource')) return;
+      if (text.includes('404') && text.includes('Failed to load resource')) {
+        return;
+      }
       errors.push(text);
     }
   };

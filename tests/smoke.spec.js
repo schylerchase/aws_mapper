@@ -1,14 +1,24 @@
 const { test, expect } = require('@playwright/test');
 const { BASE, loadDemo, countElements, captureErrors } = require('./helpers');
+const pkg = require('../package.json');
 
 test.describe('App Load & Demo Data', () => {
-
   test('landing page renders with demo button', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#landingDash')).toBeVisible();
     await expect(page.locator('#ctaDemo')).toBeVisible();
     await expect(page.locator('#landingDemo')).toBeVisible();
+  });
+
+  test('runtime version injection preserves brand and footer copy', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('aws_mapper_onboarded', '1'));
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('.brand-ver')).toHaveText(`v${pkg.version}`);
+    await expect(page.locator('.landing-footer')).toContainText(`v${pkg.version}`);
+    await expect(page.locator('.landing-footer')).toContainText('MIT License');
+    await expect(page.locator('.landing-footer a')).toHaveText('GitHub');
   });
 
   test('demo data loads without console errors', async ({ page }) => {
@@ -30,18 +40,35 @@ test.describe('App Load & Demo Data', () => {
     const errors = await captureErrors(page, async () => {
       await page.locator('#landingDemo').click();
       await page.locator('#landingDash').waitFor({ state: 'hidden', timeout: 15000 });
-      await page.waitForFunction(() => {
-        const svg = document.getElementById('mapSvg');
-        const root = svg && svg.querySelector('.map-root');
-        const firstVpc = svg && svg.querySelector('.vpc-group');
-        if (!svg || !root || !firstVpc) return false;
-        const svgBox = svg.getBoundingClientRect();
-        const vpcBox = firstVpc.getBoundingClientRect();
-        const transform = root.getAttribute('transform') || '';
-        const hasFiniteTransform = !/NaN|Infinity/.test(transform);
-        const inViewport = vpcBox.right > svgBox.left && vpcBox.left < svgBox.right && vpcBox.bottom > svgBox.top && vpcBox.top < svgBox.bottom;
-        return hasFiniteTransform && svgBox.width > 0 && svgBox.height > 0 && vpcBox.width > 0 && vpcBox.height > 0 && inViewport;
-      }, null, { timeout: 15000 });
+      await page.waitForFunction(
+        () => {
+          const svg = document.getElementById('mapSvg');
+          const root = svg && svg.querySelector('.map-root');
+          const firstVpc = svg && svg.querySelector('.vpc-group');
+          if (!svg || !root || !firstVpc) {
+            return false;
+          }
+          const svgBox = svg.getBoundingClientRect();
+          const vpcBox = firstVpc.getBoundingClientRect();
+          const transform = root.getAttribute('transform') || '';
+          const hasFiniteTransform = !/NaN|Infinity/.test(transform);
+          const inViewport =
+            vpcBox.right > svgBox.left &&
+            vpcBox.left < svgBox.right &&
+            vpcBox.bottom > svgBox.top &&
+            vpcBox.top < svgBox.bottom;
+          return (
+            hasFiniteTransform &&
+            svgBox.width > 0 &&
+            svgBox.height > 0 &&
+            vpcBox.width > 0 &&
+            vpcBox.height > 0 &&
+            inViewport
+          );
+        },
+        null,
+        { timeout: 15000 }
+      );
     });
     expect(errors).toEqual([]);
   });
@@ -57,11 +84,15 @@ test.describe('App Load & Demo Data', () => {
     const root = page.locator('#mapSvg .map-root');
     const before = await root.getAttribute('transform');
     await page.locator('#zoomIn').click();
-    await page.waitForFunction((initial) => {
-      const rootEl = document.querySelector('#mapSvg .map-root');
-      const transform = rootEl && rootEl.getAttribute('transform');
-      return transform && transform !== initial && !/NaN|Infinity/.test(transform);
-    }, before, { timeout: 5000 });
+    await page.waitForFunction(
+      (initial) => {
+        const rootEl = document.querySelector('#mapSvg .map-root');
+        const transform = rootEl && rootEl.getAttribute('transform');
+        return transform && transform !== initial && !/NaN|Infinity/.test(transform);
+      },
+      before,
+      { timeout: 5000 }
+    );
     await expect(page.locator('#zoomLevel')).toContainText('%');
   });
 
@@ -69,29 +100,42 @@ test.describe('App Load & Demo Data', () => {
     await loadDemo(page);
     const state = await page.evaluate(async () => {
       const main = document.querySelector('.main');
-      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
+      const line = document.querySelector(
+        '.route-trunk.animated,.route-line.route-structural,.peering-line'
+      );
       const before = document.querySelector('#mapSvg .map-root')?.getAttribute('transform') || '';
       document.getElementById('zoomIn').click();
       await new Promise((resolve) => setTimeout(resolve, 60));
       return {
         moving: main?.classList.contains('map-moving'),
         playState: line ? getComputedStyle(line).animationPlayState : null,
-        changed: (document.querySelector('#mapSvg .map-root')?.getAttribute('transform') || '') !== before
+        changed:
+          (document.querySelector('#mapSvg .map-root')?.getAttribute('transform') || '') !== before
       };
     });
     expect(state.moving).toBe(true);
     expect(state.playState).toBe('paused');
     expect(state.changed).toBe(true);
-    await page.waitForFunction(() => !document.querySelector('.main')?.classList.contains('map-moving'), null, { timeout: 5000 });
+    await page.waitForFunction(
+      () => !document.querySelector('.main')?.classList.contains('map-moving'),
+      null,
+      { timeout: 5000 }
+    );
   });
 
   test('route lines keep animated dash flow', async ({ page }) => {
     await loadDemo(page);
     const animatedLines = await page.evaluate(() => {
-      const lines = Array.from(document.querySelectorAll('.route-trunk.animated,.route-line.route-structural,.peering-line'));
+      const lines = Array.from(
+        document.querySelectorAll(
+          '.route-trunk.animated,.route-line.route-structural,.peering-line'
+        )
+      );
       return lines.filter((line) => {
         const style = window.getComputedStyle(line);
-        return style.animationName && style.animationName !== 'none' && style.animationDuration !== '0s';
+        return (
+          style.animationName && style.animationName !== 'none' && style.animationDuration !== '0s'
+        );
       }).length;
     });
     expect(animatedLines).toBeGreaterThan(0);
@@ -100,10 +144,14 @@ test.describe('App Load & Demo Data', () => {
   test('map motion pauses expensive SVG animations without removing them', async ({ page }) => {
     await loadDemo(page);
     const state = await page.evaluate(() => {
-      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
+      const line = document.querySelector(
+        '.route-trunk.animated,.route-line.route-structural,.peering-line'
+      );
       const main = document.querySelector('.main');
       const svg = document.getElementById('mapSvg');
-      if (!line || !main || !svg) return null;
+      if (!line || !main || !svg) {
+        return null;
+      }
       const before = getComputedStyle(line).animationName;
       main.classList.add('map-moving');
       svg.classList.add('map-moving');
@@ -124,8 +172,12 @@ test.describe('App Load & Demo Data', () => {
     const state = await page.evaluate(async () => {
       document.documentElement.classList.add('safari-browser');
       const root = document.querySelector('#mapSvg .map-root');
-      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
-      if (!root || !line) return null;
+      const line = document.querySelector(
+        '.route-trunk.animated,.route-line.route-structural,.peering-line'
+      );
+      if (!root || !line) {
+        return null;
+      }
       const beforeAttr = root.getAttribute('transform') || '';
       document.getElementById('zoomIn').click();
       await new Promise((resolve) => setTimeout(resolve, 60));
@@ -164,10 +216,16 @@ test.describe('App Load & Demo Data', () => {
     await expect(hitareas.first()).toBeAttached({ timeout: 10000 });
     const tooltipShown = await page.evaluate(() => {
       const hitarea = document.querySelector('.peering-hitarea');
-      if (!hitarea) return false;
-      hitarea.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, clientX: 520, clientY: 320 }));
+      if (!hitarea) {
+        return false;
+      }
+      hitarea.dispatchEvent(
+        new MouseEvent('mouseenter', { bubbles: true, clientX: 520, clientY: 320 })
+      );
       const tooltip = document.getElementById('tooltip');
-      return tooltip && tooltip.style.display === 'block' && tooltip.textContent.includes('VPC Peering');
+      return (
+        tooltip && tooltip.style.display === 'block' && tooltip.textContent.includes('VPC Peering')
+      );
     });
     expect(tooltipShown).toBe(true);
   });
@@ -176,17 +234,19 @@ test.describe('App Load & Demo Data', () => {
     await loadDemo(page);
     await expect(page.locator('.route-hitarea').first()).toBeAttached({ timeout: 10000 });
     await expect(page.locator('.peering-hitarea').first()).toBeAttached({ timeout: 10000 });
-    const styles = await page.evaluate(() => ['.route-hitarea', '.peering-hitarea'].map((selector) => {
-      const el = document.querySelector(selector);
-      const style = window.getComputedStyle(el);
-      return {
-        selector,
-        stroke: style.stroke,
-        strokeOpacity: Number.parseFloat(style.strokeOpacity || '1'),
-        pointerEvents: style.pointerEvents,
-        vectorEffect: style.vectorEffect
-      };
-    }));
+    const styles = await page.evaluate(() =>
+      ['.route-hitarea', '.peering-hitarea'].map((selector) => {
+        const el = document.querySelector(selector);
+        const style = window.getComputedStyle(el);
+        return {
+          selector,
+          stroke: style.stroke,
+          strokeOpacity: Number.parseFloat(style.strokeOpacity || '1'),
+          pointerEvents: style.pointerEvents,
+          vectorEffect: style.vectorEffect
+        };
+      })
+    );
     for (const style of styles) {
       expect(style.stroke).not.toBe('none');
       expect(style.stroke).not.toBe('transparent');
@@ -217,11 +277,15 @@ test.describe('App Load & Demo Data', () => {
       fireGesture('gesturechange', 1.3);
       fireGesture('gestureend', 1.3);
     });
-    await page.waitForFunction((initial) => {
-      const rootEl = document.querySelector('#mapSvg .map-root');
-      const transform = rootEl && rootEl.getAttribute('transform');
-      return transform && transform !== initial && !/NaN|Infinity/.test(transform);
-    }, before, { timeout: 5000 });
+    await page.waitForFunction(
+      (initial) => {
+        const rootEl = document.querySelector('#mapSvg .map-root');
+        const transform = rootEl && rootEl.getAttribute('transform');
+        return transform && transform !== initial && !/NaN|Infinity/.test(transform);
+      },
+      before,
+      { timeout: 5000 }
+    );
     const gestureScale = await page.evaluate(() => window._mapGestureScale(1.3));
     expect(gestureScale).toBeGreaterThan(1.35);
   });
@@ -246,7 +310,11 @@ test.describe('App Load & Demo Data', () => {
       fireGesture('gesturestart', 1);
       fireGesture('gesturechange', 1.2);
       const suppressedDuringGesture = window._isSafariGestureWheelSuppressed();
-      const deltaDuringGesture = window._mapWheelDelta({ deltaY: -180, deltaMode: 0, ctrlKey: true });
+      const deltaDuringGesture = window._mapWheelDelta({
+        deltaY: -180,
+        deltaMode: 0,
+        ctrlKey: true
+      });
       const wheel = new WheelEvent('wheel', {
         bubbles: true,
         cancelable: true,
@@ -261,7 +329,12 @@ test.describe('App Load & Demo Data', () => {
       fireGesture('gestureend', 1.2);
       await new Promise((resolve) => setTimeout(resolve, 260));
       const deltaAfterGesture = window._mapWheelDelta({ deltaY: -2, deltaMode: 0, ctrlKey: true });
-      return { suppressedDuringGesture, deltaDuringGesture, deltaAfterGesture, wheelPrevented: wheel.defaultPrevented };
+      return {
+        suppressedDuringGesture,
+        deltaDuringGesture,
+        deltaAfterGesture,
+        wheelPrevented: wheel.defaultPrevented
+      };
     });
     expect(result.suppressedDuringGesture).toBe(true);
     expect(result.deltaDuringGesture).toBe(0);
@@ -271,8 +344,12 @@ test.describe('App Load & Demo Data', () => {
 
   test('trackpad pinch wheel delta is sensitive but capped', async ({ page }) => {
     await loadDemo(page);
-    const delta = await page.evaluate(() => window._mapWheelDelta({ deltaY: -2, deltaMode: 0, ctrlKey: true }));
-    const capped = await page.evaluate(() => window._mapWheelDelta({ deltaY: -100, deltaMode: 0, ctrlKey: true }));
+    const delta = await page.evaluate(() =>
+      window._mapWheelDelta({ deltaY: -2, deltaMode: 0, ctrlKey: true })
+    );
+    const capped = await page.evaluate(() =>
+      window._mapWheelDelta({ deltaY: -100, deltaMode: 0, ctrlKey: true })
+    );
     expect(delta).toBeGreaterThan(0.065);
     expect(capped).toBeCloseTo(0.42, 2);
   });
@@ -281,7 +358,9 @@ test.describe('App Load & Demo Data', () => {
     await loadDemo(page);
     const state = await page.evaluate(() => {
       const main = document.querySelector('.main');
-      const line = document.querySelector('.route-trunk.animated,.route-line.route-structural,.peering-line');
+      const line = document.querySelector(
+        '.route-trunk.animated,.route-line.route-structural,.peering-line'
+      );
       document.getElementById('btnExpand').click();
       return {
         moving: main?.classList.contains('map-moving'),
@@ -290,7 +369,11 @@ test.describe('App Load & Demo Data', () => {
     });
     expect(state.moving).toBe(true);
     expect(state.playState).toBe('paused');
-    await page.waitForFunction(() => !document.querySelector('.main')?.classList.contains('map-moving'), null, { timeout: 10000 });
+    await page.waitForFunction(
+      () => !document.querySelector('.main')?.classList.contains('map-moving'),
+      null,
+      { timeout: 10000 }
+    );
   });
 
   test('sidebar data detector avoids reparsing textarea JSON', async ({ page }) => {
@@ -299,7 +382,7 @@ test.describe('App Load & Demo Data', () => {
     const result = await page.evaluate(async () => {
       const originalParse = JSON.parse;
       let parseCalls = 0;
-      JSON.parse = function(...args) {
+      JSON.parse = function (...args) {
         parseCalls += 1;
         return originalParse.apply(this, args);
       };
@@ -322,20 +405,34 @@ test.describe('App Load & Demo Data', () => {
   test('resource compliance badges stay clear of service labels', async ({ page }) => {
     await loadDemo(page);
     await page.evaluate(() => {
-      if (!document.querySelector('.res-node[data-id]')) document.getElementById('btnExpand').click();
+      if (!document.querySelector('.res-node[data-id]')) {
+        document.getElementById('btnExpand').click();
+      }
     });
     await page.waitForSelector('.res-node[data-id]', { timeout: 5000 });
     const placement = await page.evaluate(() => {
       const node = document.querySelector('.res-node[data-id]');
-      if (!node) return null;
+      if (!node) {
+        return null;
+      }
       const rid = node.getAttribute('data-id');
-      window._complianceFindings = [{ resource: rid, severity: 'CRITICAL', framework: 'test', control: 'test', message: 'test finding' }];
+      window._complianceFindings = [
+        {
+          resource: rid,
+          severity: 'CRITICAL',
+          framework: 'test',
+          control: 'test',
+          message: 'test finding'
+        }
+      ];
       window._renderComplianceBadges();
       const badge = document.querySelector('.comp-badge');
       const transform = badge && badge.getAttribute('transform');
       const match = String(transform || '').match(/translate\(([-\d.]+),([-\d.]+)\)/);
       const bb = window._measureSvgNodeFast(node);
-      return match && bb ? { badgeX: Number(match[1]), badgeY: Number(match[2]), nodeX: bb.x, nodeY: bb.y } : null;
+      return match && bb
+        ? { badgeX: Number(match[1]), badgeY: Number(match[2]), nodeX: bb.x, nodeY: bb.y }
+        : null;
     });
     expect(placement).not.toBeNull();
     expect(placement.badgeX).toBeLessThanOrEqual(placement.nodeX);
@@ -348,12 +445,17 @@ test.describe('App Load & Demo Data', () => {
       const groups = document.querySelectorAll('.vpc-group');
       return Array.from(groups).map((g) => {
         const rect = g.getBoundingClientRect();
-        return { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) };
+        return {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height)
+        };
       });
     });
     expect(boxes.length).toBeGreaterThanOrEqual(2);
     // At least some VPCs should have different x or y positions
-    const uniqueKeys = new Set(boxes.map(b => `${b.x},${b.y}`));
+    const uniqueKeys = new Set(boxes.map((b) => `${b.x},${b.y}`));
     expect(uniqueKeys.size).toBeGreaterThan(1);
   });
 });

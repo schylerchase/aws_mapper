@@ -3,10 +3,20 @@ import assert from 'node:assert/strict';
 
 // iac-generator.js imports from state.js, utils.js, export-utils.js
 globalThis.window = globalThis;
-globalThis.document = { getElementById: () => null, querySelectorAll: () => [], querySelector: () => null };
+globalThis.document = {
+  getElementById: () => null,
+  querySelectorAll: () => [],
+  querySelector: () => null
+};
 
 const {
-  _tfName, _tfRef, _hclString, _hclMapKey, detectCircularSGs, _writeTags, _writeSGRule,
+  _tfName,
+  _tfRef,
+  _hclString,
+  _hclMapKey,
+  detectCircularSGs,
+  _writeTags,
+  _writeSGRule,
   generateTerraform,
   setTfIdMap
 } = await import('../../src/modules/iac-generator.js');
@@ -59,33 +69,47 @@ describe('HCL escaping helpers', () => {
 describe('detectCircularSGs', () => {
   it('detects simple A->B->A cycle', () => {
     const sgs = [
-      { GroupId: 'sg-a', IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-b' }] }], IpPermissionsEgress: [] },
-      { GroupId: 'sg-b', IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-a' }] }], IpPermissionsEgress: [] }
+      {
+        GroupId: 'sg-a',
+        IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-b' }] }],
+        IpPermissionsEgress: []
+      },
+      {
+        GroupId: 'sg-b',
+        IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-a' }] }],
+        IpPermissionsEgress: []
+      }
     ];
     const cycles = detectCircularSGs(sgs);
     assert.ok(cycles.length > 0);
     // At least one cycle should contain both sg-a and sg-b
-    const hasCycle = cycles.some(c => c.includes('sg-a') && c.includes('sg-b'));
+    const hasCycle = cycles.some((c) => c.includes('sg-a') && c.includes('sg-b'));
     assert.ok(hasCycle, 'Should detect cycle between sg-a and sg-b');
   });
   it('returns empty for independent SGs', () => {
     const sgs = [
-      { GroupId: 'sg-a', IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-b' }] }], IpPermissionsEgress: [] },
+      {
+        GroupId: 'sg-a',
+        IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-b' }] }],
+        IpPermissionsEgress: []
+      },
       { GroupId: 'sg-b', IpPermissions: [], IpPermissionsEgress: [] }
     ];
     const cycles = detectCircularSGs(sgs);
     assert.equal(cycles.length, 0);
   });
   it('handles SGs with no rules', () => {
-    const sgs = [
-      { GroupId: 'sg-a', IpPermissions: [], IpPermissionsEgress: [] }
-    ];
+    const sgs = [{ GroupId: 'sg-a', IpPermissions: [], IpPermissionsEgress: [] }];
     const cycles = detectCircularSGs(sgs);
     assert.equal(cycles.length, 0);
   });
   it('ignores self-references', () => {
     const sgs = [
-      { GroupId: 'sg-a', IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-a' }] }], IpPermissionsEgress: [] }
+      {
+        GroupId: 'sg-a',
+        IpPermissions: [{ UserIdGroupPairs: [{ GroupId: 'sg-a' }] }],
+        IpPermissionsEgress: []
+      }
     ];
     const cycles = detectCircularSGs(sgs);
     assert.equal(cycles.length, 0);
@@ -95,7 +119,12 @@ describe('detectCircularSGs', () => {
 describe('_writeTags', () => {
   it('generates valid HCL tags block', () => {
     const lines = [];
-    _writeTags(lines, { Tags: [{ Key: 'Name', Value: 'test' }, { Key: 'Env', Value: 'prod' }] });
+    _writeTags(lines, {
+      Tags: [
+        { Key: 'Name', Value: 'test' },
+        { Key: 'Env', Value: 'prod' }
+      ]
+    });
     const output = lines.join('\n');
     assert.ok(output.includes('tags = {'));
     assert.ok(output.includes('Name = "test"'));
@@ -132,9 +161,12 @@ describe('_writeSGRule', () => {
   it('generates protocol, port range, and CIDR blocks', () => {
     const lines = [];
     _writeSGRule(lines, {
-      IpProtocol: 'tcp', FromPort: 443, ToPort: 443,
+      IpProtocol: 'tcp',
+      FromPort: 443,
+      ToPort: 443,
       IpRanges: [{ CidrIp: '0.0.0.0/0' }],
-      Ipv6Ranges: [], UserIdGroupPairs: []
+      Ipv6Ranges: [],
+      UserIdGroupPairs: []
     });
     const output = lines.join('\n');
     assert.ok(output.includes('protocol    = "tcp"'));
@@ -147,7 +179,8 @@ describe('_writeSGRule', () => {
     _writeSGRule(lines, {
       IpProtocol: '-1',
       IpRanges: [{ CidrIp: '10.0.0.0/8' }],
-      Ipv6Ranges: [], UserIdGroupPairs: []
+      Ipv6Ranges: [],
+      UserIdGroupPairs: []
     });
     const output = lines.join('\n');
     assert.ok(output.includes('protocol    = "-1"'));
@@ -157,8 +190,11 @@ describe('_writeSGRule', () => {
     setTfIdMap({ 'sg-ref': 'aws_security_group.ref' });
     const lines = [];
     _writeSGRule(lines, {
-      IpProtocol: 'tcp', FromPort: 80, ToPort: 80,
-      IpRanges: [], Ipv6Ranges: [],
+      IpProtocol: 'tcp',
+      FromPort: 80,
+      ToPort: 80,
+      IpRanges: [],
+      Ipv6Ranges: [],
       UserIdGroupPairs: [{ GroupId: 'sg-ref' }]
     });
     const output = lines.join('\n');
@@ -168,9 +204,12 @@ describe('_writeSGRule', () => {
   it('escapes multiline descriptions as HCL string literals', () => {
     const lines = [];
     _writeSGRule(lines, {
-      IpProtocol: 'tcp', FromPort: 443, ToPort: 443,
+      IpProtocol: 'tcp',
+      FromPort: 443,
+      ToPort: 443,
       IpRanges: [{ CidrIp: '10.0.0.0/8', Description: 'allow "app"\nnext' }],
-      Ipv6Ranges: [], UserIdGroupPairs: []
+      Ipv6Ranges: [],
+      UserIdGroupPairs: []
     });
     const output = lines.join('\n');
     assert.ok(output.includes('description = "allow \\"app\\"\\nnext"'));
@@ -180,50 +219,61 @@ describe('_writeSGRule', () => {
 
 describe('generateTerraform HCL escaping', () => {
   it('keeps AWS-controlled names, tags, and descriptions from breaking HCL', () => {
-    const result = generateTerraform({
-      vpcs: [{
-        VpcId: 'vpc-1',
-        CidrBlock: '10.0.0.0/16',
-        Tags: [{ Key: 'Name', Value: 'prod "blue"\nnext' }]
-      }],
-      subnets: [{
-        SubnetId: 'subnet-1',
-        VpcId: 'vpc-1',
-        CidrBlock: '10.0.1.0/24',
-        AvailabilityZone: 'us-east-1a'
-      }],
-      sgs: [{
-        GroupId: 'sg-1',
-        VpcId: 'vpc-1',
-        GroupName: 'web "sg"',
-        Description: 'line1\nline2 "quoted"',
-        IpPermissions: [{
-          IpProtocol: 'tcp',
-          FromPort: 443,
-          ToPort: 443,
-          IpRanges: [{ CidrIp: '10.0.0.0/16', Description: 'allow "app"\nnext' }],
-          Ipv6Ranges: [],
-          UserIdGroupPairs: []
-        }],
-        IpPermissionsEgress: []
-      }],
-      rts: [],
-      nacls: [],
-      igws: [],
-      nats: [],
-      vpces: [],
-      instances: [],
-      rdsInstances: [],
-      lambdaFns: [],
-      ecsServices: [],
-      ecacheClusters: [],
-      redshiftClusters: [],
-      albs: [],
-      volumes: [],
-      s3bk: [],
-      peerings: [],
-      cfDistributions: []
-    }, { mode: 'create', includeVars: false });
+    const result = generateTerraform(
+      {
+        vpcs: [
+          {
+            VpcId: 'vpc-1',
+            CidrBlock: '10.0.0.0/16',
+            Tags: [{ Key: 'Name', Value: 'prod "blue"\nnext' }]
+          }
+        ],
+        subnets: [
+          {
+            SubnetId: 'subnet-1',
+            VpcId: 'vpc-1',
+            CidrBlock: '10.0.1.0/24',
+            AvailabilityZone: 'us-east-1a'
+          }
+        ],
+        sgs: [
+          {
+            GroupId: 'sg-1',
+            VpcId: 'vpc-1',
+            GroupName: 'web "sg"',
+            Description: 'line1\nline2 "quoted"',
+            IpPermissions: [
+              {
+                IpProtocol: 'tcp',
+                FromPort: 443,
+                ToPort: 443,
+                IpRanges: [{ CidrIp: '10.0.0.0/16', Description: 'allow "app"\nnext' }],
+                Ipv6Ranges: [],
+                UserIdGroupPairs: []
+              }
+            ],
+            IpPermissionsEgress: []
+          }
+        ],
+        rts: [],
+        nacls: [],
+        igws: [],
+        nats: [],
+        vpces: [],
+        instances: [],
+        rdsInstances: [],
+        lambdaFns: [],
+        ecsServices: [],
+        ecacheClusters: [],
+        redshiftClusters: [],
+        albs: [],
+        volumes: [],
+        s3bk: [],
+        peerings: [],
+        cfDistributions: []
+      },
+      { mode: 'create', includeVars: false }
+    );
 
     assert.ok(result.code.includes('description = "line1\\nline2 \\"quoted\\""'));
     assert.ok(result.code.includes('description = "allow \\"app\\"\\nnext"'));

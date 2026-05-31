@@ -13,14 +13,22 @@ import { esc } from './utils.js';
 export function buildEl(tag, attrs = {}, children = []) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') el.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
-    else if (k.startsWith('data-')) el.setAttribute(k, v);
-    else el[k] = v;
+    if (k === 'class') {
+      el.className = v;
+    } else if (k === 'style' && typeof v === 'object') {
+      Object.assign(el.style, v);
+    } else if (k.startsWith('data-')) {
+      el.setAttribute(k, v);
+    } else {
+      el[k] = v;
+    }
   }
   for (const child of children) {
-    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
-    else if (child instanceof Node) el.appendChild(child);
+    if (typeof child === 'string') {
+      el.appendChild(document.createTextNode(child));
+    } else if (child instanceof Node) {
+      el.appendChild(child);
+    }
   }
   return el;
 }
@@ -36,7 +44,9 @@ export function buildOption(value, text, selected = false) {
   const opt = document.createElement('option');
   opt.value = value;
   opt.textContent = text;
-  if (selected) opt.selected = true;
+  if (selected) {
+    opt.selected = true;
+  }
   return opt;
 }
 
@@ -48,8 +58,12 @@ export function buildOption(value, text, selected = false) {
  */
 export function buildSelect(id, options) {
   const sel = document.createElement('select');
-  if (id) sel.id = id;
-  for (const o of options) sel.appendChild(buildOption(o.value, o.text));
+  if (id) {
+    sel.id = id;
+  }
+  for (const o of options) {
+    sel.appendChild(buildOption(o.value, o.text));
+  }
   return sel;
 }
 
@@ -63,8 +77,12 @@ export function buildSelect(id, options) {
 export function buildButton(text, onClick, className) {
   const btn = document.createElement('button');
   btn.textContent = text;
-  if (onClick) btn.addEventListener('click', onClick);
-  if (className) btn.className = className;
+  if (onClick) {
+    btn.addEventListener('click', onClick);
+  }
+  if (className) {
+    btn.className = className;
+  }
   return btn;
 }
 
@@ -75,7 +93,9 @@ export function buildButton(text, onClick, className) {
  */
 export function setText(el, text) {
   const target = typeof el === 'string' ? document.getElementById(el) : el;
-  if (target) target.textContent = String(text);
+  if (target) {
+    target.textContent = String(text);
+  }
 }
 
 /**
@@ -85,7 +105,9 @@ export function setText(el, text) {
  */
 export function replaceChildren(el, children = []) {
   el.textContent = '';
-  for (const child of children) el.appendChild(child);
+  for (const child of children) {
+    el.appendChild(child);
+  }
 }
 
 /**

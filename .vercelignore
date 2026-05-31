@@ -27,6 +27,7 @@ __pycache__/
 .claude/
 .planning/
 .vercel/
+docs/
 *.spec.js
 playwright.config.js
 delete-me/

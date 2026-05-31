@@ -38,6 +38,52 @@ function isWithinPath(parent, child) {
   return rel === '' || (!!rel && !rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+function cliEnv() {
+  const extraPath = process.platform === 'win32' ? '' : ':/usr/local/bin:/opt/homebrew/bin';
+  return { ...process.env, PATH: (process.env.PATH || '') + extraPath };
+}
+
+async function execFirst(candidates, options) {
+  let notFound = null;
+  for (const candidate of candidates) {
+    try {
+      return await execFileAsync(candidate.command, candidate.args, options);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        notFound = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw notFound || new Error('No executable candidates found');
+}
+
+function awsScanCommand(scriptPath, args) {
+  if (process.platform === 'win32') {
+    return {
+      command: 'pwsh.exe',
+      args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, ...args]
+    };
+  }
+  return { command: '/usr/bin/env', args: ['bash', scriptPath, ...args] };
+}
+
+async function runPythonScript(args, options) {
+  const candidates =
+    process.platform === 'win32'
+      ? [
+          { command: 'py.exe', args: ['-3', ...args] },
+          { command: 'python.exe', args },
+          { command: 'python3.exe', args }
+        ]
+      : [
+          { command: 'python3', args },
+          { command: 'python', args }
+        ];
+  return execFirst(candidates, options);
+}
+
 // ── Window ────────────────────────────────────────────────────────
 
 function createWindow() {
@@ -64,12 +110,16 @@ function createWindow() {
       try {
         const content = await fsp.readFile(_pendingOpenFile, 'utf8');
         mainWindow.webContents.send('file:opened', content);
-      } catch (e) { console.warn('file:opened - deferred read failed:', e.message); }
+      } catch (e) {
+        console.warn('file:opened - deferred read failed:', e.message);
+      }
       _pendingOpenFile = null;
     }
   });
 
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // ── Menus ─────────────────────────────────────────────────────────
@@ -77,18 +127,22 @@ function createWindow() {
 function buildMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
-    ...(isMac ? [{
-      label: app.name,
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    }] : []),
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' },
+              { type: 'separator' },
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              { type: 'separator' },
+              { role: 'quit' }
+            ]
+          }
+        ]
+      : []),
     {
       label: 'File',
       submenu: [
@@ -167,7 +221,9 @@ ipcMain.handle('file:save', async (event, { data, defaultName }) => {
       { name: 'All Files', extensions: ['*'] }
     ]
   });
-  if (result.canceled || !result.filePath) return null;
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
   await fsp.writeFile(result.filePath, data, 'utf8');
   return result.filePath;
 });
@@ -181,7 +237,9 @@ ipcMain.handle('file:open', async () => {
     ],
     properties: ['openFile']
   });
-  if (result.canceled || !result.filePaths.length) return null;
+  if (result.canceled || !result.filePaths.length) {
+    return null;
+  }
   return await fsp.readFile(result.filePaths[0], 'utf8');
 });
 
@@ -190,9 +248,12 @@ ipcMain.handle('file:open-folder', async () => {
     title: 'Select AWS Export Folder',
     properties: ['openDirectory']
   });
-  if (result.canceled || !result.filePaths.length) return null;
+  if (result.canceled || !result.filePaths.length) {
+    return null;
+  }
   const dir = result.filePaths[0];
-  const regionRe = /^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
+  const regionRe =
+    /^[a-z]{2}-(north|south|east|west|central|northeast|southeast|northwest|southwest)-\d+$/;
   const entries = await fsp.readdir(dir, { withFileTypes: true });
   const regions = {};
   const flatFiles = {};
@@ -202,15 +263,29 @@ ipcMain.handle('file:open-folder', async () => {
 
   async function readJsonFile(filePath, fileName, target) {
     let stat;
-    try { stat = await fsp.stat(filePath); } catch { return; }
-    if (!stat.isFile() || stat.size > MAX_JSON_FILE_SIZE) return;
-    if (importFiles >= MAX_IMPORT_FILES) return;
-    if (importBytes + stat.size > MAX_IMPORT_BYTES) return;
+    try {
+      stat = await fsp.stat(filePath);
+    } catch {
+      return;
+    }
+    if (!stat.isFile() || stat.size > MAX_JSON_FILE_SIZE) {
+      return;
+    }
+    if (importFiles >= MAX_IMPORT_FILES) {
+      return;
+    }
+    if (importBytes + stat.size > MAX_IMPORT_BYTES) {
+      return;
+    }
 
     const raw = await fsp.readFile(filePath, 'utf8');
     importFiles++;
     importBytes += stat.size;
-    try { target[fileName] = JSON.parse(raw); } catch { target[fileName] = raw; }
+    try {
+      target[fileName] = JSON.parse(raw);
+    } catch {
+      target[fileName] = raw;
+    }
   }
 
   // Helper: read JSON files in a directory with bounded memory usage.
@@ -218,7 +293,9 @@ ipcMain.handle('file:open-folder', async () => {
     const files = {};
     const ents = await fsp.readdir(dirPath, { withFileTypes: true });
     for (const f of ents) {
-      if (!f.isFile() || !f.name.endsWith('.json')) continue;
+      if (!f.isFile() || !f.name.endsWith('.json')) {
+        continue;
+      }
       await readJsonFile(path.join(dirPath, f.name), f.name, files);
     }
     return files;
@@ -230,7 +307,9 @@ ipcMain.handle('file:open-folder', async () => {
 
       if (regionRe.test(ent.name)) {
         const regionFiles = await readJsonDir(subdir);
-        if (Object.keys(regionFiles).length) regions[ent.name] = regionFiles;
+        if (Object.keys(regionFiles).length) {
+          regions[ent.name] = regionFiles;
+        }
       } else {
         const profRegions = {};
         const profFlat = {};
@@ -239,7 +318,9 @@ ipcMain.handle('file:open-folder', async () => {
           if (sub.isDirectory() && regionRe.test(sub.name)) {
             const regDir = path.join(subdir, sub.name);
             const regFiles = await readJsonDir(regDir);
-            if (Object.keys(regFiles).length) profRegions[sub.name] = regFiles;
+            if (Object.keys(regFiles).length) {
+              profRegions[sub.name] = regFiles;
+            }
           } else if (sub.isFile() && sub.name.endsWith('.json')) {
             await readJsonFile(path.join(subdir, sub.name), sub.name, profFlat);
           }
@@ -270,11 +351,13 @@ let _awsCliCached = null;
 let _awsCliCacheTime = 0;
 const AWS_CLI_CACHE_TTL = 60000;
 async function checkAwsCli() {
-  if (_awsCliCached !== null && (Date.now() - _awsCliCacheTime) < AWS_CLI_CACHE_TTL) return _awsCliCached;
+  if (_awsCliCached !== null && Date.now() - _awsCliCacheTime < AWS_CLI_CACHE_TTL) {
+    return _awsCliCached;
+  }
   try {
-    await execFileAsync('/usr/bin/which', ['aws'], {
+    await execFileAsync('aws', ['--version'], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' }
+      env: cliEnv()
     });
     _awsCliCached = true;
     _awsCliCacheTime = Date.now();
@@ -288,15 +371,22 @@ async function checkAwsCli() {
 ipcMain.handle('aws:check-cli', async () => await checkAwsCli());
 
 function safeSend(sender, channel, data) {
-  if (sender && !sender.isDestroyed()) sender.send(channel, data);
+  if (sender && !sender.isDestroyed()) {
+    sender.send(channel, data);
+  }
 }
 
 function isAllowedExternalUrl(rawUrl) {
   try {
     const parsed = new URL(rawUrl);
-    if (parsed.protocol !== 'https:') return false;
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
     const host = parsed.hostname.toLowerCase();
-    return ALLOWED_EXTERNAL_HOSTS.has(host) || [...ALLOWED_EXTERNAL_HOSTS].some((allowed) => host.endsWith('.' + allowed));
+    return (
+      ALLOWED_EXTERNAL_HOSTS.has(host) ||
+      [...ALLOWED_EXTERNAL_HOSTS].some((allowed) => host.endsWith('.' + allowed))
+    );
   } catch {
     return false;
   }
@@ -310,32 +400,65 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
   }
 
   if (!(await checkAwsCli())) {
-    safeSend(event.sender, 'aws:scan:error', 'AWS CLI not found. Install it from https://aws.amazon.com/cli/');
+    safeSend(
+      event.sender,
+      'aws:scan:error',
+      'AWS CLI not found. Install it from https://aws.amazon.com/cli/'
+    );
     return;
   }
 
   // Validate inputs to prevent command injection
   if (profile && !SAFE_INPUT.test(profile)) {
-    safeSend(event.sender, 'aws:scan:error', 'Invalid profile name. Use only letters, numbers, hyphens, underscores.');
+    safeSend(
+      event.sender,
+      'aws:scan:error',
+      'Invalid profile name. Use only letters, numbers, hyphens, underscores.'
+    );
     return;
   }
   if (region && !SAFE_INPUT.test(region)) {
-    safeSend(event.sender, 'aws:scan:error', 'Invalid region name. Use only letters, numbers, hyphens, underscores.');
+    safeSend(
+      event.sender,
+      'aws:scan:error',
+      'Invalid region name. Use only letters, numbers, hyphens, underscores.'
+    );
     return;
   }
 
-  const scriptPath = path.join(__dirname, 'scripts', 'export-aws-data.sh');
+  const scriptPath = path.join(
+    __dirname,
+    'scripts',
+    process.platform === 'win32' ? 'export-aws-data.ps1' : 'export-aws-data.sh'
+  );
+  try {
+    await fsp.access(scriptPath);
+  } catch {
+    safeSend(
+      event.sender,
+      'aws:scan:error',
+      'AWS export script not found: ' + path.basename(scriptPath)
+    );
+    return;
+  }
 
   // Ensure script is executable
-  try { await fsp.chmod(scriptPath, 0o755); } catch {}
+  try {
+    await fsp.chmod(scriptPath, 0o755);
+  } catch {}
 
   const args = [];
-  if (profile) args.push('-p', profile);
-  if (region) args.push('-r', region);
+  if (profile) {
+    args.push('-p', profile);
+  }
+  if (region) {
+    args.push('-r', region);
+  }
 
-  const proc = spawn('/usr/bin/env', ['bash', scriptPath, ...args], {
+  const scanCommand = awsScanCommand(scriptPath, args);
+  const proc = spawn(scanCommand.command, scanCommand.args, {
     cwd: __dirname,
-    env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin:/opt/homebrew/bin' }
+    env: cliEnv()
   });
 
   activeScan = proc;
@@ -351,6 +474,12 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
     safeSend(event.sender, 'aws:scan:progress', '[stderr] ' + data.toString());
   });
 
+  proc.on('error', (err) => {
+    activeScan = null;
+    const tool = process.platform === 'win32' ? 'PowerShell 7 (pwsh)' : 'bash';
+    safeSend(event.sender, 'aws:scan:error', tool + ' failed to start: ' + err.message);
+  });
+
   proc.on('close', async (code) => {
     activeScan = null;
     if (code === 0) {
@@ -361,19 +490,34 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
       let files = null;
       const resolvedDir = outDir ? path.resolve(__dirname, outDir) : null;
       try {
-        if (resolvedDir && (isWithinPath(__dirname, resolvedDir) || isWithinPath(os.tmpdir(), resolvedDir))) {
+        if (
+          resolvedDir &&
+          (isWithinPath(__dirname, resolvedDir) || isWithinPath(os.tmpdir(), resolvedDir))
+        ) {
           await fsp.access(resolvedDir);
           files = {};
           let scanBytes = 0;
           let scanFiles = 0;
           for (const ent of await fsp.readdir(resolvedDir, { withFileTypes: true })) {
-            if (!ent.isFile() || !ent.name.endsWith('.json')) continue;
-            if (scanFiles >= MAX_IMPORT_FILES) break;
+            if (!ent.isFile() || !ent.name.endsWith('.json')) {
+              continue;
+            }
+            if (scanFiles >= MAX_IMPORT_FILES) {
+              break;
+            }
             const fp = path.join(resolvedDir, ent.name);
             let stat;
-            try { stat = await fsp.stat(fp); } catch { continue; }
-            if (!stat.isFile() || stat.size > MAX_JSON_FILE_SIZE) continue;
-            if (scanBytes + stat.size > MAX_IMPORT_BYTES) break;
+            try {
+              stat = await fsp.stat(fp);
+            } catch {
+              continue;
+            }
+            if (!stat.isFile() || stat.size > MAX_JSON_FILE_SIZE) {
+              continue;
+            }
+            if (scanBytes + stat.size > MAX_IMPORT_BYTES) {
+              break;
+            }
             try {
               files[ent.name] = await fsp.readFile(fp, 'utf8');
               scanBytes += stat.size;
@@ -383,16 +527,13 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
             }
           }
         }
-      } catch { /* outDir doesn't exist, files stays null */ }
+      } catch {
+        /* outDir doesn't exist, files stays null */
+      }
       safeSend(event.sender, 'aws:scan:complete', { code, files });
     } else {
       safeSend(event.sender, 'aws:scan:error', 'Scan exited with code ' + code);
     }
-  });
-
-  proc.on('error', (err) => {
-    activeScan = null;
-    safeSend(event.sender, 'aws:scan:error', err.message);
   });
 });
 
@@ -411,7 +552,9 @@ ipcMain.handle('file:export', async (event, { data, defaultName, filters }) => {
     defaultPath: defaultName,
     filters: filters || [{ name: 'All Files', extensions: ['*'] }]
   });
-  if (result.canceled || !result.filePath) return null;
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
   if (Buffer.isBuffer(data) || ArrayBuffer.isView(data)) {
     await fsp.writeFile(result.filePath, Buffer.from(data));
   } else {
@@ -429,13 +572,15 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
   await fsp.writeFile(tmpJson, jsonData, 'utf8');
 
   const scriptPath = path.join(__dirname, 'scripts', 'budr_export_xlsx.py');
-  try { await fsp.access(scriptPath); } catch {
+  try {
+    await fsp.access(scriptPath);
+  } catch {
     await fsp.unlink(tmpJson).catch(() => {});
     return { error: 'scripts/budr_export_xlsx.py not found' };
   }
 
   try {
-    await execFileAsync('python3', [scriptPath, tmpJson, '-o', tmpXlsx], {
+    await runPythonScript([scriptPath, tmpJson, '-o', tmpXlsx], {
       timeout: 30000
     });
   } catch (err) {
@@ -443,7 +588,9 @@ ipcMain.handle('budr:export-xlsx', async (event, { jsonData }) => {
     return { error: err.stderr?.toString() || err.message };
   }
 
-  try { await fsp.access(tmpXlsx); } catch {
+  try {
+    await fsp.access(tmpXlsx);
+  } catch {
     await fsp.unlink(tmpJson).catch(() => {});
     return { error: 'XLSX generation failed — output file not created' };
   }
@@ -501,7 +648,9 @@ function checkForUpdates(manual = false) {
   try {
     if (manual) {
       const manualNotAvail = () => {
-        if (!mainWindow) return;
+        if (!mainWindow) {
+          return;
+        }
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: 'No Updates',
@@ -509,7 +658,9 @@ function checkForUpdates(manual = false) {
         });
       };
       const manualErr = (err) => {
-        if (!mainWindow) return;
+        if (!mainWindow) {
+          return;
+        }
         dialog.showMessageBox(mainWindow, {
           type: 'warning',
           title: 'Update Check Failed',
@@ -525,8 +676,12 @@ function checkForUpdates(manual = false) {
         autoUpdater.removeListener('error', manualErr);
       }, 30000);
     }
-    autoUpdater.checkForUpdates().catch((err) => { console.warn('Auto-update check failed:', err.message); });
-  } catch (e) { console.warn('checkForUpdates error:', e.message); }
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.warn('Auto-update check failed:', err.message);
+    });
+  } catch (e) {
+    console.warn('checkForUpdates error:', e.message);
+  }
 }
 
 ipcMain.on('update:download', () => {
@@ -544,11 +699,16 @@ ipcMain.on('update:install', () => {
 const appOrigin = 'file://' + __dirname + '/';
 app.on('web-contents-created', (event, contents) => {
   contents.on('will-navigate', (ev, url) => {
-    if (!url.startsWith(appOrigin)) ev.preventDefault();
+    if (!url.startsWith(appOrigin)) {
+      ev.preventDefault();
+    }
   });
   contents.setWindowOpenHandler(({ url }) => {
-    if (isAllowedExternalUrl(url)) shell.openExternal(url);
-    else console.warn('Blocked external navigation:', url);
+    if (isAllowedExternalUrl(url)) {
+      shell.openExternal(url);
+    } else {
+      console.warn('Blocked external navigation:', url);
+    }
     return { action: 'deny' };
   });
 });
@@ -567,12 +727,16 @@ app.whenReady().then(() => {
   setTimeout(checkForUpdates, 5000);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 // Handle .awsmap file open (macOS: double-click file, drag to dock icon)
@@ -580,9 +744,14 @@ let _pendingOpenFile = null;
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
   if (mainWindow && !mainWindow.webContents.isLoading()) {
-    fsp.readFile(filePath, 'utf8').then(content => {
-      mainWindow.webContents.send('file:opened', content);
-    }).catch(e => { console.warn('file:opened - failed to read:', e.message); });
+    fsp
+      .readFile(filePath, 'utf8')
+      .then((content) => {
+        mainWindow.webContents.send('file:opened', content);
+      })
+      .catch((e) => {
+        console.warn('file:opened - failed to read:', e.message);
+      });
   } else {
     _pendingOpenFile = filePath;
   }
