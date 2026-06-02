@@ -49,3 +49,35 @@ characterize ✓ → rename → extract pure logic → separate boundaries → c
 - False-positive risk: low (behavior facts, not style).
 - Safety guardrail: every unit tests-first + reversible; Playwright functional-only.
 - Decision: proceed; node units first (zero blocker, highest-risk areas).
+
+## Execution status — 2026-06-02 (branch `refactor/module-ownership`)
+
+All five units actioned. Unit suite 341 → **364 passing**. Every importable fix
+ships a node:test regression verified green→red(revert)→green.
+
+| Unit | What landed | State |
+| --- | --- | --- |
+| 1. Flow-tracing characterization | `tests/unit/flow-tracing-resolve-sg.test.mjs` (5 cases) | ✅ done |
+| 2. Multi-account governance (H-GOV) | done earlier (`f1c4ced`) | ✅ done |
+| 3. XLSX inventory account-filter (bug #1) | extracted pure `buildInventoryRows(ctx, acctFilter)`; `tests/unit/exports-xlsx-inventory.test.mjs` | ✅ done |
+| 4. Topology `vpcVpces` crash (H-VPCE) | one-line decl in `renderLandingZoneMap` mouseenter | ✅ fix done; ⏳ Playwright smoke deferred (no browser libs in sandbox) |
+| 5. Exports-lucid | golden-structure test for both modes (`tests/unit/exports-lucid-golden.test.mjs`); engine ctx-injection **extraction deferred** | ◐ characterized; extraction = next step |
+
+### BUG-HUNT backlog (`BUG-HUNT-main.md`) — applied this session
+All 18 confirmed bugs are now resolved on this branch:
+- Earlier: #1 (`f41f13a`), #2 (`6074c81`), #4 (`f2af2d5`), #8 (`327d5da`).
+- This session (`dc96dfd`): #3, #5, #6, #7, #9, #10, #11, #12, #13, #14, #15, #16, #17 + audit M-LEAK and H-VPCE.
+- #18 (sidebar/tab CSS) was already fixed by `33bb0c0` (verified, no change needed).
+
+Live-path discipline: where a bug existed in both the app-core inline monolith
+(the shipped path) and a `src/modules` twin, BOTH copies were patched in lockstep
+(#3, #5, #12, #14, #17). The node tests target the importable twin; the inline
+copies share identical logic and were verified by adversarial re-analysis +
+`node --check` + a clean prod esbuild/terser build.
+
+### Deferred (need a browser-capable env — chromium libs absent here)
+- Unit 4 topology hover smoke; functional coverage for the app-core-only fixes
+  (#6 SnapAgeDays badge, #15 admin wildcard-Resource, #16 imported-finding
+  severity, M-LEAK listener dedupe, #5/#12 client re-sort).
+- Unit 5 grid-engine extraction into `buildGridLayout(ctx)` (golden test is the
+  guard once a browser env can confirm the exported `.lucid` opens correctly).

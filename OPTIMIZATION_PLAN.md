@@ -1,7 +1,7 @@
 # Optimization Plan
 
 Updated: 2026-06-02
-Status: in progress on branch `refactor/module-ownership` — 6 pure-helper modules extracted, 7 dead orphan modules removed (-7,519 lines). See "Done" below.
+Status: in progress on branch `refactor/module-ownership` — 6 pure-helper modules extracted, 7 dead orphan modules removed (-7,519 lines), all 18 BUG-HUNT bugs + 5 HUMIFY units resolved (2026-06-02, commits `dc96dfd`/`79add5a`; 364 unit tests). See "Done" below and `HUMIFY-PLAN.md`.
 
 ---
 
@@ -43,6 +43,9 @@ Status: in progress on branch `refactor/module-ownership` — 6 pure-helper modu
 | 32 | Dead-code cleanup: 7 unwired orphan modules removed (-7,519 lines): topology-renderer, landing, firewall-engine, dashboards, detail-panel, search, notes — superseded by app-core.js live copies; production bundle byte-identical after removal | 2026-06-02 |
 | 33 | 6 pure-helper modules extracted from app-core.js + unit tests: diff-view, file-classify, firewall-cli, firewall-validate, report-view, search-index | 2026-06-02 |
 | 34 | Correctness fixes + tests: CFN SG-rule fan-out, /0 CIDR size, IAM own-account/NaN guards (exports-iac, cidr-engine, iam-engine) | 2026-06-02 |
+| 35 | All 18 BUG-HUNT bugs + HUMIFY audit M-LEAK/H-VPCE fixed (flow-tracing TGW/alt-path, governance IAM cross-acct/perms, BUDR sorts, compliance mutedCount, IAM admin/severity, dashboard listener leak, DOCX tier) — live app-core + module twins | `dc96dfd` |
+| 36 | New node regression tests (governance, flow-tracing ×2, BUDR sort, compliance mutedCount) — tests-first, green/red/green | `dc96dfd` |
+| 37 | Extracted pure `buildInventoryRows` (exports-xlsx) + golden-structure test for `exports-lucid` (both layout modes) | `79add5a` |
 
 ---
 
