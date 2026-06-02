@@ -60,8 +60,8 @@ ships a node:test regression verified green→red(revert)→green.
 | 1. Flow-tracing characterization | `tests/unit/flow-tracing-resolve-sg.test.mjs` (5 cases) | ✅ done |
 | 2. Multi-account governance (H-GOV) | done earlier (`f1c4ced`) | ✅ done |
 | 3. XLSX inventory account-filter (bug #1) | extracted pure `buildInventoryRows(ctx, acctFilter)`; `tests/unit/exports-xlsx-inventory.test.mjs` | ✅ done |
-| 4. Topology `vpcVpces` crash (H-VPCE) | one-line decl in `renderLandingZoneMap` mouseenter | ✅ fix done; ⏳ Playwright smoke deferred (no browser libs in sandbox) |
-| 5. Exports-lucid | golden-structure test for both modes (`tests/unit/exports-lucid-golden.test.mjs`); engine ctx-injection **extraction deferred** | ◐ characterized; extraction = next step |
+| 4. Topology `vpcVpces` crash (H-VPCE) | one-line decl in `renderLandingZoneMap` mouseenter + `tests/topology-smoke.spec.js` (browser-verified green→red→green) | ✅ done |
+| 5. Exports-lucid | grid engine extracted to ctx-pure `buildGridLayout(ctx)` (mirrors `buildLandingZoneLayout`); golden test now byte-exact md5-locked for both modes | ✅ done |
 
 ### BUG-HUNT backlog (`BUG-HUNT-main.md`) — applied this session
 All 18 confirmed bugs are now resolved on this branch:
@@ -75,9 +75,17 @@ Live-path discipline: where a bug existed in both the app-core inline monolith
 copies share identical logic and were verified by adversarial re-analysis +
 `node --check` + a clean prod esbuild/terser build.
 
-### Deferred (need a browser-capable env — chromium libs absent here)
-- Unit 4 topology hover smoke; functional coverage for the app-core-only fixes
-  (#6 SnapAgeDays badge, #15 admin wildcard-Resource, #16 imported-finding
-  severity, M-LEAK listener dedupe, #5/#12 client re-sort).
-- Unit 5 grid-engine extraction into `buildGridLayout(ctx)` (golden test is the
-  guard once a browser env can confirm the exported `.lucid` opens correctly).
+### Browser validation
+Playwright now runs in WSL (the chromium shell's 4 missing libs — libnspr4,
+libnss3, libnssutil3, libasound2 — were supplied via a no-sudo `apt-get download`
++ extract + `LD_LIBRARY_PATH`; for a permanent fix run `npx playwright
+install-deps chromium`). **68 functional Playwright tests pass** (smoke,
+dashboard, detail-panel, edge-cases, export, flow-mode, security, xss, topology),
+confirming the fixes + rebuilt bundles in a real browser. The 8 `visual.spec.js`
+pixel tests are skipped (darwin/win32 baselines only).
+
+### Remaining (optional, low priority)
+Dedicated functional assertions for the app-core-only fixes (#6 SnapAgeDays badge
+colour, #15 admin wildcard-Resource, #16 imported-finding severity, M-LEAK
+listener dedupe, #5/#12 client re-sort). These are covered for *regression* by the
+68-test suite; targeted assertions would add per-fix coverage.
