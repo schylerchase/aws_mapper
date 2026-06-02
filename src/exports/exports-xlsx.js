@@ -424,13 +424,11 @@ function _rptBuildXlsxBUDR(wb){
     minWidths:[16,14,16,16,24,20,14,10,10,40],links:budrLinks});
 }
 
-function _rptBuildXlsxInventory(wb){
-  var c=_rlCtx;
-  if(!c) return;
-  var acctFilter=_rptGetAccountFilter();
-  var headers=['Account','Region','VPC','Type','ID','Name','Configuration','State / AZ','Details'];
+// Pure rows builder for the Inventory sheet — extracted so the per-type account
+// filtering (bug #1: the 7 trailing types now route through _af) is unit-testable
+// without SheetJS/DOM. Returns the raw rows; the sheet wiring stays in the caller.
+export function buildInventoryRows(c, acctFilter){
   var rows=[];
-  var links=[];
   function _af(arr){
     if(!acctFilter||acctFilter==='all') return arr||[];
     return (arr||[]).filter(function(r){return (r._accountId||'')===acctFilter});
@@ -535,7 +533,17 @@ function _rptBuildXlsxInventory(wb){
   _af(c.tgs).forEach(function(tg){
     rows.push([_a(tg),_r(tg),tg.VpcId||'','Target Group',tg.TargetGroupName||'',tg.TargetGroupName||'',tg.Protocol+':'+tg.Port,tg.TargetType||'','']);
   });
+  return rows;
+}
+
+function _rptBuildXlsxInventory(wb){
+  var c=_rlCtx;
+  if(!c) return;
+  var acctFilter=_rptGetAccountFilter();
+  var headers=['Account','Region','VPC','Type','ID','Name','Configuration','State / AZ','Details'];
+  var rows=buildInventoryRows(c, acctFilter);
   if(!rows.length) return;
+  var links=[];
   // Replace empty cells with "-" so XLSX has no blank gaps
   rows.forEach(function(row){for(let i=0;i<row.length;i++){if(row[i]==='')row[i]='-'}});
   // Generate hyperlinks for ID column (4) and VPC column (2)
