@@ -1994,35 +1994,7 @@ const _INV_TYPE_COLORS={
 
 const _INV_NO_MAP_TYPES={'S3 Bucket':1,'Route 53':1,'WAF':1,'CloudFront':1,'Snapshot':1,'TGW Attachment':1,'Target Group':1};
 
-function _filterInventory(){
-  var st=_invState;
-  var items=_udashFilterByAccount(_inventoryData).slice();
-  if(st.typeFilter!=='all') items=items.filter(function(r){return r.type===st.typeFilter});
-  if(st.regionFilter!=='all') items=items.filter(function(r){return r.region===st.regionFilter});
-  if(st.accountFilter!=='all') items=items.filter(function(r){return r.account===st.accountFilter});
-  if(st.vpcFilter!=='all') items=items.filter(function(r){return r.vpcId===st.vpcFilter});
-  if(st.search){
-    var q=st.search.toLowerCase();
-    items=items.filter(function(r){
-      return (r.name||'').toLowerCase().indexOf(q)!==-1
-        ||(r.id||'').toLowerCase().indexOf(q)!==-1
-        ||(r.type||'').toLowerCase().indexOf(q)!==-1
-        ||(r.config||'').toLowerCase().indexOf(q)!==-1
-        ||(r.vpcName||'').toLowerCase().indexOf(q)!==-1
-        ||(r.region||'').toLowerCase().indexOf(q)!==-1
-        ||JSON.stringify(r.tags||{}).toLowerCase().indexOf(q)!==-1;
-    });
-  }
-  var sortKey=st.sort;var dir=st.sortDir==='asc'?1:-1;
-  items.sort(function(a,b){
-    if(sortKey==='complianceFail'){return((a.complianceFail||0)-(b.complianceFail||0))*dir}
-    if(sortKey==='tags'){return(Object.keys(a.tags||{}).length-Object.keys(b.tags||{}).length)*dir}
-    var av=(a[sortKey]||'').toString().toLowerCase();
-    var bv=(b[sortKey]||'').toString().toLowerCase();
-    return av<bv?-dir:av>bv?dir:0;
-  });
-  return items;
-}
+// _filterInventory extracted to governance.js (window._filterInventory via main.js).
 
 function _renderInventoryTab(){
   var tb=document.getElementById('udashToolbar');
@@ -12197,116 +12169,13 @@ function _portInRange(port, from, to){
   return p>=parseInt(from,10)&&p<=parseInt(to,10);
 }
 
-function evaluateRouteTable(rt, destCidr){
-  if(!rt||!rt.Routes) return {target:'local',type:'local'};
-  const dest=_ipFromCidr(destCidr)||destCidr;
-  let bestMatch=null;
-  let bestMask=-1;
-  rt.Routes.forEach(function(r){
-    const rCidr=r.DestinationCidrBlock||r.DestinationIpv6CidrBlock;
-    if(!rCidr) return;
-    const mask=parseInt(rCidr.split('/')[1],10)||0;
-    if(_cidrContains(rCidr, dest)&&mask>bestMask){
-      bestMask=mask;
-      bestMatch=r;
-    }
-  });
-  if(!bestMatch) return {target:'blackhole',type:'blackhole',detail:'No matching route'};
-  if(bestMatch.State==='blackhole') return {target:'blackhole',type:'blackhole',detail:'Route is blackholed'};
-  if(bestMatch.GatewayId&&bestMatch.GatewayId.startsWith('igw-')) return {target:bestMatch.GatewayId,type:'igw'};
-  if(bestMatch.NatGatewayId) return {target:bestMatch.NatGatewayId,type:'nat'};
-  if(bestMatch.VpcPeeringConnectionId) return {target:bestMatch.VpcPeeringConnectionId,type:'pcx'};
-  if(bestMatch.TransitGatewayId) return {target:bestMatch.TransitGatewayId,type:'tgw'};
-  if(bestMatch.GatewayId==='local') return {target:'local',type:'local'};
-  if(bestMatch.VpcEndpointId) return {target:bestMatch.VpcEndpointId,type:'vpce'};
-  if(bestMatch.GatewayId&&bestMatch.GatewayId.startsWith('vgw-')) return {target:bestMatch.GatewayId,type:'vgw'};
-  return {target:'local',type:'local'};
-}
+// evaluateRouteTable extracted to network-rules.js (window.evaluateRouteTable via main.js).
 
-function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts){
-  if(!nacl||!nacl.Entries) return {action:'allow',rule:'Default allow (no NACL)',ruleNum:'-'};
-  const entries=(nacl.Entries||[])
-    .filter(function(e){return e.Egress===(direction==='outbound')})
-    .sort(function(a,b){return a.RuleNumber-b.RuleNumber});
-  // Discovery mode: if no entries for this direction, assume allow (missing data)
-  if(entries.length===0&&opts&&opts.assumeAllow) return {action:'allow',rule:'No '+direction+' rules defined (assumed allow)',ruleNum:'-'};
-  for(let i=0;i<entries.length;i++){
-    var e=entries[i];
-    if(e.RuleNumber===32767) continue;
-    var protoOk=_protoMatch(e.Protocol, protocol);
-    if(!protoOk) continue;
-    var portOk=true;
-    if(e.PortRange){
-      portOk=_portInRange(port, e.PortRange.From, e.PortRange.To);
-    }
-    if(!portOk) continue;
-    var cidrOk=false;
-    if(e.CidrBlock) cidrOk=_cidrContains(e.CidrBlock, _ipFromCidr(sourceCidr));
-    if(!cidrOk&&e.Ipv6CidrBlock){
-      // IPv6 rules: match ::/0 as catch-all, skip others for IPv4 traffic
-      if(e.Ipv6CidrBlock==='::/0') cidrOk=true;
-      else continue;
-    }
-    if(!cidrOk) continue;
-    var act=e.RuleAction==='allow'?'allow':'deny';
-    var cidrLabel=e.CidrBlock||e.Ipv6CidrBlock||'';
-    return {action:act,rule:'Rule #'+e.RuleNumber+' '+act.toUpperCase()+' '+_protoName(e.Protocol)+' port '+(e.PortRange?e.PortRange.From+'-'+e.PortRange.To:'all')+' from '+cidrLabel,ruleNum:e.RuleNumber};
-  }
-  return {action:'deny',rule:'Default deny (no matching rule)',ruleNum:'*'};
-}
+// evaluateNACL extracted to network-rules.js (window.evaluateNACL via main.js).
 
-function _protoName(p){
-  if(p==='-1'||p==='all') return 'ALL';
-  if(p==='6') return 'TCP';
-  if(p==='17') return 'UDP';
-  if(p==='1') return 'ICMP';
-  return String(p).toUpperCase();
-}
+// _protoName removed — only used by evaluateNACL/evaluateSG, now network-rules.js protoName.
 
-function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts){
-  if(!sgs||sgs.length===0) return {action:(opts&&opts.assumeAllow)?'allow':'deny',rule:'No security groups attached',matchedSg:null};
-  var srcIp=_ipFromCidr(sourceCidr);
-  var _srcSgIds=opts&&opts.sourceSgIds;
-  var _srcSgSet=_srcSgIds?new Set(_srcSgIds):null;
-  for(let si=0;si<sgs.length;si++){
-    var sg=sgs[si];
-    var rules=direction==='inbound'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
-    for(let ri=0;ri<rules.length;ri++){
-      var r=rules[ri];
-      var protoOk=_protoMatch(String(r.IpProtocol), protocol);
-      if(!protoOk) continue;
-      var portOk=true;
-      if(r.FromPort!==undefined&&r.FromPort!==-1){
-        portOk=_portInRange(port, r.FromPort, r.ToPort);
-      }
-      if(!portOk) continue;
-      var cidrOk=false;
-      var ipRanges=r.IpRanges||[];
-      for(var ci=0;ci<ipRanges.length&&!cidrOk;ci++){
-        if(_cidrContains(ipRanges[ci].CidrIp, srcIp)) cidrOk=true;
-      }
-      if(!cidrOk){
-        var ipv6Ranges=r.Ipv6Ranges||[];
-        for(var v6i=0;v6i<ipv6Ranges.length&&!cidrOk;v6i++){
-          if(ipv6Ranges[v6i].CidrIpv6==='::/0') cidrOk=true;
-        }
-      }
-      // SG-to-SG references: validate source SG IDs if provided, else assume allow
-      if(!cidrOk&&(r.UserIdGroupPairs||[]).length>0){
-        var pairs=r.UserIdGroupPairs||[];
-        for(var pi=0;pi<pairs.length&&!cidrOk;pi++){
-          if(_srcSgSet){if(pairs[pi].GroupId&&_srcSgSet.has(pairs[pi].GroupId))cidrOk=true}
-          else{if(pairs[pi].GroupId)cidrOk=true}
-        }
-      }
-      if(cidrOk){
-        var desc=sg.GroupName+': '+_protoName(String(r.IpProtocol))+' port '+(r.FromPort!==-1&&r.FromPort!==undefined?r.FromPort+'-'+r.ToPort:'all');
-        return {action:'allow',rule:desc,matchedSg:sg.GroupId||sg.GroupName};
-      }
-    }
-  }
-  return {action:'deny',rule:'No matching SG rule for '+protocol+'/'+port,matchedSg:null};
-}
+// evaluateSG extracted to network-rules.js (window.evaluateSG via main.js).
 
 function _resolveNetworkPosition(type, id, ctx){
   if(!ctx) return null;
