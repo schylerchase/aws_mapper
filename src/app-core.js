@@ -2581,7 +2581,7 @@ function openIAMPrincipalPanel(principal,iamData,ctx){
       const sd=perms.services[svc];
       pb+='<div style="font-weight:600;color:var(--accent-cyan);margin:6px 0 2px;text-transform:uppercase;font-size:8px;letter-spacing:.5px">'+esc(svc)+' ('+sd.allowed.length+' allowed'+(sd.denied.length?', '+sd.denied.length+' denied':'')+')</div>';
       sd.allowed.forEach(a=>{
-        const res=sd.resources[a]||'*';
+        const ra=sd.resources[a];const res=(ra&&ra.length)?ra.join(', '):'*';
         pb+='<div class="fw-rule-bar"><span class="fw-arrow" style="color:var(--accent-green)">&#9654;</span><span class="fw-proto">'+esc(svc)+'</span><span class="fw-port allow">'+esc(a)+'</span><span class="fw-src">'+esc(res)+'</span></div>';
       });
       sd.denied.forEach(a=>{
@@ -3340,8 +3340,8 @@ function openResourceList(type, pushNav){
       roles.forEach(r=>{if(r._isAdmin)adminCount++;if(r._hasWildcard&&!r._isAdmin)wildcardCount++;if(r.PermissionsBoundary)boundaryCount++});
       users.forEach(u=>{
         let uAdmin=false;const ups=[...(u.UserPolicyList||[]),...(u.AttachedManagedPolicies||[])];
-        ups.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];if(a.some(x=>x==='*'))uAdmin=true}})});
-        (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*'))uAdmin=true})}}});
+        ups.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const rv=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*')&&rv.some(x=>x==='*'))uAdmin=true}})});
+        (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*')&&(Array.isArray(s.Resource)?s.Resource:[s.Resource||'']).some(x=>x==='*'))uAdmin=true})}}});
         if(uAdmin)adminCount++;
         if(!(u.MFADevices||[]).length)noMfaCount++;
       });
@@ -3373,8 +3373,8 @@ function openResourceList(type, pushNav){
         users.forEach((u,ui)=>{
           const badges=[];
           let uAdm=false;const ups2=[...(u.UserPolicyList||[]),...(u.AttachedManagedPolicies||[])];
-          ups2.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];if(a.some(x=>x==='*'))uAdm=true}})});
-          (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*'))uAdm=true})}}});
+          ups2.forEach(p=>{const doc=_safePolicyParse(p.PolicyDocument);_stmtArr(doc.Statement).forEach(s=>{if(s.Effect==='Allow'){const a=Array.isArray(s.Action)?s.Action:[s.Action||''];const rv=Array.isArray(s.Resource)?s.Resource:[s.Resource||''];if(a.some(x=>x==='*')&&rv.some(x=>x==='*'))uAdm=true}})});
+          (u.AttachedManagedPolicies||[]).forEach(mp=>{const pol=(iamData.policies||[]).find(p=>p.Arn===mp.PolicyArn);if(pol){const ver=(pol.PolicyVersionList||[]).find(v=>v.IsDefaultVersion);if(ver){let dd=_safePolicyParse(ver.Document);_stmtArr(dd.Statement).forEach(s=>{if(s.Effect==='Allow'&&(Array.isArray(s.Action)?s.Action:[s.Action||'']).some(x=>x==='*')&&(Array.isArray(s.Resource)?s.Resource:[s.Resource||'']).some(x=>x==='*'))uAdm=true})}}});
           if(uAdm)badges.push('<span class="sev-badge sev-CRITICAL">ADMIN</span>');
           if(!(u.MFADevices||[]).length)badges.push('<span class="sev-badge sev-HIGH">NO MFA</span>');
           else badges.push('<span class="sev-badge sev-LOW" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)">MFA</span>');
@@ -4836,6 +4836,7 @@ function renderLandingZoneMap(ctx){
     headerRect.on('mouseenter',function(){
       if(!_lzLocked) lzHlVpc(vl.vpc.VpcId);
       const vpcGws=pvGws[vl.vpc.VpcId]||[];
+      const vpcVpces=vpceByVpc[vl.vpc.VpcId]||[];
       let h='<div class="tt-title">'+gn(vl.vpc,vl.vpc.VpcId)+'</div>';
       h+='<div class="tt-sub">'+(vl.isHub?'Hub VPC':'Spoke VPC')+'</div>';
       h+='<div class="tt-sec"><div class="tt-sh">Details</div>';
@@ -8670,7 +8671,7 @@ function _parseReportIAM(doc,result){
 function _parseFindingsCount(text){
   var n=parseInt(text);
   if(isNaN(n)||n<=0)return [];
-  var arr=[];for(let i=0;i<n;i++)arr.push({message:'Imported finding'});
+  var arr=[];for(let i=0;i<n;i++)arr.push({message:'Imported finding',severity:'LOW'});
   return arr;
 }
 function _parseReportAppSummary(doc,result){
@@ -12517,10 +12518,15 @@ function traceFlow(source, target, config, ctx){
   if(peeringRoute){
     path.push({hop:hopN++,type:'peering',id:peeringRoute.VpcPeeringConnectionId||'PCX',action:'allow',detail:'VPC Peering connection between '+srcPos.vpcId+' and '+tgtPos.vpcId,rule:'Peering: '+peeringRoute.VpcPeeringConnectionId});
   } else {
-    var tgwRoute=false;
+    // Both VPCs must share the SAME transit gateway (not merely each be attached
+    // to some TGW) for cross-VPC traffic to route. Intersect each VPC's TGW set.
+    var _srcTgws={},_tgtTgws={};
     (ctx.tgwAttachments||[]).forEach(function(att){
-      if(att.ResourceId===srcPos.vpcId||att.ResourceId===tgtPos.vpcId) tgwRoute=true;
+      if(att.ResourceId===srcPos.vpcId&&att.TransitGatewayId) _srcTgws[att.TransitGatewayId]=true;
+      if(att.ResourceId===tgtPos.vpcId&&att.TransitGatewayId) _tgtTgws[att.TransitGatewayId]=true;
     });
+    var tgwRoute=false;
+    Object.keys(_srcTgws).forEach(function(t){if(_tgtTgws[t]) tgwRoute=true});
     if(tgwRoute){
       path.push({hop:hopN++,type:'tgw',id:'Transit Gateway',action:'allow',detail:'Transit Gateway route between VPCs'});
     } else {
@@ -13013,6 +13019,7 @@ function _findAlternatePaths(source, target, config, ctx){
     (ctx.albBySub[sid]||[]).forEach(function(alb){
       var albId=alb.LoadBalancerArn?alb.LoadBalancerArn.split('/').pop():'';
       if(albId===(target.type==='alb'?target.id:'')) return;
+      if(albId===(source.type==='alb'?source.id:'')) return;
       candidates.push({ref:{type:'alb',id:albId||alb.LoadBalancerName},name:alb.LoadBalancerName||albId,isPub:true,defaultPort:443});
     });
   });
@@ -15966,8 +15973,9 @@ function _renderBUDRDash(){
         h+='<div class="budr-signals">';
         Object.entries(a.signals).forEach(function(entry){
           var k=entry[0],v=entry[1];
-          var good=v===true||(typeof v==='number'&&v>1);
-          var bad=v===false||v===0;
+          var good,bad;
+          if(k==='SnapAgeDays'){good=(typeof v==='number'&&v<=7);bad=(v===null||typeof v!=='number'||v>7);}
+          else{good=v===true||(typeof v==='number'&&v>1);bad=v===false||v===0;}
           var cls=good?'good':bad?'bad':'warn';
           var icon=good?'✓':bad?'✗':'!';
           h+='<span class="budr-sig-badge '+cls+'">'+icon+' '+esc(k)+': '+esc(String(v))+'</span>';
@@ -16252,7 +16260,7 @@ function _renderClassificationTab(){
     });
   });
   // Resource name clicks → jump to resource on map and open detail panel
-  body.addEventListener('click',function(e){var el=e.target.closest('.gov-res-link');if(!el)return;e.stopPropagation();var rid=el.dataset.rid;if(!rid)return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250)});
+  if(!body._govResDelegated){body._govResDelegated=true;body.addEventListener('click',function(e){var el=e.target.closest('.gov-res-link');if(!el)return;e.stopPropagation();var rid=el.dataset.rid;if(!rid)return;closeUnifiedDash();setTimeout(function(){_zoomAndShowDetail(rid)},250)});}
   // Export
   document.getElementById('govExportCSV').addEventListener('click',function(){
     var rows=[['Resource','Type','App','Tier','RPO','RTO','Classification','VPC']];
@@ -16468,7 +16476,8 @@ function _renderAppSummaryTab(){
     body.querySelectorAll('.app-sel-cb').forEach(function(cb){cb.checked=checked});
     _updateDelBtn();
   });
-  body.addEventListener('change',function(e){if(e.target.classList.contains('app-sel-cb'))_updateDelBtn()});
+  body._updateDelBtn=_updateDelBtn;
+  if(!body._appCbDelegated){body._appCbDelegated=true;body.addEventListener('change',function(e){if(e.target.classList.contains('app-sel-cb')&&body._updateDelBtn)body._updateDelBtn()});}
   delSelBtn.addEventListener('click',function(){
     var toDelete={};
     body.querySelectorAll('.app-sel-cb:checked').forEach(function(cb){toDelete[cb.dataset.idx]=true});
@@ -17352,8 +17361,8 @@ function _rptInitInteractive(root){
       var bv=b.children[idx]?b.children[idx].textContent.trim():'';
       var cmp=0;
       if(type==='severity')cmp=(SEV_ORD[av]===undefined?9:SEV_ORD[av])-(SEV_ORD[bv]===undefined?9:SEV_ORD[bv]);
-      else if(type==='tier')cmp=(TIER_ORD[av]===undefined?9:TIER_ORD[av])-(TIER_ORD[bv]===undefined?9:TIER_ORD[bv]);
-      else if(type==='strategy')cmp=(STRAT_ORD[av.toLowerCase()]===undefined?9:STRAT_ORD[av.toLowerCase()])-(STRAT_ORD[bv.toLowerCase()]===undefined?9:STRAT_ORD[bv.toLowerCase()]);
+      else if(type==='tier'){var ak=a.dataset.tier,bk=b.dataset.tier;cmp=(TIER_ORD[ak]===undefined?9:TIER_ORD[ak])-(TIER_ORD[bk]===undefined?9:TIER_ORD[bk]);}
+      else if(type==='strategy'){var sk=(a.dataset.strategy||'').toLowerCase(),tk=(b.dataset.strategy||'').toLowerCase();cmp=(STRAT_ORD[sk]===undefined?9:STRAT_ORD[sk])-(STRAT_ORD[tk]===undefined?9:STRAT_ORD[tk]);}
       else cmp=av.localeCompare(bv);
       return dir==='desc'?-cmp:cmp;
     });

@@ -321,7 +321,10 @@ export function buildComplianceView(opts) {
       (f.remediation || '').toLowerCase().indexOf(q) !== -1
     );
   }
-  // Mute filter
+  // Mute filter — capture the pre-mute (but framework/severity/search-scoped)
+  // source so mutedCount reflects what the active filters actually hid, not the
+  // never-populated state.js `complianceFindings` binding.
+  const preMuteSrc = src;
   if (!opts.includeMuted) src = src.filter(f => !isMuted(f));
   // Stamp _tier and _effort on every finding ONCE
   const base = src.map(f => Object.assign({}, f, { _tier: classifyTier(f), _effort: getEffort(f) }));
@@ -346,7 +349,7 @@ export function buildComplianceView(opts) {
     sevCounts, tierCounts, filteredTierCounts, filteredSevCounts,
     score: calcComplianceScore(base),
     effort: estimateTotalEffort(groupByResource(base)),
-    mutedCount: (complianceFindings || []).filter(f => isMuted(f)).length
+    mutedCount: preMuteSrc.filter(f => isMuted(f)).length
   };
 }
 

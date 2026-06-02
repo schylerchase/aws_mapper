@@ -512,8 +512,8 @@ export function _rptInteractiveJS() {
   '      var bv=b.children[idx]?b.children[idx].textContent.trim():"";\n'+
   '      var cmp=0;\n'+
   '      if(type==="severity")cmp=(SEV_ORD[av]===undefined?9:SEV_ORD[av])-(SEV_ORD[bv]===undefined?9:SEV_ORD[bv]);\n'+
-  '      else if(type==="tier")cmp=(TIER_ORD[av]===undefined?9:TIER_ORD[av])-(TIER_ORD[bv]===undefined?9:TIER_ORD[bv]);\n'+
-  '      else if(type==="strategy")cmp=(STRAT_ORD[av.toLowerCase()]===undefined?9:STRAT_ORD[av.toLowerCase()])-(STRAT_ORD[bv.toLowerCase()]===undefined?9:STRAT_ORD[bv.toLowerCase()]);\n'+
+  '      else if(type==="tier"){var ak=a.dataset.tier,bk=b.dataset.tier;cmp=(TIER_ORD[ak]===undefined?9:TIER_ORD[ak])-(TIER_ORD[bk]===undefined?9:TIER_ORD[bk]);}\n'+
+  '      else if(type==="strategy"){var sk=(a.dataset.strategy||"").toLowerCase(),tk=(b.dataset.strategy||"").toLowerCase();cmp=(STRAT_ORD[sk]===undefined?9:STRAT_ORD[sk])-(STRAT_ORD[tk]===undefined?9:STRAT_ORD[tk]);}\n'+
   '      else cmp=av.localeCompare(bv);\n'+
   '      return dir==="desc"?-cmp:cmp;\n'+
   '    });\n'+
@@ -1121,8 +1121,8 @@ export function _rptBUDRAssessmentTable(assessments) {
     const ta = a.profile ? tierOrder[a.profile.tier] : 9;
     const tb = b.profile ? tierOrder[b.profile.tier] : 9;
     if (ta !== tb) return ta - tb;
-    const sa = a.profile ? (_BUDR_STRATEGY_ORDER[a.profile.strategy] || 9) : 9;
-    const sb = b.profile ? (_BUDR_STRATEGY_ORDER[b.profile.strategy] || 9) : 9;
+    const sa = a.profile ? (_BUDR_STRATEGY_ORDER[a.profile.strategy] ?? 9) : 9;
+    const sb = b.profile ? (_BUDR_STRATEGY_ORDER[b.profile.strategy] ?? 9) : 9;
     return sa - sb;
   });
   let h = '<div id="s-budr-assessments"><h3>Assessments ('+sorted.length+')</h3>';

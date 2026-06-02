@@ -363,14 +363,18 @@ function _docxAppSummary(isExec){
     h+=_docxP(_appRegistry.length+' applications registered in the environment:');
     var rows=_appRegistry.map(function(app){
       var matched=_matchAppResources(app);
-      var tier=app.tier||'low';
+      var bestTier='low';
+      matched.forEach(function(r){if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier});
+      var tier=app.tier||bestTier;
       return [app.name,app.type||'',(tier).toUpperCase(),String(matched.length)];
     }).sort(function(a,b){return(tierPri[a[2].toLowerCase()]||99)-(tierPri[b[2].toLowerCase()]||99)});
     h+=_docxTable(['Application','Type','Criticality','Resources'],rows);
   }else{
     _appRegistry.forEach(function(app){
       var matched=_matchAppResources(app);
-      var tier=app.tier||'low';
+      var bestTier='low';
+      matched.forEach(function(r){if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier});
+      var tier=app.tier||bestTier;
       var meta=_TIER_RPO_RTO[tier]||_TIER_RPO_RTO.low;
       h+=_docxP('');h+=_docxP(app.name+' ('+tier.toUpperCase()+')','Heading2');
       h+=_docxBoldP('Type',app.type||'N/A');

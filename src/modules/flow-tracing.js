@@ -544,10 +544,15 @@ export function traceFlow(source, target, config, ctx) {
   if (peeringRoute) {
     path.push({ hop: hopN++, type: 'peering', id: peeringRoute.VpcPeeringConnectionId || 'PCX', action: 'allow', detail: 'VPC Peering connection between ' + srcPos.vpcId + ' and ' + tgtPos.vpcId, rule: 'Peering: ' + peeringRoute.VpcPeeringConnectionId });
   } else {
-    let tgwRoute = false;
+    // Both VPCs must share the SAME transit gateway (not merely each be attached
+    // to some TGW) for cross-VPC traffic to route. Intersect each VPC's TGW set.
+    const _srcTgws = {}; const _tgtTgws = {};
     (ctx.tgwAttachments || []).forEach(function (att) {
-      if (att.ResourceId === srcPos.vpcId || att.ResourceId === tgtPos.vpcId) tgwRoute = true;
+      if (att.ResourceId === srcPos.vpcId && att.TransitGatewayId) _srcTgws[att.TransitGatewayId] = true;
+      if (att.ResourceId === tgtPos.vpcId && att.TransitGatewayId) _tgtTgws[att.TransitGatewayId] = true;
     });
+    let tgwRoute = false;
+    Object.keys(_srcTgws).forEach(function (t) { if (_tgtTgws[t]) tgwRoute = true; });
     if (tgwRoute) {
       path.push({ hop: hopN++, type: 'tgw', id: 'Transit Gateway', action: 'allow', detail: 'Transit Gateway route between VPCs' });
     } else {
@@ -609,6 +614,7 @@ export function findAlternatePaths(source, target, config, ctx) {
     (ctx.albBySub[sid] || []).forEach(function (alb) {
       const albId = alb.LoadBalancerArn ? alb.LoadBalancerArn.split('/').pop() : '';
       if (albId === (target.type === 'alb' ? target.id : '')) return;
+      if (albId === (source.type === 'alb' ? source.id : '')) return;
       candidates.push({ ref: { type: 'alb', id: albId || alb.LoadBalancerName }, name: alb.LoadBalancerName || albId, isPub: true, defaultPort: 443 });
     });
   });

@@ -405,7 +405,7 @@ function _rptBuildXlsxBUDR(wb){
   var headers=['Account','Region','VPC','Resource Type','Resource ID','Name','DR Tier','RTO','RPO','Backup Signals'];
   var tierOrder={at_risk:0,partial:1,protected:2};
   var sorted=filteredBudr.slice().sort(function(a,b){
-    return (tierOrder[a.profile?a.profile.tier:'']||9)-(tierOrder[b.profile?b.profile.tier:'']||9);
+    return (a.profile?tierOrder[a.profile.tier]:9)-(b.profile?tierOrder[b.profile.tier]:9);
   });
   var rows=sorted.map(function(a){
     var tier=a.profile?a.profile.tier:'unknown';

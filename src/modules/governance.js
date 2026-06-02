@@ -593,7 +593,7 @@ function prepareIAMReviewData(iamData) {
     _stmtArr(trustParsed.Statement).forEach(function(stmt) {
       if (stmt.Effect === 'Allow' && stmt.Principal) {
         const aws = stmt.Principal.AWS;
-        if (aws) { (Array.isArray(aws) ? aws : [aws]).forEach(function(arn) { const m = String(arn).match(/:(\d{12}):/); if (m) crossAccts.push(m[1]); }); }
+        if (aws) { const _own = (role.Arn || '').match(/:(\d{12}):/); const _ownAcct = _own ? _own[1] : ''; (Array.isArray(aws) ? aws : [aws]).forEach(function(arn) { const m = String(arn).match(/:(\d{12}):/); if (m && m[1] !== _ownAcct) crossAccts.push(m[1]); }); }
       }
     });
     const findings = (compFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === role.RoleName || f.resource === (role.Arn || '')); });
@@ -784,7 +784,8 @@ function summarizePermissions(principal, iamData) {
       const actionName = a.includes(':') ? a.split(':')[1] : a;
       if (s.Effect === 'Allow') {
         if (!services[svc].allowed.includes(actionName)) services[svc].allowed.push(actionName);
-        res.forEach(r => { services[svc].resources[actionName] = r; });
+        const rr = services[svc].resources[actionName] || (services[svc].resources[actionName] = []);
+        res.forEach(r => { if (r && !rr.includes(r)) rr.push(r); });
       } else if (s.Effect === 'Deny') {
         if (!services[svc].denied.includes(actionName)) services[svc].denied.push(actionName);
       }
