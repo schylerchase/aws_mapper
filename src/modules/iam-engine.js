@@ -86,7 +86,7 @@ function runIAMChecks(iamData){
     if(role.AssumeRolePolicyDocument){
       const trust=_safePolicyParse(role.AssumeRolePolicyDocument);
       const stmts=_stmtArr(trust.Statement);
-      const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId})});
+      const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&_iamOwnAccountId&&m[1]!==_iamOwnAccountId})});
       const hasMFA=stmts.some(s=>JSON.stringify(s.Condition||{}).includes('aws:MultiFactorAuth'));
       if(crossAccount&&!hasMFA)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
     }
@@ -103,13 +103,13 @@ function runIAMChecks(iamData){
     });
     // IAM-5: Unused role (>90 days or never used)
     const lastUsed=role.RoleLastUsed?.LastUsedDate;
-    if(!lastUsed||(Date.now()-new Date(lastUsed).getTime())>90*86400000)f.push({severity:'LOW',control:'IAM-5',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role unused for >90 days or never used',remediation:'Review and remove unused roles'});
+    if(!lastUsed||isNaN(new Date(lastUsed).getTime())||(Date.now()-new Date(lastUsed).getTime())>90*86400000)f.push({severity:'LOW',control:'IAM-5',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Role unused for >90 days or never used',remediation:'Review and remove unused roles'});
     // IAM-6: Cross-account without ExternalId
     if(role.AssumeRolePolicyDocument){
       const tr6=_safePolicyParse(role.AssumeRolePolicyDocument);
       _stmtArr(tr6.Statement).forEach(s=>{
         const pr=s.Principal||{};const awsPr=pr.AWS||'';const awsList=Array.isArray(awsPr)?awsPr:[awsPr];
-        const isCross=awsList.some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId});
+        const isCross=awsList.some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&_iamOwnAccountId&&m[1]!==_iamOwnAccountId});
         const hasExtId=s.Condition&&(s.Condition.StringEquals?.['sts:ExternalId']||s.Condition.StringLike?.['sts:ExternalId']);
         if(isCross&&!hasExtId)f.push({severity:'HIGH',control:'IAM-6',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account trust without ExternalId condition',remediation:'Add sts:ExternalId condition to assume role policy'});
       });

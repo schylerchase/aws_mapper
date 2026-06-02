@@ -53,6 +53,9 @@ describe('parseCIDR', () => {
   it('parses /0 (all IPs)', () => {
     const r = parseCIDR('0.0.0.0/0');
     assert.equal(r.prefix, 0);
+    // /0 spans the entire IPv4 space (2^32). `1 << 32` wraps to `1 << 0 === 1`
+    // in JS, so the /0 size must be special-cased.
+    assert.equal(r.size, 4294967296);
   });
   it('returns null for non-aligned CIDR', () => {
     assert.equal(parseCIDR('10.0.0.1/16'), null);

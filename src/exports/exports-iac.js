@@ -806,19 +806,23 @@ function generateCloudFormation(ctx,opts){
     const isCyclic=cyclicSgIds.has(sg.GroupId);
     const props={GroupDescription:sg.Description||'Managed by CloudFormation',VpcId:cfnRef(sg.VpcId),Tags:_cfnTags(sg)};
     if(!isCyclic){
-      if(sg.IpPermissions&&sg.IpPermissions.length)props.SecurityGroupIngress=sg.IpPermissions.map(_cfnSGRule);
-      if(sg.IpPermissionsEgress&&sg.IpPermissionsEgress.length)props.SecurityGroupEgress=sg.IpPermissionsEgress.map(_cfnSGRule);
+      if(sg.IpPermissions&&sg.IpPermissions.length)props.SecurityGroupIngress=sg.IpPermissions.flatMap(_cfnSGRule);
+      if(sg.IpPermissionsEgress&&sg.IpPermissionsEgress.length)props.SecurityGroupEgress=sg.IpPermissionsEgress.flatMap(_cfnSGRule);
     }
     template.Resources[ln]={Type:'AWS::EC2::SecurityGroup',Properties:props};
     // Standalone rules for cyclic
     if(isCyclic){
       (sg.IpPermissions||[]).forEach((rule,ri)=>{
-        const rProps=Object.assign({GroupId:{'Ref':ln},IpProtocol:rule.IpProtocol||'-1'},_cfnSGRuleProps(rule));
-        template.Resources[ln+'Ingress'+ri]={Type:'AWS::EC2::SecurityGroupIngress',Properties:rProps};
+        _cfnSGRuleProps(rule).forEach((srcProps,si)=>{
+          const rProps=Object.assign({GroupId:{'Ref':ln},IpProtocol:rule.IpProtocol||'-1'},srcProps);
+          template.Resources[ln+'Ingress'+ri+(si?('_'+si):'')]={Type:'AWS::EC2::SecurityGroupIngress',Properties:rProps};
+        });
       });
       (sg.IpPermissionsEgress||[]).forEach((rule,ri)=>{
-        const rProps=Object.assign({GroupId:{'Ref':ln},IpProtocol:rule.IpProtocol||'-1'},_cfnSGRuleProps(rule));
-        template.Resources[ln+'Egress'+ri]={Type:'AWS::EC2::SecurityGroupEgress',Properties:rProps};
+        _cfnSGRuleProps(rule).forEach((srcProps,si)=>{
+          const rProps=Object.assign({GroupId:{'Ref':ln},IpProtocol:rule.IpProtocol||'-1'},srcProps);
+          template.Resources[ln+'Egress'+ri+(si?('_'+si):'')]={Type:'AWS::EC2::SecurityGroupEgress',Properties:rProps};
+        });
       });
     }
   });
@@ -893,25 +897,32 @@ function _cfnTags(resource){
 }
 
 function _cfnSGRule(rule){
-  const r={IpProtocol:rule.IpProtocol||'-1'};
-  if(rule.FromPort!=null)r.FromPort=rule.FromPort;
-  if(rule.ToPort!=null)r.ToPort=rule.ToPort;
-  const cidrs=(rule.IpRanges||[]).map(c=>c.CidrIp).filter(Boolean);
-  if(cidrs.length)r.CidrIp=cidrs[0]; // CFN inline rule takes single CIDR
-  const sgRefs=(rule.UserIdGroupPairs||[]).map(p=>p.GroupId).filter(Boolean);
-  if(sgRefs.length)r.SourceSecurityGroupId=sgRefs[0];
-  return r;
+  // A CloudFormation inline SG rule takes exactly one source, so fan each
+  // IpRange / Ipv6Range / UserIdGroupPair out into its own rule (mirrors
+  // _ckExpandRules). Returns an array; callers flatMap over it.
+  const base={IpProtocol:rule.IpProtocol||'-1'};
+  if(rule.FromPort!=null)base.FromPort=rule.FromPort;
+  if(rule.ToPort!=null)base.ToPort=rule.ToPort;
+  const rules=[];
+  (rule.IpRanges||[]).forEach(c=>{if(c.CidrIp)rules.push(Object.assign({},base,{CidrIp:c.CidrIp}))});
+  (rule.Ipv6Ranges||[]).forEach(c=>{if(c.CidrIpv6)rules.push(Object.assign({},base,{CidrIpv6:c.CidrIpv6}))});
+  (rule.UserIdGroupPairs||[]).forEach(p=>{if(p.GroupId)rules.push(Object.assign({},base,{SourceSecurityGroupId:p.GroupId}))});
+  if(!rules.length)rules.push(base);
+  return rules;
 }
 
 function _cfnSGRuleProps(rule){
-  const r={};
-  if(rule.FromPort!=null)r.FromPort=rule.FromPort;
-  if(rule.ToPort!=null)r.ToPort=rule.ToPort;
-  const cidrs=(rule.IpRanges||[]).map(c=>c.CidrIp).filter(Boolean);
-  if(cidrs.length)r.CidrIp=cidrs[0];
-  const sgRefs=(rule.UserIdGroupPairs||[]).map(p=>p.GroupId).filter(Boolean);
-  if(sgRefs.length)r.SourceSecurityGroupId=sgRefs[0];
-  return r;
+  // One standalone SecurityGroupIngress/Egress resource per source (IpProtocol
+  // is added by the caller). Returns an array; callers create one resource each.
+  const base={};
+  if(rule.FromPort!=null)base.FromPort=rule.FromPort;
+  if(rule.ToPort!=null)base.ToPort=rule.ToPort;
+  const props=[];
+  (rule.IpRanges||[]).forEach(c=>{if(c.CidrIp)props.push(Object.assign({},base,{CidrIp:c.CidrIp}))});
+  (rule.Ipv6Ranges||[]).forEach(c=>{if(c.CidrIpv6)props.push(Object.assign({},base,{CidrIpv6:c.CidrIpv6}))});
+  (rule.UserIdGroupPairs||[]).forEach(p=>{if(p.GroupId)props.push(Object.assign({},base,{SourceSecurityGroupId:p.GroupId}))});
+  if(!props.length)props.push(base);
+  return props;
 }
 
 // === CHECKOV CFN GENERATOR ===
