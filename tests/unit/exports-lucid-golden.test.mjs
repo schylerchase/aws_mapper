@@ -6,8 +6,18 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { generateDemo } from '../../src/modules/demo-data.js';
 import * as U from '../../src/modules/utils.js';
+
+// Golden md5 of JSON.stringify(doc) for the seed-12345 demo fixture. These lock
+// the exact Lucid output so the grid/landing-zone engine split (and any future
+// ctx-injection refactor) is provably byte-identical. Update only on an
+// intentional layout change.
+const GOLDEN = {
+  grid: 'aeeef6d08549bba86183088405004f51',
+  landingzone: 'c212389f08ed19442ba084ee4119bba0',
+};
 
 const demo = generateDemo(); // seed 12345 is hardcoded; deterministic
 
@@ -52,10 +62,12 @@ describe('buildLucidExport — golden doc structure per layout mode (Unit 5)', (
       assert.ok(Array.isArray(page.shapes) && page.shapes.length > 0, 'has shapes');
       assert.ok(Array.isArray(page.lines), 'has lines');
       assert.ok(r1.iconSet instanceof Set, 'returns an icon set');
-      // Deterministic: same demo in => identical counts out (the golden invariant
-      // the future engine extraction must preserve).
+      // Deterministic: same demo in => identical counts out.
       assert.equal(r2.doc.pages[0].shapes.length, page.shapes.length, 'shape count stable across calls');
       assert.equal(r2.doc.pages[0].lines.length, page.lines.length, 'line count stable across calls');
+      // Byte-exact golden lock — the engine split must not change the output.
+      const md5 = createHash('md5').update(JSON.stringify(r1.doc)).digest('hex');
+      assert.equal(md5, GOLDEN[mode], `${mode} Lucid doc must match the golden hash`);
     });
   }
 });

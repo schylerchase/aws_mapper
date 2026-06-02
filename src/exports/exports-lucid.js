@@ -915,16 +915,6 @@ function buildLucidExport(){
 
   function tw(str,pt){return(str||'').length*pt*0.62+20}
 
-  const shapes=[],lines=[],iconSet=new Set();
-  const shapeIds={};
-  let lid=0;
-  const IC=36;
-  const VP=50;
-  const VH=80;
-  const SG=32;
-  const SP=24;
-  const EC2W=260,EC2H=34,EC2G=16;
-
   // Official AWS Architecture Group Icon colors
   const COL={
     vpcFill:'#FFFFFF',vpcStroke:'#8C4FFF',vpcFont:'#8C4FFF',
@@ -936,18 +926,6 @@ function buildLucidExport(){
     albFill:'#FFFFFF',albStroke:'#8C4FFF',albFont:'#232F3E'
   };
   const gwFills={IGW:'#F5F0FF',NAT:'#F5F0FF',TGW:'#F5F0FF',VGW:'#F5F0FF',PCX:'#F5F0FF',VPCE:'#F5F0FF'};
-
-
-  // icons as rectangles with image fill
-  function addIcon(type,x,y){
-    iconSet.add(type);
-    shapes.push({
-      id:'icon_'+(lid++),type:'rectangle',
-      boundingBox:{x,y,w:IC,h:IC},
-      text:'<p style="font-size:1pt;color:transparent">&nbsp;</p>',
-      style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'image',ref:(ICON_MAP[type]||type.toLowerCase())+'.png'}}
-    });
-  }
 
   // collect gateways before VPC loop
   const gwSet2L=new Map();
@@ -973,7 +951,6 @@ function buildLucidExport(){
   vpceList.forEach(v=>{if(!vpceByVpc[v.VpcId])vpceByVpc[v.VpcId]=[{type:'VPCE',id:v.VpcEndpointId,vpcId:v.VpcId}]});
 
   const gwColors2={IGW:COL.igw,NAT:COL.nat,TGW:COL.tgw,VGW:COL.vgw,PCX:COL.pcx,VPCE:COL.vpce};
-  const GW_W=350,GW_H=52,GW_GAP=10;
 
   const activeVpcs=vpcs.filter(v=>(subByVpc[v.VpcId]||[]).length>0);
 
@@ -994,6 +971,43 @@ function buildLucidExport(){
     });
     // buildLandingZoneLayout returned
     return result;
+  }
+
+  // Grid layout mode — extracted into a sibling ctx-pure engine (mirrors
+  // buildLandingZoneLayout). All generation-time state is threaded through ctx.
+  return buildGridLayout({
+    vpcs, activeVpcs, subnets, rts, instances, albs, enis, igws, nats, peerings,
+    volumes, snapshots, s3bk, zones, vpceList,
+    subByVpc, sgByVpc, pubSubs, subRT, subNacl, instBySub, eniBySub, albBySub,
+    volByInst, volBySub, rdsBySub, ecsBySub, lambdaBySub, cfByAlb, snapByVol,
+    tgByAlb, wafByAlb, recsByZone, gwByVpc, sharedGws, gwSet2L, vpceByVpc,
+    gwColors2, COL, gwFills, tw
+  });
+}
+
+function buildGridLayout(ctx){
+  const {
+    vpcs, activeVpcs, subnets, rts, instances, albs, enis, igws, nats, peerings,
+    volumes, snapshots, s3bk, zones, vpceList,
+    subByVpc, sgByVpc, pubSubs, subRT, subNacl, instBySub, eniBySub, albBySub,
+    volByInst, volBySub, rdsBySub, ecsBySub, lambdaBySub, cfByAlb, snapByVol,
+    tgByAlb, wafByAlb, recsByZone, gwByVpc, sharedGws, gwSet2L, vpceByVpc,
+    gwColors2, COL, gwFills, tw
+  } = ctx;
+  const shapes=[],lines=[],iconSet=new Set();
+  const shapeIds={};
+  let lid=0;
+  const IC=36, VP=50, VH=80, SG=32, SP=24;
+  const EC2W=260, EC2H=34, EC2G=16;
+  const GW_W=350, GW_H=52, GW_GAP=10;
+  function addIcon(type,x,y){
+    iconSet.add(type);
+    shapes.push({
+      id:'icon_'+(lid++),type:'rectangle',
+      boundingBox:{x,y,w:IC,h:IC},
+      text:'<p style="font-size:1pt;color:transparent">&nbsp;</p>',
+      style:{stroke:{color:'#FFFFFF',width:0},fill:{type:'image',ref:(ICON_MAP[type]||type.toLowerCase())+'.png'}}
+    });
   }
 
   // transparent text to suppress Lucid "Text" placeholder
