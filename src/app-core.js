@@ -11266,7 +11266,7 @@ function _fwRefreshFullPanel(){
   }
 
   // Compliance findings for this resource
-  var _fpCompLookup=_buildComplianceLookup();
+  var _fpCompLookup=_buildComplianceLookup(typeof _udashFilterByAccount==='function'?_udashFilterByAccount(_complianceFindings||[]):_complianceFindings);
   var _fpResComp=_fpCompLookup[_fwFpResId];
   if(_fpResComp&&_fpResComp.findings.length){
     h+='<div class="fw-fp-compliance">';
@@ -11785,7 +11785,7 @@ function _fwDashRender(){
   var body=document.getElementById('udashBody');if(body)body.scrollTop=0;
   if(!_rlCtx){if(body)body.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted)">No data loaded</div>';return}
   var sgs=_rlCtx.sgs||[],nacls=_rlCtx.nacls||[],rts=_rlCtx.rts||[];
-  var compLookup=_buildComplianceLookup();
+  var compLookup=_buildComplianceLookup(typeof _udashFilterByAccount==='function'?_udashFilterByAccount(_complianceFindings||[]):_complianceFindings);
   var sevOrder={CRITICAL:1,HIGH:2,MEDIUM:3,LOW:4};
 
   // Build unified rows
