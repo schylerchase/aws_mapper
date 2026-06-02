@@ -6,8 +6,39 @@ globalThis.window = globalThis;
 globalThis.document = { getElementById: () => null, querySelectorAll: () => [], querySelector: () => null };
 
 const {
-  detectRegionFromCtx, buildRlCtxFromData
+  detectRegionFromCtx, buildRlCtxFromData, mergeContexts
 } = await import('../../src/modules/multi-account.js');
+
+describe('mergeContexts _multiAccount derivation', () => {
+  const mkCtx = (accountId, region) => ({
+    visible: true,
+    accountId,
+    accountLabel: accountId,
+    _isRegion: true,
+    region,
+    rlCtx: { vpcs: [], _accounts: new Set([accountId]), _regions: new Set([region]) }
+  });
+
+  it('single account across multiple regions is NOT multi-account', () => {
+    // Regression: mergeContexts hardcoded _multiAccount:true and never recomputed it,
+    // so single-account multi-region merges falsely rendered multi-account UI.
+    const merged = mergeContexts([
+      mkCtx('111111111111', 'us-east-1'),
+      mkCtx('111111111111', 'us-west-2')
+    ]);
+    assert.equal(merged._multiAccount, false, 'one account across two regions => not multi-account');
+    assert.equal(merged._multiRegion, true, 'two regions => multi-region');
+  });
+
+  it('distinct accounts ARE multi-account', () => {
+    const merged = mergeContexts([
+      mkCtx('111111111111', 'us-east-1'),
+      mkCtx('222222222222', 'us-east-1')
+    ]);
+    assert.equal(merged._multiAccount, true);
+    assert.equal(merged._multiRegion, false);
+  });
+});
 
 describe('detectRegionFromCtx', () => {
   it('detects region from subnet AvailabilityZone', () => {

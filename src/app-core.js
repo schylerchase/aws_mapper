@@ -10448,6 +10448,7 @@ async function mergeContexts(contexts){
   }
 
   merged._multiRegion=merged._regions.size>1;
+  merged._multiAccount=merged._accounts.size>1;
   return merged;
 }
 
