@@ -1,7 +1,7 @@
 # Optimization Plan
 
-Updated: 2026-03-13
-Status: 31/46 completed, 15 remaining
+Updated: 2026-06-02
+Status: in progress on branch `refactor/module-ownership` — 6 pure-helper modules extracted, 7 dead orphan modules removed (-7,519 lines). See "Done" below.
 
 ---
 
@@ -24,7 +24,7 @@ Status: 31/46 completed, 15 remaining
 | 13 | Lazy demo data init | `36b0528` |
 | 14 | Deterministic data for stable renders | `36b0528` |
 | 15 | Local libs (no CDN dependency at runtime) | `36b0528` |
-| 16 | 14 ES modules extracted (Phase 5) | `a3c4027` |
+| 16 | 14 ES modules extracted (Phase 5) — most never wired in (dead orphans); 7 removed 2026-06-02 (see #32) | `a3c4027` |
 | 17 | Module bridge for cross-module calls | `19d5692` |
 | 18 | Unused `execSync`/`execFileSync` imports removed (main.js) | prior |
 | 19 | `governance.js` `structuredClone` | prior |
@@ -40,6 +40,9 @@ Status: 31/46 completed, 15 remaining
 | 29 | H1 (partial): Deleted BUDR ENGINE, IAM ENGINE, DEP GRAPH regions from app-core.js (-676 lines) | 2026-03-13 |
 | 30 | State bridges: `Object.defineProperty` live bindings added to 11 modules | 2026-03-13 |
 | 31 | Flattened namespace exports in main.js for app-core.js backward compat | 2026-03-13 |
+| 32 | Dead-code cleanup: 7 unwired orphan modules removed (-7,519 lines): topology-renderer, landing, firewall-engine, dashboards, detail-panel, search, notes — superseded by app-core.js live copies; production bundle byte-identical after removal | 2026-06-02 |
+| 33 | 6 pure-helper modules extracted from app-core.js + unit tests: diff-view, file-classify, firewall-cli, firewall-validate, report-view, search-index | 2026-06-02 |
+| 34 | Correctness fixes + tests: CFN SG-rule fan-out, /0 CIDR size, IAM own-account/NaN guards (exports-iac, cidr-engine, iam-engine) | 2026-06-02 |
 
 ---
 
@@ -59,7 +62,7 @@ Status: 31/46 completed, 15 remaining
 
 The original monolith. Modules were extracted from it but code was NOT removed, creating duplicates. Contains copies of `_sanitizeName`, `resolveColor`, test harness, snapshot logic, and report-builder functions that also exist in their respective modules.
 
-**Status**: In progress. BUDR ENGINE, IAM ENGINE, DEP GRAPH regions deleted (-676 lines). State bridges added to 11 modules. Namespace exports flattened in main.js. Remaining regions contain mostly DOM rendering code NOT in modules — individual function overlap being deleted. Realistic target: ~20,000 lines (modules hold 5-97% of region logic; DOM rendering must stay).
+**Status**: In progress on branch `refactor/module-ownership`. Earlier: BUDR/IAM/DEP-GRAPH regions deleted (-676 lines), state bridges added, namespace exports flattened. 2026-06-02: removed 7 dead orphan modules (the unwired Phase-5 extractions) — app-core.js (≈19,253 lines) is now the single source of truth per subsystem. Next: extract DOM-coupled subsystems *fresh* from app-core.js into wired modules (notes → detail-panel → …) following the `design-mode.js` pattern (pure logic/state/validation in the module, DOM rendering inline in app-core, bridged via main.js window exports), then delete the inline copy. Do NOT resurrect the deleted orphans — they had drifted from app-core.
 
 ---
 
@@ -72,10 +75,8 @@ Contains HTML report generation, XLSX export, IaC generation, modal logic, and t
 
 ---
 
-### H3. `topology-renderer.js` — `_renderMapInner` split (PARTIAL ✅)
-**Category**: code_quality | **Effort**: High | **Impact**: High
-
-Extracted `_parseInputs()` (~46 lines) and `_buildLookupMaps()` (~120 lines) as pure-data sub-functions. Remaining ~1,700 lines of grid rendering stay inline — D3 selections, highlight closures, and event handlers share too much state for safe automated extraction. Further splitting needs manual incremental work.
+### ~~H3. `topology-renderer.js` — `_renderMapInner` split~~ ⚠️ STALE / OBSOLETE
+The `topology-renderer.js` file was a dead orphan (never wired into any bundle) and was removed 2026-06-02. The live map renderer (`_renderMapInner`, ~1,700 lines) is inline in app-core.js. Any future split must be done *fresh* from app-core.js, not from the deleted file.
 
 ---
 
@@ -188,10 +189,10 @@ Wrapped zoom-level textContent update in `requestAnimationFrame` guard in topolo
 
 | Category | Done | Remaining | Total |
 |----------|------|-----------|-------|
-| Code Quality | 22 | 6 | 28 |
+| Code Quality | 25 | 5 | 30 |
 | Performance | 12 | 4 | 16 |
 | Bundle Size | 2 | 1 | 3 |
-| **Total** | **36** | **11** | **47** |
+| **Total** | **39** | **10** | **49** |
 
 ## Recommended Order
 
