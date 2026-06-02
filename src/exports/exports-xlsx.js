@@ -510,29 +510,29 @@ function _rptBuildXlsxInventory(wb){
   _af(c.s3bk).forEach(function(b){
     rows.push([_a(b),_r(b),'','S3 Bucket',b.Name,b.Name,'','',b.CreationDate||'']);
   });
-  (c.peerings||[]).forEach(function(p){
+  _af(c.peerings).forEach(function(p){
     var req=p.RequesterVpcInfo||{};var acc=p.AccepterVpcInfo||{};
     rows.push([_a(p),_r(p),req.VpcId||'','VPC Peering',p.VpcPeeringConnectionId,_rptTagName(p),req.CidrBlock+' <> '+acc.CidrBlock,p.Status?p.Status.Code:'','']);
   });
-  (c.zones||[]).forEach(function(z){
+  _af(c.zones).forEach(function(z){
     var recs=c.recsByZone&&c.recsByZone[z.Id]?c.recsByZone[z.Id].length:z.ResourceRecordSetCount||0;
     var vis=z.Config&&z.Config.PrivateZone?'private':'public';
     rows.push([_a(z),_r(z),'','Route 53',z.Id,z.Name||z.Id,recs+' records',vis,'']);
   });
-  (c.wafAcls||[]).forEach(function(w){
+  _af(c.wafAcls).forEach(function(w){
     var ruleCount=(w.Rules||[]).length;
     rows.push([_a(w),_r(w),'','WAF',w.Id||w.Name,w.Name||w.Id||'',ruleCount+' rules','','']);
   });
-  (c.cfDistributions||[]).forEach(function(cf){
+  _af(c.cfDistributions).forEach(function(cf){
     rows.push([_a(cf),_r(cf),'','CloudFront',cf.Id,cf.DomainName||cf.Id,cf.Status||'','','']);
   });
-  (c.vpns||[]).forEach(function(v){
+  _af(c.vpns).forEach(function(v){
     rows.push([_a(v),_r(v),'','VPN',v.VpnConnectionId,_rptTagName(v)||(v.VpnConnectionId),v.Type||'',v.State||'','']);
   });
-  (c.tgwAttachments||[]).forEach(function(t){
+  _af(c.tgwAttachments).forEach(function(t){
     rows.push([_a(t),_r(t),t.VpcId||'','TGW Attachment',t.TransitGatewayAttachmentId||t.TransitGatewayId||'',_rptTagName(t)||'',t.ResourceType||'',t.State||'','']);
   });
-  (c.tgs||[]).forEach(function(tg){
+  _af(c.tgs).forEach(function(tg){
     rows.push([_a(tg),_r(tg),tg.VpcId||'','Target Group',tg.TargetGroupName||'',tg.TargetGroupName||'',tg.Protocol+':'+tg.Port,tg.TargetType||'','']);
   });
   if(!rows.length) return;
