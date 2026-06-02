@@ -17,6 +17,30 @@ globalThis.parseIAMData = () => ({});
 globalThis.runIAMChecks = () => [];
 
 import { runGovernanceChecks, invalidateComplianceCache } from '../../src/modules/compliance-engine.js';
+import { prepareIAMReviewData } from '../../src/modules/governance.js';
+
+describe('prepareIAMReviewData IAM findings (BUG-HUNT #2)', () => {
+  it('attaches IAM findings from window._complianceFindings to the matching role/user', () => {
+    // Regression: prepareIAMReviewData read state.js complianceFindings, which is
+    // never populated (setComplianceFindings is never called) — so every principal
+    // got findings:[]. The real findings live in window._complianceFindings.
+    window._complianceFindings = [
+      { framework: 'IAM', control: 'IAM-1', severity: 'CRITICAL', resource: 'AdminRole', message: 'Admin role' },
+      { framework: 'IAM', control: 'IAM-3', severity: 'MEDIUM', resource: 'dev-user', message: 'No MFA' },
+      { framework: 'CIS', control: 'CIS-1', severity: 'LOW', resource: 'AdminRole', message: 'different framework' },
+    ];
+    const items = prepareIAMReviewData({
+      roles: [{ RoleName: 'AdminRole', Arn: 'arn:aws:iam::111111111111:role/AdminRole' }],
+      users: [{ UserName: 'dev-user', Arn: 'arn:aws:iam::111111111111:user/dev-user' }],
+    });
+    const role = items.find(i => i.name === 'AdminRole');
+    const user = items.find(i => i.name === 'dev-user');
+    assert.equal(role.findings.length, 1, 'role gets its IAM finding (CIS excluded)');
+    assert.equal(role.findings[0].control, 'IAM-1');
+    assert.equal(user.findings.length, 1, 'user gets its IAM finding');
+    assert.equal(user.findings[0].control, 'IAM-3');
+  });
+});
 
 // Helper: minimal ctx with governance fields
 function govCtx(overrides) {

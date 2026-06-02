@@ -2,7 +2,7 @@
 // DOM rendering functions (_renderClassificationTab, _renderIAMTab, _openRulesEditor)
 // live in app-core.js due to dual-state and unified dashboard coupling.
 
-import { rlCtx, complianceFindings } from './state.js';
+import { rlCtx } from './state.js';
 import { esc, gn, safeParse } from './utils.js';
 import { _stmtArr, _safePolicyParse, parseIAMData } from './iam-engine.js';
 import { escHtml } from './timeline.js';
@@ -266,9 +266,12 @@ function _buildInventoryData() {
   (budrAssessments || []).forEach(function(a) {
     budrMap[a.id] = { tier: a.profile ? a.profile.tier : null, strategy: a.profile ? a.profile.strategy : null, rto: a.profile ? a.profile.rto : null, rpo: a.profile ? a.profile.rpo : null };
   });
-  // 3. Compliance findings lookup (count per resource)
+  // 3. Compliance findings lookup (count per resource) — read the window bridge.
+  //    state.js complianceFindings is never populated (setComplianceFindings is
+  //    unused); compliance-engine writes window._complianceFindings.
+  const compFindings = (typeof window !== 'undefined' && window._complianceFindings) || [];
   const compMap = {};
-  (complianceFindings || []).forEach(function(f) {
+  (compFindings || []).forEach(function(f) {
     if (!f.resource) return;
     if (!compMap[f.resource]) compMap[f.resource] = { pass: 0, fail: 0 };
     if (f.status === 'PASS') compMap[f.resource].pass++;
@@ -575,6 +578,9 @@ function runClassificationEngine(ctx) {
 function prepareIAMReviewData(iamData) {
   if (!iamData) return [];
   let items = [];
+  // IAM findings live in window._complianceFindings (compliance-engine); the
+  // state.js complianceFindings binding is never populated.
+  const compFindings = (typeof window !== 'undefined' && window._complianceFindings) || [];
   // Process roles
   (iamData.roles || []).forEach(function(role) {
     const created = role.CreateDate ? new Date(role.CreateDate) : null;
@@ -590,7 +596,7 @@ function prepareIAMReviewData(iamData) {
         if (aws) { (Array.isArray(aws) ? aws : [aws]).forEach(function(arn) { const m = String(arn).match(/:(\d{12}):/); if (m) crossAccts.push(m[1]); }); }
       }
     });
-    const findings = (complianceFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === role.RoleName || f.resource === (role.Arn || '')); });
+    const findings = (compFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === role.RoleName || f.resource === (role.Arn || '')); });
     const policyCount = (role.RolePolicyList || []).length + (role.AttachedManagedPolicies || []).length;
     const policyNames = (role.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
     const roleAcct = (role.Arn || '').match(/:(\d{12}):/);
@@ -603,7 +609,7 @@ function prepareIAMReviewData(iamData) {
     const hasMFA = (user.MFADevices || []).length > 0;
     const hasConsole = !!user.LoginProfile;
     const activeKeys = (user.AccessKeys || []).filter(function(k) { return k.Status === 'Active'; }).length;
-    const findings = (complianceFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === user.UserName || f.resource === (user.Arn || '')); });
+    const findings = (compFindings || []).filter(function(f) { return f.framework === 'IAM' && (f.resource === user.UserName || f.resource === (user.Arn || '')); });
     const policyCount = (user.UserPolicyList || []).length + (user.AttachedManagedPolicies || []).length;
     const policyNames = (user.AttachedManagedPolicies || []).map(function(p) { return p.PolicyName || p.PolicyArn || ''; });
     // Detect admin for users by analyzing actual policy documents
