@@ -89,6 +89,24 @@ import * as IacGenerator from './modules/iac-generator.js';
 // Report HTML generators (section renderers, CSS, interactive JS — extracted from app-core.js)
 import * as ReportHtml from './modules/report-html.js';
 
+// File classification (import router extracted from app-core.js — Humify EXT1)
+import { matchFile, fileMap } from './modules/file-classify.js';
+
+// Diff-view pipeline (compare-dashboard formatting / flat-rows / filter-sort — Humify decomposition)
+import { fmtDiffVal, fmtDiffValFull, diffTypeLabel, buildDiffFlatRows, filterSortDiffRows } from './modules/diff-view.js';
+
+// Report-view helpers (slug / header / TOC / footer / enabled-modules — Humify decomposition)
+import { rptSlugify, buildReportHeader, buildReportTOC, buildReportFooter, enabledReportModules } from './modules/report-view.js';
+
+// Search index + match (resource search — Humify decomposition)
+import { buildSearchIndex, matchSearchIndex } from './modules/search-index.js';
+
+// Firewall rule validators + rule match (pure — Humify decomposition)
+import { _fwRuleMatch, _fwValidateCidr, _fwValidateNaclRule, _fwValidateSgRule, _fwValidateRoute } from './modules/firewall-validate.js';
+
+// Firewall edit CLI generators (Humify decomposition)
+import { genFirewallCli } from './modules/firewall-cli.js';
+
 // NOTE: Diff and report code lives in app-core.js (DOM-coupled).
 // Pure diff logic extracted to src/exports/diff-logic.js (bundled into core.bundle.js).
 function isHostedVercelPage() {
@@ -191,6 +209,25 @@ window.AppModules = {
   ExportUtils, ...ExportUtils,
   IacGenerator, ...IacGenerator,
   ReportHtml, ...ReportHtml,
+
+  // File classification (import router — see src/modules/file-classify.js)
+  matchFile, fileMap,
+
+  // Diff-view pipeline (see src/modules/diff-view.js); exposed under the names app-core uses
+  _diffFmtVal: fmtDiffVal, _diffFmtValFull: fmtDiffValFull, _diffTypeLabel: diffTypeLabel,
+  buildDiffFlatRows, filterSortDiffRows,
+
+  // Report-view helpers (see src/modules/report-view.js)
+  _rptSlugify: rptSlugify, buildReportHeader, buildReportTOC, buildReportFooter, enabledReportModules,
+
+  // Search index + match (see src/modules/search-index.js); _buildSearchIndex name kept for app-core
+  _buildSearchIndex: buildSearchIndex, matchSearchIndex,
+
+  // Firewall validators (see src/modules/firewall-validate.js)
+  _fwRuleMatch, _fwValidateCidr, _fwValidateNaclRule, _fwValidateSgRule, _fwValidateRoute,
+
+  // Firewall CLI generators (see src/modules/firewall-cli.js)
+  genFirewallCli,
 
   // Note: diff/report code lives in app-core.js; pure diff logic in src/exports/diff-logic.js
 };

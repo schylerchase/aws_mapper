@@ -2929,6 +2929,21 @@ if(typeof window!=='undefined'){
   window._mapZoomBy=_mapZoomBy;
   window._mapZoomToFit=_mapZoomToFit;
 }
+// Stable test seam (Humify decomposition): a name-independent handle so the
+// Playwright suite stops reaching into module-scope globals directly. Purely
+// additive — the bare globals remain. As each workflow moves to a module,
+// repoint the matching handle here to the module export instead of the inline
+// function, and the specs keep working unchanged.
+if(typeof window!=='undefined'){
+  window.__test=Object.assign(window.__test||{},{
+    enterFlowMode, exitFlowMode, openUnifiedDash, closeUnifiedDash, openResourceList,
+    get rlCtx(){return _rlCtx;}, set rlCtx(v){_rlCtx=v;},
+    get flowMode(){return window._flowMode;},
+    get flowSource(){return window._flowSource;},
+    get flowTarget(){return window._flowTarget;},
+    get flowSelecting(){return window._flowSelecting;}
+  });
+}
 function _applyZoomTransform(g,transform){
   _zoomTransformPending=transform;
   if(_zoomTransformRaf)return;
@@ -9097,19 +9112,7 @@ if(_isElectron){
 // Pre-built flat index of all searchable resources. Rebuilt when _rlCtx changes.
 var _searchIndex=null;
 var _searchIndexCtx=null;
-function _buildSearchIndex(ctx){
-  var idx=[];
-  var getName=function(obj,fallback){var t=(obj.Tags||[]).find(function(x){return x.Key==='Name'});return t?t.Value:fallback};
-  (ctx.vpcs||[]).forEach(function(v){var n=getName(v,v.VpcId);idx.push({type:'VPC',name:n,id:v.VpcId,extra:v.CidrBlock||'',acct:v._accountLabel||v._accountId||'',searchStr:('vpc '+n+' '+v.VpcId+' '+(v.CidrBlock||'')).toLowerCase()})});
-  (ctx.subnets||[]).forEach(function(s){var n=getName(s,s.SubnetId);idx.push({type:'Subnet',name:n,id:s.SubnetId,extra:s.CidrBlock||'',acct:s._accountLabel||s._accountId||'',searchStr:('subnet '+n+' '+s.SubnetId+' '+(s.CidrBlock||'')+' '+(s.AvailabilityZone||'')).toLowerCase()})});
-  (ctx.instances||[]).forEach(function(i){var n=getName(i,i.InstanceId);idx.push({type:'EC2',name:n,id:i.InstanceId,extra:i.InstanceType||'',acct:i._accountLabel||i._accountId||'',searchStr:('ec2 '+n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase()})});
-  (ctx.igws||[]).forEach(function(g){var n=getName(g,g.InternetGatewayId);idx.push({type:'IGW',name:n,id:g.InternetGatewayId,extra:'',acct:g._accountLabel||g._accountId||'',searchStr:('igw '+n+' '+g.InternetGatewayId).toLowerCase()})});
-  (ctx.nats||[]).forEach(function(g){var n=getName(g,g.NatGatewayId);idx.push({type:'NAT',name:n,id:g.NatGatewayId,extra:'',acct:g._accountLabel||g._accountId||'',searchStr:('nat '+n+' '+g.NatGatewayId).toLowerCase()})});
-  (ctx.rdsInstances||[]).forEach(function(d){idx.push({type:'RDS',name:d.DBInstanceIdentifier,id:d.DBInstanceIdentifier,extra:d.Engine||'',acct:d._accountLabel||d._accountId||'',searchStr:('rds '+d.DBInstanceIdentifier).toLowerCase()})});
-  (ctx.lambdaFns||[]).forEach(function(f){idx.push({type:'Lambda',name:f.FunctionName,id:f.FunctionName,extra:f.Runtime||'',acct:f._accountLabel||f._accountId||'',searchStr:('lambda '+f.FunctionName).toLowerCase()})});
-  (ctx.sgs||[]).forEach(function(s){var n=s.GroupName||s.GroupId;idx.push({type:'SG',name:n,id:s.GroupId,extra:s.VpcId||'',acct:s._accountLabel||s._accountId||'',searchStr:('sg security group '+n+' '+s.GroupId).toLowerCase()})});
-  return idx;
-}
+// _buildSearchIndex extracted to src/modules/search-index.js (exposed as window._buildSearchIndex via src/main.js).
 function _invalidateSearchIndex(){_searchIndex=null;_searchIndexCtx=null}
 
 // === SEARCH ===
@@ -9124,10 +9127,7 @@ document.getElementById('searchInput').addEventListener('input',function(){
   // Rebuild index if ctx changed
   if(_searchIndexCtx!==_rlCtx){_searchIndex=_buildSearchIndex(_rlCtx);_searchIndexCtx=_rlCtx}
   // Filter cached index in a single pass (cap at 30)
-  var matches=[];
-  for(let si=0;si<_searchIndex.length&&matches.length<30;si++){
-    if(_searchIndex[si].searchStr.includes(q))matches.push(_searchIndex[si]);
-  }
+  var matches=matchSearchIndex(_searchIndex,q,30);
   // Notes are dynamic — search them live (typically small set)
   _getAllNotes().forEach(function(n){if(matches.length>=30)return;if((n.text||'').toLowerCase().includes(q)||(_getResourceName(n.resourceId)||'').toLowerCase().includes(q))matches.push({type:'Note',name:(n.text||'').slice(0,50),id:n.resourceId,extra:n.category||'',acct:''})});
   const isMA=_rlCtx._multiAccount;
@@ -10858,103 +10858,17 @@ function _fwApplyRule(type, resourceId, direction, ruleData){
   }
 }
 
-function _fwRuleMatch(a, b){
-  if(!a||!b) return false;
-  if(String(a.IpProtocol)!==String(b.IpProtocol)) return false;
-  if((a.FromPort||0)!==(b.FromPort||0)) return false;
-  if((a.ToPort||0)!==(b.ToPort||0)) return false;
-  const aCidrs=(a.IpRanges||[]).map(r=>r.CidrIp).sort().join(',');
-  const bCidrs=(b.IpRanges||[]).map(r=>r.CidrIp).sort().join(',');
-  if(aCidrs!==bCidrs) return false;
-  const aGrps=(a.UserIdGroupPairs||[]).map(g=>g.GroupId).sort().join(',');
-  const bGrps=(b.UserIdGroupPairs||[]).map(g=>g.GroupId).sort().join(',');
-  return aGrps===bGrps;
-}
+// _fwRuleMatch extracted to src/modules/firewall-validate.js (window._fwRuleMatch via src/main.js).
 
 function _fwEditCount(resourceId){
   return _fwEdits.filter(e=>e.resourceId===resourceId).length;
 }
 
 // --- Validation ---
-function _fwValidateCidr(cidr){
-  if(!cidr||typeof cidr!=='string') return false;
-  if(!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/.test(cidr)) return false;
-  const parts=cidr.split('/');
-  const octets=parts[0].split('.');
-  for(let i=0;i<4;i++){if(parseInt(octets[i],10)>255) return false}
-  if(parseInt(parts[1],10)>32) return false;
-  return true;
-}
+// _fwValidateCidr extracted to src/modules/firewall-validate.js (window._fwValidateCidr).
 
-function _fwValidateNaclRule(rule, existingEntries, direction){
-  const errs=[];
-  const num=parseInt(rule.RuleNumber,10);
-  if(isNaN(num)||num<1||num>32766) errs.push('Rule number must be 1-32766');
-  const isEgress=direction==='egress';
-  if(existingEntries&&!isNaN(num)){
-    const dup=existingEntries.some(e=>
-      e.RuleNumber===num && e.Egress===isEgress
-    );
-    if(dup) errs.push('Duplicate rule number '+num+' in '+direction+' direction');
-  }
-  if(!_fwValidateCidr(rule.CidrBlock)) errs.push('Invalid CIDR format');
-  const proto=String(rule.Protocol);
-  if(proto==='6'||proto==='17'){
-    if(!rule.PortRange) errs.push('Port range required for TCP/UDP');
-    else{
-      const from=parseInt(rule.PortRange.From,10);
-      const to=parseInt(rule.PortRange.To,10);
-      if(isNaN(from)||isNaN(to)) errs.push('Invalid port range values');
-      else{
-        if(from<0||from>65535) errs.push('From port must be 0-65535');
-        if(to<0||to>65535) errs.push('To port must be 0-65535');
-        if(from>to) errs.push('From port must be <= To port');
-      }
-    }
-  }
-  return errs;
-}
-
-function _fwValidateSgRule(rule){
-  const errs=[];
-  const proto=String(rule.IpProtocol||'');
-  const validProtos=['tcp','udp','icmp','-1'];
-  if(!validProtos.includes(proto)) errs.push('Invalid protocol: '+proto);
-  if(proto==='tcp'||proto==='udp'){
-    const from=parseInt(rule.FromPort,10);
-    const to=parseInt(rule.ToPort,10);
-    if(isNaN(from)||isNaN(to)) errs.push('Port range required for TCP/UDP');
-    else{
-      if(from<0||from>65535) errs.push('FromPort must be 0-65535');
-      if(to<0||to>65535) errs.push('ToPort must be 0-65535');
-      if(from>to) errs.push('FromPort must be <= ToPort');
-    }
-  }
-  const hasCidr=(rule.IpRanges||[]).some(r=>r.CidrIp);
-  const hasSgRef=(rule.UserIdGroupPairs||[]).some(g=>g.GroupId);
-  if(!hasCidr&&!hasSgRef) errs.push('At least one source (CIDR or SG reference) required');
-  if(hasCidr){
-    (rule.IpRanges||[]).forEach(r=>{
-      if(r.CidrIp&&!_fwValidateCidr(r.CidrIp)) errs.push('Invalid CIDR: '+r.CidrIp);
-    });
-  }
-  return errs;
-}
-
-function _fwValidateRoute(route, existingRoutes){
-  const errs=[];
-  if(!_fwValidateCidr(route.DestinationCidrBlock)) errs.push('Invalid destination CIDR');
-  if(existingRoutes){
-    const dup=existingRoutes.some(r=>
-      r.DestinationCidrBlock===route.DestinationCidrBlock
-    );
-    if(dup) errs.push('Duplicate destination CIDR: '+route.DestinationCidrBlock);
-  }
-  const hasTarget=route.GatewayId||route.NatGatewayId||
-    route.TransitGatewayId||route.VpcPeeringConnectionId||route.VpcEndpointId;
-  if(!hasTarget) errs.push('Route target required');
-  return errs;
-}
+// _fwValidateNaclRule / _fwValidateSgRule / _fwValidateRoute extracted to
+// src/modules/firewall-validate.js (exposed on window via src/main.js).
 
 // --- Conflict warnings ---
 function _fwCheckNaclShadow(nacl, direction){
@@ -10982,100 +10896,8 @@ function _fwCheckNaclShadow(nacl, direction){
 }
 
 // --- CLI generation ---
-function _fwGenerateCli(edits){
-  const list=edits||_fwEdits;
-  const cmds=[];
-  list.forEach(edit=>{
-    if(edit.type==='nacl') _fwGenNaclCli(edit, cmds);
-    else if(edit.type==='sg') _fwGenSgCli(edit, cmds);
-    else if(edit.type==='route') _fwGenRouteCli(edit, cmds);
-  });
-  return cmds;
-}
-
-function _fwGenNaclCli(edit, cmds){
-  const id=edit.resourceId;
-  const dirFlag=edit.direction==='egress'?'--egress':'--ingress';
-  if(edit.action==='add'){
-    cmds.push(_fwNaclEntryCmd('create-network-acl-entry', id, edit.rule, dirFlag));
-  } else if(edit.action==='modify'){
-    cmds.push(_fwNaclEntryCmd('replace-network-acl-entry', id, edit.rule, dirFlag));
-  } else if(edit.action==='delete'){
-    cmds.push(
-      'aws ec2 delete-network-acl-entry --network-acl-id '+id+
-      ' --rule-number '+edit.rule.RuleNumber+' '+dirFlag
-    );
-  }
-}
-
-function _fwNaclEntryCmd(verb, naclId, rule, dirFlag){
-  let cmd='aws ec2 '+verb+' --network-acl-id '+naclId+
-    ' --rule-number '+rule.RuleNumber+' '+dirFlag+
-    ' --protocol '+rule.Protocol+
-    ' --cidr-block '+rule.CidrBlock;
-  if(rule.PortRange){
-    cmd+=' --port-range From='+rule.PortRange.From+',To='+rule.PortRange.To;
-  }
-  cmd+=' --rule-action '+rule.RuleAction;
-  return cmd;
-}
-
-function _fwGenSgCli(edit, cmds){
-  const id=edit.resourceId;
-  const suffix=edit.direction==='ingress'?'ingress':'egress';
-  if(edit.action==='add'){
-    cmds.push(_fwSgRuleCmd('authorize-security-group-'+suffix, id, edit.rule));
-  } else if(edit.action==='delete'){
-    cmds.push(_fwSgRuleCmd('revoke-security-group-'+suffix, id, edit.rule));
-  } else if(edit.action==='modify'){
-    // Modify = revoke old, authorize new
-    if(edit.originalRule){
-      cmds.push(_fwSgRuleCmd('revoke-security-group-'+suffix, id, edit.originalRule));
-    }
-    cmds.push(_fwSgRuleCmd('authorize-security-group-'+suffix, id, edit.rule));
-  }
-}
-
-function _fwSgRuleCmd(verb, sgId, rule){
-  let cmd='aws ec2 '+verb+' --group-id '+sgId+
-    ' --protocol '+rule.IpProtocol;
-  if(rule.FromPort!==undefined&&rule.FromPort!==-1){
-    cmd+=' --port '+rule.FromPort;
-    if(rule.ToPort!==undefined&&rule.ToPort!==rule.FromPort){
-      cmd+='-'+rule.ToPort;
-    }
-  }
-  const cidrs=(rule.IpRanges||[]).map(r=>r.CidrIp).filter(Boolean);
-  const sgRefs=(rule.UserIdGroupPairs||[]).map(g=>g.GroupId).filter(Boolean);
-  if(cidrs.length) cmd+=' --cidr '+cidrs[0];
-  else if(sgRefs.length) cmd+=' --source-group '+sgRefs[0];
-  return cmd;
-}
-
-function _fwGenRouteCli(edit, cmds){
-  const id=edit.resourceId;
-  if(edit.action==='add'){
-    cmds.push(_fwRouteCmd('create-route', id, edit.rule));
-  } else if(edit.action==='modify'){
-    cmds.push(_fwRouteCmd('replace-route', id, edit.rule));
-  } else if(edit.action==='delete'){
-    cmds.push(
-      'aws ec2 delete-route --route-table-id '+id+
-      ' --destination-cidr-block '+edit.rule.DestinationCidrBlock
-    );
-  }
-}
-
-function _fwRouteCmd(verb, rtId, route){
-  let cmd='aws ec2 '+verb+' --route-table-id '+rtId+
-    ' --destination-cidr-block '+route.DestinationCidrBlock;
-  if(route.GatewayId) cmd+=' --gateway-id '+route.GatewayId;
-  else if(route.NatGatewayId) cmd+=' --nat-gateway-id '+route.NatGatewayId;
-  else if(route.TransitGatewayId) cmd+=' --transit-gateway-id '+route.TransitGatewayId;
-  else if(route.VpcPeeringConnectionId) cmd+=' --vpc-peering-connection-id '+route.VpcPeeringConnectionId;
-  else if(route.VpcEndpointId) cmd+=' --vpc-endpoint-id '+route.VpcEndpointId;
-  return cmd;
-}
+function _fwGenerateCli(edits){ return genFirewallCli(edits||_fwEdits); }
+// _fwGen{Nacl,Sg,Route}Cli + _fw{NaclEntry,SgRule,Route}Cmd extracted to src/modules/firewall-cli.js.
 
 // === FIREWALL EDITOR RENDERING ===
 
@@ -15132,30 +14954,8 @@ function _applyDiffOverlay(){
   });
 }
 
-function _diffFmtVal(v){
-  if(v===undefined) return '∅';
-  if(v===null) return 'null';
-  if(typeof v==='boolean') return v?'true':'false';
-  if(typeof v==='number') return String(v);
-  if(typeof v==='string') return v.length>40?v.slice(0,37)+'...':v;
-  if(Array.isArray(v)){
-    if(!v.length) return '[]';
-    var s=JSON.stringify(v);
-    return s.length>50?'['+v.length+' items]':s;
-  }
-  var s=JSON.stringify(v);
-  return s.length>50?'{...}':s;
-}
-
-function _diffFmtValFull(v){
-  if(v===undefined) return '∅';
-  if(v===null) return 'null';
-  if(typeof v==='boolean') return v?'true':'false';
-  if(typeof v==='number') return String(v);
-  if(typeof v==='string') return v;
-  if(Array.isArray(v)) return JSON.stringify(v,null,1);
-  return JSON.stringify(v,null,1);
-}
+// _diffFmtVal / _diffFmtValFull extracted to src/modules/diff-view.js
+// (exposed as window._diffFmtVal / window._diffFmtValFull via src/main.js).
 
 // Type-aware property renderer for diff detail panel
 // All values are escaped via esc() before insertion — safe for display
@@ -15303,14 +15103,7 @@ function _diffPropsHtml(type,res){
   return h;
 }
 
-function _diffTypeLabel(type){
-  var labels={vpcs:'VPC',subnets:'Subnet',instances:'EC2 Instance',sgs:'Security Group',
-    rts:'Route Table',nacls:'NACL',igws:'Internet Gateway',nats:'NAT Gateway',
-    vpces:'VPC Endpoint',albs:'Load Balancer',rdsInstances:'RDS Instance',
-    lambdaFns:'Lambda Function',ecsServices:'ECS Service',ecacheClusters:'ElastiCache Cluster',
-    redshiftClusters:'Redshift Cluster',peerings:'VPC Peering'};
-  return labels[type]||type;
-}
+// _diffTypeLabel extracted to src/modules/diff-view.js (exposed as window._diffTypeLabel via src/main.js).
 
 // Opens the detail panel with full diff information for a resource
 // All content is escaped before insertion for safe display
@@ -15440,27 +15233,9 @@ function _diffResVpc(item){
   return {id:vid,name:vn};
 }
 
-function _buildDiffFlatRows(){
-  if(!_diffResults) return [];
-  var rows=[];
-  _diffResults.added.forEach(function(item){
-    var vpc=_diffResVpc(item);
-    rows.push({category:'added',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:[],hasStructural:false,resource:item.resource,baseline:null});
-  });
-  _diffResults.removed.forEach(function(item){
-    var vpc=_diffResVpc(item);
-    rows.push({category:'removed',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:[],hasStructural:false,resource:null,baseline:item.resource});
-  });
-  _diffResults.modified.forEach(function(item){
-    var vpc=_diffResVpc(item);
-    rows.push({category:'modified',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:item.fields||[],hasStructural:item.hasStructural,resource:item.resource,baseline:item.baseline});
-  });
-  _diffResults.unchanged.forEach(function(item){
-    var vpc=_diffResVpc(item);
-    rows.push({category:'unchanged',type:item.type,key:item.key,name:item.name,vpcId:vpc.id,vpcName:vpc.name,fields:[],hasStructural:false,resource:null,baseline:null});
-  });
-  return rows;
-}
+// Body extracted to src/modules/diff-view.js (buildDiffFlatRows); _diffResVpc
+// (reads live render context) stays here and is passed as the resolver.
+function _buildDiffFlatRows(){ return buildDiffFlatRows(_diffResults, _diffResVpc); }
 
 function _openDiffDash(){
   if(!_diffResults) return;
@@ -15515,7 +15290,7 @@ function _populateDiffSnapPicker(){
   });
 }
 
-const _CAT_ORDER={added:0,removed:1,modified:2,unchanged:3};
+// _CAT_ORDER moved into src/modules/diff-view.js (used only by the filter/sort pipeline).
 
 function _renderDiffDash(){
   if(!_diffFlatRows) return;
@@ -15682,41 +15457,8 @@ function _renderDiffDash(){
   });
 }
 
-function _getDiffFilteredRows(){
-  if(!_diffFlatRows) return [];
-  var st=_diffDashState;
-  var filtered=_diffFlatRows.slice();
-  if(st.catFilter!=='all') filtered=filtered.filter(function(r){return r.category===st.catFilter});
-  if(st.typeFilter!=='all') filtered=filtered.filter(function(r){return r.type===st.typeFilter});
-  if(st.vpcFilter!=='all') filtered=filtered.filter(function(r){return r.vpcId===st.vpcFilter});
-  if(st.kindFilter!=='all'){
-    filtered=filtered.filter(function(r){
-      if(r.category!=='modified') return false;
-      if(st.kindFilter==='structural') return r.fields.some(function(f){return f.kind==='structural'});
-      if(st.kindFilter==='metadata') return r.fields.some(function(f){return f.kind==='metadata'});
-      return true;
-    });
-  }
-  if(st.search){
-    var q=st.search.toLowerCase();
-    filtered=filtered.filter(function(r){
-      return r.name.toLowerCase().indexOf(q)!==-1||r.key.toLowerCase().indexOf(q)!==-1||r.type.toLowerCase().indexOf(q)!==-1||_diffTypeLabel(r.type).toLowerCase().indexOf(q)!==-1||r.vpcName.toLowerCase().indexOf(q)!==-1||r.fields.some(function(f){return f.field.toLowerCase().indexOf(q)!==-1});
-    });
-  }
-  if(st.sort!=='none'){
-    filtered.sort(function(a,b){
-      var cmp=0;
-      if(st.sort==='status') cmp=(_CAT_ORDER[a.category]||9)-(_CAT_ORDER[b.category]||9);
-      else if(st.sort==='type') cmp=_diffTypeLabel(a.type).localeCompare(_diffTypeLabel(b.type));
-      else if(st.sort==='name') cmp=(a.name||'').localeCompare(b.name||'');
-      else if(st.sort==='key') cmp=(a.key||'').localeCompare(b.key||'');
-      else if(st.sort==='vpc') cmp=(a.vpcName||'').localeCompare(b.vpcName||'');
-      else if(st.sort==='changes') cmp=(a.fields.length||0)-(b.fields.length||0);
-      return st.sortDir==='desc'?-cmp:cmp;
-    });
-  }
-  return filtered;
-}
+// Body extracted to src/modules/diff-view.js (filterSortDiffRows).
+function _getDiffFilteredRows(){ return filterSortDiffRows(_diffFlatRows, _diffDashState); }
 
 async function _exportDiffXlsx(){
   if(!_diffResults) return;
@@ -17843,39 +17585,14 @@ function _rptInitInteractive(root){
   });
 }
 
-function _rptEnabledModules(){
-  var order=_rptState.order||_RPT_MODULES.map(function(m){return m.id});
-  return order.filter(function(id){
-    var m=_RPT_MODULES.find(function(x){return x.id===id});
-    return m&&m.enabled&&m.available();
-  });
-}
+// Body extracted to src/modules/report-view.js (enabledReportModules).
+function _rptEnabledModules(){ return enabledReportModules(_RPT_MODULES, _rptState.order); }
 
-function _rptBuildHeader(){
-  var title=esc(_rptState.title||'AWS Infrastructure Assessment');
-  var author=esc(_rptState.author||'');
-  var date=esc(_rptState.date||'');
-  var sub=[];
-  if(author) sub.push(author);
-  if(date) sub.push(date);
-  var logoHtml='';
-  if(_rptState.logo&&_rptState.logo.dataUri){
-    logoHtml='<div class="rpt-logo"><img src="'+_rptState.logo.dataUri+'" alt="Logo" style="max-height:60px;max-width:200px;object-fit:contain"></div>';
-  }
-  return '<div class="rpt-header">'+logoHtml+'<h1>'+title+'</h1>'+
-    (sub.length?'<div class="subtitle">'+sub.join(' &mdash; ')+'</div>':'')+
-    '</div>';
-}
+// Body extracted to src/modules/report-view.js (buildReportHeader).
+function _rptBuildHeader(){ return buildReportHeader(_rptState); }
 
-function _rptBuildTOC(enabled){
-  var h='<div class="rpt-toc"><h2>Table of Contents</h2>';
-  enabled.forEach(function(id,i){
-    var m=_RPT_MODULES.find(function(x){return x.id===id});
-    h+='<a href="#s-'+esc(id)+'">'+(i+1)+'. '+esc(m.name)+'</a>';
-  });
-  h+='</div>';
-  return h;
-}
+// Body extracted to src/modules/report-view.js (buildReportTOC).
+function _rptBuildTOC(enabled){ return buildReportTOC(enabled, _RPT_MODULES); }
 
 async function _rptBuildSections(enabled){
   var h='';
@@ -17891,15 +17608,10 @@ async function _rptBuildSections(enabled){
   return h;
 }
 
-function _rptBuildFooter(){
-  var ts=new Date().toLocaleString();
-  return '<div class="rpt-footer-bar">Generated by AWS Mapper &mdash; '+esc(ts)+'</div>';
-}
+// Body extracted to src/modules/report-view.js (buildReportFooter).
+function _rptBuildFooter(){ return buildReportFooter(new Date().toLocaleString()); }
 
-function _rptSlugify(str){
-  return String(str||'report').toLowerCase()
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
-}
+// _rptSlugify extracted to src/modules/report-view.js (exposed as window._rptSlugify via src/main.js).
 
 function _rptEmbedDataBlob(enabled){
   var acctFilter=_rptGetAccountFilter();
@@ -18660,136 +18372,10 @@ document.getElementById('dpSizeUp').addEventListener('click',()=>{dpScale=Math.m
 document.getElementById('dpSizeDown').addEventListener('click',()=>{dpScale=Math.max(0.5,dpScale-0.15);applyDpScale();savePrefs({dpScale})});
 document.getElementById('dpSizeReset').addEventListener('click',()=>{dpScale=1.0;applyDpScale();savePrefs({dpScale})});
 
-// filename-to-input mapping
-const fileMap=[
-  {id:'in_vpcs',patterns:['vpc','vpcs']},
-  {id:'in_subnets',patterns:['subnet','subnets']},
-  {id:'in_rts',patterns:['route-table','route_table','routetable','rt']},
-  {id:'in_sgs',patterns:['security-group','security_group','securitygroup','sg']},
-  {id:'in_nacls',patterns:['nacl','network-acl','network_acl','networkacl']},
-  {id:'in_enis',patterns:['eni','network-interface','network_interface','networkinterface']},
-  {id:'in_igws',patterns:['igw','internet-gateway','internet_gateway','internetgateway']},
-  {id:'in_nats',patterns:['nat-gw','nat_gw','natgw','nat-gateway','nat_gateway','natgateway']},
-  {id:'in_vpces',patterns:['vpc-endpoint','vpc_endpoint','vpcendpoint','vpce']},
-  {id:'in_ec2',patterns:['instance','instances','ec2']},
-  {id:'in_albs',patterns:['alb','nlb','elb','load-balancer','load_balancer','loadbalancer']},
-  {id:'in_tgs',patterns:['target-group','target_group','targetgroup','tg']},
-  {id:'in_peer',patterns:['peering','vpc-peering','peer']},
-  {id:'in_vpn',patterns:['vpn','vpn-connection','vpn_connection']},
-  {id:'in_vols',patterns:['volume','volumes','vol']},
-  {id:'in_snaps',patterns:['snapshot','snapshots','snap']},
-  {id:'in_s3',patterns:['s3-bucket','s3_bucket','s3bucket','s3']},
-  {id:'in_r53',patterns:['hosted-zone','hosted_zone','hostedzone','r53','route53']},
-  {id:'in_r53records',patterns:['record-set','recordset','resource-record','resourcerecord','r53record','r53-record']},
-  {id:'in_waf',patterns:['waf','web-acl','webacl','web_acl']},
-  {id:'in_rds',patterns:['rds','db-instance','dbinstance','db_instance']},
-  {id:'in_ecs',patterns:['ecs','ecs-service','ecs_service','ecsservice']},
-  {id:'in_lambda',patterns:['lambda','function','lambda-function']},
-  {id:'in_elasticache',patterns:['elasticache','cache-cluster','cachecluster','redis','memcached']},
-  {id:'in_redshift',patterns:['redshift','redshift-cluster']},
-  {id:'in_tgwatt',patterns:['transit-gateway-attachment','tgw-attachment','tgw_attachment','tgwattachment']},
-  {id:'in_cf',patterns:['cloudfront','cf-distribution','distribution']},
-  {id:'in_iam',patterns:['iam','iam-auth','iam_auth','iamauth','account-authorization']},
-  // Governance
-  {id:'in_cloudtrail',patterns:['cloudtrail-trail','cloudtrail_trail','cloudtrail']},
-  {id:'in_cwalarms',patterns:['cloudwatch-alarm','cloudwatch_alarm','cwalarm','cw-alarm']},
-  {id:'in_loggroups',patterns:['log-group','log_group','loggroup']},
-  {id:'in_flowlogs',patterns:['flow-log','flow_log','flowlog']},
-  {id:'in_configrecorders',patterns:['config-recorder','config_recorder','configrecorder']},
-  {id:'in_configrules',patterns:['config-rule','config_rule','configrule']},
-  {id:'in_configconformance',patterns:['config-conformance','config_conformance','conformance-pack','conformance_pack']},
-  {id:'in_securityhub',patterns:['securityhub-standard','securityhub_standard','securityhub','security-hub']},
-  {id:'in_accessanalyzer',patterns:['access-analyzer','access_analyzer','accessanalyzer']},
-  {id:'in_kmskeys',patterns:['kms-key','kms_key','kmskey','kms']},
-  {id:'in_guardduty',patterns:['guardduty-detector','guardduty_detector','guardduty']},
-  {id:'in_secrets',patterns:['secret','secrets']},
-  {id:'in_ssmparams',patterns:['ssm-parameter','ssm_parameter','ssmparameter','ssm']},
-  // Integration
-  {id:'in_ecr',patterns:['ecr-repositor','ecr_repositor','ecrrepositor','ecr']},
-  {id:'in_asg',patterns:['auto-scaling-group','auto_scaling_group','autoscalinggroup','asg']},
-  {id:'in_apigw',patterns:['api-gateway','api_gateway','apigateway','apigw']},
-  {id:'in_sns',patterns:['sns-topic','sns_topic','snstopic','sns']},
-  {id:'in_sqs',patterns:['sqs-queue','sqs_queue','sqsqueue','sqs']},
-];
-
-function matchFile(fname, content){
-  const base=fname.replace(/\.json$/i,'').toLowerCase().replace(/[^a-z0-9-_]/g,'');
-  // Helper: check if content has a key (works for both objects and strings)
-  function _hasKey(k){
-    if(!content)return false;
-    if(typeof content==='object')return k in content;
-    return content.slice(0,500).includes('"'+k+'"');
-  }
-  // exact match first
-  for(const fm of fileMap){
-    for(const p of fm.patterns){if(base===p||base===p+'s')return fm.id}
-  }
-  // contains match — sort candidates by longest pattern first to avoid partial matches
-  const candidates=[];
-  for(const fm of fileMap){
-    for(const p of fm.patterns){if(base.includes(p))candidates.push({id:fm.id,p,len:p.length})}
-  }
-  if(candidates.length){
-    candidates.sort((a,b)=>b.len-a.len);
-    const best=candidates[0].id;
-    // content-override: verify filename match doesn't contradict content
-    if(content){
-      if(best==='in_ec2'){
-        if(_hasKey('DBInstances')&&!_hasKey('Reservations'))return 'in_rds';
-        if(_hasKey('CacheClusters'))return 'in_elasticache';
-      }
-      // Verify critical inputs have expected AWS key — reject mismatched content
-      const expectedKey={in_rts:'RouteTables',in_vpcs:'Vpcs',in_subnets:'Subnets',in_sgs:'SecurityGroups',in_nacls:'NetworkAcls',in_igws:'InternetGateways',in_nats:'NatGateways'};
-      if(expectedKey[best]&&!_hasKey(expectedKey[best]))return null;
-    }
-    return best;
-  }
-  // content-based fallback — detect by JSON keys
-  if(content){
-    if(_hasKey('Reservations'))return 'in_ec2';
-    if(_hasKey('DBInstances'))return 'in_rds';
-    if(_hasKey('Vpcs'))return 'in_vpcs';
-    if(_hasKey('Subnets'))return 'in_subnets';
-    if(_hasKey('RouteTables'))return 'in_rts';
-    if(_hasKey('SecurityGroups'))return 'in_sgs';
-    if(_hasKey('NetworkAcls'))return 'in_nacls';
-    if(_hasKey('NetworkInterfaces'))return 'in_enis';
-    if(_hasKey('InternetGateways'))return 'in_igws';
-    if(_hasKey('NatGateways'))return 'in_nats';
-    if(_hasKey('VpcEndpoints'))return 'in_vpces';
-    if(_hasKey('LoadBalancers'))return 'in_albs';
-    if(_hasKey('TargetGroups'))return 'in_tgs';
-    if(_hasKey('VpcPeeringConnections'))return 'in_peer';
-    if(_hasKey('VpnConnections'))return 'in_vpn';
-    if(_hasKey('Volumes'))return 'in_vols';
-    if(_hasKey('Snapshots'))return 'in_snaps';
-    if(_hasKey('Buckets'))return 'in_s3';
-    if(_hasKey('HostedZones'))return 'in_r53';
-    if(_hasKey('ResourceRecordSets'))return 'in_r53records';
-    if(_hasKey('WebACLs'))return 'in_waf';
-    if(_hasKey('TransitGatewayAttachments'))return 'in_tgwatt';
-    if(_hasKey('DistributionList'))return 'in_cf';
-    if(_hasKey('CacheClusters'))return 'in_elasticache';
-    if(_hasKey('Clusters')&&_hasKey('Redshift'))return 'in_redshift';
-    if(_hasKey('UserDetailList')||_hasKey('RoleDetailList')||_hasKey('GroupDetailList'))return 'in_iam';
-    // Governance
-    if(_hasKey('trailList'))return 'in_cloudtrail';
-    if(_hasKey('MetricAlarms'))return 'in_cwalarms';
-    if(_hasKey('logGroups'))return 'in_loggroups';
-    if(_hasKey('FlowLogs'))return 'in_flowlogs';
-    if(_hasKey('ConfigurationRecorders'))return 'in_configrecorders';
-    if(_hasKey('ConfigRules'))return 'in_configrules';
-    if(_hasKey('ConformancePackDetails'))return 'in_configconformance';
-    if(_hasKey('StandardsSubscriptions'))return 'in_securityhub';
-    if(_hasKey('analyzers'))return 'in_accessanalyzer';
-    if(_hasKey('SecretList'))return 'in_secrets';
-    // Integration
-    if(_hasKey('repositories')&&_hasKey('repositoryArn'))return 'in_ecr';
-    if(_hasKey('AutoScalingGroups'))return 'in_asg';
-    if(_hasKey('QueueUrls'))return 'in_sqs';
-  }
-  return null;
-}
+// fileMap + matchFile were extracted to src/modules/file-classify.js (Humify EXT1)
+// and are exposed as window.matchFile / window.fileMap via src/main.js. The bare
+// matchFile(...) call sites below resolve to that module copy, which is pinned by
+// tests/unit/file-classify.test.mjs.
 
 document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
 // Export script dropdown
