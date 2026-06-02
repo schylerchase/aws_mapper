@@ -78,6 +78,27 @@ export function buildRlCtxFromData(textareas, accountLabel) {
     if (cfRaw) { const dl = cfRaw.DistributionList || cfRaw; cfDistributions = dl.Items || dl.Distributions || []; }
     let tgwAttRaw = ext(_val('in_tgwatt'), ['TransitGatewayAttachments']);
 
+    // Governance / compliance / integration (ported from app-core _buildRlCtxFromData;
+    // these were silently dropped here, losing all audit/compliance data in multi-account merges)
+    let cloudtrailTrails = ext(_val('in_cloudtrail'), ['trailList']);
+    let cwAlarms = ext(_val('in_cwalarms'), ['MetricAlarms']);
+    let logGroups = ext(_val('in_loggroups'), ['logGroups']);
+    let flowLogs = ext(_val('in_flowlogs'), ['FlowLogs']);
+    let configRecorders = ext(_val('in_configrecorders'), ['ConfigurationRecorders']);
+    let configRules = ext(_val('in_configrules'), ['ConfigRules']);
+    let configConformance = ext(_val('in_configconformance'), ['ConformancePackDetails']);
+    let securityHubStds = ext(_val('in_securityhub'), ['StandardsSubscriptions']);
+    let accessAnalyzers = ext(_val('in_accessanalyzer'), ['analyzers']);
+    let kmsRaw2 = _val('in_kmskeys'); let kmsKeys = kmsRaw2 ? (kmsRaw2.Keys || []) : [];
+    let gdRaw2 = _val('in_guardduty'); let guarddutyDetectors = gdRaw2 ? (gdRaw2.Detectors || []) : [];
+    let secrets = ext(_val('in_secrets'), ['SecretList']);
+    let ssmParams = ext(_val('in_ssmparams'), ['Parameters']);
+    let ecrRepos = ext(_val('in_ecr'), ['repositories']);
+    let asgs = ext(_val('in_asg'), ['AutoScalingGroups']);
+    let apigwRaw2 = _val('in_apigw'); let apiGateways = apigwRaw2 ? (apigwRaw2.items || apigwRaw2.Items || []) : [];
+    let snsRaw2 = _val('in_sns'); let snsTopics = snsRaw2 ? (snsRaw2.Topics || []) : [];
+    let sqsRaw2 = _val('in_sqs'); let sqsQueues = sqsRaw2 ? (sqsRaw2.QueueUrls || []) : [];
+
     function tagResource(r) {
       if (!r) return r;
       r._accountId = _detectAccountId(r) || userAccount || 'default';
@@ -166,7 +187,10 @@ export function buildRlCtxFromData(textareas, accountLabel) {
       rdsInstances, ecsServices, lambdaFns, ecacheClusters, redshiftClusters, cfDistributions,
       instBySub: m2o(instBySub), albBySub: m2o(albBySub), eniBySub: m2o(eniBySub), rdsBySub: m2o(rdsBySub), ecsBySub: m2o(ecsBySub), lambdaBySub: m2o(lambdaBySub),
       subRT: m2o(subRT), subNacl: m2o(subNacl), sgByVpc: m2o(sgByVpc), volByInst: m2o(volByInst), snapByVol: m2o(snapByVol), ecacheByVpc: m2o(ecacheByVpc), redshiftByVpc: m2o(redshiftByVpc),
-      tgwAttachments, recsByZone, _multiAccount, _accounts, _regions, _multiRegion
+      tgwAttachments, recsByZone, _multiAccount, _accounts, _regions, _multiRegion,
+      cloudtrailTrails, cwAlarms, logGroups, flowLogs, configRecorders, configRules, configConformance,
+      securityHubStds, accessAnalyzers, kmsKeys, guarddutyDetectors, secrets, ssmParams,
+      ecrRepos, asgs, apiGateways, snsTopics, sqsQueues
     };
   } catch (e) {
     console.warn('buildRlCtxFromData error:', e);
