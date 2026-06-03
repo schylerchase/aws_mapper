@@ -181,38 +181,8 @@ const inputSections=[
 ];
 
 // Account detection from AWS resource data
-function detectAccountId(resource){
-  if(!resource)return null;
-  // 1. Check OwnerId field (VPCs, SGs, Snapshots)
-  if(resource.OwnerId&&/^\d{12}$/.test(resource.OwnerId))return resource.OwnerId;
-  // 2. Parse ARN
-  const arnFields=['Arn','FunctionArn','LoadBalancerArn','TargetGroupArn','DBInstanceArn','ServiceArn','CacheClusterArn','HostedZoneId'];
-  for(const f of arnFields){
-    const arn=resource[f];
-    if(arn&&typeof arn==='string'){const m=arn.match(/arn:aws[^:]*:[^:]+:[^:]*:(\d{12}):/);if(m)return m[1]}
-  }
-  // 3. Check nested structures
-  if(resource.RequesterVpcInfo?.OwnerId)return resource.RequesterVpcInfo.OwnerId;
-  return null;
-}
-function detectRegion(resource){
-  if(!resource)return null;
-  // 1. Parse region from ARN (check all common ARN field names)
-  const arnFields=['Arn','FunctionArn','LoadBalancerArn','TargetGroupArn','DBInstanceArn','ServiceArn','CacheClusterArn',
-    'WebACLArn','VpnConnectionId','ClusterArn','DistributionARN','HostedZoneArn'];
-  for(const f of arnFields){
-    const arn=resource[f];
-    if(arn&&typeof arn==='string'){const m=arn.match(/arn:aws[^:]*:[^:]+:([a-z]{2}-[a-z]+-\d+):/);if(m)return m[1]}
-  }
-  // 2. AvailabilityZone fallback
-  const az=resource.AvailabilityZone||(resource.Placement&&resource.Placement.AvailabilityZone)||null;
-  if(az&&typeof az==='string')return az.replace(/[a-z]$/,'');
-  // 3. S3 bucket fallback. list-buckets rows carry only Name+CreationDate; AWS returns an
-  // empty/null LocationConstraint for us-east-1 and the legacy alias 'EU' for eu-west-1.
-  const isS3Bucket='LocationConstraint' in resource||(resource.Name!=null&&resource.CreationDate!=null&&resource.Arn==null);
-  if(isS3Bucket){const lc=resource.LocationConstraint;if(lc==='EU')return 'eu-west-1';if(lc)return lc;return 'us-east-1';}
-  return null;
-}
+// detectAccountId / detectRegion moved to src/modules/multi-account.js (Phase 1.1);
+// bridged back to window via main.js, so app-core calls them as bare globals.
 
 // Account colors for multi-account visual differentiation
 const _accountColors=['#60a5fa','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16'];

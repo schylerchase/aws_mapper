@@ -4,10 +4,41 @@
 
 import { safeParse, ext } from './utils.js';
 
-// Transitional: detectAccountId/detectRegion live in init region, not yet extracted
-function _detectAccountId(r) { return typeof window !== 'undefined' && window.detectAccountId ? window.detectAccountId(r) : null; }
-function _detectRegion(r) { return typeof window !== 'undefined' && window.detectRegion ? window.detectRegion(r) : null; }
+// _parseIAMData stays a transitional bridge shim until iam-engine ownership lands.
 function _parseIAMData(raw) { return typeof window !== 'undefined' && window.parseIAMData ? window.parseIAMData(raw) : null; }
+
+// === Account / region detection (pure) — extracted from the app-core init region ===
+
+/** Detect the 12-digit AWS account id from a raw resource (OwnerId, ARN, or nested). */
+export function detectAccountId(resource) {
+  if (!resource) return null;
+  if (resource.OwnerId && /^\d{12}$/.test(resource.OwnerId)) return resource.OwnerId;
+  const arnFields = ['Arn', 'FunctionArn', 'LoadBalancerArn', 'TargetGroupArn', 'DBInstanceArn', 'ServiceArn', 'CacheClusterArn', 'HostedZoneId'];
+  for (const f of arnFields) {
+    const arn = resource[f];
+    if (arn && typeof arn === 'string') { const m = arn.match(/arn:aws[^:]*:[^:]+:[^:]*:(\d{12}):/); if (m) return m[1]; }
+  }
+  if (resource.RequesterVpcInfo?.OwnerId) return resource.RequesterVpcInfo.OwnerId;
+  return null;
+}
+
+/** Detect the AWS region from a raw resource (ARN, AvailabilityZone, or S3 LocationConstraint). */
+export function detectRegion(resource) {
+  if (!resource) return null;
+  const arnFields = ['Arn', 'FunctionArn', 'LoadBalancerArn', 'TargetGroupArn', 'DBInstanceArn', 'ServiceArn', 'CacheClusterArn',
+    'WebACLArn', 'VpnConnectionId', 'ClusterArn', 'DistributionARN', 'HostedZoneArn'];
+  for (const f of arnFields) {
+    const arn = resource[f];
+    if (arn && typeof arn === 'string') { const m = arn.match(/arn:aws[^:]*:[^:]+:([a-z]{2}-[a-z]+-\d+):/); if (m) return m[1]; }
+  }
+  const az = resource.AvailabilityZone || (resource.Placement && resource.Placement.AvailabilityZone) || null;
+  if (az && typeof az === 'string') return az.replace(/[a-z]$/, '');
+  // S3 list-buckets rows carry only Name+CreationDate; us-east-1 returns a null/empty
+  // LocationConstraint and eu-west-1 uses the legacy 'EU' alias.
+  const isS3Bucket = 'LocationConstraint' in resource || (resource.Name != null && resource.CreationDate != null && resource.Arn == null);
+  if (isS3Bucket) { const lc = resource.LocationConstraint; if (lc === 'EU') return 'eu-west-1'; if (lc) return lc; return 'us-east-1'; }
+  return null;
+}
 
 // === Module State ===
 let multiViewMode = false;
@@ -101,8 +132,8 @@ export function buildRlCtxFromData(textareas, accountLabel) {
 
     function tagResource(r) {
       if (!r) return r;
-      r._accountId = _detectAccountId(r) || userAccount || 'default';
-      r._region = _detectRegion(r) || 'unknown';
+      r._accountId = detectAccountId(r) || userAccount || 'default';
+      r._region = detectRegion(r) || 'unknown';
       return r;
     }
     [vpcs, subnets, igwRaw, natRaw, sgs, instances, albs, rdsInstances, ecsServices, lambdaFns,
