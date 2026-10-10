@@ -179,7 +179,7 @@ function runBUDRChecks(ctx){
   (ctx.ecacheClusters||[]).forEach(ec=>{
     const id=ec.CacheClusterId;const name=id;
     const multiNode=(ec.NumCacheNodes||1)>1;
-    const hasSnap=!!(ec.SnapshotWindow||ec.SnapshotRetentionLimit);
+    const hasSnap=Number(ec.SnapshotRetentionLimit)>0;
     const autoFailover=ec.AutomaticFailover==='enabled';
     let profile;
     if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
