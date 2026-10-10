@@ -12715,6 +12715,12 @@ function _traceResourceToInternet(source, config, ctx, opts){
     path.push({hop:hopN++,type:'target',id:'Internet',action:'block',detail:'No Internet route'});
     return {path:path,blocked:{hop:hopN-2,reason:'No route to Internet in route table',suggestion:'Add a route 0.0.0.0/0 → IGW or NAT Gateway'}};
   }
+  if(hasNatRoute&&!hasIgwRoute){
+    var nat=(ctx.nats||[]).find(function(n){return n.NatGatewayId===routeTarget});
+    var natAcl=window.AppModules.FlowTracing.evaluateNatSubnetACLs(nat,srcPos,config,ctx,naclOpts);
+    path.push({hop:hopN++,type:'nat-nacl',id:nat?nat.SubnetId:routeTarget,action:natAcl.action,detail:'NAT subnet ACL request and response checks',rule:natAcl.rule});
+    if(natAcl.action==='deny')return {path:path,blocked:{hop:hopN-1,reason:'NAT subnet ACL denies traffic: '+natAcl.rule}};
+  }
   path.push({hop:hopN++,type:'target',id:'Internet',action:'allow',detail:'Target: Internet (0.0.0.0/0)'});
   return {path:path,blocked:null};
 }
