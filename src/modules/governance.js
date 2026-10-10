@@ -693,7 +693,9 @@ function _collectStatements(principal, iamData) {
     _stmtArr(doc.Statement).forEach(st => stmts.push(st));
   });
   (principal.AttachedManagedPolicies || []).forEach(mp => {
-    const pol = (iamData.policies || []).find(p => p.Arn === mp.PolicyArn || p.PolicyName === mp.PolicyName);
+    const policies = iamData.policies || [];
+    const named = !mp.PolicyArn && mp.PolicyName ? policies.filter(p => p.PolicyName === mp.PolicyName) : [];
+    const pol = mp.PolicyArn ? policies.find(p => p.Arn === mp.PolicyArn) : named.length === 1 ? named[0] : null;
     if (pol) {
       const ver = (pol.PolicyVersionList || []).find(v => v.IsDefaultVersion);
       if (ver) {
