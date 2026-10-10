@@ -208,7 +208,7 @@ export function classifyTier(f) {
 
 /** Group findings by resource, computing worst severity/tier per group. */
 export function groupByResource(findings) {
-  const map = {};
+  const map = Object.create(null);
   findings.forEach(f => {
     const k = f.resource;
     if (!map[k]) map[k] = { resource: f.resource, resourceName: f.resourceName || f.resource, findings: [], worstSev: 'LOW', worstTier: 'low', _accountId: f._accountId };
@@ -267,7 +267,7 @@ export function calcComplianceScore(findings) {
 
 /** Aggregate findings by resource, sorted by worst severity then count. */
 export function aggregateTopResources(findings, limit) {
-  const map = {};
+  const map = Object.create(null);
   findings.forEach(f => {
     const r = f.resourceName || f.resource;
     if (!r || r === 'Multiple') return;
