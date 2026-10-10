@@ -8720,8 +8720,23 @@ function _isValidData(content){
   }
   return true;
 }
+function _mergeFolderPayload(a,b){
+  if(Array.isArray(a)&&Array.isArray(b)){const seen=new Set();return a.concat(b).filter(item=>{const key=JSON.stringify(item);if(seen.has(key))return false;seen.add(key);return true})}
+  if(a&&b&&typeof a==='object'&&typeof b==='object'&&!Array.isArray(a)&&!Array.isArray(b)){const result={...a};Object.entries(b).forEach(([key,value])=>{result[key]=_mergeFolderPayload(a[key],value)});return result}
+  return b;
+}
+function _attachFolderGlobals(files,context){
+  if(!context)return;
+  Object.entries(files||{}).forEach(([fname,content])=>{
+    if(!_isValidData(content))return;
+    const inputId=matchFile(fname,typeof content==='object'?JSON.stringify(content):content);
+    if(inputId){const existing=context.textareas[inputId];context.textareas[inputId]=existing?_mergeFolderPayload(typeof existing==='string'?safeParse(existing):existing,typeof content==='string'?safeParse(content):content):content;}
+  });
+  context.rlCtx=_buildRlCtxFromData(context.textareas,context.accountLabel);
+}
 function importFolder(result){
   if(!result)return;
+  const firstImportedContext=_loadedContexts.length;
   // Legacy format: plain object without _structure (old Electron handler)
   if(!result._structure){
     result={_structure:'flat',files:result};
@@ -8744,11 +8759,7 @@ function importFolder(result){
     });
     // Also load any flat (global) files alongside regions
     const globalFiles=result.files||{};
-    Object.entries(globalFiles).forEach(([fname,content])=>{
-      if(!_isValidData(content))return
-      const inputId=matchFile(fname,typeof content==='object'?JSON.stringify(content):content);
-      if(inputId){const el=document.getElementById(inputId);if(el){el.value=typeof content==='string'?content:JSON.stringify(content,null,2);el.className='ji valid'}}
-    });
+    _attachFolderGlobals(globalFiles,_loadedContexts[firstImportedContext]);
     if(loaded>0){
       _showSidebarEdit();
       if(!_multiViewMode)enterMultiView();
@@ -8761,6 +8772,7 @@ function importFolder(result){
     const profileNames=Object.keys(result.profiles).sort();
     let totalLoaded=0;
     profileNames.forEach(profileName=>{
+      const profileContextStart=_loadedContexts.length;
       const prof=result.profiles[profileName];
       const profRegions=prof.regions||{};
       const profFlat=prof.files||{};
@@ -8779,6 +8791,7 @@ function importFolder(result){
             totalLoaded++;
           }
         });
+        _attachFolderGlobals(profFlat,_loadedContexts[profileContextStart]);
       }else if(Object.keys(profFlat).length){
         const textareas={};
         Object.entries(profFlat).forEach(([fname,content])=>{
@@ -8793,11 +8806,7 @@ function importFolder(result){
       }
     });
     const globalFiles=result.files||{};
-    Object.entries(globalFiles).forEach(([fname,content])=>{
-      if(!_isValidData(content))return
-      const inputId=matchFile(fname,typeof content==='object'?JSON.stringify(content):content);
-      if(inputId){const el=document.getElementById(inputId);if(el){el.value=typeof content==='string'?content:JSON.stringify(content,null,2);el.className='ji valid'}}
-    });
+    _attachFolderGlobals(globalFiles,_loadedContexts[firstImportedContext]);
     if(totalLoaded>0){
       _showSidebarEdit();
       if(!_multiViewMode)enterMultiView();
