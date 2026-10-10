@@ -12402,37 +12402,8 @@ function evaluateRouteTable(rt, destCidr){
 }
 
 function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts){
-  if(!nacl||!nacl.Entries) return {action:'allow',rule:'Default allow (no NACL)',ruleNum:'-'};
-  const entries=(nacl.Entries||[])
-    .filter(function(e){return e.Egress===(direction==='outbound')})
-    .sort(function(a,b){return a.RuleNumber-b.RuleNumber});
-  // Discovery mode: if no entries for this direction, assume allow (missing data)
-  if(entries.length===0&&opts&&opts.assumeAllow) return {action:'allow',rule:'No '+direction+' rules defined (assumed allow)',ruleNum:'-'};
-  for(let i=0;i<entries.length;i++){
-    var e=entries[i];
-    if(e.RuleNumber===32767) continue;
-    var protoOk=_protoMatch(e.Protocol, protocol);
-    if(!protoOk) continue;
-    var portOk=true;
-    if(e.PortRange){
-      portOk=_portInRange(port, e.PortRange.From, e.PortRange.To);
-    }
-    if(!portOk) continue;
-    var cidrOk=false;
-    if(e.CidrBlock) cidrOk=_cidrContains(e.CidrBlock, _ipFromCidr(sourceCidr));
-    if(!cidrOk&&e.Ipv6CidrBlock){
-      // IPv6 rules: match ::/0 as catch-all, skip others for IPv4 traffic
-      if(e.Ipv6CidrBlock==='::/0') cidrOk=true;
-      else continue;
-    }
-    if(!cidrOk) continue;
-    var act=e.RuleAction==='allow'?'allow':'deny';
-    var cidrLabel=e.CidrBlock||e.Ipv6CidrBlock||'';
-    return {action:act,rule:'Rule #'+e.RuleNumber+' '+act.toUpperCase()+' '+_protoName(e.Protocol)+' port '+(e.PortRange?e.PortRange.From+'-'+e.PortRange.To:'all')+' from '+cidrLabel,ruleNum:e.RuleNumber};
-  }
-  return {action:'deny',rule:'Default deny (no matching rule)',ruleNum:'*'};
+  return window.AppModules.evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts);
 }
-
 function _protoName(p){
   if(p==='-1'||p==='all') return 'ALL';
   if(p==='6') return 'TCP';
@@ -12442,50 +12413,8 @@ function _protoName(p){
 }
 
 function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts){
-  if(!sgs||sgs.length===0) return {action:(opts&&opts.assumeAllow)?'allow':'deny',rule:'No security groups attached',matchedSg:null};
-  var srcIp=_ipFromCidr(sourceCidr);
-  var _srcSgIds=opts&&opts.sourceSgIds;
-  var _srcSgSet=_srcSgIds?new Set(_srcSgIds):null;
-  for(let si=0;si<sgs.length;si++){
-    var sg=sgs[si];
-    var rules=direction==='inbound'?(sg.IpPermissions||[]):(sg.IpPermissionsEgress||[]);
-    for(let ri=0;ri<rules.length;ri++){
-      var r=rules[ri];
-      var protoOk=_protoMatch(String(r.IpProtocol), protocol);
-      if(!protoOk) continue;
-      var portOk=true;
-      if(r.FromPort!==undefined&&r.FromPort!==-1){
-        portOk=_portInRange(port, r.FromPort, r.ToPort);
-      }
-      if(!portOk) continue;
-      var cidrOk=false;
-      var ipRanges=r.IpRanges||[];
-      for(var ci=0;ci<ipRanges.length&&!cidrOk;ci++){
-        if(_cidrContains(ipRanges[ci].CidrIp, srcIp)) cidrOk=true;
-      }
-      if(!cidrOk){
-        var ipv6Ranges=r.Ipv6Ranges||[];
-        for(var v6i=0;v6i<ipv6Ranges.length&&!cidrOk;v6i++){
-          if(ipv6Ranges[v6i].CidrIpv6==='::/0') cidrOk=true;
-        }
-      }
-      // SG-to-SG references: validate source SG IDs if provided, else assume allow
-      if(!cidrOk&&(r.UserIdGroupPairs||[]).length>0){
-        var pairs=r.UserIdGroupPairs||[];
-        for(var pi=0;pi<pairs.length&&!cidrOk;pi++){
-          if(_srcSgSet){if(pairs[pi].GroupId&&_srcSgSet.has(pairs[pi].GroupId))cidrOk=true}
-          else{if(pairs[pi].GroupId)cidrOk=true}
-        }
-      }
-      if(cidrOk){
-        var desc=sg.GroupName+': '+_protoName(String(r.IpProtocol))+' port '+(r.FromPort!==-1&&r.FromPort!==undefined?r.FromPort+'-'+r.ToPort:'all');
-        return {action:'allow',rule:desc,matchedSg:sg.GroupId||sg.GroupName};
-      }
-    }
-  }
-  return {action:'deny',rule:'No matching SG rule for '+protocol+'/'+port,matchedSg:null};
+  return window.AppModules.evaluateSG(sgs, direction, protocol, port, sourceCidr, opts);
 }
-
 function _resolveNetworkPosition(type, id, ctx){
   if(!ctx) return null;
   if(type==='internet') return {subnetId:null,vpcId:null,cidr:'0.0.0.0/0',sgs:[],name:'Internet',ip:'0.0.0.0'};
