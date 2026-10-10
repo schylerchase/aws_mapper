@@ -9097,6 +9097,17 @@ if(_isElectron){
 // Pre-built flat index of all searchable resources. Rebuilt when _rlCtx changes.
 var _searchIndex=null;
 var _searchIndexCtx=null;
+function _searchResourceNode(item){
+  if(!_mapG||!item.resource)return null;
+  const resource=item.resource;
+  const vpcId=resource.VpcConfig?.VpcId||resource.DBSubnetGroup?.VpcId;
+  const subnetIds=resource.VpcConfig?.SubnetIds||(resource.DBSubnetGroup?.Subnets||[]).map(s=>s.SubnetIdentifier);
+  return Array.from(_mapG.node().querySelectorAll('[data-id],[data-gwid]')).find(el=>{
+    if(el.getAttribute('data-id')!==item.id&&el.getAttribute('data-gwid')!==item.id)return false;
+    const subnetId=el.closest('[data-subnet-id]')?.getAttribute('data-subnet-id');
+    return subnetIds.includes(subnetId)||(vpcId&&el.closest('[data-vpc-id]')?.getAttribute('data-vpc-id')===vpcId);
+  })||null;
+}
 function _buildSearchIndex(ctx){
   var idx=[];
   var getName=function(obj,fallback){var t=(obj.Tags||[]).find(function(x){return x.Key==='Name'});return t?t.Value:fallback};
@@ -9105,8 +9116,8 @@ function _buildSearchIndex(ctx){
   (ctx.instances||[]).forEach(function(i){var n=getName(i,i.InstanceId);idx.push({type:'EC2',name:n,id:i.InstanceId,extra:i.InstanceType||'',acct:i._accountLabel||i._accountId||'',searchStr:('ec2 '+n+' '+i.InstanceId+' '+(i.InstanceType||'')).toLowerCase()})});
   (ctx.igws||[]).forEach(function(g){var n=getName(g,g.InternetGatewayId);idx.push({type:'IGW',name:n,id:g.InternetGatewayId,extra:'',acct:g._accountLabel||g._accountId||'',searchStr:('igw '+n+' '+g.InternetGatewayId).toLowerCase()})});
   (ctx.nats||[]).forEach(function(g){var n=getName(g,g.NatGatewayId);idx.push({type:'NAT',name:n,id:g.NatGatewayId,extra:'',acct:g._accountLabel||g._accountId||'',searchStr:('nat '+n+' '+g.NatGatewayId).toLowerCase()})});
-  (ctx.rdsInstances||[]).forEach(function(d){idx.push({type:'RDS',name:d.DBInstanceIdentifier,id:d.DBInstanceIdentifier,extra:d.Engine||'',acct:d._accountLabel||d._accountId||'',searchStr:('rds '+d.DBInstanceIdentifier).toLowerCase()})});
-  (ctx.lambdaFns||[]).forEach(function(f){idx.push({type:'Lambda',name:f.FunctionName,id:f.FunctionName,extra:f.Runtime||'',acct:f._accountLabel||f._accountId||'',searchStr:('lambda '+f.FunctionName).toLowerCase()})});
+  (ctx.rdsInstances||[]).forEach(function(d){idx.push({type:'RDS',name:d.DBInstanceIdentifier,id:d.DBInstanceIdentifier,resource:d,extra:d.Engine||'',acct:d._accountLabel||d._accountId||'',searchStr:('rds '+d.DBInstanceIdentifier).toLowerCase()})});
+  (ctx.lambdaFns||[]).forEach(function(f){idx.push({type:'Lambda',name:f.FunctionName,id:f.FunctionName,resource:f,extra:f.Runtime||'',acct:f._accountLabel||f._accountId||'',searchStr:('lambda '+f.FunctionName).toLowerCase()})});
   (ctx.sgs||[]).forEach(function(s){var n=s.GroupName||s.GroupId;idx.push({type:'SG',name:n,id:s.GroupId,extra:s.VpcId||'',acct:s._accountLabel||s._accountId||'',searchStr:('sg security group '+n+' '+s.GroupId).toLowerCase()})});
   return idx;
 }
@@ -9134,7 +9145,7 @@ document.getElementById('searchInput').addEventListener('input',function(){
   var frag=document.createDocumentFragment();
   matches.forEach(function(m){
     var row=document.createElement('div');row.style.cssText='padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px';
-    row.addEventListener('click',function(){closeSearch();_zoomToElement(m.id);_openDetailForSearch(m.type,m.id)});
+    row.addEventListener('click',function(){closeSearch();_zoomToElement(m.id,_searchResourceNode(m));_openDetailForSearch(m.type,m.id,m.resource)});
     var sp1=document.createElement('span');sp1.style.cssText='font-size:9px;color:var(--accent-cyan);font-weight:600;width:50px';sp1.textContent=m.type;row.appendChild(sp1);
     var sp2=document.createElement('span');sp2.style.cssText='flex:1;font-size:12px;color:var(--text-primary)';sp2.textContent=m.name;row.appendChild(sp2);
     if(isMA&&m.acct&&m.acct!=='default'){var badge=document.createElement('span');badge.style.cssText='font-size:8px;padding:1px 5px;border-radius:3px;background:'+(getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap';badge.textContent=m.acct;row.appendChild(badge)}
@@ -9438,7 +9449,7 @@ function _gatherResourceInfo(rid){
 }
 
 // === SEARCH → DETAIL PANEL DISPATCH ===
-function _openDetailForSearch(type,id){
+function _openDetailForSearch(type,id,resource){
   if(!_rlCtx) return;
   const dp=document.getElementById('detailPanel');
   const dpTitle=document.getElementById('dpTitle');
@@ -9525,7 +9536,7 @@ function _openDetailForSearch(type,id){
     if(sgIds.length){h+='<tr><td>SGs</td><td>'+sgIds.map(s=>'<span class="dp-link" style="cursor:pointer;color:var(--accent-cyan)" data-detail-type="SG" data-detail-id="'+esc(s)+'">'+esc(s)+'</span>').join(', ')+'</td></tr>';}
     h+='</table>';
   } else if(type==='RDS'){
-    const db=(_rlCtx.rdsInstances||[]).find(d=>d.DBInstanceIdentifier===id);
+    const db=resource||(_rlCtx.rdsInstances||[]).find(d=>d.DBInstanceIdentifier===id);
     if(!db) return;
     dpTitle.innerHTML=esc(db.DBInstanceIdentifier);
     dpSub.innerHTML=esc(db.Engine||'')+' &middot; '+esc(db.DBInstanceClass||'');
@@ -9541,7 +9552,7 @@ function _openDetailForSearch(type,id){
     h+='<tr><td>Del Protection</td><td>'+(db.DeletionProtection?'Yes':'No')+'</td></tr>';
     h+='</table>';
   } else if(type==='Lambda'){
-    const fn=(_rlCtx.lambdaFns||[]).find(f=>f.FunctionName===id);
+    const fn=resource||(_rlCtx.lambdaFns||[]).find(f=>f.FunctionName===id);
     if(!fn) return;
     dpTitle.innerHTML=esc(fn.FunctionName);
     dpSub.innerHTML=esc(fn.Runtime||'')+ ' &middot; '+esc(fn.Handler||'');
@@ -19521,7 +19532,7 @@ var _origSearchHandler=null;
       // Items
       items.forEach(function(m){
         var row=document.createElement('div');row.style.cssText='padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px';
-        row.addEventListener('click',function(){closeSearch();_zoomToElement(m.id);_openDetailForSearch(m.type,m.id)});
+        row.addEventListener('click',function(){closeSearch();_zoomToElement(m.id,_searchResourceNode(m));_openDetailForSearch(m.type,m.id,m.resource)});
         var sp2=document.createElement('span');sp2.style.cssText='flex:1;font-size:12px;color:var(--text-primary)';sp2.textContent=m.name;row.appendChild(sp2);
         if(isMA&&m.acct&&m.acct!=='default'){var badge=document.createElement('span');badge.style.cssText='font-size:8px;padding:1px 5px;border-radius:3px;background:'+(getAccountColor(m.acct)||'var(--bg-tertiary)')+';color:#000;font-weight:600;white-space:nowrap';badge.textContent=m.acct;row.appendChild(badge)}
         var sp3=document.createElement('span');sp3.style.cssText='font-size:10px;color:var(--text-muted)';sp3.textContent=m.extra;row.appendChild(sp3);
