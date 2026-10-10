@@ -168,8 +168,15 @@ export function generateTerraform(ctx, opts) {
     const nc = (e.networkConfiguration || {}).awsvpcConfiguration;
     return nc && (nc.subnets || []).some(s => subIds.has(s));
   });
-  const ecacheClusters = (ctx.ecacheClusters || []).filter(c => c.CacheSubnetGroupName);
-  const redshiftClusters = (ctx.redshiftClusters || []).filter(c => c.ClusterSubnetGroupName);
+  function clusterInScope(c) {
+    if (!scopeVpc) return true;
+    const vpcId = c.VpcId || c._vpcId;
+    if (vpcId) return vpcIds.has(vpcId);
+    const groups = c.SecurityGroups || c.VpcSecurityGroups || [];
+    return groups.some(g => sgs.some(s => s.GroupId === (g.SecurityGroupId || g.VpcSecurityGroupId)));
+  }
+  const ecacheClusters = (ctx.ecacheClusters || []).filter(c => c.CacheSubnetGroupName && clusterInScope(c));
+  const redshiftClusters = (ctx.redshiftClusters || []).filter(c => c.ClusterSubnetGroupName && clusterInScope(c));
   const albs = (ctx.albs || []).filter(a => (a.AvailabilityZones || []).some(az => subIds.has(az.SubnetId)));
   const volumes = (ctx.volumes || []).filter(v => v.Attachments && v.Attachments.some(a => instances.find(i => i.InstanceId === a.InstanceId)));
   const s3bk = scopeVpc ? [] : (ctx.s3bk || []);
