@@ -8398,6 +8398,7 @@ function _parseImportedReport(htmlString){
   _applyImportedData(parsed,'html');
 }
 function _applyImportedData(data,source){
+  _iamReviewData=[];_appRegistry=[];_loadedContexts=[];
   _complianceFindings=data.findings||[];
   window._complianceFindings=_complianceFindings;
   _budrAssessments=data.budrAssessments||[];
