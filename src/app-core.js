@@ -1069,7 +1069,7 @@ function _addBUDRChip(sb2){
 function _snapshotTextareas(){const snap={};document.querySelectorAll('.ji').forEach(el=>{snap[el.id]=el.value});return snap}
 function _restoreTextareas(snap){Object.entries(snap).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val})}
 function enterDesignMode(){
-  _designMode=true;_designChanges=[];
+  _designMode=true;_designChanges=[];_prebuiltCtx=null;
   _designBaseline=_snapshotTextareas();
   document.getElementById('designToggle').classList.add('active');
   document.getElementById('designToggle').textContent='Exit Design';
@@ -6145,7 +6145,7 @@ function renderMap(cb){
   _setMapMoving(true);
   _setMapRendering(true);
   // In merge mode, always use the prebuilt merged context (avoid textarea re-parse divergence)
-  if(_multiViewMode&&_mergedCtx&&!_prebuiltCtx)_prebuiltCtx=_mergedCtx;
+  if(_multiViewMode&&_mergedCtx&&!_prebuiltCtx&&!_designMode)_prebuiltCtx=_mergedCtx;
   const overlay=document.getElementById('loadingOverlay');
   overlay.style.display='flex';
   _renderMapTimer=setTimeout(()=>{
@@ -10514,6 +10514,7 @@ async function _remergeAndRender(){
     if(typeof invalidateComplianceCache==='function')invalidateComplianceCache();else{_complianceFindings=[]}
     // PERF: Fill textareas for sidebar display — chunked via requestIdleCallback
     const _fillTextareasForDisplay=()=>{
+      if(_designMode)return;
       const mergedTA={};
       _loadedContexts.filter(c=>c.visible).forEach(c=>{
         Object.entries(c.textareas||{}).forEach(([id,val])=>{
@@ -10541,6 +10542,7 @@ async function _remergeAndRender(){
       const CHUNK=8;
       let idx=0;
       const writeChunk=(deadline)=>{
+        if(_designMode)return;
         while(idx<els.length&&(typeof deadline==='undefined'||deadline.timeRemaining()>2)){
           const el=els[idx++];
           if(mergedTA[el.id]){
