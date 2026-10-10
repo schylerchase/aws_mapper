@@ -1097,11 +1097,11 @@ function exitDesignMode(){
   if(_designDebounce)clearTimeout(_designDebounce);
   renderMap();
 }
-function addDesignChange(change){
+function addDesignChange(change,context){
   change.id='chg_'+Date.now()+'_'+Math.random().toString(36).substr(2,4);
   change.timestamp=new Date().toISOString();
   // Validate against current state
-  const vResult=validateDesignChange(change,_rlCtx);
+  const vResult=validateDesignChange(change,context||_rlCtx);
   change._validation=vResult;
   if(!vResult.valid){
     // Show errors but still allow user to see them in change log (marked as invalid)
@@ -8302,7 +8302,7 @@ function saveProject(){
     designMode:_designMode,designRegion:typeof _designRegion!=='undefined'?_designRegion:'us-east-1',
     annotations:_annotations,
     budrOverrides:Object.keys(_budrOverrides).length?_budrOverrides:undefined};
-  document.querySelectorAll('.ji').forEach(el=>{const v=el.value.trim();if(v){try{project.textareas[el.id]=JSON.parse(v)}catch(e){project.textareas[el.id]=v}}});
+  document.querySelectorAll('.ji').forEach(el=>{const v=(_designMode&&_designBaseline?(_designBaseline[el.id]||''):el.value).trim();if(v){try{project.textareas[el.id]=JSON.parse(v)}catch(e){project.textareas[el.id]=v}}});
   // v2.0: include loaded account contexts
   if(_loadedContexts.length>1){
     project.accounts=_loadedContexts.map(c=>({id:c.accountId,label:c.accountLabel,region:c.region,textareas:c.textareas}));
@@ -8319,6 +8319,7 @@ function saveProject(){
 }
 function _loadProjectData(project){
   if(!project.textareas&&!project._format){_showToast('Invalid project file');return}
+  if(_designMode)exitDesignMode();
   // MEMORY: Reset state from previous load
   _importedReportData=null;
   _iamData=null;_iamReviewData=[];_appRegistry=[];_parseCache={};_rlCtx=null;
@@ -8347,7 +8348,7 @@ function _loadProjectData(project){
     }
   }
   renderMap(()=>{_autoSaveSession();_renderNoteBadges();_renderComplianceBadges();
-    if(project.designChanges&&project.designChanges.length){if(!_designMode)enterDesignMode();if(project.designRegion)_designRegion=project.designRegion;project.designChanges.forEach(ch=>addDesignChange(ch));_showToast('Loaded with '+project.designChanges.length+' design changes')}
+    if(project.designChanges&&project.designChanges.length){if(!_designMode)enterDesignMode();if(project.designRegion)_designRegion=project.designRegion;project.designChanges.forEach(ch=>{addDesignChange(ch,_buildRlCtxFromTextareas());applyDesignChanges()});if(_designDebounce){clearTimeout(_designDebounce);_designDebounce=null}_showToast('Loaded with '+project.designChanges.length+' design changes')}
     else{_showToast('Project loaded')}
   });
 }
