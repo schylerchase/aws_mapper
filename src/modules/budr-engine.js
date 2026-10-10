@@ -141,14 +141,12 @@ function runBUDRChecks(ctx){
     const id=inst.InstanceId;const name=gn(inst,id);
     const inASG=asgInstIds.has(id);
     const vols=(inst.BlockDeviceMappings||[]).map(b=>b.Ebs?.VolumeId).filter(Boolean);
-    const hasSnaps=vols.some(vid=>{const s=(ctx.snapByVol||{})[vid];return s&&s.length>0});
-    let newestSnap=null;
-    vols.forEach(vid=>{const ss=(ctx.snapByVol||{})[vid]||[];ss.forEach(s=>{
-      const d=new Date(s.StartTime);if(!newestSnap||d>newestSnap)newestSnap=d;
-    })});
-    const snapAgeDays=newestSnap?Math.floor((Date.now()-newestSnap.getTime())/(864e5)):null;
+    const hasSnaps=vols.length>0&&vols.every(vid=>((ctx.snapByVol||{})[vid]||[]).some(s=>s.State==='completed'));
+    const volumeBackupTimes=vols.map(vid=>((ctx.snapByVol||{})[vid]||[]).filter(s=>s.State==='completed').map(s=>new Date(s.StartTime).getTime()).filter(Number.isFinite)).map(times=>times.length?Math.max(...times):null);
+    const coverageTime=hasSnaps&&volumeBackupTimes.every(t=>t!==null)?Math.min(...volumeBackupTimes):null;
+    const snapAgeDays=coverageTime!==null?Math.floor((Date.now()-coverageTime)/(864e5)):null;
     if(hasSnaps&&snapAgeDays!==null&&snapAgeDays>7){
-      f.push({severity:'MEDIUM',control:'BUDR-AGE-1',framework:'BUDR',resource:id,resourceName:name,message:'Newest EBS snapshot is '+snapAgeDays+' days old (>7 days)',remediation:'Configure AWS Backup or DLM to take snapshots at least weekly'});
+      f.push({severity:'MEDIUM',control:'BUDR-AGE-1',framework:'BUDR',resource:id,resourceName:name,message:'Oldest volume backup coverage is '+snapAgeDays+' days old (>7 days)',remediation:'Configure AWS Backup or DLM to take snapshots at least weekly'});
     }
     const encrypted=vols.some(vid=>{const vs=(ctx.volumes||[]).filter(v=>v.VolumeId===vid);return vs.length&&vs[0].Encrypted});
     let profile;
@@ -156,7 +154,7 @@ function runBUDRChecks(ctx){
     else if(hasSnaps){profile=_BUDR_RTO_RPO.ec2_ami_snap;
       f.push({severity:'LOW',control:'BUDR-HA-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 not in Auto Scaling group - manual recovery required',remediation:'Place behind ASG or create AMI + launch template for quick recovery'})}
     else{profile=_BUDR_RTO_RPO.ec2_standalone;
-      f.push({severity:'HIGH',control:'BUDR-BAK-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 standalone with no EBS snapshots - unrecoverable on failure',remediation:'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'});
+      f.push({severity:'HIGH',control:'BUDR-BAK-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 lacks completed snapshots for every attached EBS volume - incomplete recovery coverage',remediation:'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'});
       if(!inASG)f.push({severity:'MEDIUM',control:'BUDR-DR-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 has no disaster recovery strategy',remediation:'Create AMI, configure ASG with multi-AZ, or use EBS snapshots'})}
     assessments.push({type:'EC2',id,name,profile,signals:{ASG:inASG,Snapshots:hasSnaps,SnapAgeDays:snapAgeDays,Encrypted:encrypted}});
   });
