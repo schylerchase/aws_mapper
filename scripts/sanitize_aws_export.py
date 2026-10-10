@@ -1009,7 +1009,7 @@ def _sanitize_principal(principal, registry):
     if isinstance(principal, dict):
         result = {}
         for k, v in principal.items():
-            if k == "AWS":
+            if k in ("AWS", "Federated"):
                 if isinstance(v, str):
                     result[k] = registry.map_arn(v) if v.startswith("arn:") else _regex_fallback(v, registry)
                 elif isinstance(v, list):
