@@ -960,6 +960,8 @@ def _sanitize_policy_obj(doc, registry):
     for k, v in doc.items():
         if k == "Statement" and isinstance(v, list):
             result[k] = [_sanitize_statement(stmt, registry) for stmt in v]
+        elif k == "Statement" and isinstance(v, dict):
+            result[k] = _sanitize_statement(v, registry)
         elif k == "Version":
             result[k] = v  # Preserve policy version
         else:
