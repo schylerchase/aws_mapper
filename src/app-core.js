@@ -8830,7 +8830,7 @@ function importFolder(result){
     if(skipped.length)msg+=' | Skipped: '+skipped.join(', ');
     status.textContent=msg;
     status.style.color=skipped.length?'var(--accent-orange)':'var(--accent-green)';
-    if(matched>0)renderMap();
+    if(matched>0){_sessionDirty=true;renderMap(()=>_autoSaveSession())}
   }
 }
 
@@ -10552,7 +10552,7 @@ async function _remergeAndRender(){
         if(idx<els.length){
           if(typeof requestIdleCallback==='function')requestIdleCallback(writeChunk);
           else setTimeout(()=>writeChunk(),16);
-        }
+        }else{_sessionDirty=true;_autoSaveSession()}
       };
       if(typeof requestIdleCallback==='function')requestIdleCallback(writeChunk);
       else setTimeout(()=>writeChunk(),16);
