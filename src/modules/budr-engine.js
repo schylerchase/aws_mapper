@@ -178,11 +178,14 @@ function runBUDRChecks(ctx){
   // ElastiCache
   (ctx.ecacheClusters||[]).forEach(ec=>{
     const id=ec.CacheClusterId;const name=id;
+    const isMemcached=(ec.Engine||'').toLowerCase()==='memcached';
     const multiNode=(ec.NumCacheNodes||1)>1;
     const hasSnap=!!(ec.SnapshotWindow||ec.SnapshotRetentionLimit);
     const autoFailover=ec.AutomaticFailover==='enabled';
     let profile;
-    if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
+    if(isMemcached){profile=_BUDR_RTO_RPO.ecache_no_snap;
+      f.push({severity:'HIGH',control:'BUDR-HA-4',framework:'BUDR',resource:id,resourceName:name,message:'Memcached nodes partition data without replication or snapshot recovery',remediation:'Keep durable data outside the cache and plan cache rebuilding after node loss'})}
+    else if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
     else if(hasSnap){profile=_BUDR_RTO_RPO.ecache_single;
       f.push({severity:'MEDIUM',control:'BUDR-HA-4',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node - failover requires manual intervention',remediation:'Add replicas or enable cluster mode for automatic failover'})}
     else{profile=_BUDR_RTO_RPO.ecache_no_snap;
