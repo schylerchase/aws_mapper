@@ -846,6 +846,18 @@ def _regex_fallback(value, registry):
 
     result = value
 
+    # IPv4 literals also occur under IAM condition keys such as aws:SourceIp.
+    try:
+        if "/" in value:
+            network = ipaddress.IPv4Network(value, strict=False)
+            return registry.map_cidr(str(network))
+        address = ipaddress.IPv4Address(value)
+        if address.is_private:
+            return registry.map_private_ip(str(address))
+        return registry.map_public_ip(str(address))
+    except ValueError:
+        pass
+
     # Replace embedded ARNs
     for m in RE_ARN.finditer(result):
         sanitized = registry.map_arn(m.group(0))
