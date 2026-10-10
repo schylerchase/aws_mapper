@@ -368,6 +368,35 @@ export function traceInternetToResource(target, config, ctx, opts) {
 // ---------------------------------------------------------------------------
 // traceResourceToInternet — path from a resource outbound to the Internet
 // ---------------------------------------------------------------------------
+// NAT traffic crosses its subnet ACL on both sides of the translation.
+export function evaluateNatSubnetACLs(nat, source, config, ctx, opts) {
+  const nacl = nat && (ctx.subNacl || {})[nat.SubnetId];
+  if (!nacl) return { action: 'allow', checks: [] };
+  const sourceCidr = source.ip || source.cidr;
+  const destination = config.destinationIp || config.destinationCidr || '0.0.0.0/0';
+  function response(direction, cidr, explicitPort, minimum = 1024) {
+    if (!['tcp', 'udp', '6', '17'].includes(String(config.protocol)))
+      return evaluateNACL(nacl, direction, config.protocol, config.port, cidr, opts);
+    const ports = explicitPort != null ? [Number(explicitPort)] : [1024];
+    if (explicitPort == null) (nacl.Entries || []).forEach(e => {
+      if (e.PortRange) ports.push(e.PortRange.From, e.PortRange.To + 1);
+    });
+    for (const port of ports.filter(p => Number.isInteger(p) && p >= minimum && p <= 65535)) {
+      const result = evaluateNACL(nacl, direction, config.protocol, port, cidr, opts);
+      if (result.action === 'allow') return result;
+    }
+    return { action: 'deny', rule: 'NAT subnet ACL denies response ports' };
+  }
+  const checks = [
+    { label: 'inbound request from client', result: evaluateNACL(nacl, 'inbound', config.protocol, config.port, sourceCidr, opts) },
+    { label: 'outbound request to Internet', result: evaluateNACL(nacl, 'outbound', config.protocol, config.port, destination, opts) },
+    { label: 'inbound response from Internet', result: response('inbound', destination, config.natSourcePort) },
+    { label: 'outbound response to client', result: response('outbound', sourceCidr, config.sourcePort, config.sourcePort != null ? 1 : 1024) }
+  ];
+  const denied = checks.find(check => check.result.action === 'deny');
+  return { action: denied ? 'deny' : 'allow', rule: denied ? denied.label + ': ' + denied.result.rule : 'NAT subnet ACL allows request and response traffic', checks };
+}
+
 export function traceResourceToInternet(source, config, ctx, opts) {
   const path = []; let hopN = 1;
   let srcPos = resolveNetworkPosition(source.type, source.id, ctx);
@@ -409,6 +438,13 @@ export function traceResourceToInternet(source, config, ctx, opts) {
     path.push({ hop: hopN++, type: 'route-table', id: 'No route', action: 'block', detail: 'No route to Internet (no IGW or NAT Gateway route in route table)' });
     path.push({ hop: hopN++, type: 'target', id: 'Internet', action: 'block', detail: 'No Internet route' });
     return { path: path, blocked: { hop: hopN - 2, reason: 'No route to Internet in route table', suggestion: 'Add a route 0.0.0.0/0 \u2192 IGW or NAT Gateway' } };
+  }
+
+  if (hasNatRoute && !hasIgwRoute) {
+    const nat = (ctx.nats || []).find(n => n.NatGatewayId === routeTarget);
+    const result = evaluateNatSubnetACLs(nat, srcPos, config, ctx, naclOpts);
+    path.push({ hop: hopN++, type: 'nat-nacl', id: nat ? nat.SubnetId : routeTarget, action: result.action, detail: 'NAT subnet ACL request and response checks', rule: result.rule });
+    if (result.action === 'deny') return { path, blocked: { hop: hopN - 1, reason: 'NAT subnet ACL denies traffic: ' + result.rule } };
   }
 
   path.push({ hop: hopN++, type: 'target', id: 'Internet', action: 'allow', detail: 'Target: Internet (0.0.0.0/0)' });
