@@ -2,6 +2,8 @@
 // Evaluates backup coverage, HA configuration, and DR readiness
 // Extracted from index.html for modularization
 
+import { resourceOverrideKey } from './utils.js';
+
 // --- Transitional window references ---
 // _classificationData and runClassificationEngine live in the governance region
 // of index.html and have not been extracted to a module yet. During this
@@ -106,6 +108,14 @@ function setBudrOverrides(v) { budrOverrides = v; }
 
 function runBUDRChecks(ctx){
   const f=[];const assessments=[];
+  function addAssessment(raw,row) {
+    row.overrideKey=resourceOverrideKey(raw,row.type,row.id);
+    const scope=JSON.parse(row.overrideKey);
+    row.account=scope[0];row.region=scope[1];
+    const subnetId=raw.SubnetId||raw.networkConfiguration?.awsvpcConfiguration?.subnets?.[0];
+    row.vpcId=raw.VpcId||(raw.DBSubnetGroup||{}).VpcId||(raw.VpcConfig||{}).VpcId||((ctx.subnets||[]).find(sub=>sub.SubnetId===subnetId)||{}).VpcId||'';
+    assessments.push(row);
+  }
   const gn=(o,id)=>{const t=(o.Tags||o.tags||[]);const n=t.find(t=>t.Key==='Name');return n?n.Value:id};
   // RDS
   (ctx.rdsInstances||[]).forEach(db=>{
@@ -128,7 +138,7 @@ function runBUDRChecks(ctx){
       f.push({severity:'HIGH',control:'BUDR-DR-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS single-AZ with backups only - extended RTO on AZ failure',remediation:'Enable Multi-AZ or create cross-region read replica'});
     if(!db.DeletionProtection&&!isMicro)
       f.push({severity:'MEDIUM',control:'BUDR-DEL-1',framework:'BUDR',resource:id,resourceName:name,message:'RDS deletion protection disabled',remediation:'Enable DeletionProtection to prevent accidental deletion'});
-    assessments.push({type:'RDS',id,name,profile,signals:{MultiAZ:hasMultiAZ,Backup:hasBackup,Encrypted:encrypted,DeletionProtection:!!db.DeletionProtection,ReadReplicas:(db.ReadReplicaDBInstanceIdentifiers||[]).length,PITR:hasPITR}});
+    addAssessment(db,{type:'RDS',id,name,profile,signals:{MultiAZ:hasMultiAZ,Backup:hasBackup,Encrypted:encrypted,DeletionProtection:!!db.DeletionProtection,ReadReplicas:(db.ReadReplicaDBInstanceIdentifiers||[]).length,PITR:hasPITR}});
   });
   // EC2
   const asgInstIds=new Set();
@@ -141,14 +151,12 @@ function runBUDRChecks(ctx){
     const id=inst.InstanceId;const name=gn(inst,id);
     const inASG=asgInstIds.has(id);
     const vols=(inst.BlockDeviceMappings||[]).map(b=>b.Ebs?.VolumeId).filter(Boolean);
-    const hasSnaps=vols.some(vid=>{const s=(ctx.snapByVol||{})[vid];return s&&s.length>0});
-    let newestSnap=null;
-    vols.forEach(vid=>{const ss=(ctx.snapByVol||{})[vid]||[];ss.forEach(s=>{
-      const d=new Date(s.StartTime);if(!newestSnap||d>newestSnap)newestSnap=d;
-    })});
-    const snapAgeDays=newestSnap?Math.floor((Date.now()-newestSnap.getTime())/(864e5)):null;
+    const hasSnaps=vols.length>0&&vols.every(vid=>((ctx.snapByVol||{})[vid]||[]).some(s=>s.State==='completed'));
+    const volumeBackupTimes=vols.map(vid=>((ctx.snapByVol||{})[vid]||[]).filter(s=>s.State==='completed').map(s=>new Date(s.StartTime).getTime()).filter(Number.isFinite)).map(times=>times.length?Math.max(...times):null);
+    const coverageTime=hasSnaps&&volumeBackupTimes.every(t=>t!==null)?Math.min(...volumeBackupTimes):null;
+    const snapAgeDays=coverageTime!==null?Math.floor((Date.now()-coverageTime)/(864e5)):null;
     if(hasSnaps&&snapAgeDays!==null&&snapAgeDays>7){
-      f.push({severity:'MEDIUM',control:'BUDR-AGE-1',framework:'BUDR',resource:id,resourceName:name,message:'Newest EBS snapshot is '+snapAgeDays+' days old (>7 days)',remediation:'Configure AWS Backup or DLM to take snapshots at least weekly'});
+      f.push({severity:'MEDIUM',control:'BUDR-AGE-1',framework:'BUDR',resource:id,resourceName:name,message:'Oldest volume backup coverage is '+snapAgeDays+' days old (>7 days)',remediation:'Configure AWS Backup or DLM to take snapshots at least weekly'});
     }
     const encrypted=vols.some(vid=>{const vs=(ctx.volumes||[]).filter(v=>v.VolumeId===vid);return vs.length&&vs[0].Encrypted});
     let profile;
@@ -156,9 +164,9 @@ function runBUDRChecks(ctx){
     else if(hasSnaps){profile=_BUDR_RTO_RPO.ec2_ami_snap;
       f.push({severity:'LOW',control:'BUDR-HA-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 not in Auto Scaling group - manual recovery required',remediation:'Place behind ASG or create AMI + launch template for quick recovery'})}
     else{profile=_BUDR_RTO_RPO.ec2_standalone;
-      f.push({severity:'HIGH',control:'BUDR-BAK-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 standalone with no EBS snapshots - unrecoverable on failure',remediation:'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'});
+      f.push({severity:'HIGH',control:'BUDR-BAK-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 lacks completed snapshots for every attached EBS volume - incomplete recovery coverage',remediation:'Create regular EBS snapshots via AWS Backup or DLM; consider ASG'});
       if(!inASG)f.push({severity:'MEDIUM',control:'BUDR-DR-2',framework:'BUDR',resource:id,resourceName:name,message:'EC2 has no disaster recovery strategy',remediation:'Create AMI, configure ASG with multi-AZ, or use EBS snapshots'})}
-    assessments.push({type:'EC2',id,name,profile,signals:{ASG:inASG,Snapshots:hasSnaps,SnapAgeDays:snapAgeDays,Encrypted:encrypted}});
+    addAssessment(inst,{type:'EC2',id,name,profile,signals:{ASG:inASG,Snapshots:hasSnaps,SnapAgeDays:snapAgeDays,Encrypted:encrypted}});
   });
   // ECS
   (ctx.ecsServices||[]).forEach(svc=>{
@@ -169,25 +177,28 @@ function runBUDRChecks(ctx){
     if(multi){profile=_BUDR_RTO_RPO.ecs_multi}
     else{profile=_BUDR_RTO_RPO.ecs_single;
       f.push({severity:'LOW',control:'BUDR-HA-3',framework:'BUDR',resource:id,resourceName:name,message:'ECS service has desiredCount='+desired+' - no redundancy',remediation:'Set desiredCount ≥ 2 across multiple AZs'})}
-    assessments.push({type:'ECS',id,name,profile,signals:{DesiredCount:desired,MultiTask:multi}});
+    addAssessment(svc,{type:'ECS',id,name,profile,signals:{DesiredCount:desired,MultiTask:multi}});
   });
   // Lambda (inherently resilient)
   (ctx.lambdaFns||[]).forEach(fn=>{
-    assessments.push({type:'Lambda',id:fn.FunctionName,name:fn.FunctionName,profile:_BUDR_RTO_RPO.lambda,signals:{Managed:true}});
+    addAssessment(fn,{type:'Lambda',id:fn.FunctionName,name:fn.FunctionName,profile:_BUDR_RTO_RPO.lambda,signals:{Managed:true}});
   });
   // ElastiCache
   (ctx.ecacheClusters||[]).forEach(ec=>{
     const id=ec.CacheClusterId;const name=id;
+    const isMemcached=(ec.Engine||'').toLowerCase()==='memcached';
     const multiNode=(ec.NumCacheNodes||1)>1;
-    const hasSnap=!!(ec.SnapshotWindow||ec.SnapshotRetentionLimit);
+    const hasSnap=Number(ec.SnapshotRetentionLimit)>0;
     const autoFailover=ec.AutomaticFailover==='enabled';
     let profile;
-    if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
+    if(isMemcached){profile=_BUDR_RTO_RPO.ecache_no_snap;
+      f.push({severity:'HIGH',control:'BUDR-HA-4',framework:'BUDR',resource:id,resourceName:name,message:'Memcached nodes partition data without replication or snapshot recovery',remediation:'Keep durable data outside the cache and plan cache rebuilding after node loss'})}
+    else if(multiNode){profile=_BUDR_RTO_RPO.ecache_multi}
     else if(hasSnap){profile=_BUDR_RTO_RPO.ecache_single;
       f.push({severity:'MEDIUM',control:'BUDR-HA-4',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node - failover requires manual intervention',remediation:'Add replicas or enable cluster mode for automatic failover'})}
     else{profile=_BUDR_RTO_RPO.ecache_no_snap;
       f.push({severity:'HIGH',control:'BUDR-BAK-3',framework:'BUDR',resource:id,resourceName:name,message:'ElastiCache single node with no snapshots - data loss risk',remediation:'Enable automatic snapshots and add read replicas'})}
-    assessments.push({type:'ElastiCache',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap,AutoFailover:autoFailover}});
+    addAssessment(ec,{type:'ElastiCache',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap,AutoFailover:autoFailover}});
   });
   // Redshift
   (ctx.redshiftClusters||[]).forEach(rs=>{
@@ -200,7 +211,7 @@ function runBUDRChecks(ctx){
       f.push({severity:'MEDIUM',control:'BUDR-HA-5',framework:'BUDR',resource:id,resourceName:name,message:'Redshift single-node cluster - no compute redundancy',remediation:'Resize to multi-node cluster for HA'})}
     else{profile=_BUDR_RTO_RPO.redshift_none;
       f.push({severity:'HIGH',control:'BUDR-BAK-4',framework:'BUDR',resource:id,resourceName:name,message:'Redshift with no automated snapshots - data loss risk',remediation:'Enable automated snapshots with ≥7 day retention'})}
-    assessments.push({type:'Redshift',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap}});
+    addAssessment(rs,{type:'Redshift',id,name,profile,signals:{MultiNode:multiNode,Snapshots:hasSnap}});
   });
   // ALBs
   (ctx.albs||[]).forEach(alb=>{
@@ -210,7 +221,7 @@ function runBUDRChecks(ctx){
     if(azs>=2){profile=_BUDR_RTO_RPO.alb_multi_az}
     else{profile=_BUDR_RTO_RPO.alb_single_az;
       f.push({severity:'MEDIUM',control:'BUDR-HA-6',framework:'BUDR',resource:id,resourceName:name,message:'ALB in single AZ only - no failover',remediation:'Register subnets in at least 2 AZs'})}
-    assessments.push({type:'ALB',id,name,profile,signals:{AZCount:azs}});
+    addAssessment(alb,{type:'ALB',id,name,profile,signals:{AZCount:azs}});
   });
   // EBS volumes (standalone - not already counted via EC2)
   (ctx.volumes||[]).forEach(vol=>{
@@ -231,7 +242,7 @@ function runBUDRChecks(ctx){
     else if(versioned){profile=_BUDR_RTO_RPO.s3_versioned}
     else{profile=_BUDR_RTO_RPO.s3_unversioned;
       f.push({severity:'HIGH',control:'BUDR-S3-1',framework:'BUDR',resource:id,resourceName:name,message:'S3 bucket has no versioning \u2014 data loss risk',remediation:'Enable versioning to protect against accidental deletes and overwrites'})}
-    assessments.push({type:'S3',id,name,profile,signals:{Versioned:versioned,MFADelete:mfaDel}});
+    addAssessment(bk,{type:'S3',id,name,profile,signals:{Versioned:versioned,MFADelete:mfaDel}});
   });
   // Enrich assessments with account/vpc/region from raw resources
   const _budrLookup={};
@@ -246,7 +257,7 @@ function runBUDRChecks(ctx){
   (ctx.s3bk||[]).forEach(function(r){_budrLookup['S3:'+r.Name]={a:r._accountId||'',r:r._region||'',v:''}});
   (ctx.volumes||[]).forEach(function(r){_budrLookup['EBS:'+r.VolumeId]={a:r._accountId||'',r:r._region||'',v:''}});
   (ctx.snapshots||[]).forEach(function(r){_budrLookup['Snapshot:'+r.SnapshotId]={a:r._accountId||'',r:r._region||'',v:''}});
-  assessments.forEach(function(a){const info=_budrLookup[a.type+':'+a.id];if(info){a.account=info.a;a.region=info.r;a.vpcId=info.v}});
+
   // Fallback: unmatched assessments get primary account
   const _bAccts=new Set();(ctx.vpcs||[]).forEach(function(v){if(v._accountId&&v._accountId!=='default')_bAccts.add(v._accountId)});
   if(_bAccts.size>=1){const _bPri=[..._bAccts][0];assessments.forEach(function(a){if(!a.account)a.account=_bPri})}
@@ -269,11 +280,11 @@ function _enrichBudrWithClassification(ctx,findings){
   if(!classData.length&&ctx) _runClassificationEngine(ctx);
   classData = _getClassificationData();
   // Build lookup by resource id/name (type-qualified keys take priority to avoid cross-type collisions)
-  const classMap={};const classMapTyped={};
-  classData.forEach(function(c){classMap[c.id]=c;classMap[c.name]=c;classMapTyped[c.type+'|'+c.id]=c;classMapTyped[c.type+'|'+c.name]=c});
+  const classMap=new Map();
+  classData.forEach(function(c){classMap.set(c.overrideKey||resourceOverrideKey(c,c.type,c.id),c)});
   // Enrich each BUDR assessment
   budrAssessments.forEach(function(a){
-    const cls=classMapTyped[a.type+'|'+a.id]||classMapTyped[a.type+'|'+a.name]||classMap[a.id]||classMap[a.name];
+    const cls=classMap.get(a.overrideKey||resourceOverrideKey(a,a.type,a.id));
     a.classTier=cls?cls.tier:'low';
     a.classVpcName=cls?cls.vpcName:'';
     // Find which profile key this assessment uses
@@ -291,10 +302,11 @@ function _enrichBudrWithClassification(ctx,findings){
       });
     }
     // Apply manual override if present
-    const ov=budrOverrides[a.id];
+    const ov=_budrOverrideFor(a);
     if(ov){
       a.overridden=true;
       a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};
+      a.profile=Object.assign({},a.profile);
       if(ov.strategy){
         a.profile=Object.assign({},a.profile);
         const sm={critical:'hot',high:'warm',medium:'pilot',low:'cold'};
@@ -307,6 +319,20 @@ function _enrichBudrWithClassification(ctx,findings){
     }
   });
 }
+function _budrOverrideFor(a) {
+  const own=Object.prototype.hasOwnProperty;
+  const key=a.overrideKey||resourceOverrideKey(a,a.type,a.id);
+  const unique=new Set(budrAssessments.filter(r=>r.id===a.id).map(r=>r.overrideKey||resourceOverrideKey(r,r.type,r.id))).size===1;
+  const value=own.call(budrOverrides,key)?budrOverrides[key]:unique&&own.call(budrOverrides,a.id)?budrOverrides[a.id]:null;
+  return value&&typeof value==='object'&&!Array.isArray(value)&&(!value.strategy||['critical','high','medium','low','hot','warm','pilot','cold'].includes(value.strategy))?value:null;
+}
+export function resetBUDROverride(overrideKey) {
+  delete budrOverrides[overrideKey];
+  const row=budrAssessments.find(r=>(r.overrideKey||resourceOverrideKey(r,r.type,r.id))===overrideKey);
+  if(row&&new Set(budrAssessments.filter(r=>r.id===row.id).map(r=>r.overrideKey||resourceOverrideKey(r,r.type,r.id))).size===1)
+    delete budrOverrides[row.id];
+  _reapplyBUDROverrides();
+}
 function _reapplyBUDROverrides(){
   budrAssessments.forEach(function(a){
     // Restore auto values first
@@ -318,7 +344,7 @@ function _reapplyBUDROverrides(){
       a.profile.tier=a.autoProfile.tier;
       a.overridden=false;
     }
-    const ov=budrOverrides[a.id];
+    const ov=_budrOverrideFor(a);
     if(ov){
       a.overridden=true;
       if(!a.autoProfile)a.autoProfile={strategy:a.profile.strategy,rto:a.profile.rto,rpo:a.profile.rpo,tier:a.profile.tier};

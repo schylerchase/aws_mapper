@@ -43,7 +43,8 @@ export function protoMatch(ruleProto, queryProto) {
   if (rp === qp) return true;
   if (rp === '6' && qp === 'tcp') return true;
   if (rp === '17' && qp === 'udp') return true;
-  if (rp === '1' && qp === 'icmp') return true;
+  if ((rp === '1' && qp === 'icmp') || (rp === 'icmp' && qp === '1')) return true;
+  if ((rp === '58' && qp === 'icmpv6') || (rp === 'icmpv6' && qp === '58')) return true;
   if (qp === '6' && rp === 'tcp') return true;
   if (qp === '17' && rp === 'udp') return true;
   return false;
@@ -91,6 +92,16 @@ export function evaluateRouteTable(rt, destCidr) {
   return { target: 'local', type: 'local' };
 }
 
+function isIcmp(protocol) {
+  return ['icmp', 'icmpv6', '1', '58'].includes(String(protocol).toLowerCase());
+}
+function icmpTypeCodeMatch(type, code, port, opts) {
+  const queryType = opts && opts.icmpType != null ? Number(opts.icmpType) : Number(port);
+  const queryCode = opts && opts.icmpCode != null ? Number(opts.icmpCode) : 0;
+  return (type == null || Number(type) === -1 || Number(type) === queryType) &&
+    (code == null || Number(code) === -1 || Number(code) === queryCode);
+}
+
 export function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) {
   if (!nacl || !nacl.Entries) return { action: 'allow', rule: 'Default allow (no NACL)', ruleNum: '-' };
   const entries = (nacl.Entries || [])
@@ -102,7 +113,9 @@ export function evaluateNACL(nacl, direction, protocol, port, sourceCidr, opts) 
     if (e.RuleNumber === 32767) continue;
     if (!protoMatch(e.Protocol, protocol)) continue;
     let portOk = true;
-    if (e.PortRange) {
+    if (isIcmp(protocol) && isIcmp(e.Protocol)) {
+      portOk = icmpTypeCodeMatch(e.IcmpTypeCode?.Type, e.IcmpTypeCode?.Code, port, opts);
+    } else if (e.PortRange) {
       portOk = portInRange(port, e.PortRange.From, e.PortRange.To);
     }
     if (!portOk) continue;
@@ -132,7 +145,9 @@ export function evaluateSG(sgs, direction, protocol, port, sourceCidr, opts) {
       const r = rules[ri];
       if (!protoMatch(String(r.IpProtocol), protocol)) continue;
       let portOk = true;
-      if (r.FromPort !== undefined && r.FromPort !== -1) {
+      if (isIcmp(protocol) && isIcmp(r.IpProtocol)) {
+        portOk = icmpTypeCodeMatch(r.FromPort, r.ToPort, port, opts);
+      } else if (r.FromPort !== undefined && r.FromPort !== -1) {
         portOk = portInRange(port, r.FromPort, r.ToPort);
       }
       if (!portOk) continue;

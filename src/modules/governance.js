@@ -3,7 +3,7 @@
 // live in app-core.js due to dual-state and unified dashboard coupling.
 
 import { rlCtx, complianceFindings } from './state.js';
-import { esc, gn, safeParse } from './utils.js';
+import { esc, gn, safeParse, resourceOverrideKey } from './utils.js';
 import { _stmtArr, _safePolicyParse, parseIAMData } from './iam-engine.js';
 import { escHtml } from './timeline.js';
 
@@ -113,7 +113,7 @@ function _buildInventoryData() {
   const vpcNameMap = {};
   (ctx.vpcs || []).forEach(function(v) { vpcNameMap[v.VpcId] = gn(v, v.VpcId); });
   function tag(obj) { const t = (obj.Tags || obj.tags || []).find(function(x) { return x.Key === 'Name'; }); return t ? t.Value : ''; }
-  function tags(obj) { const m = {}; (obj.Tags || obj.tags || []).forEach(function(t) { m[t.Key] = t.Value; }); return m; }
+  function tags(obj) { const m = Object.create(null); (obj.Tags || obj.tags || []).forEach(function(t) { m[t.Key] = t.Value; }); return m; }
   function mkRow(id, type, name, obj, extra) {
     return { id: id, type: type, name: name,
       account: obj._accountLabel || obj._accountId || '', region: obj._region || '',
@@ -330,7 +330,7 @@ function _filterInventory() {
  */
 function _getTagMap(obj) {
   const arr = obj.Tags || obj.tags || obj.TagList || [];
-  const m = {}; arr.forEach(function(t) { if (t.Key) m[t.Key] = t.Value || ''; }); return m;
+  const m = Object.create(null); arr.forEach(function(t) { if (t.Key) m[t.Key] = t.Value || ''; }); return m;
 }
 
 /**
@@ -383,7 +383,7 @@ function _scoreClassification(name, type, vpcName, rules, tagMap) {
  */
 function _discoverTagKeys(ctx) {
   if (!ctx) return {};
-  const disc = {};
+  const disc = Object.create(null);
   function scan(arr, typeName) {
     (arr || []).forEach(function(obj) {
       const tagArr = obj.Tags || obj.tags || obj.TagList || [];
@@ -412,6 +412,33 @@ function _discoverTagKeys(ctx) {
 function runClassificationEngine(ctx) {
   if (!ctx) return [];
   const results = [];
+  const legacyKeys = new Map();
+  const sources = [
+    ['instances','EC2',r=>r.InstanceId],['rdsInstances','RDS',r=>r.DBInstanceIdentifier],
+    ['ecacheClusters','ElastiCache',r=>r.CacheClusterId],['albs','ALB',r=>r.LoadBalancerName || (r.LoadBalancerArn || '').split('/').pop()],
+    ['lambdaFns','Lambda',r=>r.FunctionName],['ecsServices','ECS',r=>r.serviceName || ''],
+    ['redshiftClusters','Redshift',r=>r.ClusterIdentifier],['sgs','Security Group',r=>r.GroupId],
+    ['vpcs','VPC',r=>r.VpcId],['subnets','Subnet',r=>r.SubnetId],['igws','IGW',r=>r.InternetGatewayId],
+    ['nats','NAT GW',r=>r.NatGatewayId],['vpces','VPC Endpoint',r=>r.VpcEndpointId],['s3bk','S3',r=>r.Name || '']
+  ];
+  sources.forEach(([field,type,getId])=>(ctx[field] || []).forEach(raw=>{
+    const id = getId(raw);
+    if (!legacyKeys.has(id)) legacyKeys.set(id,new Set());
+    legacyKeys.get(id).add(resourceOverrideKey(raw,type,id));
+  }));
+  function overrideFor(raw,type,id) {
+    const key = resourceOverrideKey(raw,type,id);
+    const own = Object.prototype.hasOwnProperty;
+    const value = own.call(_classificationOverrides,key) ? _classificationOverrides[key] :
+      legacyKeys.get(id)?.size === 1 && own.call(_classificationOverrides,id) ? _classificationOverrides[id] : null;
+    return typeof value === 'string' && own.call(_TIER_RPO_RTO,value) ? value : null;
+  }
+  function addResult(raw,row) {
+    row.overrideKey = resourceOverrideKey(raw,row.type,row.id);
+    const scope = JSON.parse(row.overrideKey);
+    row._accountId = scope[0]; row._region = scope[1];
+    results.push(row);
+  }
   const vpcNameMap = {};
   (ctx.vpcs || []).forEach(function(v) { vpcNameMap[v.VpcId] = gn(v, v.VpcId); });
   // Build subnet->VPC lookup for resources that only have SubnetId
@@ -425,9 +452,9 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(inst);
     const sc = _scoreClassification(name, 'instance', vpcName, null, tm);
-    const tier = _classificationOverrides[inst.InstanceId] || sc.tier;
+    const tier = overrideFor(inst,'EC2',inst.InstanceId) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: inst.InstanceId, name: name, type: 'EC2', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[inst.InstanceId], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(inst,{ id: inst.InstanceId, name: name, type: 'EC2', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(inst,'EC2',inst.InstanceId), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify RDS
   (ctx.rdsInstances || []).forEach(function(db) {
@@ -436,9 +463,9 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(db);
     const sc = _scoreClassification(name, 'rds', vpcName, null, tm);
-    const tier = _classificationOverrides[name] || sc.tier;
+    const tier = overrideFor(db,'RDS',name) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'RDS', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(db,{ id: name, name: name, type: 'RDS', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(db,'RDS',name), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify ElastiCache
   (ctx.ecacheClusters || []).forEach(function(ec) {
@@ -447,9 +474,9 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(ec);
     const sc = _scoreClassification(name, 'elasticache', vpcName, null, tm);
-    const tier = _classificationOverrides[name] || sc.tier;
+    const tier = overrideFor(ec,'ElastiCache',name) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'ElastiCache', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(ec,{ id: name, name: name, type: 'ElastiCache', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(ec,'ElastiCache',name), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify ALBs
   (ctx.albs || []).forEach(function(alb) {
@@ -459,9 +486,9 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(alb);
     const sc = _scoreClassification(name, 'alb', vpcName, null, tm);
-    const tier = _classificationOverrides[name] || sc.tier;
+    const tier = overrideFor(alb,'ALB',name) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'ALB', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(alb,{ id: name, name: name, type: 'ALB', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(alb,'ALB',name), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify Lambda
   (ctx.lambdaFns || []).forEach(function(fn) {
@@ -471,9 +498,9 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(fn);
     const sc = _scoreClassification(name, 'lambda', vpcName, null, tm);
-    const tier = _classificationOverrides[name] || sc.tier;
+    const tier = overrideFor(fn,'Lambda',name) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'Lambda', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(fn,{ id: name, name: name, type: 'Lambda', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(fn,'Lambda',name), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify ECS
   (ctx.ecsServices || []).forEach(function(svc) {
@@ -483,9 +510,9 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(svc);
     const sc = _scoreClassification(name, 'ecs', vpcName, null, tm);
-    const tier = _classificationOverrides[name] || sc.tier;
+    const tier = overrideFor(svc,'ECS',name) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'ECS', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(svc,{ id: name, name: name, type: 'ECS', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(svc,'ECS',name), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify Redshift
   (ctx.redshiftClusters || []).forEach(function(rs) {
@@ -494,76 +521,70 @@ function runClassificationEngine(ctx) {
     const vpcName = vpcNameMap[vpcId] || '';
     const tm = _getTagMap(rs);
     const sc = _scoreClassification(name, 'redshift', vpcName, null, tm);
-    const tier = _classificationOverrides[name] || sc.tier;
+    const tier = overrideFor(rs,'Redshift',name) || sc.tier;
     const meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'Redshift', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    addResult(rs,{ id: name, name: name, type: 'Redshift', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(rs,'Redshift',name), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify Security Groups
   (ctx.sgs || []).forEach(function(sg) {
     const id = sg.GroupId; let name = gn(sg, id);
     let vpcId = sg.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(sg);
     const sc = _scoreClassification(name, 'security-group', vpcName, null, tm);
-    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: id, name: name, type: 'Security Group', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    const tier = overrideFor(sg,'Security Group',id) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(sg,{ id: id, name: name, type: 'Security Group', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(sg,'Security Group',id), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify VPCs
   (ctx.vpcs || []).forEach(function(v) {
     const id = v.VpcId; let name = gn(v, id); let tm = _getTagMap(v);
     const sc = _scoreClassification(name, 'vpc', name, null, tm);
-    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: id, name: name, type: 'VPC', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: id, vpcName: name, tags: tm });
+    const tier = overrideFor(v,'VPC',id) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(v,{ id: id, name: name, type: 'VPC', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(v,'VPC',id), vpcId: id, vpcName: name, tags: tm });
   });
   // Classify Subnets
   (ctx.subnets || []).forEach(function(s) {
     const id = s.SubnetId; let name = gn(s, id); let vpcId = s.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(s);
     const sc = _scoreClassification(name, 'subnet', vpcName, null, tm);
-    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: id, name: name, type: 'Subnet', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    const tier = overrideFor(s,'Subnet',id) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(s,{ id: id, name: name, type: 'Subnet', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(s,'Subnet',id), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify IGWs
   (ctx.igws || []).forEach(function(gw) {
     const id = gw.InternetGatewayId; let name = gn(gw, id); let vpcId = (gw.Attachments && gw.Attachments[0]) ? gw.Attachments[0].VpcId : ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(gw);
     const sc = _scoreClassification(name, 'igw', vpcName, null, tm);
-    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: id, name: name, type: 'IGW', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    const tier = overrideFor(gw,'IGW',id) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(gw,{ id: id, name: name, type: 'IGW', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(gw,'IGW',id), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify NAT GWs
   (ctx.nats || []).forEach(function(ng) {
     const id = ng.NatGatewayId; let name = gn(ng, id); let vpcId = ng.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(ng);
     const sc = _scoreClassification(name, 'nat-gateway', vpcName, null, tm);
-    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: id, name: name, type: 'NAT GW', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    const tier = overrideFor(ng,'NAT GW',id) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(ng,{ id: id, name: name, type: 'NAT GW', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(ng,'NAT GW',id), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify VPC Endpoints
   (ctx.vpces || []).forEach(function(ve) {
     const id = ve.VpcEndpointId; let name = ve.ServiceName || id; let vpcId = ve.VpcId || ''; let vpcName = vpcNameMap[vpcId] || ''; let tm = _getTagMap(ve);
     const sc = _scoreClassification(name, 'vpc-endpoint', vpcName, null, tm);
-    const tier = _classificationOverrides[id] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: id, name: name, type: 'VPC Endpoint', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[id], vpcId: vpcId, vpcName: vpcName, tags: tm });
+    const tier = overrideFor(ve,'VPC Endpoint',id) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(ve,{ id: id, name: name, type: 'VPC Endpoint', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(ve,'VPC Endpoint',id), vpcId: vpcId, vpcName: vpcName, tags: tm });
   });
   // Classify S3 Buckets
   (ctx.s3bk || []).forEach(function(b) {
     const name = b.Name || ''; let tm = _getTagMap(b);
     const sc = _scoreClassification(name, 's3', '', null, tm);
-    const tier = _classificationOverrides[name] || sc.tier; let meta = _TIER_RPO_RTO[tier];
-    results.push({ id: name, name: name, type: 'S3', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !_classificationOverrides[name], vpcId: '', vpcName: '', tags: tm });
+    const tier = overrideFor(b,'S3',name) || sc.tier; let meta = _TIER_RPO_RTO[tier];
+    addResult(b,{ id: name, name: name, type: 'S3', tier: tier, rpo: meta.rpo, rto: meta.rto, auto: !overrideFor(b,'S3',name), vpcId: '', vpcName: '', tags: tm });
   });
-  // Enrich classification data with account IDs from source resources
-  const _clResAcct = {};
-  (ctx.instances || []).forEach(function(r) { _clResAcct[r.InstanceId] = r._accountId; });
-  (ctx.rdsInstances || []).forEach(function(r) { _clResAcct[r.DBInstanceIdentifier] = r._accountId; });
-  (ctx.ecacheClusters || []).forEach(function(r) { _clResAcct[r.CacheClusterId] = r._accountId; });
-  (ctx.albs || []).forEach(function(r) { _clResAcct[r.LoadBalancerName || r.LoadBalancerArn] = r._accountId; });
-  (ctx.lambdaFns || []).forEach(function(r) { _clResAcct[r.FunctionName] = r._accountId; });
-  (ctx.ecsServices || []).forEach(function(r) { _clResAcct[r.serviceName || r.serviceArn] = r._accountId; });
-  (ctx.sgs || []).forEach(function(r) { _clResAcct[r.GroupId] = r._accountId; });
-  (ctx.vpcs || []).forEach(function(r) { _clResAcct[r.VpcId] = r._accountId; });
-  (ctx.subnets || []).forEach(function(r) { _clResAcct[r.SubnetId] = r._accountId; });
-  (ctx.s3bk || []).forEach(function(r) { _clResAcct[r.Name] = r._accountId; });
-  results.forEach(function(r) { if (_clResAcct[r.id]) r._accountId = _clResAcct[r.id]; });
   _classificationData = results;
   _discoveredTags = _discoverTagKeys(ctx);
   return results;
+}
+
+export function resetClassificationOverride(overrideKey) {
+  delete _classificationOverrides[overrideKey];
+  const row = _classificationData.find(r => r.overrideKey === overrideKey);
+  if (row && new Set(_classificationData.filter(r => r.id === row.id).map(r => r.overrideKey)).size === 1)
+    delete _classificationOverrides[row.id];
 }
 
 /**
@@ -693,7 +714,9 @@ function _collectStatements(principal, iamData) {
     _stmtArr(doc.Statement).forEach(st => stmts.push(st));
   });
   (principal.AttachedManagedPolicies || []).forEach(mp => {
-    const pol = (iamData.policies || []).find(p => p.Arn === mp.PolicyArn || p.PolicyName === mp.PolicyName);
+    const policies = iamData.policies || [];
+    const named = !mp.PolicyArn && mp.PolicyName ? policies.filter(p => p.PolicyName === mp.PolicyName) : [];
+    const pol = mp.PolicyArn ? policies.find(p => p.Arn === mp.PolicyArn) : named.length === 1 ? named[0] : null;
     if (pol) {
       const ver = (pol.PolicyVersionList || []).find(v => v.IsDefaultVersion);
       if (ver) {
@@ -837,7 +860,7 @@ if (typeof window !== 'undefined') {
     // Pure logic functions
     _buildInventoryData, _buildInventoryDataSync, _filterInventory, _getTagMap, _safeRegex,
     _scoreClassification, _discoverTagKeys, runClassificationEngine,
-    prepareIAMReviewData, matchAction, matchResource, evaluateCondition,
+    resetClassificationOverride, prepareIAMReviewData, matchAction, matchResource, evaluateCondition,
     _collectStatements, canDo, summarizePermissions
   });
 }

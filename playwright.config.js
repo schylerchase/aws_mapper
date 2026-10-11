@@ -1,4 +1,6 @@
 const { defineConfig } = require('@playwright/test');
+const testPort = Number(process.env.AWS_MAPPER_TEST_PORT || 30821);
+process.env.AWS_MAPPER_TEST_URL = `http://127.0.0.1:${testPort}/index.html`;
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -12,8 +14,8 @@ module.exports = defineConfig({
     viewport: { width: 1400, height: 900 },
   },
   webServer: {
-    command: 'npx serve . -l 8377 --no-clipboard',
-    port: 8377,
-    reuseExistingServer: true,
+    command: `node node_modules/serve/build/main.js . -l tcp://127.0.0.1:${testPort} --no-port-switching --no-clipboard`,
+    url: process.env.AWS_MAPPER_TEST_URL,
+    reuseExistingServer: false,
   },
 });

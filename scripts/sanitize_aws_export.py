@@ -230,12 +230,25 @@ class SanitizationRegistry:
         self._vpc_id_to_cidr = {}     # {vpc_id: sanitized_vpc_cidr}
         self._subnet_to_vpc = {}      # {subnet_cidr: vpc_cidr}
         self._next_vpc_octet = 1      # next 10.{n}.0.0 allocation
+        self._next_ipv4_address = int(ipaddress.IPv4Address("10.0.0.0"))
 
         # Timestamp offset (random, applied uniformly)
         self._ts_offset = None
 
         # Public IP counter for RFC 5737 ranges
         self._public_ip_idx = 0
+
+        # A bijection masks service-account identities without changing glob
+        # matches between literal subjects and StringLike conditions.
+        subject_rng = random.Random(seed)
+        subject_chars = ""
+        for alphabet in ("abcdefghijklmnopqrstuvwxyz", "0123456789"):
+            replacement = list(alphabet)
+            while any(a == b for a, b in zip(alphabet, replacement)):
+                subject_rng.shuffle(replacement)
+            subject_chars += "".join(replacement)
+        self._oidc_subject_translation = str.maketrans(
+            "abcdefghijklmnopqrstuvwxyz0123456789", subject_chars)
 
     def _get_or_create(self, category, original, factory):
         """Core get-or-create. Returns cached mapping or creates via factory."""
@@ -276,21 +289,7 @@ class SanitizationRegistry:
 
     # -- VPC CIDRs --
     def map_vpc_cidr(self, cidr, vpc_id=None):
-        if not cidr or cidr in PRESERVED_CIDRS:
-            return cidr
-        if cidr in self._vpc_cidr_map:
-            return self._vpc_cidr_map[cidr]
-
-        try:
-            net = ipaddress.IPv4Network(cidr, strict=False)
-        except (ValueError, TypeError):
-            return cidr
-
-        prefix = net.prefixlen
-        sanitized = f"10.{self._next_vpc_octet}.0.0/{prefix}"
-        self._next_vpc_octet += 1
-        self._vpc_cidr_map[cidr] = sanitized
-
+        sanitized = self.map_cidr(cidr)
         if vpc_id:
             self._vpc_id_to_cidr[vpc_id] = sanitized
 
@@ -298,64 +297,20 @@ class SanitizationRegistry:
 
     # -- Subnet CIDRs (must fall within parent VPC) --
     def map_subnet_cidr(self, cidr, vpc_id=None):
-        if not cidr or cidr in PRESERVED_CIDRS:
-            return cidr
+        return self.map_cidr(cidr)
 
-        # Check if already mapped
-        if cidr in self._vpc_cidr_map:
-            return self._vpc_cidr_map[cidr]
-
-        try:
-            net = ipaddress.IPv4Network(cidr, strict=False)
-        except (ValueError, TypeError):
-            return cidr
-
-        prefix = net.prefixlen
-
-        # Find parent VPC CIDR
-        parent_cidr = None
-        if vpc_id and vpc_id in self._vpc_id_to_cidr:
-            parent_cidr = self._vpc_id_to_cidr[vpc_id]
-        else:
-            # Try to find from pre-scanned relationships
-            parent_cidr = self._subnet_to_vpc.get(cidr)
-
-        if not parent_cidr:
-            # Fallback: treat as standalone CIDR
-            return self.map_cidr(cidr)
-
-        try:
-            parent_net = ipaddress.IPv4Network(parent_cidr, strict=False)
-        except (ValueError, TypeError):
-            return self.map_cidr(cidr)
-
-        # Allocate sequential subnet within parent range
-        idx = self._vpc_subnet_counter[parent_cidr]
-        self._vpc_subnet_counter[parent_cidr] += 1
-
-        # Calculate subnet offset within parent
-        parent_prefix = parent_net.prefixlen
-        subnet_bits = prefix - parent_prefix
-        if subnet_bits <= 0:
-            subnet_bits = 8  # fallback
-
-        # Compute subnet network address
-        parent_int = int(parent_net.network_address)
-        subnet_size = 1 << (32 - prefix)
-        subnet_addr = parent_int + (idx * subnet_size)
-
-        try:
-            sanitized = f"{ipaddress.IPv4Address(subnet_addr)}/{prefix}"
-            # Verify containment
-            sanitized_net = ipaddress.IPv4Network(sanitized, strict=False)
-            if not sanitized_net.subnet_of(parent_net):
-                # Wrap around if we exceed parent range
-                sanitized = f"{parent_net.network_address}/{prefix}"
-        except (ValueError, OverflowError):
-            sanitized = f"{parent_net.network_address}/{prefix}"
-
-        self._vpc_cidr_map[cidr] = sanitized
-        return sanitized
+    def _ipv4_parent(self, network):
+        """Find the most specific already-mapped enclosing network."""
+        parents = []
+        for original, sanitized in self._vpc_cidr_map.items():
+            try:
+                old = ipaddress.IPv4Network(original, strict=False)
+                new = ipaddress.IPv4Network(sanitized, strict=False)
+            except (ValueError, TypeError):
+                continue
+            if network.subnet_of(old):
+                parents.append((old, new))
+        return max(parents, key=lambda pair: pair[0].prefixlen) if parents else None
 
     # -- Generic CIDRs (route destinations, SG rules, etc.) --
     def map_cidr(self, cidr):
@@ -372,10 +327,29 @@ class SanitizationRegistry:
                 return cidr
             return cidr
 
-        prefix = net.prefixlen
-        sanitized = f"10.{self._next_vpc_octet}.0.0/{prefix}"
-        self._next_vpc_octet += 1
+        parent = self._ipv4_parent(net)
+        if parent:
+            old, new = parent
+            address = int(new.network_address) + int(net.network_address) - int(old.network_address)
+        else:
+            # Allocate aligned, disjoint roots; nested networks keep their offsets.
+            size = net.num_addresses
+            address = ((self._next_ipv4_address + size - 1) // size * size) % (1 << 32)
+            start = address
+            allocated = [ipaddress.IPv4Network(value) for value in self._vpc_cidr_map.values() if ":" not in value]
+            while True:
+                candidate = ipaddress.IPv4Network((address, net.prefixlen))
+                overlap = next((other for other in allocated if candidate.overlaps(other)), None)
+                if overlap is None and candidate != net:
+                    break
+                next_address = int(overlap.broadcast_address) + 1 if overlap else address + size
+                address = ((next_address + size - 1) // size * size) % (1 << 32)
+                if address == start:
+                    raise ValueError("No unused IPv4 range available for sanitization")
+            self._next_ipv4_address = address + size
+        sanitized = str(ipaddress.IPv4Network((address, net.prefixlen)))
         self._vpc_cidr_map[cidr] = sanitized
+        self._vpc_cidr_map[str(net)] = sanitized
         return sanitized
 
     # -- Private IPs --
@@ -386,21 +360,26 @@ class SanitizationRegistry:
             addr = ipaddress.IPv4Address(ip)
         except (ValueError, TypeError):
             return ip
-        if not addr.is_private:
+        host = ipaddress.IPv4Network(f"{addr}/32")
+        if not addr.is_private and not self._ipv4_parent(host):
             return self.map_public_ip(ip)
 
         return self._get_or_create("private_ip", ip,
-            lambda _: str(ipaddress.IPv4Address(
-                int(ipaddress.IPv4Address("10.0.0.1")) + self._next_id("priv_ip"))))
+            lambda _: str(ipaddress.IPv4Network(self.map_cidr(str(host))).network_address))
 
-    # -- Public IPs (use RFC 5737 ranges) --
+    # -- Public IPs (share known CIDRs; otherwise use RFC 5737 ranges) --
     def map_public_ip(self, ip):
         if not ip or not isinstance(ip, str):
             return ip
         try:
-            ipaddress.IPv4Address(ip)
+            addr = ipaddress.IPv4Address(ip)
         except (ValueError, TypeError):
             return ip
+
+        host = ipaddress.IPv4Network(f"{addr}/32")
+        if self._ipv4_parent(host):
+            return self._get_or_create("public_ip", ip,
+                lambda _: str(ipaddress.IPv4Network(self.map_cidr(str(host))).network_address))
 
         def _alloc(_):
             idx = self._public_ip_idx
@@ -464,6 +443,8 @@ class SanitizationRegistry:
 
     def _sanitize_arn_resource(self, resource, service):
         """Sanitize the resource portion of an ARN."""
+        if service == "iam" and resource.startswith("oidc-provider/"):
+            return "oidc-provider/" + self.map_oidc_issuer(resource[len("oidc-provider/"):])
         # Handle resource-type/resource-id patterns
         if "/" in resource:
             parts = resource.split("/")
@@ -510,6 +491,24 @@ class SanitizationRegistry:
             if RE_RESOURCE_ID.fullmatch(resource):
                 return self.map_resource_id(resource)
             return self.map_name(resource, service)
+
+    def map_oidc_issuer(self, issuer):
+        """Share one issuer identity between provider ARNs and claim keys."""
+        return self._get_or_create("oidc_issuer", issuer,
+            lambda _: f"oidc-provider-{self._next_id('oidc_issuer'):03d}.example.com")
+
+    def map_service_account_subject(self, subject):
+        if isinstance(subject, list):
+            return [self.map_service_account_subject(item) for item in subject]
+        if not isinstance(subject, str) or not subject.startswith("system:serviceaccount:"):
+            return _regex_fallback(subject, self)
+        parts = subject.split(":")
+        if len(parts) != 4:
+            return _regex_fallback(subject, self)
+        for index, category in ((2, "oidc_namespace"), (3, "oidc_service_account")):
+            parts[index] = self._get_or_create(category, parts[index],
+                lambda value: value.translate(self._oidc_subject_translation))
+        return ":".join(parts)
 
     # -- DNS names --
     def map_dns_name(self, name):
@@ -657,6 +656,35 @@ def build_cidr_relationships(data, registry):
     """Pre-scan to discover VPC->subnet CIDR mappings and register them."""
     vpcs = []
     subnets = []
+
+    # Register every IPv4 network before hosts, regardless of file/key order.
+    # Broadest-first allocation keeps VPCs, subnets, SGs and host /32s related.
+    networks = set()
+    def collect(value):
+        if isinstance(value, dict):
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+        elif isinstance(value, str):
+            if "/" in value and value not in PRESERVED_CIDRS:
+                try:
+                    networks.add(ipaddress.IPv4Network(value, strict=False))
+                    return
+                except ValueError:
+                    pass
+            # Policy documents can be JSON strings in AWS exports. Discover
+            # their ranges before allocating any private host addresses.
+            try:
+                parsed = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return
+            if isinstance(parsed, (dict, list)):
+                collect(parsed)
+    collect(data)
+    for network in sorted(networks, key=lambda item: (item.prefixlen, int(item.network_address))):
+        registry.map_cidr(str(network))
 
     for filename, content in data.items():
         if isinstance(content, dict):
@@ -846,6 +874,18 @@ def _regex_fallback(value, registry):
 
     result = value
 
+    # IPv4 literals also occur under IAM condition keys such as aws:SourceIp.
+    try:
+        if "/" in value:
+            network = ipaddress.IPv4Network(value, strict=False)
+            return registry.map_cidr(str(network))
+        address = ipaddress.IPv4Address(value)
+        if address.is_private:
+            return registry.map_private_ip(str(address))
+        return registry.map_public_ip(str(address))
+    except ValueError:
+        pass
+
     # Replace embedded ARNs
     for m in RE_ARN.finditer(result):
         sanitized = registry.map_arn(m.group(0))
@@ -957,9 +997,18 @@ def sanitize_policy_document(doc, registry):
 def _sanitize_policy_obj(doc, registry):
     """Sanitize a parsed IAM policy document."""
     result = {}
+    statements = doc.get("Statement", [])
+    if isinstance(statements, dict):
+        statements = [statements]
+    oidc_issuers = set()
+    if isinstance(statements, list):
+        for statement in statements:
+            oidc_issuers.update(_statement_oidc_issuers(statement))
     for k, v in doc.items():
         if k == "Statement" and isinstance(v, list):
-            result[k] = [_sanitize_statement(stmt, registry) for stmt in v]
+            result[k] = [_sanitize_statement(stmt, registry, oidc_issuers) for stmt in v]
+        elif k == "Statement" and isinstance(v, dict):
+            result[k] = _sanitize_statement(v, registry, oidc_issuers)
         elif k == "Version":
             result[k] = v  # Preserve policy version
         else:
@@ -967,9 +1016,26 @@ def _sanitize_policy_obj(doc, registry):
     return result
 
 
-def _sanitize_statement(stmt, registry):
-    """Sanitize a single IAM policy statement."""
+def _statement_oidc_issuers(stmt):
+    oidc_issuers = set()
+    if not isinstance(stmt, dict):
+        return oidc_issuers
+    for field in ("Principal", "NotPrincipal"):
+        principal = stmt.get(field)
+        federated = principal.get("Federated", []) if isinstance(principal, dict) else []
+        for arn in federated if isinstance(federated, list) else [federated]:
+            if isinstance(arn, str):
+                parts = arn.split(":", 5)
+                if len(parts) == 6 and parts[2] == "iam" and parts[5].startswith("oidc-provider/"):
+                    oidc_issuers.add(parts[5][len("oidc-provider/"):])
+    return oidc_issuers
+
+
+def _sanitize_statement(stmt, registry, oidc_issuers=None):
+    """Sanitize a statement using issuers shared across the policy document."""
     result = {}
+    if oidc_issuers is None:
+        oidc_issuers = _statement_oidc_issuers(stmt)
     for k, v in stmt.items():
         if k in ("Effect", "Sid"):
             result[k] = v
@@ -980,9 +1046,34 @@ def _sanitize_statement(stmt, registry):
         elif k == "Principal" or k == "NotPrincipal":
             result[k] = _sanitize_principal(v, registry)
         elif k == "Condition":
-            result[k] = deep_sanitize(v, registry, ["Condition"])
+            result[k] = _sanitize_policy_condition(v, registry, oidc_issuers)
         else:
             result[k] = v
+    return result
+
+
+def _sanitize_policy_condition(condition, registry, oidc_issuers):
+    if not isinstance(condition, dict):
+        return deep_sanitize(condition, registry, ["Condition"])
+    result = {}
+    for operator, claims in condition.items():
+        if not isinstance(claims, dict):
+            result[operator] = deep_sanitize(claims, registry, ["Condition", operator])
+            continue
+        sanitized = {}
+        for key, value in claims.items():
+            issuer, _, claim = key.rpartition(":")
+            new_key = key
+            if issuer in oidc_issuers:
+                new_key = registry.map_oidc_issuer(issuer) + ":" + claim
+                if claim == "aud":
+                    sanitized[new_key] = value
+                    continue
+                if claim == "sub":
+                    sanitized[new_key] = registry.map_service_account_subject(value)
+                    continue
+            sanitized[new_key] = deep_sanitize(value, registry, ["Condition", operator, key])
+        result[operator] = sanitized
     return result
 
 
@@ -1009,7 +1100,7 @@ def _sanitize_principal(principal, registry):
     if isinstance(principal, dict):
         result = {}
         for k, v in principal.items():
-            if k == "AWS":
+            if k in ("AWS", "Federated"):
                 if isinstance(v, str):
                     result[k] = registry.map_arn(v) if v.startswith("arn:") else _regex_fallback(v, registry)
                 elif isinstance(v, list):

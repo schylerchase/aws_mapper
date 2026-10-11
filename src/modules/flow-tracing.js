@@ -110,6 +110,8 @@ const HOP_TYPE_LABELS = {
   'route-table': 'Route Table',
   'nacl-outbound': 'NACL Outbound',
   'nacl-inbound': 'NACL Inbound',
+  'nacl-response': 'NACL Response',
+  'route-return': 'Return Route Table',
   'sg-outbound': 'SG Outbound',
   'sg-inbound': 'SG Inbound',
   'peering': 'VPC Peering',
@@ -368,6 +370,42 @@ export function traceInternetToResource(target, config, ctx, opts) {
 // ---------------------------------------------------------------------------
 // traceResourceToInternet — path from a resource outbound to the Internet
 // ---------------------------------------------------------------------------
+// NAT traffic crosses its subnet ACL on both sides of the translation.
+export function evaluateNatSubnetACLs(nat, source, config, ctx, opts) {
+  const nacl = nat && (ctx.subNacl || {})[nat.SubnetId];
+  if (!nacl) return { action: 'allow', checks: [] };
+  const sourceCidr = source.ip || source.cidr;
+  const destination = config.destinationIp || config.destinationCidr || '0.0.0.0/0';
+  function response(direction, cidr, explicitPort, minimum = 1024) {
+    const protocol = String(config.protocol).toLowerCase();
+    if (['icmp', 'icmpv6', '1', '58'].includes(protocol)) {
+      const requestType = Number(config.icmpType ?? config.port);
+      const responseType = protocol === 'icmpv6' || protocol === '58' ? (requestType === 128 ? 129 : requestType) : (requestType === 8 ? 0 : requestType);
+      return evaluateNACL(nacl, direction, config.protocol, responseType, cidr,
+        { ...opts, icmpType: responseType, icmpCode: config.icmpCode ?? 0 });
+    }
+    if (!['tcp', 'udp', '6', '17'].includes(protocol))
+      return evaluateNACL(nacl, direction, config.protocol, config.port, cidr, opts);
+    const ports = explicitPort != null ? [Number(explicitPort)] : [1024];
+    if (explicitPort == null) (nacl.Entries || []).forEach(e => {
+      if (e.PortRange) ports.push(e.PortRange.From, e.PortRange.To + 1);
+    });
+    for (const port of ports.filter(p => Number.isInteger(p) && p >= minimum && p <= 65535)) {
+      const result = evaluateNACL(nacl, direction, config.protocol, port, cidr, opts);
+      if (result.action === 'allow') return result;
+    }
+    return { action: 'deny', rule: 'NAT subnet ACL denies response ports' };
+  }
+  const checks = [
+    { label: 'inbound request from client', result: evaluateNACL(nacl, 'inbound', config.protocol, config.port, sourceCidr, opts) },
+    { label: 'outbound request to Internet', result: evaluateNACL(nacl, 'outbound', config.protocol, config.port, destination, opts) },
+    { label: 'inbound response from Internet', result: response('inbound', destination, config.natSourcePort) },
+    { label: 'outbound response to client', result: response('outbound', sourceCidr, config.sourcePort, config.sourcePort != null ? 1 : 1024) }
+  ];
+  const denied = checks.find(check => check.result.action === 'deny');
+  return { action: denied ? 'deny' : 'allow', rule: denied ? denied.label + ': ' + denied.result.rule : 'NAT subnet ACL allows request and response traffic', checks };
+}
+
 export function traceResourceToInternet(source, config, ctx, opts) {
   const path = []; let hopN = 1;
   let srcPos = resolveNetworkPosition(source.type, source.id, ctx);
@@ -411,6 +449,13 @@ export function traceResourceToInternet(source, config, ctx, opts) {
     return { path: path, blocked: { hop: hopN - 2, reason: 'No route to Internet in route table', suggestion: 'Add a route 0.0.0.0/0 \u2192 IGW or NAT Gateway' } };
   }
 
+  if (hasNatRoute && !hasIgwRoute) {
+    const nat = (ctx.nats || []).find(n => n.NatGatewayId === routeTarget);
+    const result = evaluateNatSubnetACLs(nat, srcPos, config, ctx, naclOpts);
+    path.push({ hop: hopN++, type: 'nat-nacl', id: nat ? nat.SubnetId : routeTarget, action: result.action, detail: 'NAT subnet ACL request and response checks', rule: result.rule });
+    if (result.action === 'deny') return { path, blocked: { hop: hopN - 1, reason: 'NAT subnet ACL denies traffic: ' + result.rule } };
+  }
+
   path.push({ hop: hopN++, type: 'target', id: 'Internet', action: 'allow', detail: 'Target: Internet (0.0.0.0/0)' });
   return { path: path, blocked: null };
 }
@@ -427,6 +472,60 @@ export function traceFlowLeg(source, target, config, ctx, opts) {
 // ---------------------------------------------------------------------------
 // traceFlow — main flow evaluation engine (resource-to-resource within VPCs)
 // ---------------------------------------------------------------------------
+function evaluateFlowResponseACLs(sourceNacl, targetNacl, config, sourceCidr, targetCidr) {
+  const protocol = String(config.protocol).toLowerCase();
+  const transport = ['tcp','udp','6','17'].includes(protocol);
+  let ports = [config.port];
+  let responseOpts;
+  if (transport) {
+    ports = config.sourcePort != null ? [Number(config.sourcePort)] : [1024];
+    if (config.sourcePort == null) [sourceNacl,targetNacl].forEach(nacl => {
+      (nacl?.Entries || []).forEach(entry => {
+        if (entry.PortRange) ports.push(Number(entry.PortRange.From),Number(entry.PortRange.To)+1);
+      });
+    });
+    const minimum = config.sourcePort != null ? 1 : 1024;
+    ports = [...new Set(ports)].filter(port => Number.isInteger(port) && port >= minimum && port <= 65535);
+  } else if (['icmp','icmpv6','1','58'].includes(protocol)) {
+    const requestType = Number(config.icmpType ?? config.port);
+    const responseType = protocol === 'icmpv6' || protocol === '58' ? (requestType === 128 ? 129 : requestType) : (requestType === 8 ? 0 : requestType);
+    ports = [responseType];
+    responseOpts = {icmpType:responseType,icmpCode:config.icmpCode ?? 0};
+  }
+  let rejected;
+  for (const port of ports) {
+    const source = evaluateNACL(sourceNacl,'inbound',config.protocol,port,targetCidr,responseOpts);
+    const target = evaluateNACL(targetNacl,'outbound',config.protocol,port,sourceCidr,responseOpts);
+    if (source.action === 'allow' && target.action === 'allow')
+      return {action:'allow',rule:'Both subnet ACLs allow response traffic on '+port,port};
+    rejected = source.action === 'deny' ? 'Source inbound: '+source.rule : 'Target outbound: '+target.rule;
+  }
+  return {action:'deny',rule:rejected || 'No valid response port'};
+}
+
+function actualTgwAttachment(ctx,vpcId,tgwId) {
+  return (ctx.tgwAttachments || []).some(att => !att._routeDerived &&
+    (att.ResourceId || (att.TransitGatewayAttachmentId ? att.VpcId : null)) === vpcId &&
+    att.TransitGatewayId === tgwId && att.State === 'available' &&
+    (!att.ResourceType || att.ResourceType === 'vpc'));
+}
+function connectedVpcRoute(route,sourceVpc,targetVpc,ctx) {
+  if (route.type === 'tgw') return actualTgwAttachment(ctx,sourceVpc,route.target) && actualTgwAttachment(ctx,targetVpc,route.target);
+  if (route.type !== 'pcx') return false;
+  return (ctx.peerings || []).some(p => p.VpcPeeringConnectionId === route.target &&
+    (!p.Status?.Code || p.Status.Code === 'active') &&
+    ((p.RequesterVpcInfo?.VpcId === sourceVpc && p.AccepterVpcInfo?.VpcId === targetVpc) ||
+      (p.AccepterVpcInfo?.VpcId === sourceVpc && p.RequesterVpcInfo?.VpcId === targetVpc)));
+}
+function returnRouteCheck(source,target,sourceCidr,ctx) {
+  const rt = (ctx.subRT || {})[target.subnetId];
+  const result = evaluateRouteTable(rt,sourceCidr);
+  const allowed = result.type !== 'blackhole' &&
+    (source.vpcId === target.vpcId || connectedVpcRoute(result,target.vpcId,source.vpcId,ctx));
+  return {action:allowed?'allow':'deny',id:rt?.RouteTableId || 'Target RT',
+    rule:result.detail || 'Return route '+result.type+' via '+result.target};
+}
+
 export function traceFlow(source, target, config, ctx) {
   const path = [];
   const srcPos = resolveNetworkPosition(source.type, source.id, ctx);
@@ -503,6 +602,12 @@ export function traceFlow(source, target, config, ctx) {
       return { path: path, blocked: { hop: hopN - 2, reason: 'Target security group denies inbound', suggestion: 'Add SG inbound rule for ' + config.protocol + '/' + config.port + ' from source' } };
     }
 
+    const response = evaluateFlowResponseACLs(srcNacl,tgtNacl,config,srcCidr,tgtCidr);
+    path.push({hop:hopN++,type:'nacl-response',id:'Subnet ACLs',action:response.action,detail:'Response traffic to source',rule:response.rule});
+    if (response.action === 'deny') return {path,blocked:{hop:hopN-1,reason:'Subnet ACL denies response traffic: '+response.rule}};
+    const reverse = returnRouteCheck(srcPos,tgtPos,srcCidr,ctx);
+    path.push({hop:hopN++,type:'route-return',id:reverse.id,action:reverse.action,detail:'Target route table lookup back to source',rule:reverse.rule});
+    if (reverse.action === 'deny') return {path,blocked:{hop:hopN-1,reason:'Target route table has no usable return route to source: '+reverse.rule}};
     path.push({ hop: hopN++, type: 'target', id: tgtPos.name || target.id, action: 'allow', detail: 'Target: ' + (tgtPos.name || target.id) + ' (' + target.type + ')', subnetId: tgtPos.subnetId });
     return { path: path, blocked: null };
   }
@@ -536,7 +641,7 @@ export function traceFlow(source, target, config, ctx) {
   (ctx.peerings || []).forEach(function (p) {
     const req = p.RequesterVpcInfo || {};
     const acc = p.AccepterVpcInfo || {};
-    if ((req.VpcId === srcPos.vpcId && acc.VpcId === tgtPos.vpcId) || (acc.VpcId === srcPos.vpcId && req.VpcId === tgtPos.vpcId)) {
+    if (rtResultX.type === 'pcx' && p.VpcPeeringConnectionId === rtResultX.target && (!p.Status?.Code || p.Status.Code === 'active') && ((req.VpcId === srcPos.vpcId && acc.VpcId === tgtPos.vpcId) || (acc.VpcId === srcPos.vpcId && req.VpcId === tgtPos.vpcId))) {
       peeringRoute = p;
     }
   });
@@ -544,10 +649,7 @@ export function traceFlow(source, target, config, ctx) {
   if (peeringRoute) {
     path.push({ hop: hopN++, type: 'peering', id: peeringRoute.VpcPeeringConnectionId || 'PCX', action: 'allow', detail: 'VPC Peering connection between ' + srcPos.vpcId + ' and ' + tgtPos.vpcId, rule: 'Peering: ' + peeringRoute.VpcPeeringConnectionId });
   } else {
-    let tgwRoute = false;
-    (ctx.tgwAttachments || []).forEach(function (att) {
-      if (att.ResourceId === srcPos.vpcId || att.ResourceId === tgtPos.vpcId) tgwRoute = true;
-    });
+    const tgwRoute = rtResultX.type === 'tgw' && connectedVpcRoute(rtResultX,srcPos.vpcId,tgtPos.vpcId,ctx);
     if (tgwRoute) {
       path.push({ hop: hopN++, type: 'tgw', id: 'Transit Gateway', action: 'allow', detail: 'Transit Gateway route between VPCs' });
     } else {
@@ -573,6 +675,12 @@ export function traceFlow(source, target, config, ctx) {
     return { path: path, blocked: { hop: hopN - 2, reason: 'Target SG denies inbound from cross-VPC source', suggestion: 'Add SG inbound rule for ' + config.protocol + '/' + config.port } };
   }
 
+  const response = evaluateFlowResponseACLs(srcNaclX,tgtNaclX,config,srcCidr,tgtCidr);
+  path.push({hop:hopN++,type:'nacl-response',id:'Subnet ACLs',action:response.action,detail:'Response traffic to source',rule:response.rule});
+  if (response.action === 'deny') return {path,blocked:{hop:hopN-1,reason:'Subnet ACL denies response traffic: '+response.rule}};
+  const reverse = returnRouteCheck(srcPos,tgtPos,srcCidr,ctx);
+  path.push({hop:hopN++,type:'route-return',id:reverse.id,action:reverse.action,detail:'Target route table lookup back to source',rule:reverse.rule});
+  if (reverse.action === 'deny') return {path,blocked:{hop:hopN-1,reason:'Target route table has no usable return route to source: '+reverse.rule}};
   path.push({ hop: hopN++, type: 'target', id: tgtPos.name || target.id, action: 'allow', detail: 'Target: ' + (tgtPos.name || target.id) + ' (' + target.type + ')', subnetId: tgtPos.subnetId });
   return { path: path, blocked: null };
 }

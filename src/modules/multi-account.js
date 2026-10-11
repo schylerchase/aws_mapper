@@ -118,7 +118,6 @@ export function buildRlCtxFromData(textareas, accountLabel) {
     const vpcIds = new Set(vpcs.map(v => v.VpcId));
     subnets = subnets.filter(s => vpcIds.has(s.VpcId));
     const pubSubs = new Set();
-    rts.forEach(rt => { const hasIgw = rt.Routes && rt.Routes.some(r => r.GatewayId && r.GatewayId.startsWith('igw-') && r.State !== 'blackhole'); if (hasIgw)(rt.Associations || []).forEach(a => { if (a.SubnetId) pubSubs.add(a.SubnetId); }); });
 
     const igws = [], nats = [], vpces = [];
     igwRaw.forEach(g => { (g.Attachments || []).forEach(a => { if (vpcIds.has(a.VpcId)) igws.push(Object.assign({}, g, { _vpcId: a.VpcId })); }); });
@@ -135,7 +134,11 @@ export function buildRlCtxFromData(textareas, accountLabel) {
     lambdaFns.forEach(f => { (f.VpcConfig?.SubnetIds || []).forEach(s => { if (!lambdaBySub.has(s)) lambdaBySub.set(s, []); lambdaBySub.get(s).push(f); }); });
 
     const subRT = new Map(), subNacl = new Map(), sgByVpc = new Map();
+    const mainRT = new Map();
+    rts.forEach(rt => { if ((rt.Associations || []).some(a => a.Main)) mainRT.set(rt.VpcId,rt); });
     rts.forEach(rt => { (rt.Associations || []).forEach(a => { if (a.SubnetId) subRT.set(a.SubnetId, rt); }); });
+    subnets.forEach(sub => { if (!subRT.has(sub.SubnetId) && mainRT.has(sub.VpcId)) subRT.set(sub.SubnetId,mainRT.get(sub.VpcId)); });
+    subRT.forEach((rt,subnetId) => { if ((rt.Routes || []).some(r => r.GatewayId && r.GatewayId.startsWith('igw-') && r.State !== 'blackhole')) pubSubs.add(subnetId); });
     nacls.forEach(n => { (n.Associations || []).forEach(a => { if (a.SubnetId) subNacl.set(a.SubnetId, n); }); });
     sgs.forEach(sg => { const v = sg.VpcId; if (v) { if (!sgByVpc.has(v)) sgByVpc.set(v, []); sgByVpc.get(v).push(sg); } });
 
@@ -148,7 +151,7 @@ export function buildRlCtxFromData(textareas, accountLabel) {
     redshiftClusters.forEach(c => { const v = c.VpcId; if (v) { if (!redshiftByVpc.has(v)) redshiftByVpc.set(v, []); redshiftByVpc.get(v).push(c); } });
 
     const tgwAttachments = [...tgwAttRaw];
-    rts.forEach(rt => { (rt.Routes || []).forEach(r => { if (r.TransitGatewayId) { const vid = rt.VpcId || ((rt.Associations || [])[0] || {}).VpcId; tgwAttachments.push({ TransitGatewayId: r.TransitGatewayId, VpcId: vid, _accountId: rt._accountId || '', _region: rt._region || (vid && vpcRegion[vid]) || 'unknown' }); } }); });
+    rts.forEach(rt => { (rt.Routes || []).forEach(r => { if (r.TransitGatewayId) { const vid = rt.VpcId || ((rt.Associations || [])[0] || {}).VpcId; tgwAttachments.push({ TransitGatewayId: r.TransitGatewayId, VpcId: vid, _routeDerived:true, _accountId: rt._accountId || '', _region: rt._region || (vid && vpcRegion[vid]) || 'unknown' }); } }); });
     tgwAttRaw.forEach(t => { tagResource(t); fillRegion(t); });
     tgwAttachments.forEach(t => { if ((!t._region || t._region === 'unknown') && t._accountId && acctRegion[t._accountId]) t._region = acctRegion[t._accountId]; if (!t._region || t._region === 'unknown') { const vid = t.VpcId; if (vid && vpcRegion[vid]) t._region = vpcRegion[vid]; } });
 

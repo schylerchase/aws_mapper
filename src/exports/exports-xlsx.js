@@ -249,6 +249,8 @@ function _xlsxSummaryRow(ws,row,label,value,cols){
 
 function _rptBuildXlsxSummary(wb, preFilteredFindings){
   var c=_rlCtx;
+  var acctFilter=_rptGetAccountFilter();
+  function _sf(arr){return _rptFilterByAccount(arr||[],acctFilter)}
   var cols=4;
   var ws={};
   var r=0;
@@ -287,10 +289,10 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
   // Infrastructure Overview section
   if(c){
     _xlsxSummarySection(ws,r,'INFRASTRUCTURE OVERVIEW',cols);r++;
-    var counts=[['VPCs',(c.vpcs||[]).length],['Subnets',(c.subnets||[]).length],
-      ['EC2 Instances',(c.instances||[]).length],['RDS Databases',(c.rdsInstances||[]).length],
-      ['Load Balancers',(c.albs||[]).length],['ECS Services',(c.ecsServices||[]).length],
-      ['Lambda Functions',(c.lambdaFns||[]).length],['Security Groups',(c.sgs||[]).length]];
+    var counts=[['VPCs',_sf(c.vpcs).length],['Subnets',_sf(c.subnets).length],
+      ['EC2 Instances',_sf(c.instances).length],['RDS Databases',_sf(c.rdsInstances).length],
+      ['Load Balancers',_sf(c.albs).length],['ECS Services',_sf(c.ecsServices).length],
+      ['Lambda Functions',_sf(c.lambdaFns).length],['Security Groups',_sf(c.sgs).length]];
     // Two-column layout: resource pairs side by side
     for(let i=0;i<counts.length;i+=2){
       var lAddr=XLSX.utils.encode_cell({r:r,c:0});
@@ -306,8 +308,8 @@ function _rptBuildXlsxSummary(wb, preFilteredFindings){
       r++;
     }
     // Region row
-    var _regSet=new Set(c._regions||[]);
-    Object.keys(c).forEach(function(k){var a=c[k];if(Array.isArray(a))a.forEach(function(o){if(o&&o._region&&o._region!=='unknown')_regSet.add(o._region)})});
+    var _regSet=new Set(!acctFilter||acctFilter==='all'?c._regions||[]:[]);
+    Object.keys(c).forEach(function(k){var a=c[k];if(Array.isArray(a))_sf(a).forEach(function(o){if(o&&o._region&&o._region!=='unknown')_regSet.add(o._region)})});
     var regions=Array.from(_regSet).filter(Boolean).sort();
     if(regions.length){
       var regLabel=XLSX.utils.encode_cell({r:r,c:0});
@@ -510,29 +512,29 @@ function _rptBuildXlsxInventory(wb){
   _af(c.s3bk).forEach(function(b){
     rows.push([_a(b),_r(b),'','S3 Bucket',b.Name,b.Name,'','',b.CreationDate||'']);
   });
-  (c.peerings||[]).forEach(function(p){
+  _af(c.peerings).forEach(function(p){
     var req=p.RequesterVpcInfo||{};var acc=p.AccepterVpcInfo||{};
     rows.push([_a(p),_r(p),req.VpcId||'','VPC Peering',p.VpcPeeringConnectionId,_rptTagName(p),req.CidrBlock+' <> '+acc.CidrBlock,p.Status?p.Status.Code:'','']);
   });
-  (c.zones||[]).forEach(function(z){
+  _af(c.zones).forEach(function(z){
     var recs=c.recsByZone&&c.recsByZone[z.Id]?c.recsByZone[z.Id].length:z.ResourceRecordSetCount||0;
     var vis=z.Config&&z.Config.PrivateZone?'private':'public';
     rows.push([_a(z),_r(z),'','Route 53',z.Id,z.Name||z.Id,recs+' records',vis,'']);
   });
-  (c.wafAcls||[]).forEach(function(w){
+  _af(c.wafAcls).forEach(function(w){
     var ruleCount=(w.Rules||[]).length;
     rows.push([_a(w),_r(w),'','WAF',w.Id||w.Name,w.Name||w.Id||'',ruleCount+' rules','','']);
   });
-  (c.cfDistributions||[]).forEach(function(cf){
+  _af(c.cfDistributions).forEach(function(cf){
     rows.push([_a(cf),_r(cf),'','CloudFront',cf.Id,cf.DomainName||cf.Id,cf.Status||'','','']);
   });
-  (c.vpns||[]).forEach(function(v){
+  _af(c.vpns).forEach(function(v){
     rows.push([_a(v),_r(v),'','VPN',v.VpnConnectionId,_rptTagName(v)||(v.VpnConnectionId),v.Type||'',v.State||'','']);
   });
-  (c.tgwAttachments||[]).forEach(function(t){
+  _af(c.tgwAttachments).forEach(function(t){
     rows.push([_a(t),_r(t),t.VpcId||'','TGW Attachment',t.TransitGatewayAttachmentId||t.TransitGatewayId||'',_rptTagName(t)||'',t.ResourceType||'',t.State||'','']);
   });
-  (c.tgs||[]).forEach(function(tg){
+  _af(c.tgs).forEach(function(tg){
     rows.push([_a(tg),_r(tg),tg.VpcId||'','Target Group',tg.TargetGroupName||'',tg.TargetGroupName||'',tg.Protocol+':'+tg.Port,tg.TargetType||'','']);
   });
   if(!rows.length) return;
@@ -728,13 +730,14 @@ export async function exportFullXlsx(){
 function _rptBuildXlsxAppSummary(wb){
   if(!_classificationData.length&&_rlCtx) runClassificationEngine(_rlCtx);
   if(typeof _autoDiscoverApps==='function') _autoDiscoverApps();
-  if(!_appRegistry.length) return;
+  var scopedApps=_rptScopedAppRows();
+  if(!scopedApps.length) return;
   var tierPri={critical:1,high:2,medium:3,low:4};
   var sumHeaders=['Application','Type','Criticality','Resources','RPO','RTO'];
   var sumRows=[];
   var detailRows=[];
-  _appRegistry.forEach(function(app){
-    var matched=_matchAppResources(app);
+  scopedApps.forEach(function(row){
+    var app=row.app;var matched=row.matched;
     var bestTier='low';
     matched.forEach(function(r){if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier});
     var tier=app.tier||bestTier;
@@ -762,9 +765,10 @@ function _rptBuildXlsxIAMReview(wb){
     var raw=safeParse(gv('in_iam'));
     if(raw){var p=parseIAMData(raw);if(p)prepareIAMReviewData(p)}
   }
-  if(!_iamReviewData.length) return;
+  var iamRows=_rptFilterByAccount(_iamReviewData,_rptGetAccountFilter());
+  if(!iamRows.length) return;
   var headers=['Name','Type','Admin','MFA','Console','Policies','Findings','Cross-Account Trusts','Created','Last Used'];
-  var rows=_iamReviewData.slice().sort(function(a,b){
+  var rows=iamRows.slice().sort(function(a,b){
     if(a.isAdmin!==b.isAdmin) return a.isAdmin?-1:1;
     return b.findings.length-a.findings.length;
   }).map(function(r){

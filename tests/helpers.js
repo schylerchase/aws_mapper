@@ -1,6 +1,6 @@
 const { expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:8377/index.html';
+const BASE = `http://127.0.0.1:${process.env.AWS_MAPPER_TEST_PORT || 30821}/index.html`;
 
 /**
  * Navigate to the app and load demo data.

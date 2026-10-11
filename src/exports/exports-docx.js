@@ -133,14 +133,18 @@ function _docxExecSummary(isExec){
   var h=_docxP('Executive Summary','Heading1');
   var c=_rlCtx;
   if(!c) return h+_docxP('No infrastructure data loaded.');
-  var counts=[['VPCs',(c.vpcs||[]).length],['Subnets',(c.subnets||[]).length],
-    ['EC2 Instances',(c.instances||[]).length],['RDS Databases',(c.rdsInstances||[]).length],
-    ['Load Balancers',(c.albs||[]).length],['Lambda Functions',(c.lambdaFns||[]).length],
-    ['Security Groups',(c.sgs||[]).length],['ECS Services',(c.ecsServices||[]).length]];
+  var acctF=_rptGetAccountFilter();
+  function _sf(arr){return _rptFilterByAccount(arr||[],acctF)}
+  var regions=new Set(!acctF||acctF==='all'?c._regions||[]:[]);
+  Object.keys(c).forEach(function(k){if(Array.isArray(c[k]))_sf(c[k]).forEach(function(r){if(r&&r._region&&r._region!=='unknown')regions.add(r._region)})});
+  var counts=[['VPCs',_sf(c.vpcs).length],['Subnets',_sf(c.subnets).length],
+    ['EC2 Instances',_sf(c.instances).length],['RDS Databases',_sf(c.rdsInstances).length],
+    ['Load Balancers',_sf(c.albs).length],['Lambda Functions',_sf(c.lambdaFns).length],
+    ['Security Groups',_sf(c.sgs).length],['ECS Services',_sf(c.ecsServices).length]];
   if(isExec){
     h+=_docxP('This report covers the AWS infrastructure assessment performed on '+(_rptState.date||'today')+'. The environment spans '+
-      (c._regions?c._regions.size:1)+' region(s) with '+(c.vpcs||[]).length+' VPC(s) hosting '+
-      ((c.instances||[]).length+(c.rdsInstances||[]).length+(c.lambdaFns||[]).length)+' compute/database resources.');
+      regions.size+' region(s) with '+_sf(c.vpcs).length+' VPC(s) hosting '+
+      (_sf(c.instances).length+_sf(c.rdsInstances).length+_sf(c.lambdaFns).length)+' compute/database resources.');
     h+=_docxP('');
     h+=_docxP('Infrastructure at a Glance','Heading2');
   }else{
@@ -249,11 +253,12 @@ function _docxIAMReview(isExec){
     var raw=safeParse(gv('in_iam'));
     if(raw){var p=parseIAMData(raw);if(p)prepareIAMReviewData(p)}
   }
-  if(!_iamReviewData.length) return h+_docxP('No IAM data available.');
-  var admins=_iamReviewData.filter(function(r){return r.isAdmin});
-  var crossAcct=_iamReviewData.filter(function(r){return r.crossAccounts.length>0});
+  var iamRows=_rptFilterByAccount(_iamReviewData,_rptGetAccountFilter());
+  if(!iamRows.length) return h+_docxP('No IAM data available.');
+  var admins=iamRows.filter(function(r){return r.isAdmin});
+  var crossAcct=iamRows.filter(function(r){return r.crossAccounts.length>0});
   if(isExec){
-    h+=_docxP(_iamReviewData.length+' IAM entities reviewed. '+admins.length+
+    h+=_docxP(iamRows.length+' IAM entities reviewed. '+admins.length+
       ' have administrative access. '+crossAcct.length+' have cross-account trust relationships.');
     if(admins.length){
       h+=_docxP('');h+=_docxP('Admin Access Entities','Heading2');
@@ -261,12 +266,12 @@ function _docxIAMReview(isExec){
         admins.map(function(r){return [r.name,r.type,r.lastUsed?r.lastUsed.toISOString().split('T')[0]:'Never']}));
     }
   }else{
-    h+=_docxBoldP('Total Entities',String(_iamReviewData.length));
+    h+=_docxBoldP('Total Entities',String(iamRows.length));
     h+=_docxBoldP('Admins',String(admins.length));
     h+=_docxBoldP('Cross-Account',String(crossAcct.length));
     h+=_docxP('');
     h+=_docxTable(['Name','Type','Admin','MFA','Policies','Findings'],
-      _iamReviewData.map(function(r){
+      iamRows.map(function(r){
         return [r.name,r.type,r.isAdmin?'YES':'No',r.hasMFA?'Yes':'No',
           String(r.policies),String(r.findings.length)];
       }));
@@ -357,19 +362,20 @@ function _docxActionPlan(isExec){
 
 function _docxAppSummary(isExec){
   var h=_docxP('Application Summary','Heading1');
-  if(!_appRegistry.length) return h+_docxP('No applications defined.');
+  var scopedApps=_rptScopedAppRows();
+  if(!scopedApps.length) return h+_docxP('No applications defined.');
   var tierPri={critical:1,high:2,medium:3,low:4};
   if(isExec){
-    h+=_docxP(_appRegistry.length+' applications registered in the environment:');
-    var rows=_appRegistry.map(function(app){
-      var matched=_matchAppResources(app);
+    h+=_docxP(scopedApps.length+' applications registered in the environment:');
+    var rows=scopedApps.map(function(row){
+      var app=row.app;var matched=row.matched;
       var tier=app.tier||'low';
       return [app.name,app.type||'',(tier).toUpperCase(),String(matched.length)];
     }).sort(function(a,b){return(tierPri[a[2].toLowerCase()]||99)-(tierPri[b[2].toLowerCase()]||99)});
     h+=_docxTable(['Application','Type','Criticality','Resources'],rows);
   }else{
-    _appRegistry.forEach(function(app){
-      var matched=_matchAppResources(app);
+    scopedApps.forEach(function(row){
+      var app=row.app;var matched=row.matched;
       var tier=app.tier||'low';
       var meta=_TIER_RPO_RTO[tier]||_TIER_RPO_RTO.low;
       h+=_docxP('');h+=_docxP(app.name+' ('+tier.toUpperCase()+')','Heading2');

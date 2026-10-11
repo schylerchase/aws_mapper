@@ -93,8 +93,15 @@ function generateTerraform(ctx,opts){
   const rdsInstances=(ctx.rdsInstances||[]).filter(r=>{const sn=r.DBSubnetGroup;return sn&&(sn.Subnets||[]).some(s=>subIds.has(s.SubnetIdentifier))});
   const lambdaFns=(ctx.lambdaFns||[]).filter(l=>{const vc=l.VpcConfig;return vc&&(vc.SubnetIds||[]).some(s=>subIds.has(s))});
   const ecsServices=(ctx.ecsServices||[]).filter(e=>{const nc=(e.networkConfiguration||{}).awsvpcConfiguration;return nc&&(nc.subnets||[]).some(s=>subIds.has(s))});
-  const ecacheClusters=(ctx.ecacheClusters||[]).filter(c=>c.CacheSubnetGroupName);
-  const redshiftClusters=(ctx.redshiftClusters||[]).filter(c=>c.ClusterSubnetGroupName);
+  function clusterInScope(c){
+    if(!scopeVpc)return true;
+    const vpcId=c.VpcId||c._vpcId;
+    if(vpcId)return vpcIds.has(vpcId);
+    const groups=c.SecurityGroups||c.VpcSecurityGroups||[];
+    return groups.some(g=>sgs.some(s=>s.GroupId===(g.SecurityGroupId||g.VpcSecurityGroupId)));
+  }
+  const ecacheClusters=(ctx.ecacheClusters||[]).filter(c=>c.CacheSubnetGroupName&&clusterInScope(c));
+  const redshiftClusters=(ctx.redshiftClusters||[]).filter(c=>c.ClusterSubnetGroupName&&clusterInScope(c));
   const albs=(ctx.albs||[]).filter(a=>(a.AvailabilityZones||[]).some(az=>subIds.has(az.SubnetId)));
   const volumes=(ctx.volumes||[]).filter(v=>v.Attachments&&v.Attachments.some(a=>instances.find(i=>i.InstanceId===a.InstanceId)));
   const s3bk=scopeVpc?[]:(ctx.s3bk||[]);
@@ -774,6 +781,8 @@ function generateCloudFormation(ctx,opts){
       if(route.DestinationCidrBlock)routeProps.DestinationCidrBlock=route.DestinationCidrBlock;
       if(route.GatewayId&&route.GatewayId!=='local')routeProps.GatewayId=cfnRef(route.GatewayId);
       if(route.NatGatewayId)routeProps.NatGatewayId=cfnRef(route.NatGatewayId);
+      if(route.TransitGatewayId)routeProps.TransitGatewayId=cfnRef(route.TransitGatewayId);
+      if(route.VpcPeeringConnectionId)routeProps.VpcPeeringConnectionId=cfnRef(route.VpcPeeringConnectionId);
       template.Resources[ln+'Route'+ri]={Type:'AWS::EC2::Route',Properties:routeProps};
     });
     (rt.Associations||[]).forEach((assoc,ai)=>{
@@ -997,6 +1006,8 @@ function _ckRts(rts,res,seen){
       if(r.DestinationCidrBlock) props.DestinationCidrBlock=r.DestinationCidrBlock;
       if(r.GatewayId) props.GatewayId=r.GatewayId;
       if(r.NatGatewayId) props.NatGatewayId=r.NatGatewayId;
+      if(r.TransitGatewayId) props.TransitGatewayId=r.TransitGatewayId;
+      if(r.VpcPeeringConnectionId) props.VpcPeeringConnectionId=r.VpcPeeringConnectionId;
       if(r.VpcEndpointId) props.VpcEndpointId=r.VpcEndpointId;
       res[rId]={Type:'AWS::EC2::Route',Properties:props};
     });
