@@ -228,14 +228,15 @@ ipcMain.handle('file:open-folder', async () => {
   for (const ent of entries) {
     if (ent.isDirectory()) {
       const subdir = path.join(dir, ent.name);
+      const subs = await fsp.readdir(subdir, { withFileTypes: true });
+      const hasRegionalChildren = subs.some(sub => sub.isDirectory() && regionRe.test(sub.name));
 
-      if (regionRe.test(ent.name)) {
+      if (regionRe.test(ent.name) && !hasRegionalChildren) {
         const regionFiles = await readJsonDir(subdir);
         if (Object.keys(regionFiles).length) regions[ent.name] = regionFiles;
       } else {
         const profRegions = {};
         const profFlat = {};
-        const subs = await fsp.readdir(subdir, { withFileTypes: true });
         for (const sub of subs) {
           if (sub.isDirectory() && regionRe.test(sub.name)) {
             const regDir = path.join(subdir, sub.name);

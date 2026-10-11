@@ -253,11 +253,12 @@ function _docxIAMReview(isExec){
     var raw=safeParse(gv('in_iam'));
     if(raw){var p=parseIAMData(raw);if(p)prepareIAMReviewData(p)}
   }
-  if(!_iamReviewData.length) return h+_docxP('No IAM data available.');
-  var admins=_iamReviewData.filter(function(r){return r.isAdmin});
-  var crossAcct=_iamReviewData.filter(function(r){return r.crossAccounts.length>0});
+  var iamRows=_rptFilterByAccount(_iamReviewData,_rptGetAccountFilter());
+  if(!iamRows.length) return h+_docxP('No IAM data available.');
+  var admins=iamRows.filter(function(r){return r.isAdmin});
+  var crossAcct=iamRows.filter(function(r){return r.crossAccounts.length>0});
   if(isExec){
-    h+=_docxP(_iamReviewData.length+' IAM entities reviewed. '+admins.length+
+    h+=_docxP(iamRows.length+' IAM entities reviewed. '+admins.length+
       ' have administrative access. '+crossAcct.length+' have cross-account trust relationships.');
     if(admins.length){
       h+=_docxP('');h+=_docxP('Admin Access Entities','Heading2');
@@ -265,12 +266,12 @@ function _docxIAMReview(isExec){
         admins.map(function(r){return [r.name,r.type,r.lastUsed?r.lastUsed.toISOString().split('T')[0]:'Never']}));
     }
   }else{
-    h+=_docxBoldP('Total Entities',String(_iamReviewData.length));
+    h+=_docxBoldP('Total Entities',String(iamRows.length));
     h+=_docxBoldP('Admins',String(admins.length));
     h+=_docxBoldP('Cross-Account',String(crossAcct.length));
     h+=_docxP('');
     h+=_docxTable(['Name','Type','Admin','MFA','Policies','Findings'],
-      _iamReviewData.map(function(r){
+      iamRows.map(function(r){
         return [r.name,r.type,r.isAdmin?'YES':'No',r.hasMFA?'Yes':'No',
           String(r.policies),String(r.findings.length)];
       }));
@@ -361,19 +362,20 @@ function _docxActionPlan(isExec){
 
 function _docxAppSummary(isExec){
   var h=_docxP('Application Summary','Heading1');
-  if(!_appRegistry.length) return h+_docxP('No applications defined.');
+  var scopedApps=_rptScopedAppRows();
+  if(!scopedApps.length) return h+_docxP('No applications defined.');
   var tierPri={critical:1,high:2,medium:3,low:4};
   if(isExec){
-    h+=_docxP(_appRegistry.length+' applications registered in the environment:');
-    var rows=_appRegistry.map(function(app){
-      var matched=_matchAppResources(app);
+    h+=_docxP(scopedApps.length+' applications registered in the environment:');
+    var rows=scopedApps.map(function(row){
+      var app=row.app;var matched=row.matched;
       var tier=app.tier||'low';
       return [app.name,app.type||'',(tier).toUpperCase(),String(matched.length)];
     }).sort(function(a,b){return(tierPri[a[2].toLowerCase()]||99)-(tierPri[b[2].toLowerCase()]||99)});
     h+=_docxTable(['Application','Type','Criticality','Resources'],rows);
   }else{
-    _appRegistry.forEach(function(app){
-      var matched=_matchAppResources(app);
+    scopedApps.forEach(function(row){
+      var app=row.app;var matched=row.matched;
       var tier=app.tier||'low';
       var meta=_TIER_RPO_RTO[tier]||_TIER_RPO_RTO.low;
       h+=_docxP('');h+=_docxP(app.name+' ('+tier.toUpperCase()+')','Heading2');

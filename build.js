@@ -59,8 +59,7 @@ async function buildD3() {
 }
 
 // Bundle src/exports/ ES modules → dist/core.bundle.js (extracted modules from app-core.js)
-async function buildCoreModules() {
-  await esbuild.build({
+const coreBuildConfig = {
     entryPoints: ['src/exports/index.js'],
     bundle: true,
     outfile: 'dist/core.bundle.js',
@@ -69,7 +68,25 @@ async function buildCoreModules() {
     target: 'es2020',
     platform: 'browser',
     logLevel: 'silent'
-  });
+};
+async function buildCoreModules() {
+  await esbuild.build(coreBuildConfig);
+}
+
+function bundleHashes(html) {
+  for (const name of ['app.bundle.js', 'core.bundle.js', 'app-core.js']) {
+    const hash = crypto.createHash('md5').update(fs.readFileSync(path.join('dist', name))).digest('hex').slice(0, 8);
+    html = html.replace(new RegExp(name.replace(/\./g, '\\.') + '\\?v=[^"\\s]+'), `${name}?v=${hash}`);
+  }
+  return html;
+}
+
+function refreshWatchHashes() {
+  if (!['app.bundle.js', 'core.bundle.js', 'app-core.js'].every(name => fs.existsSync(path.join('dist', name)))) return;
+  const htmlPath = path.join(__dirname, 'index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const updated = bundleHashes(html);
+  if (updated !== html) fs.writeFileSync(htmlPath, updated, 'utf8');
 }
 
 // Process app-core.js (plain script, not an ES module — minify only)
@@ -90,17 +107,23 @@ async function buildCore() {
 }
 
 if (watch) {
-  esbuild.context(buildConfig).then(ctx => {
-    ctx.watch();
-    console.log('Watching for changes...');
-  }).catch(() => process.exit(1));
+  const cachePlugin = { name: 'watch-cache-hashes', setup(build) {
+    build.onEnd(result => { if (!result.errors.length) refreshWatchHashes(); });
+  }};
+  for (const config of [buildConfig, coreBuildConfig]) {
+    esbuild.context({ ...config, plugins: [cachePlugin] }).then(ctx => {
+      ctx.watch();
+      console.log('Watching ' + config.entryPoints[0] + '...');
+    }).catch(() => process.exit(1));
+  }
 
   // Also watch app-core.js, core modules, and dev files
-  buildCoreModules();
   buildCore();
   fs.watch('src/app-core.js', () => {
-    fs.copyFileSync('src/app-core.js', 'dist/app-core.js');
-    console.log('  Copied app-core.js');
+    buildCore().then(() => {
+      refreshWatchHashes();
+      console.log('  Updated app-core.js');
+    }).catch(err => console.error('  app-core.js build failed:', err.message));
   });
   if (fs.existsSync('src/dev/edge-tests.js')) {
     fs.watch('src/dev/edge-tests.js', () => {
@@ -130,13 +153,8 @@ if (watch) {
 
     if (isProd) {
       // Auto-inject content hashes into index.html for cache busting
-      const bundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/app.bundle.js')).digest('hex').slice(0, 8);
-      const coreBundleHash = crypto.createHash('md5').update(fs.readFileSync('dist/core.bundle.js')).digest('hex').slice(0, 8);
-      const coreHash = crypto.createHash('md5').update(fs.readFileSync('dist/app-core.js')).digest('hex').slice(0, 8);
-      html = html.replace(/app\.bundle\.js\?v=[^"]+/, `app.bundle.js?v=${bundleHash}`);
-      html = html.replace(/core\.bundle\.js\?v=[^"]+/, `core.bundle.js?v=${coreBundleHash}`);
-      html = html.replace(/app-core\.js\?v=[^"]+/, `app-core.js?v=${coreHash}`);
-      console.log(`Cache bust: app.bundle.js?v=${bundleHash}, core.bundle.js?v=${coreBundleHash}, app-core.js?v=${coreHash}`);
+      html = bundleHashes(html);
+      console.log('Cache bust: ' + ['app.bundle.js', 'core.bundle.js', 'app-core.js'].map(name => html.match(new RegExp(name.replace(/\./g, '\\.') + '\\?v=[^"\\s]+'))?.[0]).join(', '));
     }
     fs.writeFileSync(htmlPath, html, 'utf8');
   }).catch(() => process.exit(1));

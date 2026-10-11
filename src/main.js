@@ -6,7 +6,7 @@ import { injectSpeedInsights } from '@vercel/speed-insights';
 
 // Core utilities
 import { SEV_ORDER, FW_LABELS, EOL_RUNTIMES, EFFORT_LABELS, EFFORT_TIME, PRIORITY_META, TIER_META, PRIORITY_ORDER, PRIORITY_KEYS, MUTE_KEY, NOTES_KEY, SNAP_KEY, SAVE_KEY, MAX_SNAPSHOTS, SAVE_INTERVAL, NOTE_CATEGORIES } from './modules/constants.js';
-import { safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv } from './modules/utils.js';
+import { safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv, resourceOverrideKey } from './modules/utils.js';
 import { showToast, closeAllDashboards, toggleClass, setVisible, getEl, qs, qsa } from './modules/dom-helpers.js';
 import { _prefs, loadPrefs, savePrefs } from './modules/prefs.js';
 
@@ -28,7 +28,7 @@ import { buildEl, buildOption, buildSelect, buildButton, setText, replaceChildre
 import {
   _BUDR_STRATEGY, _BUDR_STRATEGY_ORDER, _BUDR_STRATEGY_LEGEND,
   _BUDR_RTO_RPO, _BUDR_EST_MINUTES, _TIER_TARGETS,
-  runBUDRChecks, _budrTierCompliance, _fmtMin,
+  runBUDRChecks, resetBUDROverride, _budrTierCompliance, _fmtMin,
   _enrichBudrWithClassification, _reapplyBUDROverrides,
   _getBUDRTierCounts, _getBudrComplianceCounts,
   budrFindings, budrAssessments, budrOverrides,
@@ -126,7 +126,7 @@ window.AppModules = {
   _FW_LABELS: FW_LABELS,
 
   // Utils
-  safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv,
+  safeParse, ext, esc, gn, sid, clsGw, isShared, gcv, gch, gv, resourceOverrideKey,
 
   // DOM helpers
   showToast, closeAllDashboards, toggleClass, setVisible, getEl, qs, qsa,
@@ -156,7 +156,7 @@ window.AppModules = {
   // BUDR engine
   _BUDR_STRATEGY, _BUDR_STRATEGY_ORDER, _BUDR_STRATEGY_LEGEND,
   _BUDR_RTO_RPO, _BUDR_EST_MINUTES, _TIER_TARGETS,
-  runBUDRChecks, _budrTierCompliance, _fmtMin,
+  runBUDRChecks, resetBUDROverride, _budrTierCompliance, _fmtMin,
   _enrichBudrWithClassification, _reapplyBUDROverrides,
   _getBUDRTierCounts, _getBudrComplianceCounts,
   _budrFindings, _budrAssessments, _budrOverrides,

@@ -1,6 +1,24 @@
 // Utility functions used across the application
 // Extracted from index.html for modularization
 
+// Override identities must survive normalized dashboard rows without mixing accounts,
+// regions, or resource types that happen to reuse a short name.
+export function resourceOverrideKey(resource, type, id) {
+  const row = resource || {};
+  if (typeof row.overrideKey === 'string') return row.overrideKey;
+  const raw = row._raw || row;
+  const aliases = {instance:'EC2',ec2:'EC2',rds:'RDS',lambda:'Lambda',ecs:'ECS',ecache:'ElastiCache',elasticache:'ElastiCache',alb:'ALB',redshift:'Redshift',s3:'S3',sg:'Security Group',securitygroup:'Security Group',vpc:'VPC',subnet:'Subnet',igw:'IGW',nat:'NAT GW',natgw:'NAT GW',natgateway:'NAT GW',vpce:'VPC Endpoint',vpcendpoint:'VPC Endpoint'};
+  const kind = String(type || row.type || 'Resource');
+  const canonicalType = aliases[kind.toLowerCase().replace(/[\s_-]/g,'')] || kind;
+  const arnFields = ['_resourceArn','resourceArn','Arn','ARN','arn','DBInstanceArn','FunctionArn','serviceArn','LoadBalancerArn','CacheClusterArn','ClusterArn'];
+  const arn = arnFields.map(k => raw[k] || row[k]).find(v => typeof v === 'string' && v.startsWith('arn:')) || '';
+  const parts = arn.split(':');
+  const account = raw._accountId || row._accountId || raw.AccountId || raw.OwnerId || parts[4] || row.accountId || row.account || '';
+  const region = raw._region || row._region || parts[3] || row.region || '';
+  const identity = arn || id || row.id || raw.InstanceId || raw.DBInstanceIdentifier || raw.FunctionName || raw.serviceName || raw.CacheClusterId || raw.ClusterIdentifier || raw.LoadBalancerName || raw.GroupId || raw.VpcId || raw.SubnetId || raw.Name || '';
+  return JSON.stringify([String(account),String(region),canonicalType,String(identity)]);
+}
+
 /**
  * Safe JSON parse with fallback for malformed JSON
  * Attempts to extract valid JSON objects from text
