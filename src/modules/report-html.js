@@ -736,10 +736,10 @@ export function _rptSecurityPosture(ctx, opts) {
   const acctFilter = typeof _rptGetAccountFilter === 'function' ? _rptGetAccountFilter() : 'all';
   function filt(arr) { return typeof _rptFilterByAccount === 'function' ? _rptFilterByAccount(arr || [], acctFilter) : (arr || []); }
   const trails = filt(c.cloudtrailTrails); const gd = filt(c.guarddutyDetectors);
-  const fl = c.flowLogs || []; const rec = filt(c.configRecorders); const rules = filt(c.configRules);
+  const fl = filt(c.flowLogs); const rec = filt(c.configRecorders); const rules = filt(c.configRules);
   const sh = filt(c.securityHubStds); const aa = filt(c.accessAnalyzers);
   const keys = filt(c.kmsKeys); const secs = filt(c.secrets); const ecr = filt(c.ecrRepos);
-  const logs = c.logGroups || []; const apis = filt(c.apiGateways); const vpcs = c.vpcs || [];
+  const logs = filt(c.logGroups); const apis = filt(c.apiGateways); const vpcs = filt(c.vpcs);
   function st(ok) { return ok ? '<span style="color:#22c55e;font-weight:700">PASS</span>' : '<span style="color:#ef4444;font-weight:700">FAIL</span>'; }
   function stp(ok, partial) { return ok ? '<span style="color:#22c55e;font-weight:700">PASS</span>' : (partial ? '<span style="color:#eab308;font-weight:700">PARTIAL</span>' : '<span style="color:#ef4444;font-weight:700">FAIL</span>'); }
   let h = '<section class="rpt-section" id="s-security-posture"><h2>Security Posture</h2>';
@@ -804,7 +804,7 @@ export function _rptExecSummary(ctx, opts) {
   let h = '<section class="rpt-section" id="s-exec-summary"><h2>Executive Summary</h2>';
   h += '<div class="stat-grid">';
   counts.forEach(function(item) {
-    const v = (c[item.key] || []).length;
+    const v = _rptFilterByAccount(c[item.key] || [], _rptGetAccountFilter()).length;
     h += '<div class="stat-box"><span class="val">'+v+'</span>';
     h += '<span class="lbl">'+esc(item.label)+'</span></div>';
   });

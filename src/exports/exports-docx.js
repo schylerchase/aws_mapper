@@ -133,14 +133,18 @@ function _docxExecSummary(isExec){
   var h=_docxP('Executive Summary','Heading1');
   var c=_rlCtx;
   if(!c) return h+_docxP('No infrastructure data loaded.');
-  var counts=[['VPCs',(c.vpcs||[]).length],['Subnets',(c.subnets||[]).length],
-    ['EC2 Instances',(c.instances||[]).length],['RDS Databases',(c.rdsInstances||[]).length],
-    ['Load Balancers',(c.albs||[]).length],['Lambda Functions',(c.lambdaFns||[]).length],
-    ['Security Groups',(c.sgs||[]).length],['ECS Services',(c.ecsServices||[]).length]];
+  var acctF=_rptGetAccountFilter();
+  function _sf(arr){return _rptFilterByAccount(arr||[],acctF)}
+  var regions=new Set(!acctF||acctF==='all'?c._regions||[]:[]);
+  Object.keys(c).forEach(function(k){if(Array.isArray(c[k]))_sf(c[k]).forEach(function(r){if(r&&r._region&&r._region!=='unknown')regions.add(r._region)})});
+  var counts=[['VPCs',_sf(c.vpcs).length],['Subnets',_sf(c.subnets).length],
+    ['EC2 Instances',_sf(c.instances).length],['RDS Databases',_sf(c.rdsInstances).length],
+    ['Load Balancers',_sf(c.albs).length],['Lambda Functions',_sf(c.lambdaFns).length],
+    ['Security Groups',_sf(c.sgs).length],['ECS Services',_sf(c.ecsServices).length]];
   if(isExec){
     h+=_docxP('This report covers the AWS infrastructure assessment performed on '+(_rptState.date||'today')+'. The environment spans '+
-      (c._regions?c._regions.size:1)+' region(s) with '+(c.vpcs||[]).length+' VPC(s) hosting '+
-      ((c.instances||[]).length+(c.rdsInstances||[]).length+(c.lambdaFns||[]).length)+' compute/database resources.');
+      regions.size+' region(s) with '+_sf(c.vpcs).length+' VPC(s) hosting '+
+      (_sf(c.instances).length+_sf(c.rdsInstances).length+_sf(c.lambdaFns).length)+' compute/database resources.');
     h+=_docxP('');
     h+=_docxP('Infrastructure at a Glance','Heading2');
   }else{

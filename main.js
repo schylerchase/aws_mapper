@@ -20,6 +20,7 @@ app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,Vulkan')
 
 let mainWindow = null;
 let activeScan = null;
+let scanRequestId = 0;
 const SAFE_INPUT = /^[a-zA-Z0-9_-]{0,64}$/;
 const MAX_JSON_FILE_SIZE = 100 * 1024 * 1024;
 const MAX_IMPORT_BYTES = 250 * 1024 * 1024;
@@ -303,13 +304,16 @@ function isAllowedExternalUrl(rawUrl) {
 }
 
 ipcMain.handle('aws:scan', async (event, { profile, region }) => {
+  const requestId = ++scanRequestId;
   // Kill any existing scan before starting a new one
   if (activeScan) {
     activeScan.kill('SIGTERM');
     activeScan = null;
   }
 
-  if (!(await checkAwsCli())) {
+  const hasCli = await checkAwsCli();
+  if (requestId !== scanRequestId) return;
+  if (!hasCli) {
     safeSend(event.sender, 'aws:scan:error', 'AWS CLI not found. Install it from https://aws.amazon.com/cli/');
     return;
   }
@@ -328,6 +332,7 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
 
   // Ensure script is executable
   try { await fsp.chmod(scriptPath, 0o755); } catch {}
+  if (requestId !== scanRequestId) return;
 
   const args = [];
   if (profile) args.push('-p', profile);
@@ -342,16 +347,19 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
   let stdout = '';
 
   proc.stdout.on('data', (data) => {
+    if (requestId !== scanRequestId || activeScan !== proc) return;
     const text = data.toString();
     stdout += text;
     safeSend(event.sender, 'aws:scan:progress', text);
   });
 
   proc.stderr.on('data', (data) => {
+    if (requestId !== scanRequestId || activeScan !== proc) return;
     safeSend(event.sender, 'aws:scan:progress', '[stderr] ' + data.toString());
   });
 
   proc.on('close', async (code) => {
+    if (requestId !== scanRequestId || activeScan !== proc) return;
     activeScan = null;
     if (code === 0) {
       // Parse output directory from stdout
@@ -384,19 +392,22 @@ ipcMain.handle('aws:scan', async (event, { profile, region }) => {
           }
         }
       } catch { /* outDir doesn't exist, files stays null */ }
-      safeSend(event.sender, 'aws:scan:complete', { code, files });
+      if (requestId === scanRequestId) safeSend(event.sender, 'aws:scan:complete', { code, files });
     } else {
       safeSend(event.sender, 'aws:scan:error', 'Scan exited with code ' + code);
     }
   });
 
   proc.on('error', (err) => {
+    if (requestId !== scanRequestId || activeScan !== proc) return;
+    scanRequestId++;
     activeScan = null;
     safeSend(event.sender, 'aws:scan:error', err.message);
   });
 });
 
 ipcMain.on('aws:scan:abort', () => {
+  scanRequestId++;
   if (activeScan) {
     activeScan.kill('SIGTERM');
     activeScan = null;

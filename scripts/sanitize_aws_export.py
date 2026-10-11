@@ -846,6 +846,18 @@ def _regex_fallback(value, registry):
 
     result = value
 
+    # IPv4 literals also occur under IAM condition keys such as aws:SourceIp.
+    try:
+        if "/" in value:
+            network = ipaddress.IPv4Network(value, strict=False)
+            return registry.map_cidr(str(network))
+        address = ipaddress.IPv4Address(value)
+        if address.is_private:
+            return registry.map_private_ip(str(address))
+        return registry.map_public_ip(str(address))
+    except ValueError:
+        pass
+
     # Replace embedded ARNs
     for m in RE_ARN.finditer(result):
         sanitized = registry.map_arn(m.group(0))
@@ -960,6 +972,8 @@ def _sanitize_policy_obj(doc, registry):
     for k, v in doc.items():
         if k == "Statement" and isinstance(v, list):
             result[k] = [_sanitize_statement(stmt, registry) for stmt in v]
+        elif k == "Statement" and isinstance(v, dict):
+            result[k] = _sanitize_statement(v, registry)
         elif k == "Version":
             result[k] = v  # Preserve policy version
         else:
@@ -1009,7 +1023,7 @@ def _sanitize_principal(principal, registry):
     if isinstance(principal, dict):
         result = {}
         for k, v in principal.items():
-            if k == "AWS":
+            if k in ("AWS", "Federated"):
                 if isinstance(v, str):
                     result[k] = registry.map_arn(v) if v.startswith("arn:") else _regex_fallback(v, registry)
                 elif isinstance(v, list):
