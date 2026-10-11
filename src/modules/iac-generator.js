@@ -869,6 +869,8 @@ export function generateCloudFormation(ctx, opts) {
       if (route.DestinationCidrBlock) routeProps.DestinationCidrBlock = route.DestinationCidrBlock;
       if (route.GatewayId && route.GatewayId !== 'local') routeProps.GatewayId = cfnRef(route.GatewayId);
       if (route.NatGatewayId) routeProps.NatGatewayId = cfnRef(route.NatGatewayId);
+      if (route.TransitGatewayId) routeProps.TransitGatewayId = cfnRef(route.TransitGatewayId);
+      if (route.VpcPeeringConnectionId) routeProps.VpcPeeringConnectionId = cfnRef(route.VpcPeeringConnectionId);
       template.Resources[ln + 'Route' + ri] = { Type: 'AWS::EC2::Route', Properties: routeProps };
     });
     (rt.Associations || []).forEach((assoc, ai) => {
@@ -1078,6 +1080,8 @@ export function _ckRts(rts, res, seen) {
       if (r.DestinationCidrBlock) props.DestinationCidrBlock = r.DestinationCidrBlock;
       if (r.GatewayId) props.GatewayId = r.GatewayId;
       if (r.NatGatewayId) props.NatGatewayId = r.NatGatewayId;
+      if (r.TransitGatewayId) props.TransitGatewayId = r.TransitGatewayId;
+      if (r.VpcPeeringConnectionId) props.VpcPeeringConnectionId = r.VpcPeeringConnectionId;
       if (r.VpcEndpointId) props.VpcEndpointId = r.VpcEndpointId;
       res[rId] = { Type: 'AWS::EC2::Route', Properties: props };
     });

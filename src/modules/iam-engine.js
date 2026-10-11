@@ -78,6 +78,30 @@ function runIAMChecks(iamData){
   (iamData.policies||[]).forEach(p=>{if(p.Arn)policyByArn.set(p.Arn,p);if(p.PolicyName)policyByArn.set(p.PolicyName,p)});
   // Helper: derive account ID from a resource's ARN (supports merged multi-account data)
   function _acctFromArn(r){if(!r||!r.Arn)return '';const m=r.Arn.match(/arn:aws:iam::(\d+):/);return m?m[1]:''}
+  const values=v=>(Array.isArray(v)?v:[v]).map(String);
+  function trustPattern(pattern,value,ignoreCase=false){
+    if(typeof pattern!=='string')return false;
+    const escaped=pattern.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.');
+    return new RegExp('^'+escaped+'$',ignoreCase?'i':'').test(value);
+  }
+  function deniesWithoutMFA(deny,allow,principal,roleArn){
+    if(deny.Effect!=='Deny'||deny.NotPrincipal||deny.NotAction||deny.NotResource)return false;
+    const principals=deny.Principal==='*'?['*']:values((deny.Principal||{}).AWS||[]);
+    const account=(principal.match(/arn:aws:iam::(\d+):/)||[])[1];
+    if(!principals.some(p=>p==='*'||p===principal||p===account))return false;
+    if(!values(deny.Action||[]).some(action=>trustPattern(action,'sts:AssumeRole',true)))return false;
+    if(deny.Resource&&!values(deny.Resource).some(resource=>trustPattern(resource,roleArn)))return false;
+    const condition=deny.Condition||{};
+    if(!values((condition.BoolIfExists||{})['aws:MultiFactorAuthPresent']??[]).includes('false'))return false;
+    // Other Deny conditions must be guaranteed by this Allow; unrelated/narrow
+    // restrictions cannot prove that every non-MFA request is denied.
+    return Object.entries(condition).every(([op,keys])=>Object.entries(keys).every(([key,value])=>{
+      if(op==='BoolIfExists'&&key==='aws:MultiFactorAuthPresent')return true;
+      const allowed=(allow.Condition||{})[op]||{};
+      return Object.prototype.hasOwnProperty.call(allowed,key)&&
+        JSON.stringify(values(value).sort())===JSON.stringify(values(allowed[key]).sort());
+    }));
+  }
   (iamData.roles||[]).forEach(role=>{
     const _iamOwnAccountId=_acctFromArn(role);
     if(role._isAdmin)f.push({severity:'CRITICAL',control:'IAM-1',framework:'IAM',resource:role.RoleName||role.Arn||'',resourceName:role.RoleName||'',message:'Role has admin (*:*) permissions',remediation:'Apply least-privilege: scope actions and resources'});
@@ -86,9 +110,16 @@ function runIAMChecks(iamData){
     if(role.AssumeRolePolicyDocument){
       const trust=_safePolicyParse(role.AssumeRolePolicyDocument);
       const stmts=_stmtArr(trust.Statement);
-      const crossAccount=stmts.some(s=>{const p=s.Principal||{};const aws=p.AWS||'';return(Array.isArray(aws)?aws:[aws]).some(a=>{if(!a||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId})});
-      const hasMFA=stmts.some(s=>JSON.stringify(s.Condition||{}).includes('aws:MultiFactorAuth'));
-      if(crossAccount&&!hasMFA)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
+      const unguarded=stmts.some(s=>{
+        if(s.Effect!=='Allow')return false;
+        const aws=(s.Principal||{}).AWS||'';
+        const cross=(Array.isArray(aws)?aws:[aws]).filter(a=>{if(typeof a!=='string'||!a.includes(':root'))return false;const m=a.match(/arn:aws:iam::(\d+):/);return m&&m[1]!==_iamOwnAccountId});
+        const condition=s.Condition||{};
+        const mfa=condition.Bool&&condition.Bool['aws:MultiFactorAuthPresent'];
+        const requiresMFA=mfa!=null&&values(mfa).length>0&&values(mfa).every(v=>v==='true')||['NumericEquals','NumericLessThan','NumericLessThanEquals','NumericGreaterThan','NumericGreaterThanEquals'].some(op=>Object.prototype.hasOwnProperty.call(condition[op]||{},'aws:MultiFactorAuthAge'));
+        return cross.length>0&&!requiresMFA&&cross.some(principal=>!stmts.some(deny=>deniesWithoutMFA(deny,s,principal,role.Arn||'')));
+      });
+      if(unguarded)f.push({severity:'MEDIUM',control:'IAM-3',framework:'IAM',resource:role.RoleName||'',resourceName:role.RoleName||'',message:'Cross-account role without MFA condition',remediation:'Add Condition with aws:MultiFactorAuthPresent'});
     }
     // IAM-4: Service wildcard actions (s3:*, ec2:* but not *) — scan both inline and managed
     const allStmts4=[];

@@ -730,13 +730,14 @@ export async function exportFullXlsx(){
 function _rptBuildXlsxAppSummary(wb){
   if(!_classificationData.length&&_rlCtx) runClassificationEngine(_rlCtx);
   if(typeof _autoDiscoverApps==='function') _autoDiscoverApps();
-  if(!_appRegistry.length) return;
+  var scopedApps=_rptScopedAppRows();
+  if(!scopedApps.length) return;
   var tierPri={critical:1,high:2,medium:3,low:4};
   var sumHeaders=['Application','Type','Criticality','Resources','RPO','RTO'];
   var sumRows=[];
   var detailRows=[];
-  _appRegistry.forEach(function(app){
-    var matched=_matchAppResources(app);
+  scopedApps.forEach(function(row){
+    var app=row.app;var matched=row.matched;
     var bestTier='low';
     matched.forEach(function(r){if((tierPri[r.tier]||99)<(tierPri[bestTier]||99)) bestTier=r.tier});
     var tier=app.tier||bestTier;
@@ -764,9 +765,10 @@ function _rptBuildXlsxIAMReview(wb){
     var raw=safeParse(gv('in_iam'));
     if(raw){var p=parseIAMData(raw);if(p)prepareIAMReviewData(p)}
   }
-  if(!_iamReviewData.length) return;
+  var iamRows=_rptFilterByAccount(_iamReviewData,_rptGetAccountFilter());
+  if(!iamRows.length) return;
   var headers=['Name','Type','Admin','MFA','Console','Policies','Findings','Cross-Account Trusts','Created','Last Used'];
-  var rows=_iamReviewData.slice().sort(function(a,b){
+  var rows=iamRows.slice().sort(function(a,b){
     if(a.isAdmin!==b.isAdmin) return a.isAdmin?-1:1;
     return b.findings.length-a.findings.length;
   }).map(function(r){

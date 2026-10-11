@@ -402,9 +402,55 @@ export function _rptInteractiveCSS() {
   ].join('\n');
 }
 
+// Shared by the preview and the self-contained exported HTML script.
+export function _rptFilterTableRows(rows, active, query) {
+  var shown = 0, attrCounts = Object.create(null);
+  var sevOrder = {CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  function matches(row) {
+    return Object.keys(active).every(function(attr) {
+      var values = (row.dataset[attr] || '').toUpperCase().split('|');
+      return values.some(function(value) { return active[attr].indexOf(value) !== -1; });
+    });
+  }
+  rows.forEach(function(row) {
+    var detail = row.nextElementSibling;
+    var grouped = detail && detail.classList.contains('rpt-ctrl-detail');
+    var visible;
+    if (grouped) {
+      var control = row.children[1].textContent.toLowerCase();
+      var children = Array.from(detail.querySelectorAll('.rpt-detail-table > tbody > tr'));
+      var filtered = children.filter(function(child) {
+        var keep = matches(child) && (!query || (control + ' ' + child.textContent.toLowerCase()).indexOf(query) !== -1);
+        child.dataset.filtered = keep ? '1' : '0';
+        child.style.display = keep ? '' : 'none';
+        return keep;
+      });
+      visible = filtered.length > 0;
+      row.children[2].textContent = filtered.length;
+      row.children[3].textContent = visible ? filtered[0].children[3].textContent : '';
+      row.dataset.account = Array.from(new Set(filtered.map(function(child) { return child.dataset.account; }).filter(Boolean))).join('|');
+      if (visible) {
+        var severity = filtered.map(function(child) { return child.dataset.sev; }).sort(function(a,b) { return (sevOrder[a] === undefined ? 9 : sevOrder[a]) - (sevOrder[b] === undefined ? 9 : sevOrder[b]); })[0];
+        row.dataset.sev = severity;
+        var badge = row.children[0].querySelector('.sev-badge');
+        badge.textContent = severity; badge.className = 'sev-badge sev-' + severity;
+      }
+    } else visible = matches(row) && (!query || row.textContent.toLowerCase().indexOf(query) !== -1);
+    row.dataset.filtered = visible ? '1' : '0';
+    if (visible) {
+      shown++;
+      ['sev','tier','fw','strategy','account'].forEach(function(attr) {
+        Array.from(new Set((row.dataset[attr] || '').toUpperCase().split('|').filter(Boolean))).forEach(function(value) { attrCounts[value] = (attrCounts[value] || 0) + 1; });
+      });
+    }
+  });
+  return {shown:shown, attrCounts:attrCounts};
+}
+
 export function _rptInteractiveJS() {
   return '<scr'+'ipt>\n'+
   '(function(){\n'+
+  '  var _rptFilterTableRows='+_rptFilterTableRows.toString()+';\n'+
   '  var SEV_ORD={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};\n'+
   '  var TIER_ORD={at_risk:0,partial:1,protected:2};\n'+
   '  var STRAT_ORD={hot:0,warm:1,pilot:2,cold:3};\n'+
@@ -428,7 +474,7 @@ export function _rptInteractiveJS() {
   '    allRows.forEach(function(r){r.style.display="none"});\n'+
   '    visible.forEach(function(r,i){r.style.display=(i>=start&&i<end)?"":"none"});\n'+
   '    /* hide detail rows for non-visible control rows */\n'+
-  '    table.querySelectorAll(".rpt-ctrl-detail").forEach(function(d){var p=d.previousElementSibling;d.style.display=(p&&p.style.display!==""&&p.classList.contains("expanded"))?"table-row":"none"});\n'+
+  '    table.querySelectorAll(".rpt-ctrl-detail").forEach(function(d){var p=d.previousElementSibling;d.style.display=(p&&p.style.display!=="none"&&p.classList.contains("expanded"))?"table-row":"none"});\n'+
   '    var bar=wrap.querySelector(".rpt-pagination");\n'+
   '    if(!bar)return;\n'+
   '    bar.querySelector(".rpt-page-info").textContent="Page "+page+" of "+totalPages+" ("+visible.length+" rows)";\n'+
@@ -455,33 +501,7 @@ export function _rptInteractiveJS() {
   '    var tbody=table.querySelector(":scope > tbody");\n'+
   '    if(!tbody)return;\n'+
   '    var rows=tbody.querySelectorAll(":scope > tr:not(.rpt-ctrl-detail)");\n'+
-  '    var shown=0,attrCounts={},total=rows.length;\n'+
-  '    rows.forEach(function(tr){\n'+
-  '      var vis=true;\n'+
-  '      Object.keys(active).forEach(function(attr){\n'+
-  '        var raw=(tr.dataset[attr]||"").toUpperCase();\n'+
-  '        if(attr==="account"&&raw.indexOf("|")!==-1){\n'+
-  '          var parts=raw.split("|");\n'+
-  '          var match=parts.some(function(p){return active[attr].indexOf(p)!==-1});\n'+
-  '          if(!match)vis=false;\n'+
-  '        }else{\n'+
-  '          if(active[attr].indexOf(raw)===-1)vis=false;\n'+
-  '        }\n'+
-  '      });\n'+
-  '      if(vis&&query){\n'+
-  '        if(tr.textContent.toLowerCase().indexOf(query)===-1)vis=false;\n'+
-  '      }\n'+
-  '      tr.dataset.filtered=vis?"1":"0";\n'+
-  '      if(vis)shown++;\n'+
-  '      ["sev","tier","fw","strategy","account"].forEach(function(attr){\n'+
-  '        var v=(tr.dataset[attr]||"").toUpperCase();\n'+
-  '        if(attr==="account"&&v.indexOf("|")!==-1){\n'+
-  '          v.split("|").forEach(function(p){if(p){if(!attrCounts[p])attrCounts[p]=0;if(vis)attrCounts[p]++}});\n'+
-  '        }else{\n'+
-  '          if(v){if(!attrCounts[v])attrCounts[v]=0;if(vis)attrCounts[v]++}\n'+
-  '        }\n'+
-  '      });\n'+
-  '    });\n'+
+  '    var result=_rptFilterTableRows(rows,active,query),shown=result.shown,attrCounts=result.attrCounts,total=rows.length;\n'+
   '    var badge=wrap.querySelector(".rpt-row-count");\n'+
   '    if(badge)badge.textContent=shown+" of "+total;\n'+
   '    /* update pill counts */\n'+
@@ -744,8 +764,13 @@ export function _rptSecurityPosture(ctx, opts) {
   function stp(ok, partial) { return ok ? '<span style="color:#22c55e;font-weight:700">PASS</span>' : (partial ? '<span style="color:#eab308;font-weight:700">PARTIAL</span>' : '<span style="color:#ef4444;font-weight:700">FAIL</span>'); }
   let h = '<section class="rpt-section" id="s-security-posture"><h2>Security Posture</h2>';
   h += '<h3>Detection &amp; Monitoring</h3><table class="rpt-tbl"><thead><tr><th>Service</th><th>Status</th><th>Details</th></tr></thead><tbody>';
-  const trailOk = trails.some(function(t) { return t.IsMultiRegionTrail && t.LogFileValidationEnabled && t.KmsKeyId && t.CloudWatchLogsLogGroupArn; });
-  h += '<tr><td>CloudTrail</td><td>'+stp(trailOk, trails.length > 0 && !trailOk)+'</td><td>'+esc(trails.length ? trails.length + ' trail(s)' : 'No trails')+'</td></tr>';
+  const configuredTrails = trails.filter(function(t) { return t.IsMultiRegionTrail && t.LogFileValidationEnabled && t.KmsKeyId && t.CloudWatchLogsLogGroupArn; });
+  const loggingTrails = trails.filter(function(t) { return t.IsLogging === true; });
+  const stoppedTrails = trails.filter(function(t) { return t.IsLogging === false; });
+  const unknownTrails = trails.length - loggingTrails.length - stoppedTrails.length;
+  const trailOk = configuredTrails.some(function(t) { return t.IsLogging === true; });
+  const trailDetails = trails.length ? trails.length + ' trail(s); ' + configuredTrails.length + ' with multi-region, validation, KMS and CloudWatch configured; ' + loggingTrails.length + ' logging, ' + stoppedTrails.length + ' stopped' + (unknownTrails ? ', ' + unknownTrails + ' logging status unknown' : '') : 'No trails';
+  h += '<tr><td>CloudTrail</td><td>'+stp(trailOk, trails.some(function(t) { return t.IsLogging !== false; }) && !trailOk)+'</td><td>'+esc(trailDetails)+'</td></tr>';
   const gdOk = gd.some(function(d) { return d.Status === 'ENABLED'; });
   h += '<tr><td>GuardDuty</td><td>'+stp(gdOk, gd.length > 0 && !gdOk)+'</td><td>'+esc(gd.length ? gd.length + ' detector(s)' : 'No detectors')+'</td></tr>';
   const flVpcs = new Set(fl.filter(function(f) { return f.ResourceId && f.ResourceId.startsWith('vpc-'); }).map(function(f) { return f.ResourceId; }));
@@ -850,14 +875,23 @@ export function _rptExecBUDR() {
   return h;
 }
 
+export function _rptScopedAppRows() {
+  const account = _rptGetAccountFilter();
+  return (window._appRegistry || []).map(function(app) {
+    return {app:app, matched:_rptFilterByAccount(window._matchAppResources(app), account)};
+  }).filter(function(row) { return !account || account === 'all' || row.matched.length > 0; });
+}
+
 export function _rptAppSummary(ctx, opts) {
   if (!window._appRegistry.length) return '';
+  const scopedApps = _rptScopedAppRows();
   const tierPri = {critical:1,high:2,medium:3,low:4};
   let h = '<section class="rpt-section" id="s-app-summary"><h2>Application Summary</h2>';
-  h += '<p>'+window._appRegistry.length+' applications identified across '+window._classificationData.length+' resources.</p>';
+  const resourceCount = _rptFilterByAccount(window._classificationData, _rptGetAccountFilter()).length;
+  h += '<p>'+scopedApps.length+' applications identified across '+resourceCount+' resources.</p>';
   const appRows = [];
-  window._appRegistry.forEach(function(app) {
-    const matched = window._matchAppResources(app);
+  scopedApps.forEach(function(row) {
+    const app = row.app; const matched = row.matched;
     let bestTier = 'low';
     matched.forEach(function(r) { if ((tierPri[r.tier] || 99) < (tierPri[bestTier] || 99)) bestTier = r.tier; });
     const tier = app.tier || bestTier;
@@ -919,9 +953,81 @@ export function _rptArchDiagram(ctx, opts) {
   return h;
 }
 
-export function _rptBuildSvgUri(svgEl, root) {
+export function _rptPrepareDiagramClone(svgEl, root) {
   const clone = svgEl.cloneNode(true);
-  window._rptPrepClone(clone, root);
+  const account = _rptGetAccountFilter();
+  if (account === 'all') {
+    window._rptPrepClone(clone, root);
+    return clone;
+  }
+  const c = window._rlCtx || {};
+  const selected = function(items) { return _rptFilterByAccount(items || [], account); };
+  const selectedVpcs = new Set(selected(c.vpcs).map(function(v) { return v.VpcId; }));
+  const selectedSubnets = new Set(selected(c.subnets).filter(function(s) { return selectedVpcs.has(s.VpcId); }).map(function(s) { return s.SubnetId; }));
+  const gatewayIds = new Set();
+  ['igws', 'nats', 'vpns', 'vpces', 'tgwAttachments', 'peerings'].forEach(function(kind) {
+    selected(c[kind]).forEach(function(g) {
+      ['InternetGatewayId', 'NatGatewayId', 'VpnGatewayId', 'VpnConnectionId', 'VpcEndpointId', 'TransitGatewayId', 'VpcPeeringConnectionId'].forEach(function(field) { if (g[field]) gatewayIds.add(g[field]); });
+    });
+  });
+  selectedVpcs.forEach(function(id) { ((c.pvGws || {})[id] || []).forEach(function(g) { if (g.id) gatewayIds.add(g.id); }); });
+  const cloneRoot = clone.querySelector('.map-root');
+  cloneRoot.removeAttribute('transform');
+  // Keep positively identified account nodes. Aggregate DNS/S3/CloudFront panels,
+  // region counts and hover overlays have no per-resource ownership in the map.
+  const ownedNode = function(node) {
+    const id = node.getAttribute('data-vpc-id') || node.getAttribute('data-vpc');
+    if (id) return selectedVpcs.has(id);
+    const subnet = node.getAttribute('data-subnet-id');
+    if (subnet) return selectedSubnets.has(subnet);
+    const gateway = node.getAttribute('data-gwid');
+    if (gateway) return gatewayIds.has(gateway);
+    return node.classList.contains('internet-node') || node.classList.contains('legend');
+  };
+  const pruneRoutes = function(parent) {
+    Array.from(parent.children).forEach(function(node) {
+      const vpc = node.getAttribute('data-vid');
+      const subnet = node.getAttribute('data-sid');
+      if (vpc) {
+        if (!selectedVpcs.has(vpc) || (subnet && !selectedSubnets.has(subnet))) node.remove();
+      } else if (node.tagName.toLowerCase() === 'g') {
+        pruneRoutes(node);
+        if (!node.children.length) node.remove();
+      } else node.remove();
+    });
+  };
+  Array.from(cloneRoot.children).forEach(function(layer) {
+    if (layer.classList.contains('nodes-layer') || layer.classList.contains('exec-cards')) {
+      Array.from(layer.children).forEach(function(node) { if (!ownedNode(node)) node.remove(); });
+    } else if (layer.classList.contains('lines-layer') || layer.classList.contains('label-layer')) pruneRoutes(layer);
+    else layer.remove();
+  });
+  if (!cloneRoot.querySelector('[data-vpc-id], [data-subnet-id], [data-gwid], [data-vpc]')) {
+    cloneRoot.replaceChildren();
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', '0'); label.setAttribute('y', '20');
+    label.setAttribute('fill', document.documentElement.dataset.theme === 'light' ? '#1e293b' : '#e2e8f0');
+    label.textContent = 'No account-scoped map nodes rendered.';
+    cloneRoot.appendChild(label);
+  }
+  // getBBox requires a rendered SVG. Measure a temporary clone, never the live
+  // map, so foreign geometry cannot leave blank space in the exported image.
+  const originalStyle = clone.getAttribute('style');
+  const originalId = clone.getAttribute('id');
+  clone.removeAttribute('id');
+  clone.style.cssText = 'position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none';
+  document.body.appendChild(clone);
+  try { window._rptPrepClone(clone, cloneRoot); }
+  finally {
+    clone.remove();
+    if (originalStyle === null) clone.removeAttribute('style'); else clone.setAttribute('style', originalStyle);
+    if (originalId !== null) clone.setAttribute('id', originalId);
+  }
+  return clone;
+}
+
+export function _rptBuildSvgUri(svgEl, root) {
+  const clone = _rptPrepareDiagramClone(svgEl, root);
   const xml = new XMLSerializer().serializeToString(clone);
   return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
 }
@@ -1013,7 +1119,7 @@ export function _rptGroupedFindingsTable(items) {
     h += '<tr class="rpt-ctrl-detail" data-sev="'+esc(sev)+'" style="display:none">';
     h += '<td colspan="4"><table class="rpt-detail-table"><tbody>';
     g.resources.forEach(function(f) {
-      h += '<tr>';
+      h += '<tr data-sev="'+esc(f.severity)+'" data-account="'+esc(f._accountId || '')+'" data-region="'+esc(f._region || '')+'" data-type="'+esc(f.resourceType || f.type || '')+'" data-resource="'+esc(f.resource || '')+'">';
       h += '<td><span class="sev-badge sev-'+esc(f.severity)+'">'+esc(f.severity)+'</span></td>';
       h += '<td>'+esc(_rptAccountLabel(f._accountId))+'</td>';
       h += '<td>'+esc(f.resourceName || f.resource)+'</td>';

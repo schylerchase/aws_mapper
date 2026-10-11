@@ -46,8 +46,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ─── Validation ────────────────────────────────────────────────
-if ($AwsProfile -and $AwsProfile -notmatch '^[a-zA-Z0-9_-]+$') {
-    Write-Error "Invalid profile name. Use only letters, numbers, hyphens, underscores."
+if ($AwsProfile -and ($AwsProfile -in @('.', '..') -or $AwsProfile -notmatch '^[a-zA-Z0-9_.-]+$')) {
+    Write-Error "Invalid profile name. Use only letters, numbers, dots, hyphens, underscores."
     exit 1
 }
 if ($Region -and $Region -notmatch '^[a-zA-Z0-9-]+$') {
@@ -60,8 +60,8 @@ $profileList = @()
 if ($Profiles) {
     $profileList = @($Profiles | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     foreach ($p in $profileList) {
-        if ($p -notmatch '^[a-zA-Z0-9_-]+$') {
-            Write-Error "Invalid profile name '$p'. Use only letters, numbers, hyphens, underscores."
+        if ($p -in @('.', '..') -or $p -notmatch '^[a-zA-Z0-9_.-]+$') {
+            Write-Error "Invalid profile name '$p'. Use only letters, numbers, dots, hyphens, underscores."
             exit 1
         }
     }

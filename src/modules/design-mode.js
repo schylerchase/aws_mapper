@@ -149,6 +149,8 @@ export function validateDesignChange(change, ctx) {
   if (change.action === 'add_gateway') {
     const p = change.params;
     if (p.GatewayType === 'IGW') {
+      if (!vpcs.some(v => v.VpcId === p.VpcId))
+        errors.push('VPC ' + p.VpcId + ' not found');
       const vpcIgws = igws.filter(g => (g.Attachments || []).some(a => a.VpcId === p.VpcId));
       if (vpcIgws.length >= _awsConstraints.igw.maxPerVpc)
         errors.push('VPC already has an Internet Gateway (hard limit: 1 per VPC)');
@@ -184,6 +186,8 @@ export function validateDesignChange(change, ctx) {
 
   if (change.action === 'add_security_group') {
     const p = change.params;
+    if (!vpcs.some(v => v.VpcId === p.VpcId))
+      errors.push('VPC ' + p.VpcId + ' not found');
     const vpcSgs = sgs.filter(s => s.VpcId === p.VpcId);
     if (vpcSgs.length >= _awsConstraints.securityGroup.maxPerVpc)
       warnings.push('Exceeds default quota of ' + _awsConstraints.securityGroup.maxPerVpc + ' SGs per VPC');
@@ -199,7 +203,8 @@ export function validateDesignChange(change, ctx) {
     const p = change.params;
     if (p.SubnetId) {
       const sub = subnets.find(s => s.SubnetId === p.SubnetId);
-      if (sub) {
+      if (!sub) errors.push('Subnet ' + p.SubnetId + ' not found');
+      else {
         const prefix = parseInt(sub.CidrBlock.split('/')[1], 10);
         const usable = Math.pow(2, 32 - prefix) - _awsConstraints.subnet.reservedIps;
         const currentInst = (ctx ? (ctx.instBySub || {})[p.SubnetId] || [] : []).length;
@@ -245,6 +250,7 @@ export function validateDesignState(changes, ctx) {
     subnetsAdded: 0, gatewaysAdded: 0, resourcesAdded: 0, removed: 0, routes: 0, sgs: 0
   };
   changes.forEach(ch => {
+    if (ch._invalid) errors.push(...(ch._validation?.errors || ['Invalid design change: ' + ch.action]));
     if (ch.action === 'add_subnet') stats.subnetsAdded++;
     if (ch.action === 'add_gateway') stats.gatewaysAdded++;
     if (ch.action === 'add_resource') stats.resourcesAdded++;
@@ -253,6 +259,16 @@ export function validateDesignState(changes, ctx) {
     if (ch.action === 'add_security_group') stats.sgs++;
   });
   if (ctx) {
+    const vpcIds = new Set((ctx.vpcs || []).map(v => v.VpcId));
+    (ctx.subnets || []).forEach(s => {
+      if (!vpcIds.has(s.VpcId)) errors.push('Subnet ' + s.SubnetId + ' references missing VPC ' + s.VpcId);
+    });
+    (ctx.igws || []).forEach(g => { (g.Attachments || []).forEach(a => {
+      if (!vpcIds.has(a.VpcId)) errors.push('Internet Gateway ' + g.InternetGatewayId + ' references missing VPC ' + a.VpcId);
+    }); });
+    (ctx.sgs || []).forEach(s => {
+      if (!vpcIds.has(s.VpcId)) errors.push('Security Group ' + s.GroupId + ' references missing VPC ' + s.VpcId);
+    });
     // Cross-check: IGW count per VPC
     const igwCounts = {};
     (ctx.igws || []).forEach(g => { (g.Attachments || []).forEach(a => { igwCounts[a.VpcId] = (igwCounts[a.VpcId] || 0) + 1; }); });
@@ -388,12 +404,19 @@ function _applyAddGateway(ch, getTa, setTa) {
   }
 }
 
+export function designRouteTargetField(targetId) {
+  const prefix = String(targetId || '').split('-')[0];
+  const fields = { nat: 'NatGatewayId', tgw: 'TransitGatewayId', pcx: 'VpcPeeringConnectionId',
+    vpce: 'VpcEndpointId', eni: 'NetworkInterfaceId', i: 'InstanceId', eigw: 'EgressOnlyInternetGatewayId' };
+  return Object.prototype.hasOwnProperty.call(fields, prefix) ? fields[prefix] : 'GatewayId';
+}
+
 function _applyAddRoute(ch, getTa, setTa) {
   const raw = safeParse(getTa('in_rts')); const rts = raw ? ext(raw, ['RouteTables']) : [];
   const rt = rts.find(r => r.RouteTableId === ch.target.RouteTableId);
   if (!rt) return;
   rt.Routes = rt.Routes || [];
-  rt.Routes.push({ DestinationCidrBlock: ch.params.DestinationCidrBlock, GatewayId: ch.params.TargetId, State: 'active' });
+  rt.Routes.push({ DestinationCidrBlock: ch.params.DestinationCidrBlock, [designRouteTargetField(ch.params.TargetId)]: ch.params.TargetId, State: 'active' });
   setTa('in_rts', JSON.stringify({ RouteTables: rts }));
   ch._modifiedIds = [ch.target.RouteTableId];
 }
@@ -530,7 +553,11 @@ export function _generateCLI(ch) {
     if (ch.params.GatewayType === 'NAT') { cmds.push('# Allocate EIP first: aws ec2 allocate-address --domain vpc'); cmds.push(`aws ec2 create-nat-gateway --subnet-id ${ch.params.SubnetId || '$SUBNET_ID'} --allocation-id $EIP_ALLOC_ID${ch.params.Name ? " --tag-specifications 'ResourceType=natgateway,Tags=[{Key=Name,Value=" + ch.params.Name + "}]'" : ''}`); }
     if (ch.params.GatewayType === 'VPCE') cmds.push(`aws ec2 create-vpc-endpoint --vpc-id ${ch.params.VpcId} --service-name ${ch.params.ServiceName || 'com.amazonaws.REGION.s3'} --vpc-endpoint-type ${ch.params.EndpointType || 'Gateway'}`);
   }
-  if (ch.action === 'add_route') cmds.push(`aws ec2 create-route --route-table-id ${ch.target.RouteTableId} --destination-cidr-block ${ch.params.DestinationCidrBlock} --gateway-id ${ch.params.TargetId}`);
+  if (ch.action === 'add_route') {
+    const field = designRouteTargetField(ch.params.TargetId);
+    const flag = field.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    cmds.push(`aws ec2 create-route --route-table-id ${ch.target.RouteTableId} --destination-cidr-block ${ch.params.DestinationCidrBlock} --${flag} ${ch.params.TargetId}`);
+  }
   if (ch.action === 'add_resource') {
     if (ch.params.ResourceType === 'EC2') cmds.push(`aws ec2 run-instances --subnet-id ${ch.params.SubnetId} --instance-type ${ch.params.InstanceType || 't3.micro'} --image-id $AMI_ID${ch.params.Name ? " --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=" + ch.params.Name + "}]'" : ''}`);
     if (ch.params.ResourceType === 'RDS') cmds.push(`aws rds create-db-instance --db-instance-identifier ${ch.params.Name || 'new-db'} --db-instance-class ${ch.params.InstanceClass || 'db.t3.micro'} --engine ${ch.params.Engine || 'mysql'} --master-username admin --master-user-password $DB_PASSWORD`);

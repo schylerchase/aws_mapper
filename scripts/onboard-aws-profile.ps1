@@ -269,6 +269,8 @@ if (-not $UseExistingCredentials) {
 
         Set-AwsProfileValue -TargetProfile $credentialProfile -Key "aws_access_key_id" -Value $accessKeyId
         Set-AwsProfileValue -TargetProfile $credentialProfile -Key "aws_secret_access_key" -Value $secretAccessKey
+        # A former STS profile must not send its old token with new IAM user keys.
+        Set-AwsProfileValue -TargetProfile $credentialProfile -Key "aws_session_token" -Value ""
     }
 }
 
@@ -285,6 +287,9 @@ if ($baseIdentity.Ok) {
     Write-Host "Long-term credential profile authenticated as:" -ForegroundColor Green
     Write-Host "  $($baseIdentity.Identity.Arn)"
 } else {
+    if (-not $useMfa) {
+        throw "Profile '$credentialProfile' could not authenticate: $($baseIdentity.Error)"
+    }
     Write-Host ""
     Write-Host "Long-term credential profile could not call sts:GetCallerIdentity yet:" -ForegroundColor Yellow
     Write-Host "  $($baseIdentity.Error)" -ForegroundColor Yellow
